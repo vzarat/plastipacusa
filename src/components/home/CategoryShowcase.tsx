@@ -11,8 +11,8 @@ export function CategoryShowcase() {
       description: "Multi-layer cast co-extruded film engineered for maximum puncture resistance on irregular pallet corners.",
       icon: ShieldCheck,
       badge: "Cast Co-Extrusion",
-      widths: "12\", 15\", 18\"",
-      gauge: "60 - 80 Ga",
+      widths: "18\"",
+      gauge: "50 Ga",
       iconBg: "bg-sky-50 text-sky-600 border-sky-100",
     },
     {
@@ -21,8 +21,8 @@ export function CategoryShowcase() {
       description: "Engineered differential slip release for effortless manual dispensing and whisper-quiet operation.",
       icon: Hand,
       badge: "Operator Fatigue Reduction",
-      widths: "12\", 15\", 18\"",
-      gauge: "60 - 80 Ga",
+      widths: "18\"",
+      gauge: "50 Ga",
       iconBg: "bg-blue-50 text-blue-600 border-blue-100",
     },
     {
@@ -31,8 +31,8 @@ export function CategoryShowcase() {
       description: "Ultra-clear optical finish allows seamless handheld and automated barcode scanning directly through pallet wrap.",
       icon: ScanLine,
       badge: "High Clarity",
-      widths: "12\", 15\", 18\"",
-      gauge: "60 - 80 Ga",
+      widths: "18\"",
+      gauge: "50 Ga",
       iconBg: "bg-indigo-50 text-indigo-600 border-indigo-100",
     },
     {
@@ -41,8 +41,8 @@ export function CategoryShowcase() {
       description: "Factory-direct pallet and box volume pricing with rapid cross-border dispatch from South Texas.",
       icon: Truck,
       badge: "Mill-Direct Logistics",
-      widths: "12\", 15\", 18\"",
-      gauge: "60 - 80 Ga",
+      widths: "18\"",
+      gauge: "50 Ga",
       iconBg: "bg-slate-50 text-slate-700 border-slate-200",
     },
   ];

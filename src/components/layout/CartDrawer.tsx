@@ -150,15 +150,11 @@ export function CartDrawer() {
 
                   {/* Packaging tier badge */}
                   <div className="flex items-center gap-2 text-xs text-slate-600">
-                    <Badge variant="secondary" className="capitalize text-[10px] font-bold">
-                      Tier: {item.pricingTier}
+                    <Badge variant="default" className="text-[10px] font-bold">
+                      {item.packageSize || item.pricingTier}
                     </Badge>
                     <span className="text-slate-500 text-[11px]">
-                      {item.pricingTier === "pallet"
-                        ? `${item.rollsPerPallet} rolls / pallet`
-                        : item.pricingTier === "case"
-                        ? `${item.rollsPerBox} rolls / case`
-                        : "Single Roll"}
+                      {item.totalRolls ? `${item.totalRolls} rolls / unit` : `${item.rollsPerBox} rolls`}
                     </span>
                   </div>
 

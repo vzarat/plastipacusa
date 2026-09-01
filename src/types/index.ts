@@ -12,11 +12,14 @@ export type Inquiry = DbInquiry;
 export type NewInquiry = DbNewInquiry;
 
 export interface CartItem {
-  id: string; // Unique cart item ID: `${productId}-${variantId}-${packagingType}`
+  id: string; // Unique cart item ID: `${productId}-${variantId}-${pricingTier}`
   productId: number;
   productSlug: string;
   productName: string;
   productImage: string;
+  packageSize?: string;
+  totalRolls?: number;
+  totalBoxes?: number;
   application: ApplicationType;
   variantId: number;
   sku: string;
@@ -26,9 +29,9 @@ export interface CartItem {
   rollsPerBox: number;
   rollsPerPallet: number;
   weightLbs: string;
-  pricingTier: "roll" | "case" | "pallet";
+  pricingTier: string;
   unitPrice: number;
-  quantity: number; // number of rolls, cases, or pallets ordered
+  quantity: number; // number of packages ordered
   totalPrice: number;
 }
 

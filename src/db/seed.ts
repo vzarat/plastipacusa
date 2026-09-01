@@ -5,7 +5,7 @@ dotenv.config({ path: ".env.local" });
 dotenv.config({ path: ".env" });
 
 async function seed() {
-  console.log("🌱 Starting Plastipac USA database seed (Force Hand Stretch Film)...");
+  console.log("🌱 Starting Plastipac USA database seed...");
 
   try {
     // Clear existing variants and products
@@ -14,20 +14,20 @@ async function seed() {
 
     console.log("Cleared existing product and variant records.");
 
-    // 1. Force Hand Stretch Film (Active Core Manual Packaging Line)
+    // 1. FORCE HAND STRETCH FILM
     const [forceFilm] = await db
       .insert(products)
       .values({
         slug: "force-hand-stretch-film",
-        name: "Force™ Hand Stretch Film",
-        brand: "Plastipac USA",
+        name: 'STRETCH FILM 18" X 50 GA X 1000FT',
+        brand: "FORCE",
         application: "hand",
         filmType: "Cast Co-Extruded Multi-Layer",
         color: "Ultra Clear",
         shortDescription:
           "Premium industrial cast hand wrap engineered for high load retention, exceptional puncture resistance, and quiet unwind.",
         description:
-          "Plastipac Force™ Hand Stretch Film is manufactured with cutting-edge multi-layer cast extrusion technology. Engineered specifically for manual pallet wrapping operations, it provides superior cling, maximum puncture resistance on sharp corners, and whisper-quiet release to protect operators from fatigue.",
+          "Plastipac FORCE™ Hand Stretch Film is manufactured with cutting-edge multi-layer cast extrusion technology. Engineered specifically for manual pallet wrapping operations, it provides superior cling, maximum puncture resistance on sharp corners, and whisper-quiet release to protect operators from fatigue.",
         features: [
           "High optical clarity for barcode scanning through wrap",
           "One-side cling prevents pallets from sticking together during transit",
@@ -48,77 +48,67 @@ async function seed() {
     await db.insert(productVariants).values([
       {
         productId: forceFilm.id,
-        sku: "PP-FRC-1880-4B",
+        sku: "PP-FRC-1850-1B",
+        packageSize: "1 BOX WITH 4 ROLLS",
         widthInches: "18.00",
-        gauge: 80,
-        lengthFeet: 1500,
-        rollsPerBox: 4,
-        rollsPerPallet: 192,
-        weightLbs: "34.50",
-        priceUsd: "19.75",
-        casePriceUsd: "79.00",
-        palletPriceUsd: "3648.00",
-        stockStatus: "in_stock",
-      },
-      {
-        productId: forceFilm.id,
-        sku: "PP-FRC-1870-4B",
-        widthInches: "18.00",
-        gauge: 70,
-        lengthFeet: 1500,
-        rollsPerBox: 4,
-        rollsPerPallet: 192,
-        weightLbs: "30.20",
-        priceUsd: "17.90",
-        casePriceUsd: "71.60",
-        palletPriceUsd: "3300.00",
-        stockStatus: "in_stock",
-      },
-      {
-        productId: forceFilm.id,
-        sku: "PP-FRC-1860-4B",
-        widthInches: "18.00",
-        gauge: 60,
-        lengthFeet: 2000,
-        rollsPerBox: 4,
-        rollsPerPallet: 192,
-        weightLbs: "34.50",
-        priceUsd: "21.50",
-        casePriceUsd: "86.00",
-        palletPriceUsd: "3950.00",
-        stockStatus: "in_stock",
-      },
-      {
-        productId: forceFilm.id,
-        sku: "PP-FRC-1580-4B",
-        widthInches: "15.00",
-        gauge: 80,
-        lengthFeet: 1500,
+        gauge: 50,
+        lengthFeet: 1000,
         rollsPerBox: 4,
         rollsPerPallet: 256,
-        weightLbs: "28.80",
-        priceUsd: "16.80",
-        casePriceUsd: "67.20",
-        palletPriceUsd: "4120.00",
+        weightLbs: "12.00",
+        priceUsd: "20.71",
+        casePriceUsd: "20.71",
+        palletPriceUsd: "1149.49",
         stockStatus: "in_stock",
       },
       {
         productId: forceFilm.id,
-        sku: "PP-FRC-1280-4B",
-        widthInches: "12.00",
-        gauge: 80,
-        lengthFeet: 1500,
-        rollsPerBox: 4,
-        rollsPerPallet: 320,
-        weightLbs: "23.00",
-        priceUsd: "13.90",
-        casePriceUsd: "55.60",
-        palletPriceUsd: "4200.00",
+        sku: "PP-FRC-1850-16B",
+        packageSize: "16 BOXES = 64 ROLLS",
+        widthInches: "18.00",
+        gauge: 50,
+        lengthFeet: 1000,
+        rollsPerBox: 64,
+        rollsPerPallet: 256,
+        weightLbs: "192.00",
+        priceUsd: "316.70",
+        casePriceUsd: "316.70",
+        palletPriceUsd: "1149.49",
+        stockStatus: "in_stock",
+      },
+      {
+        productId: forceFilm.id,
+        sku: "PP-FRC-1850-32B",
+        packageSize: "32 BOXES = 128 ROLLS (HALF PALLET)",
+        widthInches: "18.00",
+        gauge: 50,
+        lengthFeet: 1000,
+        rollsPerBox: 128,
+        rollsPerPallet: 256,
+        weightLbs: "384.00",
+        priceUsd: "604.07",
+        casePriceUsd: "604.07",
+        palletPriceUsd: "1149.49",
+        stockStatus: "in_stock",
+      },
+      {
+        productId: forceFilm.id,
+        sku: "PP-FRC-1850-64B",
+        packageSize: "64 BOXES = 256 ROLLS (FULL PALLET)",
+        widthInches: "18.00",
+        gauge: 50,
+        lengthFeet: 1000,
+        rollsPerBox: 256,
+        rollsPerPallet: 256,
+        weightLbs: "768.00",
+        priceUsd: "1149.49",
+        casePriceUsd: "1149.49",
+        palletPriceUsd: "1149.49",
         stockStatus: "in_stock",
       },
     ]);
 
-    console.log("✅ Seed completed successfully! Inserted Force™ Hand Stretch Film with all 5 industrial variants.");
+    console.log("✅ Seed completed successfully! Inserted FORCE Hand Stretch Film with exact 4 package size variants.");
     process.exit(0);
   } catch (error) {
     console.error("❌ Seed error:", error);

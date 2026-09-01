@@ -121,11 +121,11 @@ export function HeroBanner() {
               <div className="grid grid-cols-2 gap-3 py-4 border-y border-slate-100 text-xs">
                 <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100">
                   <span className="text-slate-500 block text-[10px] uppercase font-semibold">Film Gauge</span>
-                  <span className="font-bold text-slate-900 text-sm">60 - 80 Gauge</span>
+                  <span className="font-bold text-slate-900 text-sm">50 Gauge</span>
                 </div>
                 <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100">
                   <span className="text-slate-500 block text-[10px] uppercase font-semibold">Width</span>
-                  <span className="font-bold text-slate-900 text-sm">12", 15", 18" Manual</span>
+                  <span className="font-bold text-slate-900 text-sm">18" Manual</span>
                 </div>
                 <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100">
                   <span className="text-slate-500 block text-[10px] uppercase font-semibold">Application</span>
@@ -133,7 +133,7 @@ export function HeroBanner() {
                 </div>
                 <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100">
                   <span className="text-slate-500 block text-[10px] uppercase font-semibold">Starting at</span>
-                  <span className="font-extrabold text-slate-900 text-sm">$13.90 / Roll</span>
+                  <span className="font-extrabold text-slate-900 text-sm">$20.71 / Box</span>
                 </div>
               </div>
 

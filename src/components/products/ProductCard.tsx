@@ -136,7 +136,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             <span className="text-lg font-extrabold text-slate-900">
               {formatCurrency(minPrice)}
             </span>
-            <span className="text-[11px] text-slate-500">/ roll</span>
+            <span className="text-[11px] text-slate-500">/ box (4 rolls)</span>
           </div>
         </div>
 

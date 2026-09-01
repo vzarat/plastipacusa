@@ -21,35 +21,37 @@ export function SpecsTable({ variants }: SpecsTableProps) {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-bold text-slate-900">
-            Engineering Dimension & Weight Matrix
+            Package Dimensions & Volume Price Matrix
           </h3>
           <p className="text-xs text-slate-500">
-            Standard production roll sizes, pallet pack-outs, and case quantities.
+            Official production packaging sizes, roll count, and tier pricing.
           </p>
         </div>
         <Badge variant="default" className="font-mono text-xs font-bold">
-          {variants.length} Matrix Items
+          {variants.length} Package Options
         </Badge>
       </div>
 
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>Package Size Option</TableHead>
             <TableHead>SKU</TableHead>
             <TableHead>Width</TableHead>
             <TableHead>Gauge</TableHead>
             <TableHead>Length</TableHead>
-            <TableHead>Weight / Unit</TableHead>
-            <TableHead>Pack / Case</TableHead>
-            <TableHead>Pack / Pallet</TableHead>
-            <TableHead className="text-right">Roll Price</TableHead>
-            <TableHead className="text-right">Case Price</TableHead>
+            <TableHead>Total Weight</TableHead>
+            <TableHead>Total Rolls</TableHead>
+            <TableHead className="text-right">Price (USD)</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {variants.map((v) => (
             <TableRow key={v.id} className="hover:bg-sky-50/50 font-mono text-xs">
-              <TableCell className="font-bold text-sky-700">
+              <TableCell className="font-bold text-slate-900 font-sans">
+                {v.packageSize || v.sku}
+              </TableCell>
+              <TableCell className="text-sky-700 font-bold">
                 {v.sku}
               </TableCell>
               <TableCell className="text-slate-800">
@@ -64,17 +66,11 @@ export function SpecsTable({ variants }: SpecsTableProps) {
               <TableCell className="text-slate-600">
                 {v.weightLbs} lbs
               </TableCell>
-              <TableCell className="text-slate-600">
+              <TableCell className="text-slate-600 font-sans font-medium">
                 {v.rollsPerBox} rolls
               </TableCell>
-              <TableCell className="text-slate-600">
-                {v.rollsPerPallet} rolls
-              </TableCell>
-              <TableCell className="text-right font-sans font-bold text-slate-900">
+              <TableCell className="text-right font-sans font-black text-slate-900 text-sm">
                 {formatCurrency(v.priceUsd)}
-              </TableCell>
-              <TableCell className="text-right font-sans font-bold text-sky-800">
-                {v.casePriceUsd ? formatCurrency(v.casePriceUsd) : "-"}
               </TableCell>
             </TableRow>
           ))}
