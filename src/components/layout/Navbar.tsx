@@ -114,9 +114,9 @@ export function Navbar() {
                 {isProductsDropdownOpen && (
                   <div className="absolute top-full left-0 w-72 pt-2 z-50 animate-fade-in-up">
                     <div className="rounded-2xl border border-slate-200/90 bg-white p-2 shadow-xl shadow-slate-200/60 space-y-1">
-                      {/* Hand Stretch Films */}
+                      {/* Force Hand Stretch Film */}
                       <Link
-                        href="/products?type=hand"
+                        href="/products/force-hand-stretch-film"
                         onClick={() => setIsProductsDropdownOpen(false)}
                         className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-sky-50/80 transition-colors group/item"
                       >
@@ -125,29 +125,10 @@ export function Navbar() {
                         </div>
                         <div>
                           <span className="text-xs font-bold text-slate-900 group-hover/item:text-sky-700 block">
-                            Hand Stretch Films
+                            Force™ Hand Stretch Film
                           </span>
                           <span className="text-[11px] text-slate-500">
-                            12" to 18" manual cast rolls
-                          </span>
-                        </div>
-                      </Link>
-
-                      {/* Machine Stretch Films */}
-                      <Link
-                        href="/products?type=machine"
-                        onClick={() => setIsProductsDropdownOpen(false)}
-                        className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-sky-50/80 transition-colors group/item"
-                      >
-                        <div className="p-2 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 group-hover/item:bg-blue-600 group-hover/item:text-white transition-colors">
-                          <Cpu className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <span className="text-xs font-bold text-slate-900 group-hover/item:text-blue-700 block">
-                            Machine Stretch Films
-                          </span>
-                          <span className="text-[11px] text-slate-500">
-                            High-yield up to 300% pre-stretch
+                            12", 15", 18" manual cast rolls (60-80 Ga)
                           </span>
                         </div>
                       </Link>
@@ -162,7 +143,7 @@ export function Navbar() {
                       >
                         <span className="flex items-center gap-2">
                           <LayoutGrid className="w-3.5 h-3.5 text-sky-600" />
-                          View Full Catalog
+                          Dimensions & Pricing Matrix
                         </span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </Link>
@@ -271,20 +252,12 @@ export function Navbar() {
               {isMobileProductsOpen && (
                 <div className="pt-1 pl-2 space-y-1 border-t border-slate-200/60">
                   <Link
-                    href="/products?type=hand"
+                    href="/products/force-hand-stretch-film"
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold text-slate-600 hover:text-sky-600 rounded-lg"
                   >
                     <Hand className="w-3.5 h-3.5 text-sky-600" />
-                    Hand Stretch Films
-                  </Link>
-                  <Link
-                    href="/products?type=machine"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold text-slate-600 hover:text-blue-600 rounded-lg"
-                  >
-                    <Cpu className="w-3.5 h-3.5 text-blue-600" />
-                    Machine Stretch Films
+                    Force™ Hand Stretch Film
                   </Link>
                   <Link
                     href="/products"
@@ -292,7 +265,7 @@ export function Navbar() {
                     className="flex items-center gap-2 px-2.5 py-2 text-xs font-bold text-sky-700 hover:text-sky-800 rounded-lg"
                   >
                     <LayoutGrid className="w-3.5 h-3.5" />
-                    View Full Catalog
+                    Dimensions & Pricing Matrix
                   </Link>
                 </div>
               )}

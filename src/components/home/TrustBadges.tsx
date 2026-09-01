@@ -1,17 +1,17 @@
 import React from "react";
-import { Truck, Recycle, Gauge, ShieldCheck } from "lucide-react";
+import { Truck, Award, Gauge, ShieldCheck } from "lucide-react";
 
 export function TrustBadges() {
   const points = [
     {
       icon: Gauge,
-      title: "55-Layer Nano Cast Technology",
-      description: "Proprietary multi-layer co-extrusion produces thinner film with unmatched puncture & load retention.",
+      title: "Multi-Layer Cast Technology",
+      description: "High-grade industrial co-extrusion produces consistent gauge thickness and maximum stretch recovery.",
     },
     {
       icon: ShieldCheck,
       title: "Puncture & Tear Resistance",
-      description: "Formulated to withstand sharp pallet edges, protruding nails, and high-tension automated wrappers.",
+      description: "Formulated to withstand sharp pallet edges, irregular corners, and high-tension manual wrapping.",
     },
     {
       icon: Truck,
@@ -19,9 +19,9 @@ export function TrustBadges() {
       description: "Rapid regional truckload and pallet delivery across South Texas and Northern Mexico manufacturing hubs.",
     },
     {
-      icon: Recycle,
-      title: "100% Recyclable Solutions",
-      description: "Circular polymer options with virgin LLDPE and certified 30% Post-Consumer Recycled resin.",
+      icon: Award,
+      title: "Direct Mill Supply & Pricing",
+      description: "Guaranteed inventory availability, full pallet discounts, and direct manufacturer support.",
     },
   ];
 

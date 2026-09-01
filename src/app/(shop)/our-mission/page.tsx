@@ -88,14 +88,14 @@ export default function OurMissionPage() {
                 Our Mission
               </h2>
               <blockquote className="text-base sm:text-lg text-slate-700 leading-relaxed italic border-l-4 border-sky-500 pl-4">
-                "Our mission is to provide innovative, quality solutions that meet our clients' needs, driving their success and well-being. We are committed to maintaining high standards of excellence and sustainable packaging solutions."
+                "Our mission is to provide innovative, quality solutions that meet our clients' needs, driving their success and well-being. We are committed to maintaining high standards of excellence and high-performance industrial packaging solutions."
               </blockquote>
             </div>
 
             <div className="pt-6 border-t border-slate-200/80 space-y-2 text-xs text-slate-600">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-sky-600 flex-shrink-0" />
-                <span>Tailored film thickness optimization for reduced packaging waste</span>
+                <span>Tailored film gauge optimization for maximum load retention</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-sky-600 flex-shrink-0" />

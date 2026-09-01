@@ -87,23 +87,23 @@ export function Footer() {
             </h3>
             <ul className="space-y-2.5 text-xs">
               <li>
-                <Link href="/products/force-hand-stretch-film" className="hover:text-sky-600 transition-colors">
+                <Link href="/products/force-hand-stretch-film" className="hover:text-sky-600 transition-colors font-medium text-slate-900">
                   Force™ Hand Stretch Film
                 </Link>
               </li>
               <li>
-                <Link href="/products/genesis-high-performance-machine-film" className="hover:text-sky-600 transition-colors">
-                  Genesis™ Machine High Yield Film
+                <Link href="/products/force-hand-stretch-film" className="hover:text-sky-600 transition-colors">
+                  18" Industrial Hand Wrap (60-80 Ga)
                 </Link>
               </li>
               <li>
-                <Link href="/products/stealth-puncture-machine-film" className="hover:text-sky-600 transition-colors">
-                  Stealth™ Puncture Resistant Film
+                <Link href="/products/force-hand-stretch-film" className="hover:text-sky-600 transition-colors">
+                  15" High-Tension Pallet Wrap
                 </Link>
               </li>
               <li>
-                <Link href="/products/eco-max-pcr-hand-film" className="hover:text-sky-600 transition-colors">
-                  Eco-Max™ 30% Recycled PCR Film
+                <Link href="/products/force-hand-stretch-film" className="hover:text-sky-600 transition-colors">
+                  12" Narrow Manual Dispenser Rolls
                 </Link>
               </li>
               <li>

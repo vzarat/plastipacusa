@@ -51,11 +51,11 @@ export default function AboutPage() {
 
           <div className="p-8 rounded-3xl border border-slate-200/90 bg-white space-y-4 shadow-sm card-hover-effect">
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center">
-              <Globe2 className="w-6 h-6" />
+              <ShieldCheck className="w-6 h-6" />
             </div>
-            <h3 className="text-xl font-bold text-slate-900">Sustainable Solutions</h3>
+            <h3 className="text-xl font-bold text-slate-900">Uncompromising Load Stability</h3>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Committed to responsible packaging with 100% recyclable virgin LLDPE formulations and high-performance PCR circular plastic options.
+              Formulated with high-strength resins to deliver exceptional cling, maximum corner retention, and quiet unwind during intensive warehouse wrapping.
             </p>
           </div>
         </div>

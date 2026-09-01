@@ -77,8 +77,8 @@ export function HeroBanner() {
                   <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-slate-900">100% Recyclable</div>
-                  <div className="text-[11px] text-slate-500">LLDPE & PCR resins</div>
+                  <div className="text-xs font-bold text-slate-900">Extreme Puncture Hold</div>
+                  <div className="text-[11px] text-slate-500">Multi-layer cast strength</div>
                 </div>
               </div>
 
@@ -109,10 +109,10 @@ export function HeroBanner() {
                 </div>
                 <div>
                   <span className="text-[11px] font-mono uppercase text-sky-600 font-bold">
-                    Genesis™ Nano Series
+                    Force™ Cast Series
                   </span>
                   <h3 className="text-lg font-bold text-slate-900">
-                    Genesis Machine Stretch Film
+                    Force™ Hand Stretch Film
                   </h3>
                 </div>
               </div>
@@ -121,26 +121,26 @@ export function HeroBanner() {
               <div className="grid grid-cols-2 gap-3 py-4 border-y border-slate-100 text-xs">
                 <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100">
                   <span className="text-slate-500 block text-[10px] uppercase font-semibold">Film Gauge</span>
-                  <span className="font-bold text-slate-900 text-sm">55 - 80 Gauge</span>
+                  <span className="font-bold text-slate-900 text-sm">60 - 80 Gauge</span>
                 </div>
                 <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100">
                   <span className="text-slate-500 block text-[10px] uppercase font-semibold">Width</span>
-                  <span className="font-bold text-slate-900 text-sm">20" & 30" Machine</span>
+                  <span className="font-bold text-slate-900 text-sm">12", 15", 18" Manual</span>
                 </div>
                 <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100">
                   <span className="text-slate-500 block text-[10px] uppercase font-semibold">Application</span>
-                  <span className="font-bold text-sky-700 text-sm">High-Speed Rotary</span>
+                  <span className="font-bold text-sky-700 text-sm">Manual Pallet Hold</span>
                 </div>
                 <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100">
                   <span className="text-slate-500 block text-[10px] uppercase font-semibold">Starting at</span>
-                  <span className="font-extrabold text-slate-900 text-sm">$69.90 / Roll</span>
+                  <span className="font-extrabold text-slate-900 text-sm">$13.90 / Roll</span>
                 </div>
               </div>
 
               <div className="mt-6 flex items-center justify-between">
-                <span className="text-xs text-slate-500 font-medium">Available in full 40-roll pallets</span>
+                <span className="text-xs text-slate-500 font-medium">Ready to ship by case or pallet</span>
                 <Button asChild variant="gradient" size="sm" className="gap-1.5 shadow-sm">
-                  <Link href="/products/genesis-high-performance-machine-film">
+                  <Link href="/products/force-hand-stretch-film">
                     <span>View Matrix</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </Link>

@@ -41,7 +41,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             Stretch Films & Technical Specifications
           </h1>
           <p className="text-sm text-slate-500 max-w-2xl">
-            Browse our complete lineup of hand films, high-yield machine wraps, puncture-resistant heavy-duty wraps, and sustainable PCR solutions.
+            Browse our high-performance manual cast stretch films, complete dimensional specifications matrix, and direct wholesale volume pricing.
           </p>
         </div>
 

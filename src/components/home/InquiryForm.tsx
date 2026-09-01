@@ -216,11 +216,10 @@ export function InquiryForm() {
                       onChange={(e) => setFormData({ ...formData, productInterest: e.target.value })}
                       className="w-full h-10 bg-white border border-slate-200 rounded-xl px-3 text-xs text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
                     >
-                      <option value="Force Hand Stretch Film">Force™ Hand Film</option>
-                      <option value="Genesis High Performance Machine Film">Genesis™ Machine Film</option>
-                      <option value="Stealth Puncture Machine Film">Stealth™ Puncture Film</option>
-                      <option value="Eco-Max PCR Hand Film">Eco-Max™ 30% PCR Film</option>
-                      <option value="Custom Gauge / Width Specification">Custom Specification</option>
+                      <option value="Force Hand Stretch Film (18 Inch)">Force™ Hand Film - 18" Width</option>
+                      <option value="Force Hand Stretch Film (15 Inch)">Force™ Hand Film - 15" Width</option>
+                      <option value="Force Hand Stretch Film (12 Inch)">Force™ Hand Film - 12" Width</option>
+                      <option value="Custom Gauge / Width Specification">Custom Gauge / Pallet Specification</option>
                     </select>
                   </div>
 
@@ -258,7 +257,7 @@ export function InquiryForm() {
                   </label>
                   <textarea
                     rows={3}
-                    placeholder="e.g. Current wrapping machine breaks film at corners; looking to down-gauge from 80 ga to 60 ga..."
+                    placeholder="e.g. Looking for high puncture resistance on irregular pallet corners; need full pallet pricing for 80 gauge 18 inch rolls..."
                     value={formData.message}
                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                     className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-900 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
