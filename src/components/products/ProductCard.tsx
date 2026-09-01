@@ -4,8 +4,7 @@ import Image from "next/image";
 import { ProductWithVariants } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ShoppingCart, ArrowRight, CheckCircle2, Box, Layers } from "lucide-react";
 
 interface ProductCardProps {
   product: ProductWithVariants;
@@ -16,17 +15,9 @@ const DEFAULT_PRODUCT_IMAGE =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png";
 
 export function ProductCard({ product, priority = false }: ProductCardProps) {
-  const minPrice = product.variants.length > 0
-    ? Math.min(...product.variants.map((v) => parseFloat(v.priceUsd)))
-    : 0;
-
-  const availableGauges = Array.from(
-    new Set(product.variants.map((v) => v.gauge))
-  ).sort((a, b) => a - b);
-
-  const availableWidths = Array.from(
-    new Set(product.variants.map((v) => `${parseFloat(v.widthInches)}"`))
-  );
+  // Find primary variant (1 Box with 4 rolls: $20.71) or minimum price
+  const primaryVariant = product.variants[0];
+  const primaryPrice = primaryVariant ? parseFloat(primaryVariant.priceUsd) : 20.71;
 
   const primaryImage =
     (product.images && product.images[0]) ||
@@ -41,24 +32,34 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   return (
     <div className="group rounded-3xl border border-slate-200/90 bg-white overflow-hidden flex flex-col justify-between transition-all duration-300 hover:border-sky-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-500/10 card-hover-effect">
       <div>
-        {/* Image Header with App Badge & Hover Cross-Fade */}
-        <div className="relative aspect-[4/3] w-full bg-slate-50/80 overflow-hidden border-b border-slate-100 flex items-center justify-center">
-          {/* Default Image (Rolls) */}
+        {/* 1. Clean Product Image Area (Completely free of floating dark pills and text overlays) */}
+        <div className="relative aspect-[4/3] w-full bg-slate-50/50 overflow-hidden border-b border-slate-100 flex items-center justify-center">
+          {/* Top Category Badge */}
+          <div className="absolute top-3.5 left-3.5 z-10">
+            <Badge
+              variant="default"
+              className="uppercase tracking-wider text-[10px] font-bold shadow-sm bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-50"
+            >
+              HAND STRETCH
+            </Badge>
+          </div>
+
+          {/* Primary Product Image (Rolls) */}
           <Image
             src={primaryImage}
-            alt={product.name || "Stretch Film Product"}
+            alt={product.name || "Force Hand Stretch Film"}
             fill
             priority={priority}
             placeholder="empty"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-            className={`object-contain p-4 transition-all duration-300 ${
+            className={`object-contain p-5 transition-all duration-300 ${
               secondaryImage
                 ? "group-hover:opacity-0 group-hover:scale-95"
                 : "group-hover:scale-105"
             }`}
           />
 
-          {/* Packaging Box Image (Hover Swap) */}
+          {/* Secondary Product Image (Box Packaging on Hover) */}
           {secondaryImage && (
             <Image
               src={secondaryImage}
@@ -66,86 +67,87 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               fill
               placeholder="empty"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-              className="object-contain p-4 opacity-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300 pointer-events-none"
+              className="object-contain p-5 opacity-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300 pointer-events-none"
             />
           )}
-
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/30 via-transparent to-transparent pointer-events-none" />
-          
-          <div className="absolute top-3 left-3 flex gap-2 z-10">
-            <Badge
-              variant={product.application === "hand" ? "default" : "gradient"}
-              className="uppercase tracking-wider text-[10px] font-bold shadow-sm"
-            >
-              {product.application === "hand" ? "Hand Stretch" : "Machine Stretch"}
-            </Badge>
-          </div>
-
-          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs text-white z-10">
-            <span className="font-mono text-[11px] bg-slate-900/80 backdrop-blur-sm px-2.5 py-0.5 rounded-full border border-white/20">
-              {product.filmType}
-            </span>
-            <span className="text-[11px] text-sky-200 font-bold bg-slate-900/80 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/10">
-              {product.variants.length} Variants
-            </span>
-          </div>
         </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-3.5">
-          <h3 className="text-lg font-bold text-slate-900 group-hover:text-sky-600 transition-colors">
-            <Link href={`/products/${product.slug}`}>{product.name}</Link>
-          </h3>
-          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-            {product.shortDescription}
-          </p>
+        {/* 2. Refined Product Info & Specifications Block */}
+        <div className="p-6 space-y-4">
+          <div>
+            <span className="text-[10px] font-mono uppercase text-sky-600 font-bold tracking-wider block">
+              {product.brand || "FORCE"} • Industrial Cast Series
+            </span>
+            <h3 className="text-lg font-extrabold text-slate-900 group-hover:text-sky-600 transition-colors mt-0.5">
+              <Link href={`/products/${product.slug}`}>
+                Force™ Hand Stretch Film
+              </Link>
+            </h3>
+            <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mt-1.5">
+              {product.shortDescription ||
+                "Premium industrial cast hand wrap engineered for high load retention and quiet unwind."}
+            </p>
+          </div>
 
-          {/* Quick Specs Matrix with soft cyan pills */}
-          <div className="py-3 px-3.5 rounded-2xl bg-sky-50/60 border border-sky-100 grid grid-cols-2 gap-2 text-[11px]">
-            <div>
-              <span className="text-slate-500 block text-[10px] uppercase font-medium">Gauges</span>
-              <span className="font-bold text-sky-900">
-                {availableGauges.join(", ")} Ga
+          {/* Product Specifications Matrix (Crucial for Sales Conversion) */}
+          <div className="rounded-2xl bg-slate-50/90 border border-slate-200/80 p-3.5 space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 text-[11px] font-medium">Dimensions:</span>
+              <span className="font-mono font-bold text-slate-900 text-xs">
+                18" X 50 GA X 1000FT
               </span>
             </div>
-            <div>
-              <span className="text-slate-500 block text-[10px] uppercase font-medium">Widths</span>
-              <span className="font-bold text-sky-900">
-                {availableWidths.join(", ")}
+            <div className="flex items-center justify-between pt-1.5 border-t border-slate-200/60">
+              <span className="text-slate-500 text-[11px] font-medium">Packaging:</span>
+              <span className="font-bold text-sky-800 text-xs">
+                1 Box (4 Rolls) • Pallets Available
               </span>
             </div>
           </div>
 
-          {/* Feature Highlights */}
-          <div className="space-y-1.5 pt-1">
-            {product.features.slice(0, 2).map((f, i) => (
-              <div key={i} className="flex items-center gap-2 text-[11px] text-slate-600">
-                <CheckCircle2 className="w-3.5 h-3.5 text-sky-600 flex-shrink-0" />
-                <span className="truncate">{f}</span>
-              </div>
-            ))}
+          {/* Feature Badges */}
+          <div className="flex items-center gap-3 text-[11px] text-slate-600">
+            <div className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-sky-600 flex-shrink-0" />
+              <span>Multi-Layer Cast</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-sky-600 flex-shrink-0" />
+              <span>Ready to Ship</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Footer / Price & Action */}
-      <div className="p-6 pt-3 border-t border-slate-100 bg-slate-50/40 flex items-center justify-between">
-        <div>
-          <span className="text-[10px] text-slate-400 block uppercase font-medium">Starting from</span>
-          <div className="flex items-baseline gap-1">
-            <span className="text-lg font-extrabold text-slate-900">
-              {formatCurrency(minPrice)}
+      {/* 3. Pricing Display & Full-Width High-Conversion CTA Button */}
+      <div className="p-6 pt-0 space-y-3.5">
+        {/* Dynamic Tier Price Header */}
+        <div className="flex items-baseline justify-between pt-3 border-t border-slate-100">
+          <div>
+            <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">
+              Starting Price (1 Box)
             </span>
-            <span className="text-[11px] text-slate-500">/ box (4 rolls)</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-black text-slate-900 tracking-tight">
+                {formatCurrency(primaryPrice)}
+              </span>
+              <span className="text-xs font-bold text-slate-500">USD</span>
+            </div>
           </div>
+          <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
+            4 Rolls / Box
+          </span>
         </div>
 
-        <Button asChild size="sm" variant="gradient" className="gap-1.5 text-xs shadow-sm shadow-sky-500/10">
-          <Link href={`/products/${product.slug}`}>
-            <span>Configure</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </Button>
+        {/* High-Conversion "BUY NOW / COMPRAR AHORA" Button */}
+        <Link
+          href={`/products/${product.slug}`}
+          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 text-white font-extrabold text-sm shadow-md shadow-sky-500/20 hover:opacity-95 hover:shadow-lg hover:shadow-sky-500/30 transition-all duration-200 active:scale-[0.99] group/btn"
+        >
+          <ShoppingCart className="w-4 h-4 text-white group-hover/btn:scale-110 transition-transform" />
+          <span>BUY NOW / COMPRAR AHORA</span>
+          <ArrowRight className="w-4 h-4 text-sky-200 group-hover/btn:translate-x-0.5 transition-transform" />
+        </Link>
       </div>
     </div>
   );
