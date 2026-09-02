@@ -72,8 +72,8 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           )}
         </div>
 
-        {/* 2. Refined Product Info & Specifications Block */}
-        <div className="p-6 space-y-4">
+        {/* 2. Refined Product Info & B2B Volume Indicator */}
+        <div className="p-6 pb-4 space-y-3.5">
           <div>
             <span className="text-[10px] font-mono uppercase text-sky-600 font-bold tracking-wider block">
               {product.brand || "FORCE"} • Industrial Cast Series
@@ -89,33 +89,22 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             </p>
           </div>
 
-          {/* Product Specifications Matrix (Crucial for Sales Conversion) */}
-          <div className="rounded-2xl bg-slate-50/90 border border-slate-200/80 p-3.5 space-y-2 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-slate-500 text-[11px] font-medium">Dimensions:</span>
-              <span className="font-mono font-bold text-slate-900 text-xs">
-                {primaryVariant?.widthInches
-                  ? `${Math.round(parseFloat(primaryVariant.widthInches))}" X ${primaryVariant.gauge} GA X ${primaryVariant.lengthFeet}FT`
-                  : product?.name || '18" X 50 GA X 1000FT'}
-              </span>
+          {/* B2B Volume Availability & Feature Badges */}
+          <div className="space-y-2.5 pt-1">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50/80 border border-sky-100 text-sky-800 text-[11px] font-semibold">
+              <Layers className="w-3.5 h-3.5 text-sky-600" />
+              <span>Volume tiers: Boxes & Pallets</span>
             </div>
-            <div className="flex items-center justify-between pt-1.5 border-t border-slate-200/60">
-              <span className="text-slate-500 text-[11px] font-medium">Packaging:</span>
-              <span className="font-bold text-sky-800 text-xs truncate max-w-[180px]">
-                {primaryVariant?.packageSize || "1 Box (4 Rolls) • Pallets Available"}
-              </span>
-            </div>
-          </div>
 
-          {/* Feature Badges */}
-          <div className="flex items-center gap-3 text-[11px] text-slate-600">
-            <div className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-sky-600 flex-shrink-0" />
-              <span>Multi-Layer Cast</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-sky-600 flex-shrink-0" />
-              <span>Ready to Ship</span>
+            <div className="flex items-center gap-3 text-[11px] text-slate-600">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-sky-600 flex-shrink-0" />
+                <span>Multi-Layer Cast</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-sky-600 flex-shrink-0" />
+                <span>Ready to Ship</span>
+              </div>
             </div>
           </div>
         </div>
@@ -127,7 +116,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         <div className="flex items-baseline justify-between pt-3 border-t border-slate-100">
           <div>
             <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">
-              Starting Price (1 Box)
+              Starting at
             </span>
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl font-black text-slate-900 tracking-tight">

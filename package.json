@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "NEXT_DISABLE_WEBPACK_CACHE=1 next dev",
     "clean": "node -e \"fs.rmSync('.next', { recursive: true, force: true }); fs.rmSync('node_modules/.cache', { recursive: true, force: true }); fs.mkdirSync('.next/cache', { recursive: true }); fs.mkdirSync('.next/static/development', { recursive: true }); fs.writeFileSync('.next/.metadata_never_index', '');\"",
     "build": "next build",
     "start": "next start",
@@ -20,7 +20,7 @@
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.38.4",
     "lucide-react": "^1.16.0",
-    "next": "^15.2.0",
+    "next": "^15.2.9",
     "pg": "^8.13.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
