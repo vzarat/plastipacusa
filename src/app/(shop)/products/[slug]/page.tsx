@@ -1,6 +1,5 @@
 import React from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getProductBySlug } from "@/actions/products";
 import { ProductGallery } from "@/components/products/ProductGallery";
@@ -79,6 +78,8 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
               imageUrl={product.imageUrl}
               productName={product.name}
               application={product.application}
+              categoryLogoUrl={categoryMeta?.logoUrl}
+              categoryName={categoryMeta?.name}
             />
 
             {/* Engineering Highlights */}
@@ -111,33 +112,10 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           {/* Right Column: Title & Interactive Variant Selector */}
           <div className="lg:col-span-6 space-y-6">
             <div>
-              {/* Category Brand Badge & Line Indicator */}
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs tracking-wider font-semibold text-slate-400 uppercase">
-                    PRODUCT LINE:
-                  </span>
-                  <span className="text-xs font-mono uppercase text-sky-600 font-bold tracking-wider">
-                    {product.filmType || "Cast Co-Extruded Multi-Layer"}
-                  </span>
-                </div>
-
-                {categoryMeta?.logoUrl ? (
-                  <div className="inline-flex items-center px-3.5 py-1.5 rounded-2xl bg-white border border-slate-200/90 shadow-xs">
-                    <Image
-                      src={categoryMeta.logoUrl}
-                      alt={categoryMeta.name || "Category Brand Logo"}
-                      width={180}
-                      height={40}
-                      priority
-                      className="h-9 md:h-10 w-auto object-contain"
-                    />
-                  </div>
-                ) : (
-                  <div className="inline-flex items-center px-3 py-1.5 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold uppercase tracking-wider">
-                    {categoryMeta?.name || product.brand}
-                  </div>
-                )}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-mono uppercase text-sky-600 font-bold tracking-wider">
+                  {product.brand} • {product.filmType || "Cast Co-Extruded Multi-Layer"}
+                </span>
               </div>
 
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
