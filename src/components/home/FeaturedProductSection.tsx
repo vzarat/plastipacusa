@@ -200,7 +200,7 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
                   {/* Category Section Divider Ribbon before each category's grid */}
                   <CategorySectionDivider categorySlug={category.slug} />
 
-                  {/* Category Products Grid (showing up to 4 featured products per row) */}
+                  {/* Category Products Grid (all products in category) */}
                   <div
                     className={`grid gap-6 ${
                       categoryItems.length <= 2
@@ -210,7 +210,7 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
                         : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
                     }`}
                   >
-                    {categoryItems.slice(0, 4).map((product, idx) => (
+                    {categoryItems.map((product, idx) => (
                       <ProductCard
                         key={product?.id || idx}
                         product={product}
