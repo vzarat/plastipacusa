@@ -16,16 +16,16 @@ const DEFAULT_PRODUCT_IMAGE =
 
 export function ProductCard({ product, priority = false }: ProductCardProps) {
   // Find primary variant (1 Box with 4 rolls: $20.71) or minimum price
-  const primaryVariant = product.variants[0];
-  const primaryPrice = primaryVariant ? parseFloat(primaryVariant.priceUsd) : 20.71;
+  const primaryVariant = product?.variants?.[0];
+  const primaryPrice = primaryVariant?.priceUsd ? parseFloat(primaryVariant.priceUsd) : 20.71;
 
   const primaryImage =
-    (product.images && product.images[0]) ||
-    product.imageUrl ||
+    (product?.images && product.images[0]) ||
+    product?.imageUrl ||
     DEFAULT_PRODUCT_IMAGE;
 
   const secondaryImage =
-    product.images && product.images.length > 1
+    product?.images && product.images.length > 1
       ? product.images[1]
       : null;
 
@@ -79,7 +79,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               {product.brand || "FORCE"} • Industrial Cast Series
             </span>
             <h3 className="text-lg font-extrabold text-slate-900 group-hover:text-sky-600 transition-colors mt-0.5">
-              <Link href={`/products/${product.slug}`}>
+              <Link href={`/products/${product?.slug || "force-hand-stretch-film"}`}>
                 Force™ Hand Stretch Film
               </Link>
             </h3>
@@ -141,7 +141,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
 
         {/* High-Conversion "BUY NOW / COMPRAR AHORA" Button */}
         <Link
-          href={`/products/${product.slug}`}
+          href={`/products/${product?.slug || "force-hand-stretch-film"}`}
           className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 text-white font-extrabold text-sm shadow-md shadow-sky-500/20 hover:opacity-95 hover:shadow-lg hover:shadow-sky-500/30 transition-all duration-200 active:scale-[0.99] group/btn"
         >
           <ShoppingCart className="w-4 h-4 text-white group-hover/btn:scale-110 transition-transform" />

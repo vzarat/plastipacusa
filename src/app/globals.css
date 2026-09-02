@@ -54,6 +54,15 @@
   }
 }
 
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
 @layer utilities {
   .bg-blue-gradient {
     background: linear-gradient(135deg, #38bdf8 0%, #0284c7 50%, #1d4ed8 100%);

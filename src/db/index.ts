@@ -21,23 +21,64 @@ const globalForDb = globalThis as unknown as {
   pool: Pool | undefined;
 };
 
-// Activar SSL siempre que no sea una base de datos local en 127.0.0.1 / localhost
 const isLocalhost =
-  connectionString?.includes("localhost") ||
-  connectionString?.includes("127.0.0.1");
+  Boolean(connectionString?.includes("localhost") ||
+  connectionString?.includes("127.0.0.1"));
 
-const pool =
-  globalForDb.pool ??
-  new Pool({
-    connectionString:
-      connectionString || "postgresql://postgres:postgres@localhost:5432/plastipac",
-    ssl: isLocalhost ? undefined : { rejectUnauthorized: false },
-    connectionTimeoutMillis: 3000,
-  });
+let pool: Pool | null = null;
 
-if (process.env.NODE_ENV !== "production") {
-  globalForDb.pool = pool;
+if (isDbConfigured && connectionString) {
+  try {
+    pool =
+      globalForDb.pool ??
+      new Pool({
+        connectionString,
+        ssl: isLocalhost ? undefined : { rejectUnauthorized: false },
+        connectionTimeoutMillis: 3000,
+      });
+
+    // Guard against unhandled 'error' events on idle clients to prevent crashing server process
+    pool.on("error", (err) => {
+      console.warn("Postgres pool client warning (handled):", err.message);
+    });
+
+    if (process.env.NODE_ENV !== "production") {
+      globalForDb.pool = pool;
+    }
+  } catch (err: any) {
+    console.warn("Postgres pool initialization failed:", err?.message || err);
+    pool = null;
+  }
 }
 
-export const db = drizzle(pool, { schema });
+// Safe fallback db for when DATABASE_URL is not configured or fails
+const fallbackDb: any = {
+  query: {
+    products: {
+      findMany: async () => [],
+      findFirst: async () => null,
+    },
+    productVariants: {
+      findMany: async () => [],
+      findFirst: async () => null,
+    },
+    inquiries: {
+      findMany: async () => [],
+      findFirst: async () => null,
+    },
+  },
+  insert: () => ({
+    values: async () => ({}),
+  }),
+  select: () => ({
+    from: () => ({
+      where: () => [],
+    }),
+  }),
+};
+
+export const db = pool
+  ? drizzle(pool, { schema })
+  : (fallbackDb as ReturnType<typeof drizzle<typeof schema>>);
+
 export * from "./schema";

@@ -24,8 +24,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   // If gauge filter is active, filter products that have at least one variant with that gauge
   if (gaugeFilter && gaugeFilter !== "all") {
     const targetGauge = parseInt(gaugeFilter, 10);
-    products = products.filter((p) =>
-      p.variants.some((v) => v.gauge === targetGauge)
+    products = (products || []).filter((p) =>
+      p?.variants?.some((v) => v?.gauge === targetGauge)
     );
   }
 
@@ -66,9 +66,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {products.map((product, idx) => (
+                {(products || []).map((product, idx) => (
                   <ProductCard
-                    key={product.id}
+                    key={product?.id || idx}
                     product={product}
                     priority={idx < 3}
                   />

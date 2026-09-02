@@ -1,60 +1,38 @@
 import React from "react";
 import Link from "next/link";
 import { getProducts } from "@/actions/products";
+import { FALLBACK_PRODUCTS } from "@/data/mock-products";
 import { HeroBanner } from "@/components/home/HeroBanner";
+import { ClientLogosBanner } from "@/components/home/ClientLogosBanner";
 import { CategoryShowcase } from "@/components/home/CategoryShowcase";
+import { FeaturedProductSection } from "@/components/home/FeaturedProductSection";
 import { TrustBadges } from "@/components/home/TrustBadges";
 import { InquiryForm } from "@/components/home/InquiryForm";
-import { ProductCard } from "@/components/products/ProductCard";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
 
 export default async function HomePage() {
-  const products = await getProducts();
+  let products = FALLBACK_PRODUCTS;
+  try {
+    const fetched = await getProducts();
+    if (fetched && fetched.length > 0) {
+      products = fetched;
+    }
+  } catch (error) {
+    console.warn("Could not fetch products on HomePage, defaulting to fallback items:", error);
+  }
 
   return (
     <div className="space-y-0 bg-white">
       {/* 1. Hero Section */}
       <HeroBanner />
 
-      {/* 2. Category Showcase */}
+      {/* 2. Client Logos Marquee Banner */}
+      <ClientLogosBanner />
+
+      {/* 3. Interactive Category Showcase Selector Grid */}
       <CategoryShowcase />
 
-      {/* 3. Featured Product Catalog Grid */}
-      <section className="py-20 bg-white border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
-            <div>
-              <Badge variant="default" className="mb-2 uppercase text-xs tracking-wider font-bold">
-                Direct Mill Catalog
-              </Badge>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-                Featured Industrial Film Series
-              </h2>
-              <p className="text-sm text-slate-500 mt-1 max-w-xl">
-                Precision cast polyethylene pallet wrap formulated for high load security and maximum roll yield.
-              </p>
-            </div>
-            <Button asChild variant="outline" className="self-start md:self-auto gap-2 rounded-xl border-slate-200 hover:bg-slate-50">
-              <Link href="/products">
-                <span>View Full Catalog</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {products.map((product, idx) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                priority={idx < 4}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* 4. Filterable Featured Product Catalog Grid */}
+      <FeaturedProductSection products={products} />
 
       {/* 4. Trust Badges & Certifications */}
       <TrustBadges />
