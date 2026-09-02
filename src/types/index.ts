@@ -2,17 +2,28 @@ import { Product as DbProduct, ProductVariant as DbProductVariant, Inquiry as Db
 
 export type ApplicationType = "hand" | "machine";
 
+export interface ProductVariant extends DbProductVariant {
+  title?: string;
+  rolls_count?: number;
+  boxes_count?: number;
+  rollsCount?: number;
+  boxesCount?: number;
+}
+
 export interface ProductWithVariants extends Omit<DbProduct, "name"> {
   title: string;
   name?: string;
-  variants: DbProductVariant[];
+  variants: ProductVariant[];
   categorySlug?: string;
   category?: any;
   startingPrice?: number;
+  width_inches?: string;
+  gauge?: number;
+  length_feet?: number;
+  core_type?: string;
 }
 
 export type Product = DbProduct;
-export type ProductVariant = DbProductVariant;
 export type Inquiry = DbInquiry;
 export type NewInquiry = DbNewInquiry;
 

@@ -105,7 +105,7 @@ export function VariantSelector({ product }: VariantSelectorProps) {
             Package Options
           </label>
           <span className="text-xs font-semibold text-sky-700">
-            {selectedVariant?.packageSize}
+            {(selectedVariant as any)?.title || selectedVariant?.packageSize}
           </span>
         </div>
 
@@ -113,6 +113,16 @@ export function VariantSelector({ product }: VariantSelectorProps) {
           {variants.map((variant) => {
             const isSelected = selectedVariant?.id === variant.id;
             const price = parseFloat(variant.priceUsd);
+            const variantTitle = (variant as any).title || variant.packageSize || variant.sku;
+            const rollsCount =
+              (variant as any).rolls_count ??
+              (variant as any).rollsCount ??
+              variant.rollsPerBox ??
+              4;
+            const boxesCount =
+              (variant as any).boxes_count ??
+              (variant as any).boxesCount ??
+              (rollsCount <= 4 ? 1 : Math.round(rollsCount / 4));
 
             return (
               <button
@@ -141,10 +151,10 @@ export function VariantSelector({ product }: VariantSelectorProps) {
                         isSelected ? "text-slate-900" : "text-slate-700"
                       }`}
                     >
-                      {variant.packageSize || variant.sku}
+                      {variantTitle}
                     </span>
                     <span className="text-[11px] text-slate-500">
-                      SKU: {variant.sku} • {variant.rollsPerBox} Rolls included • {variant.weightLbs} lbs
+                      SKU: {variant.sku} · {rollsCount} Rolls included ({boxesCount} {boxesCount === 1 ? "Box" : "Boxes"})
                     </span>
                   </div>
                 </div>
@@ -166,35 +176,62 @@ export function VariantSelector({ product }: VariantSelectorProps) {
       </div>
 
       {/* Specifications Highlight Box */}
-      <div className="space-y-2">
-        <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
-          Specifications
-        </label>
-        <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-          <div>
-            <span className="text-slate-400 block text-[10px] uppercase font-semibold">Width</span>
-            <span className="font-bold text-slate-900">
-              {selectedVariant?.widthInches ? `${Math.round(parseFloat(selectedVariant.widthInches))}" Inches` : '18" Inches'}
-            </span>
+      {(() => {
+        const widthVal =
+          (product as any)?.width_inches ||
+          (product as any)?.widthInches ||
+          selectedVariant?.widthInches ||
+          "18";
+        const widthFormatted = Math.round(parseFloat(String(widthVal)));
+
+        const gaugeVal =
+          (product as any)?.gauge ||
+          selectedVariant?.gauge ||
+          50;
+
+        const lengthVal =
+          (product as any)?.length_feet ||
+          (product as any)?.lengthFeet ||
+          selectedVariant?.lengthFeet ||
+          1000;
+
+        const coreType =
+          (product as any)?.core_type ||
+          (product as any)?.coreType ||
+          'Standard 3" Core';
+
+        return (
+          <div className="space-y-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
+              Specifications
+            </label>
+            <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase font-semibold">Width</span>
+                <span className="font-bold text-slate-900">
+                  {widthFormatted}" Inches
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase font-semibold">Gauge</span>
+                <span className="font-bold text-slate-900">
+                  {gaugeVal} Gauge
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase font-semibold">Length</span>
+                <span className="font-bold text-slate-900">
+                  {Number(lengthVal).toLocaleString()} Feet
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase font-semibold">Core Type</span>
+                <span className="font-bold text-slate-900">{coreType}</span>
+              </div>
+            </div>
           </div>
-          <div>
-            <span className="text-slate-400 block text-[10px] uppercase font-semibold">Gauge</span>
-            <span className="font-bold text-slate-900">
-              {selectedVariant?.gauge ? `${selectedVariant.gauge} Gauge` : "50 Gauge"}
-            </span>
-          </div>
-          <div>
-            <span className="text-slate-400 block text-[10px] uppercase font-semibold">Length</span>
-            <span className="font-bold text-slate-900">
-              {selectedVariant?.lengthFeet ? `${selectedVariant.lengthFeet.toLocaleString()} Feet` : "1,000 Feet"}
-            </span>
-          </div>
-          <div>
-            <span className="text-slate-400 block text-[10px] uppercase font-semibold">Core Type</span>
-            <span className="font-bold text-slate-900">Standard 3" Core</span>
-          </div>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Quantity & Actions */}
       <div className="space-y-4 pt-2 border-t border-slate-100">

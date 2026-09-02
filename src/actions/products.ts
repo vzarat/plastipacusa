@@ -16,23 +16,39 @@ function formatProduct(raw: any): ProductWithVariants {
 
   // Sort variants by price ascending
   const sortedVariants: ProductVariant[] = rawVariants
-    .map((v: any) => ({
-      id: Number(v.id),
-      productId: Number(v.product_id || v.productId || raw.id),
-      sku: String(v.sku || ""),
-      packageSize: v.package_size || v.packageSize || null,
-      widthInches: String(v.width_inches || v.widthInches || "18.00"),
-      gauge: Number(v.gauge || 50),
-      lengthFeet: Number(v.length_feet || v.lengthFeet || 1000),
-      rollsPerBox: Number(v.rolls_per_box || v.rollsPerBox || 4),
-      rollsPerPallet: Number(v.rolls_per_pallet || v.rollsPerPallet || 256),
-      weightLbs: String(v.weight_lbs || v.weightLbs || "12.00"),
-      priceUsd: String(v.price_usd || v.priceUsd || v.price || "20.71"),
-      casePriceUsd: v.case_price_usd ? String(v.case_price_usd) : (v.casePriceUsd ? String(v.casePriceUsd) : null),
-      palletPriceUsd: v.pallet_price_usd ? String(v.pallet_price_usd) : (v.palletPriceUsd ? String(v.palletPriceUsd) : null),
-      stockStatus: String(v.stock_status || v.stockStatus || "in_stock"),
-      createdAt: v.created_at ? new Date(v.created_at) : new Date(),
-    }))
+    .map((v: any) => {
+      const rollsCount = Number(v.rolls_count || v.rollsCount || v.rolls_per_box || v.rollsPerBox || 4);
+      const boxesCount = Number(
+        v.boxes_count ||
+        v.boxesCount ||
+        (v.title || v.package_size || v.packageSize || "").match(/(\d+)\s*BOX/i)?.[1] ||
+        (rollsCount <= 4 ? 1 : Math.round(rollsCount / 4))
+      );
+      const variantTitle = String(v.title || v.package_size || v.packageSize || (boxesCount === 1 ? "1 BOX WITH 4 ROLLS" : `${boxesCount} BOXES = ${rollsCount} ROLLS`));
+
+      return {
+        id: Number(v.id),
+        productId: Number(v.product_id || v.productId || raw.id),
+        sku: String(v.sku || ""),
+        title: variantTitle,
+        packageSize: variantTitle,
+        rollsCount,
+        boxesCount,
+        rolls_count: rollsCount,
+        boxes_count: boxesCount,
+        widthInches: String(v.width_inches || v.widthInches || raw.width_inches || "18.00"),
+        gauge: Number(v.gauge || raw.gauge || 50),
+        lengthFeet: Number(v.length_feet || v.lengthFeet || raw.length_feet || 1000),
+        rollsPerBox: rollsCount,
+        rollsPerPallet: Number(v.rolls_per_pallet || v.rollsPerPallet || 256),
+        weightLbs: String(v.weight_lbs || v.weightLbs || "12.00"),
+        priceUsd: String(v.price_usd || v.priceUsd || v.price || "20.71"),
+        casePriceUsd: v.case_price_usd ? String(v.case_price_usd) : (v.casePriceUsd ? String(v.casePriceUsd) : null),
+        palletPriceUsd: v.pallet_price_usd ? String(v.pallet_price_usd) : (v.palletPriceUsd ? String(v.palletPriceUsd) : null),
+        stockStatus: String(v.stock_status || v.stockStatus || "in_stock"),
+        createdAt: v.created_at ? new Date(v.created_at) : new Date(),
+      };
+    })
     .sort((a, b) => parseFloat(a.priceUsd) - parseFloat(b.priceUsd));
 
   // Calculate starting base price dynamically as MIN(product_variants.price)
@@ -92,6 +108,10 @@ function formatProduct(raw: any): ProductWithVariants {
     updatedAt: raw.updated_at ? new Date(raw.updated_at) : new Date(),
     variants: sortedVariants,
     startingPrice: minPrice,
+    width_inches: String(raw.width_inches || raw.widthInches || sortedVariants[0]?.widthInches || "18.00"),
+    gauge: Number(raw.gauge || sortedVariants[0]?.gauge || 50),
+    length_feet: Number(raw.length_feet || raw.lengthFeet || sortedVariants[0]?.lengthFeet || 1000),
+    core_type: String(raw.core_type || raw.coreType || 'Standard 3" Core'),
   };
 }
 

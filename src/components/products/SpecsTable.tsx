@@ -49,7 +49,7 @@ export function SpecsTable({ variants }: SpecsTableProps) {
           {variants.map((v) => (
             <TableRow key={v.id} className="hover:bg-sky-50/50 font-mono text-xs">
               <TableCell className="font-bold text-slate-900 font-sans">
-                {v.packageSize || v.sku}
+                {(v as any).title || v.packageSize || v.sku}
               </TableCell>
               <TableCell className="text-sky-700 font-bold">
                 {v.sku}
@@ -67,7 +67,7 @@ export function SpecsTable({ variants }: SpecsTableProps) {
                 {v.weightLbs} lbs
               </TableCell>
               <TableCell className="text-slate-600 font-sans font-medium">
-                {v.rollsPerBox} rolls
+                {(v as any).rolls_count || (v as any).rollsCount || v.rollsPerBox} rolls
               </TableCell>
               <TableCell className="text-right font-sans font-black text-slate-900 text-sm">
                 {formatCurrency(v.priceUsd)}
