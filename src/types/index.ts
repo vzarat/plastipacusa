@@ -5,6 +5,8 @@ export type ApplicationType = "hand" | "machine";
 export interface ProductWithVariants extends DbProduct {
   variants: DbProductVariant[];
   categorySlug?: string;
+  category?: any;
+  startingPrice?: number;
 }
 
 export type Product = DbProduct;

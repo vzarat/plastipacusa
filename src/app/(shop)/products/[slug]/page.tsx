@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProductBySlug } from "@/actions/products";
+import { getProducts, getProductBySlug } from "@/actions/products";
 import { ProductGallery } from "@/components/products/ProductGallery";
 import { VariantSelector } from "@/components/products/VariantSelector";
 import { SpecsTable } from "@/components/products/SpecsTable";
@@ -13,13 +13,13 @@ import {
   PhoneCall,
 } from "lucide-react";
 
-import { FALLBACK_PRODUCTS } from "@/data/mock-products";
 import { PRODUCT_CATEGORIES } from "@/data/categories";
 
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
-  return FALLBACK_PRODUCTS.map((product) => ({
+  const products = await getProducts();
+  return products.map((product) => ({
     slug: product.slug,
   }));
 }

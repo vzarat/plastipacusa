@@ -1,7 +1,6 @@
 import React from "react";
 import Link from "next/link";
 import { getProducts } from "@/actions/products";
-import { FALLBACK_PRODUCTS } from "@/data/mock-products";
 import { HeroBanner } from "@/components/home/HeroBanner";
 import { ClientLogosBanner } from "@/components/home/ClientLogosBanner";
 import { CategoryShowcase } from "@/components/home/CategoryShowcase";
@@ -10,15 +9,7 @@ import { TrustBadges } from "@/components/home/TrustBadges";
 import { InquiryForm } from "@/components/home/InquiryForm";
 
 export default async function HomePage() {
-  let products = FALLBACK_PRODUCTS;
-  try {
-    const fetched = await getProducts();
-    if (fetched && fetched.length > 0) {
-      products = fetched;
-    }
-  } catch (error) {
-    console.warn("Could not fetch products on HomePage, defaulting to fallback items:", error);
-  }
+  const products = await getProducts();
 
   return (
     <div className="space-y-0 bg-white">
