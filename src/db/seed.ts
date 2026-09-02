@@ -14,11 +14,11 @@ async function seed() {
 
     console.log("Cleared existing product and variant records.");
 
-    // 1. FORCE HAND STRETCH FILM
-    const [forceFilm] = await db
+    // 1. FORCE HAND STRETCH FILM - 50 GAUGE
+    const [forceFilm50] = await db
       .insert(products)
       .values({
-        slug: "force-hand-stretch-film",
+        slug: "stretch-film-18-x-50-ga-x-1000ft",
         name: 'STRETCH FILM 18" X 50 GA X 1000FT',
         brand: "FORCE",
         application: "hand",
@@ -36,18 +36,20 @@ async function seed() {
           "High load retention & maximum stretch recovery for stable pallet freight",
         ],
         techSheetUrl: "/docs/plastipac-force-hand-film-specs.pdf",
-        imageUrl: "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png",
+        imageUrl:
+          "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png",
         images: [
           "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png",
           "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/CAJA_MANUAL_PLASTIPAC.png",
         ],
-        recommendedUsage: "Manual wrapping of B and C type pallet loads, distribution centers, cross-border freight, and warehouse logistics.",
+        recommendedUsage:
+          "Manual wrapping of B and C type pallet loads, distribution centers, cross-border freight, and warehouse logistics.",
       })
       .returning();
 
     await db.insert(productVariants).values([
       {
-        productId: forceFilm.id,
+        productId: forceFilm50.id,
         sku: "PP-FRC-1850-1B",
         packageSize: "1 BOX WITH 4 ROLLS",
         widthInches: "18.00",
@@ -62,7 +64,7 @@ async function seed() {
         stockStatus: "in_stock",
       },
       {
-        productId: forceFilm.id,
+        productId: forceFilm50.id,
         sku: "PP-FRC-1850-16B",
         packageSize: "16 BOXES = 64 ROLLS",
         widthInches: "18.00",
@@ -77,7 +79,7 @@ async function seed() {
         stockStatus: "in_stock",
       },
       {
-        productId: forceFilm.id,
+        productId: forceFilm50.id,
         sku: "PP-FRC-1850-32B",
         packageSize: "32 BOXES = 128 ROLLS (HALF PALLET)",
         widthInches: "18.00",
@@ -92,7 +94,7 @@ async function seed() {
         stockStatus: "in_stock",
       },
       {
-        productId: forceFilm.id,
+        productId: forceFilm50.id,
         sku: "PP-FRC-1850-64B",
         packageSize: "64 BOXES = 256 ROLLS (FULL PALLET)",
         widthInches: "18.00",
@@ -108,7 +110,105 @@ async function seed() {
       },
     ]);
 
-    console.log("✅ Seed completed successfully! Inserted FORCE Hand Stretch Film with exact 4 package size variants.");
+    // 2. FORCE HAND STRETCH FILM - 60 GAUGE
+    const [forceFilm60] = await db
+      .insert(products)
+      .values({
+        slug: "stretch-film-18-x-60-ga-x-1000ft",
+        name: 'STRETCH FILM 18" X 60 GA X 1000FT',
+        brand: "FORCE",
+        application: "hand",
+        filmType: "Cast Co-Extruded Multi-Layer",
+        color: "Ultra Clear",
+        shortDescription:
+          "Heavy-duty 60 Gauge industrial cast hand wrap engineered for heavier loads, superior puncture resistance, and secure pallet containment.",
+        description:
+          "Plastipac FORCE™ Standard 60 Gauge Hand Stretch Film provides elevated load holding strength for heavier pallets and irregular shaped freight. Manufactured with advanced multi-layer cast extrusion, it features superior cling, high puncture resistance on sharp crate corners, and whisper-quiet unwind.",
+        features: [
+          "Heavy-duty 60 Gauge cast resin formulation for heavier industrial pallet freight",
+          "Ultra-strong corner puncture and tear propagation resistance",
+          "Optically ultra-clear for swift optical barcode scanning",
+          "Differential cling prevents pallets from rubbing together in transit",
+          "Whisper-quiet release reduces operator strain in warehouse environments",
+        ],
+        techSheetUrl: "/docs/plastipac-force-hand-film-specs.pdf",
+        imageUrl:
+          "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png",
+        images: [
+          "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png",
+          "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/CAJA_MANUAL_PLASTIPAC.png",
+        ],
+        recommendedUsage:
+          "Manual wrapping of heavy industrial loads, irregular crate edges, beverage distribution, and cross-border transport.",
+      })
+      .returning();
+
+    await db.insert(productVariants).values([
+      {
+        productId: forceFilm60.id,
+        sku: "PP-FRC-1860-1B",
+        packageSize: "1 BOX WITH 4 ROLLS",
+        widthInches: "18.00",
+        gauge: 60,
+        lengthFeet: 1000,
+        rollsPerBox: 4,
+        rollsPerPallet: 256,
+        weightLbs: "14.40",
+        priceUsd: "24.85",
+        casePriceUsd: "24.85",
+        palletPriceUsd: "1379.38",
+        stockStatus: "in_stock",
+      },
+      {
+        productId: forceFilm60.id,
+        sku: "PP-FRC-1860-16B",
+        packageSize: "16 BOXES = 64 ROLLS",
+        widthInches: "18.00",
+        gauge: 60,
+        lengthFeet: 1000,
+        rollsPerBox: 64,
+        rollsPerPallet: 256,
+        weightLbs: "230.40",
+        priceUsd: "380.03",
+        casePriceUsd: "380.03",
+        palletPriceUsd: "1379.38",
+        stockStatus: "in_stock",
+      },
+      {
+        productId: forceFilm60.id,
+        sku: "PP-FRC-1860-32B",
+        packageSize: "32 BOXES = 128 ROLLS (HALF PALLET)",
+        widthInches: "18.00",
+        gauge: 60,
+        lengthFeet: 1000,
+        rollsPerBox: 128,
+        rollsPerPallet: 256,
+        weightLbs: "460.80",
+        priceUsd: "724.88",
+        casePriceUsd: "724.88",
+        palletPriceUsd: "1379.38",
+        stockStatus: "in_stock",
+      },
+      {
+        productId: forceFilm60.id,
+        sku: "PP-FRC-1860-64B",
+        packageSize: "64 BOXES = 256 ROLLS (FULL PALLET)",
+        widthInches: "18.00",
+        gauge: 60,
+        lengthFeet: 1000,
+        rollsPerBox: 256,
+        rollsPerPallet: 256,
+        weightLbs: "921.60",
+        priceUsd: "1379.38",
+        casePriceUsd: "1379.38",
+        palletPriceUsd: "1379.38",
+        stockStatus: "in_stock",
+      },
+    ]);
+
+    console.log(
+      "✅ Seed completed successfully! Inserted FORCE Standard (50 GA and 60 GA) with exact 4-tier package pricing."
+    );
     process.exit(0);
   } catch (error) {
     console.error("❌ Seed error:", error);

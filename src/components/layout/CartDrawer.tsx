@@ -91,7 +91,7 @@ export function CartDrawer() {
               <div className="p-2 rounded-xl bg-sky-50 text-sky-600 border border-sky-100">
                 <ShoppingCart className="w-4 h-4" />
               </div>
-              <h2 className="text-lg font-bold text-slate-900">Your Order & Quote</h2>
+              <h2 className="text-lg font-bold text-slate-900">Your Cart</h2>
             </div>
             <button
               onClick={closeDrawer}
@@ -208,7 +208,7 @@ export function CartDrawer() {
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-400">
-                  * Final freight costs and tier discounts verified upon quote review.
+                  Shipping & taxes calculated at checkout
                 </p>
               </div>
 
@@ -284,7 +284,7 @@ export function CartDrawer() {
                     variant="outline"
                     className="w-full text-xs font-semibold border-slate-200 hover:bg-slate-100"
                   >
-                    Direct Checkout ({formatCurrency(subtotal)})
+                    Checkout ({formatCurrency(subtotal)})
                   </Button>
                   <button
                     onClick={clearCart}

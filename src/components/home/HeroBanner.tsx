@@ -140,7 +140,7 @@ export function HeroBanner() {
               <div className="mt-6 flex items-center justify-between">
                 <span className="text-xs text-slate-500 font-medium">Ready to ship by case or pallet</span>
                 <Button asChild variant="gradient" size="sm" className="gap-1.5 shadow-sm">
-                  <Link href="/products/force-hand-stretch-film">
+                  <Link href="/products/stretch-film-18-x-50-ga-x-1000ft">
                     <span>View Matrix</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </Link>

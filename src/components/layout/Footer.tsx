@@ -87,23 +87,18 @@ export function Footer() {
             </h3>
             <ul className="space-y-2.5 text-xs">
               <li>
-                <Link href="/products/force-hand-stretch-film" className="hover:text-sky-600 transition-colors font-medium text-slate-900">
-                  Force™ Hand Stretch Film
+                <Link href="/products/stretch-film-18-x-50-ga-x-1000ft" className="hover:text-sky-600 transition-colors font-medium text-slate-900">
+                  STRETCH FILM 18" X 50 GA (FORCE Standard)
                 </Link>
               </li>
               <li>
-                <Link href="/products/force-hand-stretch-film" className="hover:text-sky-600 transition-colors">
-                  18" Industrial Hand Wrap (60-80 Ga)
+                <Link href="/products/stretch-film-18-x-60-ga-x-1000ft" className="hover:text-sky-600 transition-colors font-medium text-slate-900">
+                  STRETCH FILM 18" X 60 GA (FORCE Standard)
                 </Link>
               </li>
               <li>
-                <Link href="/products/force-hand-stretch-film" className="hover:text-sky-600 transition-colors">
-                  15" High-Tension Pallet Wrap
-                </Link>
-              </li>
-              <li>
-                <Link href="/products/force-hand-stretch-film" className="hover:text-sky-600 transition-colors">
-                  12" Narrow Manual Dispenser Rolls
+                <Link href="/products" className="hover:text-sky-600 transition-colors">
+                  18" Industrial Hand Wrap (50-60 Ga)
                 </Link>
               </li>
               <li>

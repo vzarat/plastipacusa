@@ -101,7 +101,7 @@ export function ProductFilters() {
           Target Gauge
         </label>
         <div className="grid grid-cols-2 gap-2">
-          {["all", "60", "70", "80"].map((g) => {
+          {["all", "50", "60", "70", "80"].map((g) => {
             const isSelected = currentGauge === g;
             return (
               <button

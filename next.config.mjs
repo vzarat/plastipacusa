@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  distDir: '.next',
   reactStrictMode: true,
+  serverExternalPackages: ["drizzle-orm", "pg", "pg-pool"],
   images: {
     unoptimized: true,
     remotePatterns: [

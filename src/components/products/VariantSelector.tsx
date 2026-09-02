@@ -93,7 +93,7 @@ export function VariantSelector({ product }: VariantSelectorProps) {
 
         <div className="flex items-center gap-2">
           <Badge variant="success" className="text-xs font-semibold px-3 py-1">
-            ● In Stock & Ready to Ship
+            ● In Stock
           </Badge>
         </div>
       </div>
@@ -102,7 +102,7 @@ export function VariantSelector({ product }: VariantSelectorProps) {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
-            Select Size / Package Option
+            Package Options
           </label>
           <span className="text-xs font-semibold text-sky-700">
             {selectedVariant?.packageSize}
@@ -144,7 +144,7 @@ export function VariantSelector({ product }: VariantSelectorProps) {
                       {variant.packageSize || variant.sku}
                     </span>
                     <span className="text-[11px] text-slate-500">
-                      SKU: {variant.sku} • {variant.weightLbs} lbs
+                      SKU: {variant.sku} • {variant.rollsPerBox} Rolls included • {variant.weightLbs} lbs
                     </span>
                   </div>
                 </div>
@@ -165,23 +165,34 @@ export function VariantSelector({ product }: VariantSelectorProps) {
         </div>
       </div>
 
-      {/* Quick Specs Highlight Box */}
-      <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-        <div>
-          <span className="text-slate-400 block text-[10px] uppercase font-semibold">Width</span>
-          <span className="font-bold text-slate-900">18" Inches</span>
-        </div>
-        <div>
-          <span className="text-slate-400 block text-[10px] uppercase font-semibold">Gauge</span>
-          <span className="font-bold text-slate-900">50 Gauge</span>
-        </div>
-        <div>
-          <span className="text-slate-400 block text-[10px] uppercase font-semibold">Length</span>
-          <span className="font-bold text-slate-900">1,000 Feet</span>
-        </div>
-        <div>
-          <span className="text-slate-400 block text-[10px] uppercase font-semibold">Core Type</span>
-          <span className="font-bold text-slate-900">Standard 3" Core</span>
+      {/* Specifications Highlight Box */}
+      <div className="space-y-2">
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
+          Specifications
+        </label>
+        <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div>
+            <span className="text-slate-400 block text-[10px] uppercase font-semibold">Width</span>
+            <span className="font-bold text-slate-900">
+              {selectedVariant?.widthInches ? `${Math.round(parseFloat(selectedVariant.widthInches))}" Inches` : '18" Inches'}
+            </span>
+          </div>
+          <div>
+            <span className="text-slate-400 block text-[10px] uppercase font-semibold">Gauge</span>
+            <span className="font-bold text-slate-900">
+              {selectedVariant?.gauge ? `${selectedVariant.gauge} Gauge` : "50 Gauge"}
+            </span>
+          </div>
+          <div>
+            <span className="text-slate-400 block text-[10px] uppercase font-semibold">Length</span>
+            <span className="font-bold text-slate-900">
+              {selectedVariant?.lengthFeet ? `${selectedVariant.lengthFeet.toLocaleString()} Feet` : "1,000 Feet"}
+            </span>
+          </div>
+          <div>
+            <span className="text-slate-400 block text-[10px] uppercase font-semibold">Core Type</span>
+            <span className="font-bold text-slate-900">Standard 3" Core</span>
+          </div>
         </div>
       </div>
 

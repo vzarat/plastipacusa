@@ -40,7 +40,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               variant="default"
               className="uppercase tracking-wider text-[10px] font-bold shadow-sm bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-50"
             >
-              HAND STRETCH
+              {product?.application === "machine" ? "MACHINE STRETCH" : "HAND STRETCH"}
             </Badge>
           </div>
 
@@ -78,13 +78,13 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             <span className="text-[10px] font-mono uppercase text-sky-600 font-bold tracking-wider block">
               {product.brand || "FORCE"} • Industrial Cast Series
             </span>
-            <h3 className="text-lg font-extrabold text-slate-900 group-hover:text-sky-600 transition-colors mt-0.5">
-              <Link href={`/products/${product?.slug || "force-hand-stretch-film"}`}>
-                Force™ Hand Stretch Film
+            <h3 className="text-base sm:text-lg font-extrabold text-slate-900 group-hover:text-sky-600 transition-colors mt-0.5 line-clamp-1">
+              <Link href={`/products/${product?.slug || "stretch-film-18-x-50-ga-x-1000ft"}`}>
+                {product?.name || "Force™ Hand Stretch Film"}
               </Link>
             </h3>
             <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mt-1.5">
-              {product.shortDescription ||
+              {product?.shortDescription ||
                 "Premium industrial cast hand wrap engineered for high load retention and quiet unwind."}
             </p>
           </div>
@@ -94,13 +94,15 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             <div className="flex items-center justify-between">
               <span className="text-slate-500 text-[11px] font-medium">Dimensions:</span>
               <span className="font-mono font-bold text-slate-900 text-xs">
-                18" X 50 GA X 1000FT
+                {primaryVariant?.widthInches
+                  ? `${Math.round(parseFloat(primaryVariant.widthInches))}" X ${primaryVariant.gauge} GA X ${primaryVariant.lengthFeet}FT`
+                  : product?.name || '18" X 50 GA X 1000FT'}
               </span>
             </div>
             <div className="flex items-center justify-between pt-1.5 border-t border-slate-200/60">
               <span className="text-slate-500 text-[11px] font-medium">Packaging:</span>
-              <span className="font-bold text-sky-800 text-xs">
-                1 Box (4 Rolls) • Pallets Available
+              <span className="font-bold text-sky-800 text-xs truncate max-w-[180px]">
+                {primaryVariant?.packageSize || "1 Box (4 Rolls) • Pallets Available"}
               </span>
             </div>
           </div>
@@ -135,17 +137,17 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             </div>
           </div>
           <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
-            4 Rolls / Box
+            {primaryVariant?.rollsPerBox ? `${primaryVariant.rollsPerBox} Rolls / Box` : "4 Rolls / Box"}
           </span>
         </div>
 
-        {/* High-Conversion "BUY NOW / COMPRAR AHORA" Button */}
+        {/* High-Conversion "BUY NOW" Button */}
         <Link
-          href={`/products/${product?.slug || "force-hand-stretch-film"}`}
+          href={`/products/${product?.slug || "stretch-film-18-x-50-ga-x-1000ft"}`}
           className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 text-white font-extrabold text-sm shadow-md shadow-sky-500/20 hover:opacity-95 hover:shadow-lg hover:shadow-sky-500/30 transition-all duration-200 active:scale-[0.99] group/btn"
         >
           <ShoppingCart className="w-4 h-4 text-white group-hover/btn:scale-110 transition-transform" />
-          <span>BUY NOW / COMPRAR AHORA</span>
+          <span>BUY NOW</span>
           <ArrowRight className="w-4 h-4 text-sky-200 group-hover/btn:translate-x-0.5 transition-transform" />
         </Link>
       </div>

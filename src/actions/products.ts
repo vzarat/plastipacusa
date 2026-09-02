@@ -1,14 +1,22 @@
 "use server";
 
-import { db, products, productVariants, isDbConfigured } from "@/db";
-import { eq, desc } from "drizzle-orm";
 import { ProductWithVariants } from "@/types";
 import { FALLBACK_PRODUCTS } from "@/data/mock-products";
 
 export async function getProducts(applicationFilter?: "all" | "hand" | "machine"): Promise<ProductWithVariants[]> {
   try {
-    if (isDbConfigured && db) {
+    const isConfigured = Boolean(
+      process.env.DATABASE_URL &&
+      !process.env.DATABASE_URL.includes("[TU_PASSWORD]") &&
+      !process.env.DATABASE_URL.includes("[YOUR-PASSWORD]") &&
+      !process.env.DATABASE_URL.includes("<password>") &&
+      !process.env.DATABASE_URL.includes("postgres:postgres@localhost")
+    );
+
+    if (isConfigured) {
       try {
+        const { db, products } = await import("@/db");
+        const { desc } = await import("drizzle-orm");
         const data = await db.query.products.findMany({
           with: {
             variants: true,
@@ -38,8 +46,18 @@ export async function getProducts(applicationFilter?: "all" | "hand" | "machine"
 
 export async function getProductBySlug(slug: string): Promise<ProductWithVariants | null> {
   try {
-    if (isDbConfigured && db) {
+    const isConfigured = Boolean(
+      process.env.DATABASE_URL &&
+      !process.env.DATABASE_URL.includes("[TU_PASSWORD]") &&
+      !process.env.DATABASE_URL.includes("[YOUR-PASSWORD]") &&
+      !process.env.DATABASE_URL.includes("<password>") &&
+      !process.env.DATABASE_URL.includes("postgres:postgres@localhost")
+    );
+
+    if (isConfigured) {
       try {
+        const { db, products } = await import("@/db");
+        const { eq } = await import("drizzle-orm");
         const data = await db.query.products.findFirst({
           where: eq(products.slug, slug),
           with: {
@@ -58,5 +76,9 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
     console.warn("getProductBySlug encountered error, using fallback:", error?.message || error);
   }
 
-  return FALLBACK_PRODUCTS.find((p) => p.slug === slug) || null;
+  return (
+    FALLBACK_PRODUCTS.find((p) => p.slug === slug) ||
+    (slug === "force-hand-stretch-film" ? FALLBACK_PRODUCTS[0] : null) ||
+    null
+  );
 }
