@@ -14,7 +14,34 @@ interface ProductCardProps {
 const DEFAULT_PRODUCT_IMAGE =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png";
 
+const CATEGORY_LOGOS: Record<string, { src: string; alt: string }> = {
+  "force-standard": {
+    src: "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/FORCE_ST.svg",
+    alt: "FORCE Standard",
+  },
+  "force-elite": {
+    src: "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/FORCE_EL.svg",
+    alt: "FORCE Elite",
+  },
+  "genesis-standard": {
+    src: "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/GENESIS_ST.svg",
+    alt: "GENESIS Standard",
+  },
+  "genesis-high-performance": {
+    src: "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/GENESIS_HP.svg",
+    alt: "GENESIS High Performance",
+  },
+};
+
 export function ProductCard({ product, priority = false }: ProductCardProps) {
+  // Resolve category brand logo
+  const categorySlug =
+    (product as any)?.categorySlug ||
+    (product as any)?.category?.slug ||
+    "force-standard";
+  const categoryLogo =
+    CATEGORY_LOGOS[categorySlug] || CATEGORY_LOGOS["force-standard"];
+
   // Find primary variant (1 Box with 4 rolls: $20.71) or minimum price
   const primaryVariant = product?.variants?.[0];
   const primaryPrice = primaryVariant?.priceUsd ? parseFloat(primaryVariant.priceUsd) : 20.71;
@@ -34,14 +61,15 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
       <div>
         {/* 1. Clean Product Image Area (Completely free of floating dark pills and text overlays) */}
         <div className="relative aspect-[4/3] w-full bg-slate-50/50 overflow-hidden border-b border-slate-100 flex items-center justify-center">
-          {/* Top Category Badge */}
-          <div className="absolute top-3.5 left-3.5 z-10">
-            <Badge
-              variant="default"
-              className="uppercase tracking-wider text-[10px] font-bold shadow-sm bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-50"
-            >
-              {product?.application === "machine" ? "MACHINE STRETCH" : "HAND STRETCH"}
-            </Badge>
+          {/* Official Category Brand Logo Badge */}
+          <div className="absolute top-3.5 left-3.5 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-800 shadow-sm flex items-center justify-center">
+            <Image
+              src={categoryLogo.src}
+              alt={categoryLogo.alt}
+              width={90}
+              height={28}
+              className="h-6 md:h-7 w-auto object-contain pointer-events-none"
+            />
           </div>
 
           {/* Primary Product Image (Rolls) */}
