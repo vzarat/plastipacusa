@@ -2,7 +2,9 @@ import { Product as DbProduct, ProductVariant as DbProductVariant, Inquiry as Db
 
 export type ApplicationType = "hand" | "machine";
 
-export interface ProductWithVariants extends DbProduct {
+export interface ProductWithVariants extends Omit<DbProduct, "name"> {
+  title: string;
+  name?: string;
   variants: DbProductVariant[];
   categorySlug?: string;
   category?: any;

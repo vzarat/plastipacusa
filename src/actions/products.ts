@@ -61,10 +61,13 @@ function formatProduct(raw: any): ProductWithVariants {
     PRODUCT_CATEGORIES.find((c) => c.slug === categorySlug) ||
     PRODUCT_CATEGORIES[0];
 
+  const title = String(raw.title || raw.name || "STRETCH FILM");
+
   return {
     id: Number(raw.id),
     slug: String(raw.slug),
-    name: String(raw.name),
+    title,
+    name: title,
     brand: String(raw.brand || "FORCE"),
     description: String(raw.description || ""),
     shortDescription: String(raw.short_description || raw.shortDescription || ""),

@@ -6,6 +6,7 @@ export const FALLBACK_PRODUCTS: ProductWithVariants[] = [
   {
     id: 1,
     slug: "stretch-film-18-x-50-ga-x-1000ft",
+    title: 'STRETCH FILM 18" X 50 GA X 1000FT',
     name: 'STRETCH FILM 18" X 50 GA X 1000FT',
     brand: "FORCE",
     application: "hand",
@@ -110,6 +111,7 @@ export const FALLBACK_PRODUCTS: ProductWithVariants[] = [
   {
     id: 2,
     slug: "stretch-film-18-x-60-ga-x-1000ft",
+    title: 'STRETCH FILM 18" X 60 GA X 1000FT',
     name: 'STRETCH FILM 18" X 60 GA X 1000FT',
     brand: "FORCE",
     application: "hand",
@@ -214,6 +216,7 @@ export const FALLBACK_PRODUCTS: ProductWithVariants[] = [
   {
     id: 3,
     slug: "stretch-film-18-x-70-ga-x-1000ft",
+    title: 'STRETCH FILM 18" X 70 GA X 1000FT',
     name: 'STRETCH FILM 18" X 70 GA X 1000FT',
     brand: "FORCE",
     application: "hand",
@@ -318,6 +321,7 @@ export const FALLBACK_PRODUCTS: ProductWithVariants[] = [
   {
     id: 4,
     slug: "stretch-film-18-x-80-ga-x-1000ft",
+    title: 'STRETCH FILM 18" X 80 GA X 1000FT',
     name: 'STRETCH FILM 18" X 80 GA X 1000FT',
     brand: "FORCE",
     application: "hand",
@@ -422,6 +426,7 @@ export const FALLBACK_PRODUCTS: ProductWithVariants[] = [
   {
     id: 5,
     slug: "stretch-film-18-x-50-ga-x-1500ft",
+    title: 'STRETCH FILM 18" X 50 GA X 1500FT',
     name: 'STRETCH FILM 18" X 50 GA X 1500FT',
     brand: "FORCE",
     application: "hand",
@@ -526,6 +531,7 @@ export const FALLBACK_PRODUCTS: ProductWithVariants[] = [
   {
     id: 6,
     slug: "stretch-film-18-x-60-ga-x-1500ft",
+    title: 'STRETCH FILM 18" X 60 GA X 1500FT',
     name: 'STRETCH FILM 18" X 60 GA X 1500FT',
     brand: "FORCE",
     application: "hand",
@@ -630,6 +636,7 @@ export const FALLBACK_PRODUCTS: ProductWithVariants[] = [
   {
     id: 7,
     slug: "stretch-film-18-x-70-ga-x-1500ft",
+    title: 'STRETCH FILM 18" X 70 GA X 1500FT',
     name: 'STRETCH FILM 18" X 70 GA X 1500FT',
     brand: "FORCE",
     application: "hand",
@@ -734,6 +741,7 @@ export const FALLBACK_PRODUCTS: ProductWithVariants[] = [
   {
     id: 8,
     slug: "stretch-film-18-x-80-ga-x-1500ft",
+    title: 'STRETCH FILM 18" X 80 GA X 1500FT',
     name: 'STRETCH FILM 18" X 80 GA X 1500FT',
     brand: "FORCE",
     application: "hand",

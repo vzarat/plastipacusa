@@ -47,7 +47,7 @@ export function VariantSelector({ product }: VariantSelectorProps) {
     addItem({
       productId: product.id,
       productSlug: product.slug,
-      productName: product.name,
+      productName: product.title || product.name || "Stretch Film",
       productImage: product.imageUrl,
       packageSize: selectedVariant.packageSize || selectedVariant.sku,
       totalRolls: selectedVariant.rollsPerBox,

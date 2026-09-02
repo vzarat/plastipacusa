@@ -56,6 +56,8 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
       ? product.images[1]
       : null;
 
+  const title = product.title || product.name || "Force™ Hand Stretch Film";
+
   return (
     <div className="group rounded-3xl border border-slate-200/90 bg-white overflow-hidden flex flex-col justify-between transition-all duration-300 hover:border-sky-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-500/10 card-hover-effect">
       <div>
@@ -75,7 +77,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           {/* Primary Product Image (Rolls) */}
           <Image
             src={primaryImage}
-            alt={product.name || "Force Hand Stretch Film"}
+            alt={title}
             fill
             priority={priority}
             placeholder="empty"
@@ -91,7 +93,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           {secondaryImage && (
             <Image
               src={secondaryImage}
-              alt={`${product.name} Packaging Box`}
+              alt={`${title} Packaging Box`}
               fill
               placeholder="empty"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
@@ -108,7 +110,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             </span>
             <h3 className="text-base sm:text-lg font-extrabold text-slate-900 group-hover:text-sky-600 transition-colors mt-0.5 line-clamp-1">
               <Link href={`/products/${product?.slug || "stretch-film-18-x-50-ga-x-1000ft"}`}>
-                {product?.name || "Force™ Hand Stretch Film"}
+                {title}
               </Link>
             </h3>
             <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mt-1.5">

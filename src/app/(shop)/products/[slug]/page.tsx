@@ -13,6 +13,7 @@ import {
   PhoneCall,
 } from "lucide-react";
 
+import type { Metadata } from "next";
 import { PRODUCT_CATEGORIES } from "@/data/categories";
 
 export const dynamicParams = true;
@@ -30,6 +31,29 @@ interface ProductDetailPageProps {
   }>;
 }
 
+export async function generateMetadata({
+  params,
+}: ProductDetailPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await getProductBySlug(slug);
+
+  if (!product) {
+    return {
+      title: "Product Not Found | Plastipac USA",
+    };
+  }
+
+  const title = product.title || product.name || "Stretch Film";
+
+  return {
+    title: `${title} | Plastipac USA`,
+    description:
+      product.shortDescription ||
+      product.description ||
+      "Industrial high-performance stretch film and packaging solutions.",
+  };
+}
+
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
@@ -37,6 +61,8 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   if (!product) {
     notFound();
   }
+
+  const title = product.title || product.name || "Stretch Film";
 
   const categorySlug =
     product.categorySlug ||
@@ -65,7 +91,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           </Link>
           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
           <span className="text-sky-700 font-bold truncate">
-            {product.name}
+            {title}
           </span>
         </nav>
 
@@ -76,7 +102,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             <ProductGallery
               images={product.images}
               imageUrl={product.imageUrl}
-              productName={product.name}
+              productName={title}
               application={product.application}
               categoryLogoUrl={categoryMeta?.logoUrl}
               categoryName={categoryMeta?.name}
@@ -119,7 +145,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
               </div>
 
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                {product.name}
+                {title}
               </h1>
               <p className="text-sm text-slate-600 mt-3 leading-relaxed">
                 {product.description}
