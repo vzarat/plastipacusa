@@ -80,12 +80,8 @@ const CATEGORY_STYLES: Record<
 
 export function ProductCard({ product, priority = false }: ProductCardProps) {
   // Resolve category brand logo and machine film detection
-  const categorySlug =
-    (product as any)?.categorySlug ||
-    (product as any)?.category?.slug ||
-    "force-standard";
-
-  const catId = String((product as any)?.category_id || (product as any)?.categoryId || "");
+  const categorySlug = product?.categorySlug || "force-standard";
+  const catId = product?.categoryId || "";
   const pSlug = String(product?.slug || "").toLowerCase();
   const pBrand = String(product?.brand || "").toLowerCase();
   const pName = String(product?.name || product?.title || "").toLowerCase();

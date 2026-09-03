@@ -138,7 +138,6 @@ function formatProduct(raw: any): ProductWithVariants {
     updatedAt: raw.updated_at ? new Date(raw.updated_at) : new Date(),
     variants: sortedVariants,
     startingPrice: minPrice,
-    category_id: rawCategoryId || (categorySlug === "genesis-standard" ? "b0000000-0000-0000-0000-000000000003" : categorySlug === "force-elite" ? "b0000000-0000-0000-0000-000000000002" : "b0000000-0000-0000-0000-000000000001"),
     categoryId: rawCategoryId || (categorySlug === "genesis-standard" ? "b0000000-0000-0000-0000-000000000003" : categorySlug === "force-elite" ? "b0000000-0000-0000-0000-000000000002" : "b0000000-0000-0000-0000-000000000001"),
     width_inches: String(raw.width_inches || raw.widthInches || sortedVariants[0]?.widthInches || (isGenesis ? "20.00" : "18.00")),
     gauge: Number(raw.gauge || sortedVariants[0]?.gauge || 50),
@@ -181,17 +180,16 @@ export async function getProducts(
   applicationFilter?: "all" | "hand" | "machine",
   categoryFilter?: string
 ): Promise<ProductWithVariants[]> {
-  const matchesCategory = (p: any, filter: string) => {
+  const matchesCategory = (p: ProductWithVariants, filter: string) => {
     if (!filter || filter === "all") return true;
     if (filter === "genesis-standard" || filter === "b0000000-0000-0000-0000-000000000003") {
       return (
         p.categorySlug === "genesis-standard" ||
-        p.category_id === "b0000000-0000-0000-0000-000000000003" ||
         p.categoryId === "b0000000-0000-0000-0000-000000000003" ||
         String(p.slug || "").startsWith("stretch-film-20")
       );
     }
-    return p.categorySlug === filter || p.category_id === filter || p.categoryId === filter;
+    return p.categorySlug === filter || p.categoryId === filter;
   };
 
   try {

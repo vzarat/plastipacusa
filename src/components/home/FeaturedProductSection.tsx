@@ -75,43 +75,57 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
     if (selectedCategory === "all") return products;
 
     return products.filter((product) => {
+      const categoryId = product?.categoryId || "";
+      const categorySlug = product?.categorySlug || "";
+
+      // 1. Direct match by categoryId or categorySlug
+      if (
+        categoryId === selectedCategory ||
+        categorySlug === selectedCategory
+      ) {
+        return true;
+      }
+
       const pSlug = String(product?.slug || "").toLowerCase();
       const pBrand = String(product?.brand || "").toLowerCase();
       const pName = String(product?.name || product?.title || "").toLowerCase();
-      const pCatId = String((product as any)?.category_id || (product as any)?.categoryId || "");
-      const pCatSlug = String((product as any)?.categorySlug || (product as any)?.category_slug || (product as any)?.category?.slug || "");
 
-      const isGenesis =
-        pCatId === "b0000000-0000-0000-0000-000000000003" ||
-        pCatSlug === "genesis-standard" ||
-        pSlug.startsWith("stretch-film-20") ||
-        pSlug.includes("20-x-") ||
-        pBrand.includes("genesis") ||
-        pName.includes("genesis") ||
-        pSlug.includes("genesis") ||
-        product?.application === "machine";
-
-      const slug =
-        (pCatId === "b0000000-0000-0000-0000-000000000003" ? "genesis-standard" : null) ||
-        pCatSlug ||
-        (isGenesis
-          ? pName.includes("hp") || pSlug.includes("hp")
-            ? "genesis-high-performance"
-            : "genesis-standard"
-          : pBrand.includes("elite") || pName.includes("elite") || pSlug.includes("elite")
-          ? "force-elite"
-          : "force-standard");
-
-      if (selectedCategory === "genesis-standard" || selectedCategory === "b0000000-0000-0000-0000-000000000003") {
+      // 2. GENESIS Standard matching (by UUID, slug, or machine specs)
+      if (
+        selectedCategory === "genesis-standard" ||
+        selectedCategory === "b0000000-0000-0000-0000-000000000003"
+      ) {
         return (
-          pCatId === "b0000000-0000-0000-0000-000000000003" ||
-          pCatSlug === "genesis-standard" ||
-          slug === "genesis-standard" ||
-          isGenesis
+          categoryId === "b0000000-0000-0000-0000-000000000003" ||
+          categorySlug === "genesis-standard" ||
+          pSlug.startsWith("stretch-film-20") ||
+          pSlug.includes("20-x-") ||
+          pBrand.includes("genesis") ||
+          product?.application === "machine"
         );
       }
 
-      return slug === selectedCategory;
+      // 3. FORCE Elite matching
+      const isElite =
+        pBrand.includes("elite") ||
+        pName.includes("elite") ||
+        pSlug.includes("elite");
+
+      if (selectedCategory === "force-elite") {
+        return isElite;
+      }
+
+      // 4. FORCE Standard matching
+      if (selectedCategory === "force-standard") {
+        const isGenesis =
+          categoryId === "b0000000-0000-0000-0000-000000000003" ||
+          categorySlug === "genesis-standard" ||
+          pSlug.startsWith("stretch-film-20") ||
+          product?.application === "machine";
+        return !isElite && !isGenesis;
+      }
+
+      return false;
     });
   }, [products, selectedCategory]);
 

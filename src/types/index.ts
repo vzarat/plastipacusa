@@ -15,6 +15,7 @@ export interface ProductWithVariants extends Omit<DbProduct, "name"> {
   name?: string;
   variants: ProductVariant[];
   categorySlug?: string;
+  categoryId?: string;
   category?: any;
   startingPrice?: number;
   width_inches?: string;
