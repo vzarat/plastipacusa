@@ -56,19 +56,34 @@ function formatProduct(raw: any): ProductWithVariants {
   const nameStr = String(raw.name || raw.title || "").toLowerCase();
   const slugStr = String(raw.slug || "").toLowerCase();
   const rawCategoryId = String(raw.category_id || raw.categoryId || "");
+  const widthNum = Number(raw.width_inches || raw.widthInches || sortedVariants[0]?.widthInches || 0);
 
   const isGenesis =
+    widthNum === 20 ||
+    slugStr.includes("20-x") ||
+    nameStr.includes('20"') ||
     rawCategoryId === "b0000000-0000-0000-0000-000000000003" ||
     rawCategoryId === "genesis-standard" ||
     raw.category_slug === "genesis-standard" ||
     raw.categorySlug === "genesis-standard" ||
     raw.categories?.slug === "genesis-standard" ||
-    slugStr.startsWith("stretch-film-20") ||
-    slugStr.includes("20-x-") ||
     brandStr.includes("genesis") ||
     nameStr.includes("genesis") ||
     slugStr.includes("genesis") ||
     raw.application === "machine";
+
+  const isElite =
+    !isGenesis &&
+    (widthNum === 15 ||
+      slugStr.includes("15-x") ||
+      nameStr.includes('15"') ||
+      rawCategoryId === "b0000000-0000-0000-0000-000000000002" ||
+      rawCategoryId === "force-elite" ||
+      raw.category_slug === "force-elite" ||
+      raw.categorySlug === "force-elite" ||
+      brandStr.includes("elite") ||
+      nameStr.includes("elite") ||
+      slugStr.includes("elite"));
 
   // Calculate starting base price dynamically as MIN(product_variants.price)
   const minPrice =
@@ -78,20 +93,13 @@ function formatProduct(raw: any): ProductWithVariants {
       ? 192.44
       : 20.71;
 
-  const categorySlug =
-    rawCategoryId === "b0000000-0000-0000-0000-000000000003" || rawCategoryId === "genesis-standard"
-      ? "genesis-standard"
-      : raw.category_slug ||
-        raw.categorySlug ||
-        raw.categories?.slug ||
-        raw.category?.slug ||
-        (isGenesis
-          ? nameStr.includes("hp") || slugStr.includes("hp") || nameStr.includes("high-performance") || slugStr.includes("high-performance")
-            ? "genesis-high-performance"
-            : "genesis-standard"
-          : brandStr.includes("elite") || nameStr.includes("elite") || slugStr.includes("elite")
-          ? "force-elite"
-          : "force-standard");
+  const categorySlug = isGenesis
+    ? nameStr.includes("hp") || slugStr.includes("hp") || nameStr.includes("high-performance") || slugStr.includes("high-performance")
+      ? "genesis-high-performance"
+      : "genesis-standard"
+    : isElite
+    ? "force-elite"
+    : "force-standard";
 
   const category =
     raw.category ||
@@ -139,6 +147,7 @@ function formatProduct(raw: any): ProductWithVariants {
     variants: sortedVariants,
     startingPrice: minPrice,
     categoryId: rawCategoryId || (categorySlug === "genesis-standard" ? "b0000000-0000-0000-0000-000000000003" : categorySlug === "force-elite" ? "b0000000-0000-0000-0000-000000000002" : "b0000000-0000-0000-0000-000000000001"),
+    widthInches: Number(raw.width_inches || raw.widthInches || 0),
     width_inches: String(raw.width_inches || raw.widthInches || sortedVariants[0]?.widthInches || (isGenesis ? "20.00" : "18.00")),
     gauge: Number(raw.gauge || sortedVariants[0]?.gauge || 50),
     length_feet: Number(raw.length_feet || raw.lengthFeet || sortedVariants[0]?.lengthFeet || 1000),

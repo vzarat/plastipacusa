@@ -74,55 +74,43 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
     if (!products || products.length === 0) return [];
     if (selectedCategory === "all") return products;
 
-    return products.filter((product) => {
-      const categoryId = product?.categoryId || "";
-      const categorySlug = product?.categorySlug || "";
+    return products.filter((p: any) => {
+      const rawWidth = p?.width_inches ?? p?.widthInches ?? 0;
+      const width = typeof rawWidth === "number" ? rawWidth : parseFloat(String(rawWidth)) || 0;
+      const slug = String(p?.slug || "").toLowerCase();
+      const title = String(p?.title || p?.name || "").toLowerCase();
+      const catSlug = String(p?.categorySlug || "").toLowerCase();
+      const catId = String(p?.categoryId || p?.category_id || "");
 
-      // 1. Direct match by categoryId or categorySlug
-      if (
-        categoryId === selectedCategory ||
-        categorySlug === selectedCategory
-      ) {
-        return true;
-      }
-
-      const pSlug = String(product?.slug || "").toLowerCase();
-      const pBrand = String(product?.brand || "").toLowerCase();
-      const pName = String(product?.name || product?.title || "").toLowerCase();
-
-      // 2. GENESIS Standard matching (by UUID, slug, or machine specs)
-      if (
-        selectedCategory === "genesis-standard" ||
-        selectedCategory === "b0000000-0000-0000-0000-000000000003"
-      ) {
+      // GENESIS STANDARD: 20", machine film, or genesis slug/id
+      if (selectedCategory === "genesis-standard" || selectedCategory === "b0000000-0000-0000-0000-000000000003") {
         return (
-          categoryId === "b0000000-0000-0000-0000-000000000003" ||
-          categorySlug === "genesis-standard" ||
-          pSlug.startsWith("stretch-film-20") ||
-          pSlug.includes("20-x-") ||
-          pBrand.includes("genesis") ||
-          product?.application === "machine"
+          width === 20 ||
+          catSlug === "genesis-standard" ||
+          catId === "b0000000-0000-0000-0000-000000000003" ||
+          slug.includes("20-x") ||
+          title.includes('20"')
         );
       }
 
-      // 3. FORCE Elite matching
-      const isElite =
-        pBrand.includes("elite") ||
-        pName.includes("elite") ||
-        pSlug.includes("elite");
-
+      // FORCE ELITE: 15", nano series, or elite slug
       if (selectedCategory === "force-elite") {
-        return isElite;
+        return (
+          width === 15 ||
+          catSlug === "force-elite" ||
+          slug.includes("15-x") ||
+          title.includes('15"') ||
+          slug.includes("elite") ||
+          title.includes("elite")
+        );
       }
 
-      // 4. FORCE Standard matching
+      // FORCE STANDARD: 18" or default hand film
       if (selectedCategory === "force-standard") {
-        const isGenesis =
-          categoryId === "b0000000-0000-0000-0000-000000000003" ||
-          categorySlug === "genesis-standard" ||
-          pSlug.startsWith("stretch-film-20") ||
-          product?.application === "machine";
-        return !isElite && !isGenesis;
+        const isGenesis = width === 20 || slug.includes("20-x") || title.includes('20"') || catSlug === "genesis-standard";
+        const isElite = width === 15 || slug.includes("15-x") || title.includes('15"') || slug.includes("elite") || catSlug === "force-elite";
+        if (isGenesis || isElite) return false;
+        return true;
       }
 
       return false;
@@ -145,8 +133,8 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
           <div className="space-y-2.5">
             <div className="flex items-center gap-2">
               <Badge
-                variant="default"
-                className="uppercase text-xs tracking-wider font-bold"
+                variant="outline"
+                className="text-xs font-semibold px-2.5 py-0.5 rounded-full uppercase tracking-wider"
                 style={{
                   backgroundColor: `${activePill.color}15`,
                   color: activePill.color,
@@ -161,7 +149,6 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
                 </span>
               )}
             </div>
-
             <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
               {activeCategoryMeta
                 ? `Featured ${activeCategoryMeta.name} Series`

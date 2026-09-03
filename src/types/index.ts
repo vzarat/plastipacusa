@@ -18,6 +18,7 @@ export interface ProductWithVariants extends Omit<DbProduct, "name"> {
   categoryId?: string;
   category?: any;
   startingPrice?: number;
+  widthInches?: number;
   width_inches?: string;
   gauge?: number;
   length_feet?: number;

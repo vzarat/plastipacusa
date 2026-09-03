@@ -80,24 +80,41 @@ const CATEGORY_STYLES: Record<
 
 export function ProductCard({ product, priority = false }: ProductCardProps) {
   // Resolve category brand logo and machine film detection
-  const categorySlug = product?.categorySlug || "force-standard";
-  const catId = product?.categoryId || "";
+  const rawWidth = (product as any)?.width_inches ?? (product as any)?.widthInches ?? 0;
+  const width = typeof rawWidth === "number" ? rawWidth : parseFloat(String(rawWidth)) || 0;
+  const categorySlug = String(product?.categorySlug || "").toLowerCase();
+  const catId = String(product?.categoryId || (product as any)?.category_id || "");
   const pSlug = String(product?.slug || "").toLowerCase();
   const pBrand = String(product?.brand || "").toLowerCase();
-  const pName = String(product?.name || product?.title || "").toLowerCase();
+  const pTitle = String(product?.title || product?.name || "").toLowerCase();
 
+  // 20" -> GENESIS Standard (red badge)
   const isGenesis =
+    width === 20 ||
+    categorySlug === "genesis-standard" ||
     catId === "b0000000-0000-0000-0000-000000000003" ||
-    catId === "genesis-standard" ||
-    categorySlug.includes("genesis") ||
-    pSlug.startsWith("stretch-film-20") ||
-    pSlug.includes("20-x-") ||
-    pBrand.includes("genesis") ||
-    pName.includes("genesis") ||
-    pSlug.includes("genesis") ||
+    pSlug.includes("20-x") ||
+    pTitle.includes('20"') ||
     product?.application === "machine";
 
-  const resolvedCategorySlug = isGenesis ? "genesis-standard" : categorySlug;
+  // 15" -> FORCE Elite (amber badge)
+  const isElite =
+    !isGenesis &&
+    (width === 15 ||
+      categorySlug === "force-elite" ||
+      pSlug.includes("15-x") ||
+      pTitle.includes('15"') ||
+      pSlug.includes("elite") ||
+      pTitle.includes("elite") ||
+      catId === "b0000000-0000-0000-0000-000000000002");
+
+  // 18" -> FORCE Standard (blue badge)
+  const resolvedCategorySlug = isGenesis
+    ? "genesis-standard"
+    : isElite
+    ? "force-elite"
+    : "force-standard";
+
   const categoryLogo =
     CATEGORY_LOGOS[resolvedCategorySlug] || CATEGORY_LOGOS["force-standard"];
   const catStyles =
@@ -135,7 +152,14 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
       ? product.images[1]
       : null;
 
-  const title = product.title || product.name || (isGenesis ? 'STRETCH FILM 20" MACHINE WRAP' : "Force™ Hand Stretch Film");
+  const title =
+    product.title ||
+    product.name ||
+    (isGenesis
+      ? 'STRETCH FILM 20" MACHINE WRAP'
+      : isElite
+      ? 'FORCE ELITE™ 15" Hand Stretch Film'
+      : 'FORCE™ 18" Hand Stretch Film');
 
   return (
     <div className="group rounded-3xl border border-slate-200/90 bg-white overflow-hidden flex flex-col justify-between transition-all duration-300 hover:border-sky-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-500/10 card-hover-effect">
@@ -185,7 +209,11 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         <div className="p-6 pb-4 space-y-3.5">
           <div>
             <span className={`text-[10px] font-mono uppercase ${catStyles.seriesColor} font-bold tracking-wider block`}>
-              {product.brand || (isGenesis ? "GENESIS" : "FORCE")} • {isGenesis ? "Machine Cast Series" : "Industrial Cast Series"}
+              {isGenesis
+                ? "GENESIS • Machine Cast Series"
+                : isElite
+                ? "FORCE ELITE • Nano Multi-Layer Series"
+                : "FORCE • Industrial Cast Series"}
             </span>
             <h3 className={`text-sm sm:text-base font-extrabold text-slate-900 ${catStyles.hoverTitleColor} transition-colors mt-1 line-clamp-2 min-h-[2.75rem] sm:min-h-[3rem] leading-snug`}>
               <Link href={`/products/${product?.slug || "stretch-film-18-x-50-ga-x-1000ft"}`}>
