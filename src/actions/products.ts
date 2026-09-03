@@ -58,15 +58,19 @@ function formatProduct(raw: any): ProductWithVariants {
       : 20.71;
 
   // Resolve category slug
+  const brandStr = String(raw.brand || "").toLowerCase();
+  const nameStr = String(raw.name || raw.title || "").toLowerCase();
+  const slugStr = String(raw.slug || "").toLowerCase();
+
   const categorySlug =
     raw.category_slug ||
     raw.categorySlug ||
     raw.categories?.slug ||
     raw.category?.slug ||
-    (raw.brand?.toLowerCase().includes("elite")
+    (brandStr.includes("elite") || nameStr.includes("elite") || slugStr.includes("elite")
       ? "force-elite"
-      : raw.brand?.toLowerCase().includes("genesis")
-      ? raw.name?.toLowerCase().includes("hp")
+      : brandStr.includes("genesis") || nameStr.includes("genesis") || slugStr.includes("genesis")
+      ? nameStr.includes("hp") || slugStr.includes("hp") || nameStr.includes("high-performance") || slugStr.includes("high-performance")
         ? "genesis-high-performance"
         : "genesis-standard"
       : "force-standard");
@@ -116,9 +120,39 @@ function formatProduct(raw: any): ProductWithVariants {
 }
 
 /**
- * Fetch all products joined with categories and product_variants (ordered by price ascending)
+ * Live query to Supabase PostgreSQL selecting only product slugs for static route generation
  */
-export async function getProducts(applicationFilter?: "all" | "hand" | "machine"): Promise<ProductWithVariants[]> {
+export async function getProductSlugs(): Promise<{ slug: string }[]> {
+  try {
+    const { data: products, error } = await supabase
+      .from("products")
+      .select("slug");
+
+    if (!error && products && products.length > 0) {
+      return products
+        .filter((product) => Boolean(product.slug))
+        .map((product) => ({
+          slug: product.slug,
+        }));
+    }
+  } catch (err: any) {
+    console.warn("getProductSlugs Supabase query failed, falling back:", err?.message || err);
+  }
+
+  const fallback = await getProducts();
+  return fallback.map((product) => ({
+    slug: product.slug,
+  }));
+}
+
+/**
+ * Fetch all products joined with categories and product_variants across all categories
+ * Supports optional applicationFilter and categoryFilter
+ */
+export async function getProducts(
+  applicationFilter?: "all" | "hand" | "machine",
+  categoryFilter?: string
+): Promise<ProductWithVariants[]> {
   try {
     if (isSupabaseConfigured) {
       // 1. Try relational query with categories and product_variants
@@ -139,7 +173,11 @@ export async function getProducts(applicationFilter?: "all" | "hand" | "machine"
         const { data, error } = await query;
 
         if (!error && data && data.length > 0) {
-          return data.map(formatProduct);
+          let items = data.map(formatProduct);
+          if (categoryFilter && categoryFilter !== "all") {
+            items = items.filter((p) => p.categorySlug === categoryFilter);
+          }
+          return items;
         }
 
         // 2. If categories table is not related, fallback to product_variants
@@ -158,7 +196,11 @@ export async function getProducts(applicationFilter?: "all" | "hand" | "machine"
 
           const { data: flatData, error: flatError } = await flatQuery;
           if (!flatError && flatData && flatData.length > 0) {
-            return flatData.map(formatProduct);
+            let items = flatData.map(formatProduct);
+            if (categoryFilter && categoryFilter !== "all") {
+              items = items.filter((p) => p.categorySlug === categoryFilter);
+            }
+            return items;
           }
         }
       } catch (sbErr: any) {
@@ -170,10 +212,14 @@ export async function getProducts(applicationFilter?: "all" | "hand" | "machine"
   }
 
   // Fallback to local catalog
+  let items = FALLBACK_PRODUCTS;
   if (applicationFilter && applicationFilter !== "all") {
-    return FALLBACK_PRODUCTS.filter((p) => p.application === applicationFilter);
+    items = items.filter((p) => p.application === applicationFilter);
   }
-  return FALLBACK_PRODUCTS;
+  if (categoryFilter && categoryFilter !== "all") {
+    items = items.filter((p) => p.categorySlug === categoryFilter);
+  }
+  return items;
 }
 
 /**

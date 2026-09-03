@@ -108,7 +108,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             <span className="text-[10px] font-mono uppercase text-sky-600 font-bold tracking-wider block">
               {product.brand || "FORCE"} • Industrial Cast Series
             </span>
-            <h3 className="text-base sm:text-lg font-extrabold text-slate-900 group-hover:text-sky-600 transition-colors mt-0.5 line-clamp-1">
+            <h3 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-sky-600 transition-colors mt-1 line-clamp-2 min-h-[2.75rem] sm:min-h-[3rem] leading-snug">
               <Link href={`/products/${product?.slug || "stretch-film-18-x-50-ga-x-1000ft"}`}>
                 {title}
               </Link>

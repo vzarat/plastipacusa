@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import { ProductWithVariants } from "@/types";
 import { ProductCard } from "@/components/products/ProductCard";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, PhoneCall, Layers, RotateCcw } from "lucide-react";
+import { ArrowRight, PhoneCall, Layers } from "lucide-react";
 import { useCategoryStore } from "@/lib/store/useCategoryStore";
 import { PRODUCT_CATEGORIES } from "@/data/categories";
 
@@ -13,48 +14,92 @@ interface FeaturedProductSectionProps {
   products: ProductWithVariants[];
 }
 
+interface CategoryPill {
+  slug: string;
+  label: string;
+  color: string;
+}
+
+const CATEGORY_PILLS: CategoryPill[] = [
+  {
+    slug: "force-standard",
+    label: "FORCE Standard",
+    color: "#2563eb", // Blue
+  },
+  {
+    slug: "force-elite",
+    label: "FORCE Elite",
+    color: "#f59e0b", // Amber / Yellow
+  },
+  {
+    slug: "genesis-standard",
+    label: "GENESIS Standard",
+    color: "#dc2626", // Red
+  },
+  {
+    slug: "all",
+    label: "All Products",
+    color: "#64748b", // Slate
+  },
+];
+
 export function FeaturedProductSection({ products }: FeaturedProductSectionProps) {
-  const selectedCategory = useCategoryStore((s) => s.selectedCategory);
-  const setSelectedCategory = useCategoryStore((s) => s.setSelectedCategory);
+  const globalCategory = useCategoryStore((s) => s.selectedCategory);
+  const setGlobalCategory = useCategoryStore((s) => s.setSelectedCategory);
+
+  // Active category state managed via useState
+  const [selectedCategory, setSelectedCategory] = useState<string>(
+    globalCategory || "force-standard"
+  );
+
+  // Synchronize if global store updates
+  useEffect(() => {
+    if (globalCategory) {
+      setSelectedCategory(globalCategory);
+    }
+  }, [globalCategory]);
+
+  const handleCategorySelect = (slug: string) => {
+    setSelectedCategory(slug);
+    setGlobalCategory(slug === "all" ? null : (slug as any));
+  };
 
   const activeCategoryMeta = useMemo(() => {
-    if (!selectedCategory) return null;
+    if (selectedCategory === "all") return null;
     return PRODUCT_CATEGORIES.find((c) => c.slug === selectedCategory) || null;
   }, [selectedCategory]);
 
-  // Group the product list by category slug
-  const groupedProducts = useMemo(() => {
-    const map: Record<string, ProductWithVariants[]> = {
-      "force-standard": [],
-      "force-elite": [],
-      "genesis-standard": [],
-      "genesis-high-performance": [],
-    };
+  // Filter the displayed products based on active category slug
+  const filteredProducts = useMemo(() => {
+    if (!products || products.length === 0) return [];
+    if (selectedCategory === "all") return products;
 
-    (products || []).forEach((product) => {
+    return products.filter((product) => {
       const slug =
         product.categorySlug ||
-        (product.brand?.toLowerCase().includes("elite")
+        (product.brand?.toLowerCase().includes("elite") ||
+        product.name?.toLowerCase().includes("elite") ||
+        product.title?.toLowerCase().includes("elite") ||
+        product.slug?.toLowerCase().includes("elite")
           ? "force-elite"
-          : product.brand?.toLowerCase().includes("genesis")
-          ? product.name?.toLowerCase().includes("hp")
+          : product.brand?.toLowerCase().includes("genesis") ||
+            product.name?.toLowerCase().includes("genesis") ||
+            product.title?.toLowerCase().includes("genesis") ||
+            product.slug?.toLowerCase().includes("genesis")
+          ? product.name?.toLowerCase().includes("hp") ||
+            product.slug?.toLowerCase().includes("hp")
             ? "genesis-high-performance"
             : "genesis-standard"
           : "force-standard");
 
-      if (!map[slug]) {
-        map[slug] = [];
-      }
-      map[slug].push(product);
+      return slug === selectedCategory;
     });
+  }, [products, selectedCategory]);
 
-    return map;
-  }, [products]);
-
-  const activeCategoryProducts = useMemo(() => {
-    if (!selectedCategory) return [];
-    return groupedProducts[selectedCategory] || [];
-  }, [selectedCategory, groupedProducts]);
+  const activePill = useMemo(
+    () => CATEGORY_PILLS.find((p) => p.slug === selectedCategory) || CATEGORY_PILLS[0],
+    [selectedCategory]
+  );
 
   return (
     <section
@@ -63,20 +108,16 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-12 gap-6">
-          <div className="space-y-2">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-10 gap-6">
+          <div className="space-y-2.5">
             <div className="flex items-center gap-2">
               <Badge
                 variant="default"
                 className="uppercase text-xs tracking-wider font-bold"
                 style={{
-                  backgroundColor: activeCategoryMeta
-                    ? `${activeCategoryMeta.accentHex}15`
-                    : undefined,
-                  color: activeCategoryMeta ? activeCategoryMeta.accentHex : undefined,
-                  borderColor: activeCategoryMeta
-                    ? `${activeCategoryMeta.accentHex}30`
-                    : undefined,
+                  backgroundColor: `${activePill.color}15`,
+                  color: activePill.color,
+                  borderColor: `${activePill.color}30`,
                 }}
               >
                 {activeCategoryMeta ? activeCategoryMeta.name : "Direct Mill Catalog"}
@@ -90,28 +131,18 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
 
             <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
               {activeCategoryMeta
-                ? `Featured ${activeCategoryMeta.name} Film Series`
+                ? `Featured ${activeCategoryMeta.name} Series`
                 : "Featured Industrial Film Series"}
             </h2>
 
-            <p className="text-sm text-slate-600 max-w-xl leading-relaxed">
+            <p className="text-sm text-slate-600 max-w-xl leading-relaxed font-normal">
               {activeCategoryMeta
                 ? activeCategoryMeta.description
-                : "Precision cast polyethylene pallet wrap formulated for high load security and maximum roll yield."}
+                : "Precision cast polyethylene pallet wrap formulated for maximum containment force and high roll yield."}
             </p>
           </div>
 
           <div className="flex items-center gap-3 self-start md:self-auto">
-            {selectedCategory && (
-              <button
-                type="button"
-                onClick={() => setSelectedCategory(null)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
-                <span>Show All Products</span>
-              </button>
-            )}
             <Link
               href="/products"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 transition-all duration-200"
@@ -122,75 +153,93 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
           </div>
         </div>
 
-        {/* Product Grid Area */}
-        {selectedCategory ? (
-          activeCategoryProducts.length > 0 ? (
-            <div
-              className={`grid gap-6 mt-8 sm:mt-10 ${
-                activeCategoryProducts.length <= 2
-                  ? "grid-cols-1 sm:grid-cols-2 max-w-4xl mx-auto"
-                  : activeCategoryProducts.length === 3
-                  ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                  : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
-              }`}
-            >
-              {activeCategoryProducts.map((product, idx) => (
-                <ProductCard
-                  key={product?.id || idx}
-                  product={product}
-                  priority={idx < 4}
+        {/* Dynamic Category Pills Navigation */}
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 mb-8 sm:mb-10">
+          {CATEGORY_PILLS.map((pill) => {
+            const isActive = selectedCategory === pill.slug;
+            return (
+              <button
+                key={pill.slug}
+                type="button"
+                onClick={() => handleCategorySelect(pill.slug)}
+                className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer shadow-xs ${
+                  isActive
+                    ? "bg-slate-900 text-white shadow-md ring-2 ring-offset-2 ring-slate-900"
+                    : "bg-white text-slate-700 border border-slate-200/90 hover:bg-slate-50 hover:border-slate-300"
+                }`}
+              >
+                {/* Small circular colored dot */}
+                <span
+                  className="w-2.5 h-2.5 rounded-full shrink-0 transition-transform duration-200"
+                  style={{
+                    backgroundColor: pill.color,
+                    boxShadow: isActive ? `0 0 8px ${pill.color}` : "none",
+                  }}
                 />
-              ))}
-            </div>
-          ) : (
-            /* Custom Mill Specs Inquire Card when active category has no retail items yet */
-            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 p-8 sm:p-12 flex flex-col items-center justify-center text-center max-w-xl mx-auto space-y-4 mt-8 sm:mt-10">
-              <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-xs"
-                style={{
-                  backgroundColor: `${activeCategoryMeta?.accentHex || "#0284c7"}15`,
-                  color: activeCategoryMeta?.accentHex || "#0284c7",
-                }}
-              >
-                <Layers className="w-7 h-7" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="font-extrabold text-slate-900 text-lg sm:text-xl">
-                  Need Custom {activeCategoryMeta?.name || "Extrusion"} Specs?
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
-                  We manufacture custom roll widths, gauges, and pre-stretch formulations directly from our extrusion mills for high-volume enterprise operations.
-                </p>
-              </div>
-              <Link
-                href="#inquiry-form"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 mt-2 transition-all shadow-xs"
-              >
-                <PhoneCall className="w-3.5 h-3.5 mr-1 text-sky-600" />
-                <span>Request Custom Specs</span>
-              </Link>
-            </div>
-          )
-        ) : (
-          /* All Products Feed: Sits directly below header */
-          <div
-            className={`grid gap-6 mt-8 sm:mt-10 ${
-              products.length <= 2
-                ? "grid-cols-1 sm:grid-cols-2 max-w-4xl mx-auto"
-                : products.length === 3
-                ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
-            }`}
+                <span>{pill.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Animated Product Grid with Framer Motion */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={selectedCategory}
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -14 }}
+            transition={{ duration: 0.28, ease: "easeInOut" }}
           >
-            {products.map((product, idx) => (
-              <ProductCard
-                key={product?.id || idx}
-                product={product}
-                priority={idx < 4}
-              />
-            ))}
-          </div>
-        )}
+            {filteredProducts.length > 0 ? (
+              <div
+                className={`grid gap-6 ${
+                  filteredProducts.length <= 2
+                    ? "grid-cols-1 sm:grid-cols-2 max-w-4xl mx-auto"
+                    : filteredProducts.length === 3
+                    ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                    : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+                }`}
+              >
+                {filteredProducts.map((product, idx) => (
+                  <ProductCard
+                    key={product?.id || idx}
+                    product={product}
+                    priority={idx < 4}
+                  />
+                ))}
+              </div>
+            ) : (
+              /* Custom Mill Specs Inquire Card when active category has no retail items yet */
+              <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 p-8 sm:p-12 flex flex-col items-center justify-center text-center max-w-xl mx-auto space-y-4 mt-8 sm:mt-10">
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-xs"
+                  style={{
+                    backgroundColor: `${activePill.color}15`,
+                    color: activePill.color,
+                  }}
+                >
+                  <Layers className="w-7 h-7" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="font-extrabold text-slate-900 text-lg sm:text-xl">
+                    Need Custom {activeCategoryMeta?.name || "Extrusion"} Specs?
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
+                    We manufacture custom machine film roll widths, gauges, and pre-stretch formulations directly from our extrusion mills for high-volume enterprise operations.
+                  </p>
+                </div>
+                <Link
+                  href="#inquiry-form"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 mt-2 transition-all shadow-xs"
+                >
+                  <PhoneCall className="w-3.5 h-3.5 mr-1 text-sky-600" />
+                  <span>Request Custom Specs</span>
+                </Link>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </section>
   );

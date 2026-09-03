@@ -14,13 +14,31 @@ import {
 } from "lucide-react";
 
 import type { Metadata } from "next";
+import { supabase } from "@/lib/supabase/client";
 import { PRODUCT_CATEGORIES } from "@/data/categories";
 
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
-  const products = await getProducts();
-  return products.map((product) => ({
+  try {
+    const { data: products, error } = await supabase
+      .from("products")
+      .select("slug");
+
+    if (!error && products && products.length > 0) {
+      return products
+        .filter((product) => Boolean(product.slug))
+        .map((product) => ({
+          slug: product.slug,
+        }));
+    }
+  } catch (error) {
+    console.warn("Supabase query for slugs in generateStaticParams failed, using fallback:", error);
+  }
+
+  // Fallback for offline build or unconfigured environments
+  const fallback = await getProducts();
+  return fallback.map((product) => ({
     slug: product.slug,
   }));
 }
