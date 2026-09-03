@@ -1817,7 +1817,6 @@ export const FALLBACK_PRODUCTS: ProductWithVariants[] = [
     application: "machine",
     categorySlug: "genesis-standard",
     categoryId: "b0000000-0000-0000-0000-000000000003",
-    category_id: "b0000000-0000-0000-0000-000000000003",
     filmType: "Cast Machine Stretch Film",
     color: "Ultra Clear",
     shortDescription:
@@ -1898,7 +1897,6 @@ export const FALLBACK_PRODUCTS: ProductWithVariants[] = [
     application: "machine",
     categorySlug: "genesis-standard",
     categoryId: "b0000000-0000-0000-0000-000000000003",
-    category_id: "b0000000-0000-0000-0000-000000000003",
     filmType: "Cast Machine Stretch Film",
     color: "Ultra Clear",
     shortDescription:
@@ -1979,7 +1977,6 @@ export const FALLBACK_PRODUCTS: ProductWithVariants[] = [
     application: "machine",
     categorySlug: "genesis-standard",
     categoryId: "b0000000-0000-0000-0000-000000000003",
-    category_id: "b0000000-0000-0000-0000-000000000003",
     filmType: "Cast Machine Stretch Film",
     color: "Ultra Clear",
     shortDescription:
@@ -2060,7 +2057,6 @@ export const FALLBACK_PRODUCTS: ProductWithVariants[] = [
     application: "machine",
     categorySlug: "genesis-standard",
     categoryId: "b0000000-0000-0000-0000-000000000003",
-    category_id: "b0000000-0000-0000-0000-000000000003",
     filmType: "Cast Machine Stretch Film",
     color: "Ultra Clear",
     shortDescription:
