@@ -16,7 +16,7 @@ function formatProduct(raw: any): ProductWithVariants {
 
   // Sort variants by price ascending
   const sortedVariants: ProductVariant[] = rawVariants
-    .map((v: any) => {
+    .map((v: any, index: number) => {
       const rollsCount = Number(v.rolls_count || v.rollsCount || v.rolls_per_box || v.rollsPerBox || 4);
       const boxesCount = Number(
         v.boxes_count ||
@@ -27,7 +27,7 @@ function formatProduct(raw: any): ProductWithVariants {
       const variantTitle = String(v.title || v.package_size || v.packageSize || (boxesCount === 1 ? "1 BOX WITH 4 ROLLS" : `${boxesCount} BOXES = ${rollsCount} ROLLS`));
 
       return {
-        id: Number(v.id),
+        id: String(v.id || v.sku || index),
         productId: Number(v.product_id || v.productId || raw.id),
         sku: String(v.sku || ""),
         title: variantTitle,

@@ -2,7 +2,8 @@ import { Product as DbProduct, ProductVariant as DbProductVariant, Inquiry as Db
 
 export type ApplicationType = "hand" | "machine";
 
-export interface ProductVariant extends DbProductVariant {
+export interface ProductVariant extends Omit<DbProductVariant, "id"> {
+  id: any;
   title?: string;
   rolls_count?: number;
   boxes_count?: number;
@@ -39,7 +40,7 @@ export interface CartItem {
   totalRolls?: number;
   totalBoxes?: number;
   application: ApplicationType;
-  variantId: number;
+  variantId: any;
   sku: string;
   widthInches: string;
   gauge: number;

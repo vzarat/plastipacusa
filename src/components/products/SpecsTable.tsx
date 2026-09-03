@@ -46,8 +46,8 @@ export function SpecsTable({ variants }: SpecsTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {variants.map((v) => (
-            <TableRow key={v.id} className="hover:bg-sky-50/50 font-mono text-xs">
+          {variants.map((v, index) => (
+            <TableRow key={v.id || v.sku || index} className="hover:bg-sky-50/50 font-mono text-xs">
               <TableCell className="font-bold text-slate-900 font-sans">
                 {(v as any).title || v.packageSize || v.sku}
               </TableCell>

@@ -17,28 +17,54 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 interface VariantSelectorProps {
-  product: ProductWithVariants;
+  product: any;
+  selectedVariantId?: string;
+  selectedVariant?: any;
+  onVariantChange?: (variant: any) => void;
+  [key: string]: any;
 }
 
-export function VariantSelector({ product }: VariantSelectorProps) {
-  const variants = product.variants;
+export function VariantSelector({
+  product,
+  selectedVariantId: propSelectedVariantId,
+  selectedVariant: propSelectedVariant,
+  onVariantChange,
+  ...props
+}: VariantSelectorProps) {
+  const variants = product?.variants || [];
   const addItem = useCartStore((state) => state.addItem);
 
-  // Default to 1 BOX WITH 4 ROLLS
-  const [selectedVariantId, setSelectedVariantId] = useState<number>(
-    variants[0]?.id || 1
+  // Default to first variant
+  const [internalSelectedVariantId, setInternalSelectedVariantId] = useState<string>(
+    String(variants[0]?.id || variants[0]?.sku || "0")
   );
   const [quantity, setQuantity] = useState<number>(1);
   const [addedNotice, setAddedNotice] = useState(false);
 
+  // Fallback to variants[0] if not selected
   const selectedVariant: ProductVariant = useMemo(() => {
+    if (propSelectedVariant) return propSelectedVariant;
+    const targetId = propSelectedVariantId || internalSelectedVariantId;
     return (
-      variants.find((v) => v.id === selectedVariantId) ||
-      variants[0]
+      variants.find(
+        (v: any) =>
+          v.id === targetId ||
+          v.sku === targetId ||
+          String(v.id) === String(targetId) ||
+          String(v.sku) === String(targetId)
+      ) || variants[0]
     );
-  }, [variants, selectedVariantId]);
+  }, [variants, propSelectedVariant, propSelectedVariantId, internalSelectedVariantId]);
 
-  const unitPrice = parseFloat(selectedVariant?.priceUsd || "20.71");
+  const selectedVariantId =
+    propSelectedVariantId ||
+    propSelectedVariant?.id ||
+    propSelectedVariant?.sku ||
+    selectedVariant?.id ||
+    selectedVariant?.sku ||
+    internalSelectedVariantId;
+
+  const unitPrice = parseFloat(selectedVariant?.priceUsd || (selectedVariant as any)?.price || "20.71");
   const totalPrice = Number((unitPrice * quantity).toFixed(2));
 
   const handleAddToCart = () => {
@@ -104,15 +130,25 @@ export function VariantSelector({ product }: VariantSelectorProps) {
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
             Package Options
           </label>
-          <span className="text-xs font-semibold text-sky-700">
+          <span className="text-xs font-semibold text-blue-700">
             {(selectedVariant as any)?.title || selectedVariant?.packageSize}
           </span>
         </div>
 
         <div className="grid grid-cols-1 gap-2.5">
-          {variants.map((variant) => {
-            const isSelected = selectedVariant?.id === variant.id;
-            const price = parseFloat(variant.priceUsd);
+          {variants.map((variant: any, index: number) => {
+            const isSelected =
+              selectedVariant?.id === variant.id ||
+              selectedVariant?.sku === variant.sku ||
+              selectedVariantId === variant.id ||
+              selectedVariantId === variant.sku ||
+              (Boolean(selectedVariant?.id && variant.id) && String(selectedVariant?.id) === String(variant.id)) ||
+              (Boolean(selectedVariant?.sku && variant.sku) && String(selectedVariant?.sku) === String(variant.sku)) ||
+              (Boolean(selectedVariantId && variant.id) && String(selectedVariantId) === String(variant.id)) ||
+              (Boolean(selectedVariantId && variant.sku) && String(selectedVariantId) === String(variant.sku)) ||
+              (index === 0 && !selectedVariant);
+
+            const price = parseFloat(variant.priceUsd || (variant as any).price || "0");
             const variantTitle = (variant as any).title || variant.packageSize || variant.sku;
             const rollsCount =
               (variant as any).rolls_count ??
@@ -126,24 +162,27 @@ export function VariantSelector({ product }: VariantSelectorProps) {
 
             return (
               <button
-                key={variant.id}
+                key={variant.id || variant.sku || `variant-${variant.rollsCount || (variant as any).rolls_count}-${index}`}
                 type="button"
-                onClick={() => setSelectedVariantId(variant.id)}
-                className={`p-3.5 sm:p-4 rounded-2xl border text-left transition-all flex items-center justify-between group ${
+                onClick={() => {
+                  if (onVariantChange) onVariantChange(variant);
+                  setInternalSelectedVariantId(String(variant.id || variant.sku));
+                }}
+                className={`p-3.5 sm:p-4 rounded-2xl border text-left transition-all flex items-center justify-between group cursor-pointer ${
                   isSelected
-                    ? "border-sky-500 bg-sky-50/70 ring-2 ring-sky-500/20 shadow-sm"
+                    ? "border-blue-600 bg-blue-50/20 ring-2 ring-blue-600/20 shadow-sm"
                     : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60"
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                       isSelected
-                        ? "border-sky-600 bg-sky-600"
-                        : "border-slate-300 group-hover:border-slate-400"
+                        ? "border-blue-600 bg-blue-600 ring-2 ring-blue-600/30"
+                        : "border-slate-300 bg-white group-hover:border-slate-400"
                     }`}
                   >
-                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    {isSelected && <div className="w-2 h-2 rounded-full bg-white shadow-sm" />}
                   </div>
                   <div>
                     <span
@@ -162,7 +201,7 @@ export function VariantSelector({ product }: VariantSelectorProps) {
                 <div className="text-right">
                   <span
                     className={`text-sm sm:text-base font-extrabold ${
-                      isSelected ? "text-sky-800" : "text-slate-900"
+                      isSelected ? "text-blue-800" : "text-slate-900"
                     }`}
                   >
                     {formatCurrency(price)}
