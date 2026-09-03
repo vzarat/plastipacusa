@@ -74,7 +74,7 @@ export function CategorySectionDivider({
       <div className="flex-shrink-0 px-2 flex flex-col items-center">
         {finalLogo ? (
           <div
-            className={`p-2.5 sm:p-3 md:p-3.5 rounded-2xl bg-white border ${config.border} ${config.glow} flex items-center justify-center transition-all duration-300 hover:scale-[1.02] shadow-xs`}
+            className={`p-2.5 sm:p-3 md:p-3.5 rounded-2xl bg-white border ${config.border} ${config.glow} flex items-center justify-center transition-all duration-300 hover:scale-[1.02] shadow-sm`}
           >
             <Image
               src={finalLogo}

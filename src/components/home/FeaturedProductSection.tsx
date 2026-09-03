@@ -75,22 +75,41 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
     if (selectedCategory === "all") return products;
 
     return products.filter((product) => {
+      const pSlug = String(product?.slug || "").toLowerCase();
+      const pBrand = String(product?.brand || "").toLowerCase();
+      const pName = String(product?.name || product?.title || "").toLowerCase();
+      const pCatId = String((product as any)?.category_id || (product as any)?.categoryId || "");
+      const pCatSlug = String((product as any)?.categorySlug || (product as any)?.category_slug || (product as any)?.category?.slug || "");
+
+      const isGenesis =
+        pCatId === "b0000000-0000-0000-0000-000000000003" ||
+        pCatSlug === "genesis-standard" ||
+        pSlug.startsWith("stretch-film-20") ||
+        pSlug.includes("20-x-") ||
+        pBrand.includes("genesis") ||
+        pName.includes("genesis") ||
+        pSlug.includes("genesis") ||
+        product?.application === "machine";
+
       const slug =
-        product.categorySlug ||
-        (product.brand?.toLowerCase().includes("elite") ||
-        product.name?.toLowerCase().includes("elite") ||
-        product.title?.toLowerCase().includes("elite") ||
-        product.slug?.toLowerCase().includes("elite")
-          ? "force-elite"
-          : product.brand?.toLowerCase().includes("genesis") ||
-            product.name?.toLowerCase().includes("genesis") ||
-            product.title?.toLowerCase().includes("genesis") ||
-            product.slug?.toLowerCase().includes("genesis")
-          ? product.name?.toLowerCase().includes("hp") ||
-            product.slug?.toLowerCase().includes("hp")
+        (pCatId === "b0000000-0000-0000-0000-000000000003" ? "genesis-standard" : null) ||
+        pCatSlug ||
+        (isGenesis
+          ? pName.includes("hp") || pSlug.includes("hp")
             ? "genesis-high-performance"
             : "genesis-standard"
+          : pBrand.includes("elite") || pName.includes("elite") || pSlug.includes("elite")
+          ? "force-elite"
           : "force-standard");
+
+      if (selectedCategory === "genesis-standard" || selectedCategory === "b0000000-0000-0000-0000-000000000003") {
+        return (
+          pCatId === "b0000000-0000-0000-0000-000000000003" ||
+          pCatSlug === "genesis-standard" ||
+          slug === "genesis-standard" ||
+          isGenesis
+        );
+      }
 
       return slug === selectedCategory;
     });
@@ -145,7 +164,7 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
           <div className="flex items-center gap-3 self-start md:self-auto">
             <Link
               href="/products"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 transition-all duration-200"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 transition-all duration-200"
             >
               <span>View Full Catalog</span>
               <ArrowRight className="w-4 h-4" />
@@ -162,7 +181,7 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
                 key={pill.slug}
                 type="button"
                 onClick={() => handleCategorySelect(pill.slug)}
-                className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer shadow-xs ${
+                className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer shadow-sm ${
                   isActive
                     ? "bg-slate-900 text-white shadow-md ring-2 ring-offset-2 ring-slate-900"
                     : "bg-white text-slate-700 border border-slate-200/90 hover:bg-slate-50 hover:border-slate-300"
@@ -213,7 +232,7 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
               /* Custom Mill Specs Inquire Card when active category has no retail items yet */
               <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 p-8 sm:p-12 flex flex-col items-center justify-center text-center max-w-xl mx-auto space-y-4 mt-8 sm:mt-10">
                 <div
-                  className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-xs"
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm"
                   style={{
                     backgroundColor: `${activePill.color}15`,
                     color: activePill.color,
@@ -231,7 +250,7 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
                 </div>
                 <Link
                   href="#inquiry-form"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 mt-2 transition-all shadow-xs"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 mt-2 transition-all shadow-sm"
                 >
                   <PhoneCall className="w-3.5 h-3.5 mr-1 text-sky-600" />
                   <span>Request Custom Specs</span>

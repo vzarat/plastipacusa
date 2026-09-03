@@ -51,68 +51,96 @@ function formatProduct(raw: any): ProductWithVariants {
     })
     .sort((a, b) => parseFloat(a.priceUsd) - parseFloat(b.priceUsd));
 
+  // Resolve category slug and machine film detection
+  const brandStr = String(raw.brand || "").toLowerCase();
+  const nameStr = String(raw.name || raw.title || "").toLowerCase();
+  const slugStr = String(raw.slug || "").toLowerCase();
+  const rawCategoryId = String(raw.category_id || raw.categoryId || "");
+
+  const isGenesis =
+    rawCategoryId === "b0000000-0000-0000-0000-000000000003" ||
+    rawCategoryId === "genesis-standard" ||
+    raw.category_slug === "genesis-standard" ||
+    raw.categorySlug === "genesis-standard" ||
+    raw.categories?.slug === "genesis-standard" ||
+    slugStr.startsWith("stretch-film-20") ||
+    slugStr.includes("20-x-") ||
+    brandStr.includes("genesis") ||
+    nameStr.includes("genesis") ||
+    slugStr.includes("genesis") ||
+    raw.application === "machine";
+
   // Calculate starting base price dynamically as MIN(product_variants.price)
   const minPrice =
     sortedVariants.length > 0
       ? Math.min(...sortedVariants.map((v) => parseFloat(v.priceUsd)))
+      : isGenesis
+      ? 192.44
       : 20.71;
 
-  // Resolve category slug
-  const brandStr = String(raw.brand || "").toLowerCase();
-  const nameStr = String(raw.name || raw.title || "").toLowerCase();
-  const slugStr = String(raw.slug || "").toLowerCase();
-
   const categorySlug =
-    raw.category_slug ||
-    raw.categorySlug ||
-    raw.categories?.slug ||
-    raw.category?.slug ||
-    (brandStr.includes("elite") || nameStr.includes("elite") || slugStr.includes("elite")
-      ? "force-elite"
-      : brandStr.includes("genesis") || nameStr.includes("genesis") || slugStr.includes("genesis")
-      ? nameStr.includes("hp") || slugStr.includes("hp") || nameStr.includes("high-performance") || slugStr.includes("high-performance")
-        ? "genesis-high-performance"
-        : "genesis-standard"
-      : "force-standard");
+    rawCategoryId === "b0000000-0000-0000-0000-000000000003" || rawCategoryId === "genesis-standard"
+      ? "genesis-standard"
+      : raw.category_slug ||
+        raw.categorySlug ||
+        raw.categories?.slug ||
+        raw.category?.slug ||
+        (isGenesis
+          ? nameStr.includes("hp") || slugStr.includes("hp") || nameStr.includes("high-performance") || slugStr.includes("high-performance")
+            ? "genesis-high-performance"
+            : "genesis-standard"
+          : brandStr.includes("elite") || nameStr.includes("elite") || slugStr.includes("elite")
+          ? "force-elite"
+          : "force-standard");
 
   const category =
     raw.category ||
     raw.categories ||
-    PRODUCT_CATEGORIES.find((c) => c.slug === categorySlug) ||
+    PRODUCT_CATEGORIES.find((c) => c.slug === categorySlug || c.id === rawCategoryId) ||
     PRODUCT_CATEGORIES[0];
 
   const title = String(raw.title || raw.name || "STRETCH FILM");
+
+  const defaultImage = isGenesis
+    ? "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/AUTOMATIC_STRETCH_FILM.png"
+    : "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png";
+
+  const rawImg = String(raw.image_url || raw.imageUrl || "");
+  const primaryImg =
+    isGenesis && (!rawImg || rawImg.includes("manual"))
+      ? defaultImage
+      : rawImg || defaultImage;
+
+  const rawImages = Array.isArray(raw.images) && raw.images.length > 0 ? raw.images : [primaryImg];
+  const images = isGenesis && rawImages.every((img: string) => img.includes("manual"))
+    ? [defaultImage]
+    : rawImages;
 
   return {
     id: Number(raw.id),
     slug: String(raw.slug),
     title,
     name: title,
-    brand: String(raw.brand || "FORCE"),
+    brand: String(raw.brand || (isGenesis ? "GENESIS" : "FORCE")),
     description: String(raw.description || ""),
     shortDescription: String(raw.short_description || raw.shortDescription || ""),
-    application: (raw.application as "hand" | "machine") || "hand",
+    application: isGenesis ? "machine" : (raw.application as "hand" | "machine") || "hand",
     categorySlug,
     category,
-    filmType: String(raw.film_type || raw.filmType || "Cast Co-Extruded Multi-Layer"),
+    filmType: String(raw.film_type || raw.filmType || (isGenesis ? "Cast Machine Stretch Film" : "Cast Co-Extruded Multi-Layer")),
     color: String(raw.color || "Ultra Clear"),
     features: Array.isArray(raw.features) ? raw.features : [],
     techSheetUrl: raw.tech_sheet_url || raw.techSheetUrl || "/docs/plastipac-force-hand-film-specs.pdf",
-    imageUrl: String(
-      raw.image_url ||
-      raw.imageUrl ||
-      "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png"
-    ),
-    images:
-      Array.isArray(raw.images) && raw.images.length > 0
-        ? raw.images
-        : [raw.image_url || raw.imageUrl || "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png"],
+    imageUrl: primaryImg,
+    images,
     recommendedUsage: raw.recommended_usage || raw.recommendedUsage || null,
     createdAt: raw.created_at ? new Date(raw.created_at) : new Date(),
     updatedAt: raw.updated_at ? new Date(raw.updated_at) : new Date(),
     variants: sortedVariants,
     startingPrice: minPrice,
-    width_inches: String(raw.width_inches || raw.widthInches || sortedVariants[0]?.widthInches || "18.00"),
+    category_id: rawCategoryId || (categorySlug === "genesis-standard" ? "b0000000-0000-0000-0000-000000000003" : categorySlug === "force-elite" ? "b0000000-0000-0000-0000-000000000002" : "b0000000-0000-0000-0000-000000000001"),
+    categoryId: rawCategoryId || (categorySlug === "genesis-standard" ? "b0000000-0000-0000-0000-000000000003" : categorySlug === "force-elite" ? "b0000000-0000-0000-0000-000000000002" : "b0000000-0000-0000-0000-000000000001"),
+    width_inches: String(raw.width_inches || raw.widthInches || sortedVariants[0]?.widthInches || (isGenesis ? "20.00" : "18.00")),
     gauge: Number(raw.gauge || sortedVariants[0]?.gauge || 50),
     length_feet: Number(raw.length_feet || raw.lengthFeet || sortedVariants[0]?.lengthFeet || 1000),
     core_type: String(raw.core_type || raw.coreType || 'Standard 3" Core'),
@@ -153,6 +181,19 @@ export async function getProducts(
   applicationFilter?: "all" | "hand" | "machine",
   categoryFilter?: string
 ): Promise<ProductWithVariants[]> {
+  const matchesCategory = (p: any, filter: string) => {
+    if (!filter || filter === "all") return true;
+    if (filter === "genesis-standard" || filter === "b0000000-0000-0000-0000-000000000003") {
+      return (
+        p.categorySlug === "genesis-standard" ||
+        p.category_id === "b0000000-0000-0000-0000-000000000003" ||
+        p.categoryId === "b0000000-0000-0000-0000-000000000003" ||
+        String(p.slug || "").startsWith("stretch-film-20")
+      );
+    }
+    return p.categorySlug === filter || p.category_id === filter || p.categoryId === filter;
+  };
+
   try {
     if (isSupabaseConfigured) {
       // 1. Try relational query with categories and product_variants
@@ -175,7 +216,7 @@ export async function getProducts(
         if (!error && data && data.length > 0) {
           let items = data.map(formatProduct);
           if (categoryFilter && categoryFilter !== "all") {
-            items = items.filter((p) => p.categorySlug === categoryFilter);
+            items = items.filter((p) => matchesCategory(p, categoryFilter));
           }
           return items;
         }
@@ -198,7 +239,35 @@ export async function getProducts(
           if (!flatError && flatData && flatData.length > 0) {
             let items = flatData.map(formatProduct);
             if (categoryFilter && categoryFilter !== "all") {
-              items = items.filter((p) => p.categorySlug === categoryFilter);
+              items = items.filter((p) => matchesCategory(p, categoryFilter));
+            }
+            return items;
+          }
+
+          // 3. Flat query without joins (handles schema cache without FKs)
+          const { data: rawProds, error: rawError } = await supabase
+            .from("products")
+            .select("*")
+            .order("created_at", { ascending: false });
+
+          if (!rawError && rawProds && rawProds.length > 0) {
+            const { data: rawVariants } = await supabase
+              .from("product_variants")
+              .select("*");
+
+            const combined = rawProds.map((p) => ({
+              ...p,
+              product_variants: (rawVariants || []).filter(
+                (v: any) => v.product_id === p.id || v.productId === p.id
+              ),
+            }));
+
+            let items = combined.map(formatProduct);
+            if (applicationFilter && applicationFilter !== "all") {
+              items = items.filter((p) => p.application === applicationFilter);
+            }
+            if (categoryFilter && categoryFilter !== "all") {
+              items = items.filter((p) => matchesCategory(p, categoryFilter));
             }
             return items;
           }
@@ -217,7 +286,7 @@ export async function getProducts(
     items = items.filter((p) => p.application === applicationFilter);
   }
   if (categoryFilter && categoryFilter !== "all") {
-    items = items.filter((p) => p.categorySlug === categoryFilter);
+    items = items.filter((p) => matchesCategory(p, categoryFilter));
   }
   return items;
 }
@@ -257,6 +326,25 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
 
           if (!flatError && flatData) {
             return formatProduct(flatData);
+          }
+
+          // 3. Flat query without joins
+          const { data: rawProd, error: rawProdError } = await supabase
+            .from("products")
+            .select("*")
+            .eq("slug", slug)
+            .maybeSingle();
+
+          if (!rawProdError && rawProd) {
+            const { data: rawVariants } = await supabase
+              .from("product_variants")
+              .select("*")
+              .eq("product_id", rawProd.id);
+
+            return formatProduct({
+              ...rawProd,
+              product_variants: rawVariants || [],
+            });
           }
         }
       } catch (sbErr: any) {

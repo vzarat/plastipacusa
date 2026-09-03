@@ -33,30 +33,113 @@ const CATEGORY_LOGOS: Record<string, { src: string; alt: string }> = {
   },
 };
 
+const CATEGORY_STYLES: Record<
+  string,
+  {
+    seriesColor: string;
+    hoverTitleColor: string;
+    badgeBg: string;
+    badgeBorder: string;
+    badgeText: string;
+    iconColor: string;
+  }
+> = {
+  "force-standard": {
+    seriesColor: "text-sky-600",
+    hoverTitleColor: "group-hover:text-sky-600",
+    badgeBg: "bg-sky-50/80",
+    badgeBorder: "border-sky-100",
+    badgeText: "text-sky-800",
+    iconColor: "text-sky-600",
+  },
+  "force-elite": {
+    seriesColor: "text-amber-600",
+    hoverTitleColor: "group-hover:text-amber-600",
+    badgeBg: "bg-amber-50/80",
+    badgeBorder: "border-amber-100",
+    badgeText: "text-amber-800",
+    iconColor: "text-amber-600",
+  },
+  "genesis-standard": {
+    seriesColor: "text-red-600",
+    hoverTitleColor: "group-hover:text-red-600",
+    badgeBg: "bg-red-50/80",
+    badgeBorder: "border-red-100",
+    badgeText: "text-red-800",
+    iconColor: "text-red-600",
+  },
+  "genesis-high-performance": {
+    seriesColor: "text-emerald-600",
+    hoverTitleColor: "group-hover:text-emerald-600",
+    badgeBg: "bg-emerald-50/80",
+    badgeBorder: "border-emerald-100",
+    badgeText: "text-emerald-800",
+    iconColor: "text-emerald-600",
+  },
+};
+
 export function ProductCard({ product, priority = false }: ProductCardProps) {
-  // Resolve category brand logo
+  // Resolve category brand logo and machine film detection
   const categorySlug =
     (product as any)?.categorySlug ||
     (product as any)?.category?.slug ||
     "force-standard";
-  const categoryLogo =
-    CATEGORY_LOGOS[categorySlug] || CATEGORY_LOGOS["force-standard"];
 
-  // Find primary variant (1 Box with 4 rolls: $20.71) or minimum price
+  const catId = String((product as any)?.category_id || (product as any)?.categoryId || "");
+  const pSlug = String(product?.slug || "").toLowerCase();
+  const pBrand = String(product?.brand || "").toLowerCase();
+  const pName = String(product?.name || product?.title || "").toLowerCase();
+
+  const isGenesis =
+    catId === "b0000000-0000-0000-0000-000000000003" ||
+    catId === "genesis-standard" ||
+    categorySlug.includes("genesis") ||
+    pSlug.startsWith("stretch-film-20") ||
+    pSlug.includes("20-x-") ||
+    pBrand.includes("genesis") ||
+    pName.includes("genesis") ||
+    pSlug.includes("genesis") ||
+    product?.application === "machine";
+
+  const resolvedCategorySlug = isGenesis ? "genesis-standard" : categorySlug;
+  const categoryLogo =
+    CATEGORY_LOGOS[resolvedCategorySlug] || CATEGORY_LOGOS["force-standard"];
+  const catStyles =
+    CATEGORY_STYLES[resolvedCategorySlug] || CATEGORY_STYLES["force-standard"];
+
+  // Find minimum starting price among all variants
+  const variantPrices = (product?.variants || [])
+    .map((v) => parseFloat(v.priceUsd))
+    .filter((p) => !isNaN(p) && p > 0);
+
+  const minVariantPrice = variantPrices.length > 0 ? Math.min(...variantPrices) : null;
   const primaryVariant = product?.variants?.[0];
-  const primaryPrice = primaryVariant?.priceUsd ? parseFloat(primaryVariant.priceUsd) : 20.71;
+  const primaryPrice =
+    minVariantPrice !== null
+      ? minVariantPrice
+      : (product as any)?.startingPrice
+      ? parseFloat(String((product as any).startingPrice))
+      : isGenesis
+      ? 192.44
+      : 20.71;
+
+  const AUTOMATIC_IMAGE =
+    "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/AUTOMATIC_STRETCH_FILM.png";
+
+  const rawImage =
+    (product?.images && product.images[0]) || product?.imageUrl;
 
   const primaryImage =
-    (product?.images && product.images[0]) ||
-    product?.imageUrl ||
-    DEFAULT_PRODUCT_IMAGE;
+    isGenesis && (!rawImage || rawImage.includes("manual"))
+      ? AUTOMATIC_IMAGE
+      : rawImage || (isGenesis ? AUTOMATIC_IMAGE : DEFAULT_PRODUCT_IMAGE);
 
   const secondaryImage =
     product?.images && product.images.length > 1
       ? product.images[1]
       : null;
 
-  const title = product.title || product.name || "Force™ Hand Stretch Film";
+  const title = product.title || product.name || (isGenesis ? 'STRETCH FILM 20" MACHINE WRAP' : "Force™ Hand Stretch Film");
 
   return (
     <div className="group rounded-3xl border border-slate-200/90 bg-white overflow-hidden flex flex-col justify-between transition-all duration-300 hover:border-sky-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-500/10 card-hover-effect">
@@ -105,34 +188,36 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         {/* 2. Refined Product Info & B2B Volume Indicator */}
         <div className="p-6 pb-4 space-y-3.5">
           <div>
-            <span className="text-[10px] font-mono uppercase text-sky-600 font-bold tracking-wider block">
-              {product.brand || "FORCE"} • Industrial Cast Series
+            <span className={`text-[10px] font-mono uppercase ${catStyles.seriesColor} font-bold tracking-wider block`}>
+              {product.brand || (isGenesis ? "GENESIS" : "FORCE")} • {isGenesis ? "Machine Cast Series" : "Industrial Cast Series"}
             </span>
-            <h3 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-sky-600 transition-colors mt-1 line-clamp-2 min-h-[2.75rem] sm:min-h-[3rem] leading-snug">
+            <h3 className={`text-sm sm:text-base font-extrabold text-slate-900 ${catStyles.hoverTitleColor} transition-colors mt-1 line-clamp-2 min-h-[2.75rem] sm:min-h-[3rem] leading-snug`}>
               <Link href={`/products/${product?.slug || "stretch-film-18-x-50-ga-x-1000ft"}`}>
                 {title}
               </Link>
             </h3>
             <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mt-1.5">
               {product?.shortDescription ||
-                "Premium industrial cast hand wrap engineered for high load retention and quiet unwind."}
+                (isGenesis
+                  ? "High-yield automated cast stretch film engineered for high-speed turntable and rotary wrapper systems."
+                  : "Premium industrial cast hand wrap engineered for high load retention and quiet unwind.")}
             </p>
           </div>
 
           {/* B2B Volume Availability & Feature Badges */}
           <div className="space-y-2.5 pt-1">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50/80 border border-sky-100 text-sky-800 text-[11px] font-semibold">
-              <Layers className="w-3.5 h-3.5 text-sky-600" />
-              <span>Volume tiers: Boxes & Pallets</span>
+            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${catStyles.badgeBg} border ${catStyles.badgeBorder} ${catStyles.badgeText} text-[11px] font-semibold`}>
+              <Layers className={`w-3.5 h-3.5 ${catStyles.iconColor}`} />
+              <span>{isGenesis ? "Volume tiers: Rolls & Pallets" : "Volume tiers: Boxes & Pallets"}</span>
             </div>
 
             <div className="flex items-center gap-3 text-[11px] text-slate-600">
               <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-sky-600 flex-shrink-0" />
-                <span>Multi-Layer Cast</span>
+                <CheckCircle2 className={`w-3.5 h-3.5 ${catStyles.iconColor} flex-shrink-0`} />
+                <span>{isGenesis ? "Power Pre-Stretch" : "Multi-Layer Cast"}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-sky-600 flex-shrink-0" />
+                <CheckCircle2 className={`w-3.5 h-3.5 ${catStyles.iconColor} flex-shrink-0`} />
                 <span>Ready to Ship</span>
               </div>
             </div>
@@ -156,7 +241,11 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             </div>
           </div>
           <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
-            {primaryVariant?.rollsPerBox ? `${primaryVariant.rollsPerBox} Rolls / Box` : "4 Rolls / Box"}
+            {isGenesis
+              ? "Machine Roll"
+              : primaryVariant?.rollsPerBox
+              ? `${primaryVariant.rollsPerBox} Rolls / Box`
+              : "4 Rolls / Box"}
           </span>
         </div>
 

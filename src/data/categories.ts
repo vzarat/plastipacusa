@@ -43,7 +43,7 @@ export const PRODUCT_CATEGORIES: CategoryItem[] = [
     activeShadow: "shadow-[0_0_20px_rgba(217,119,6,0.25)]",
   },
   {
-    id: "genesis-standard",
+    id: "b0000000-0000-0000-0000-000000000003",
     name: "GENESIS STANDARD",
     type: "Automatic Stretch Film",
     logoUrl: "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/GENESIS_ST.svg",
