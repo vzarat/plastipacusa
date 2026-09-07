@@ -129,25 +129,13 @@ export function Navbar() {
                 About Us
               </Link>
 
-              {/* Contact */}
-              <Link
-                href="/#inquiry-form"
-                className="px-3.5 py-2 text-sm font-semibold rounded-xl transition-all text-slate-600 hover:text-sky-600 hover:bg-sky-50/50"
-              >
-                Contact
-              </Link>
-
-              {/* Client Dashboard (if authenticated) */}
-              {currentUser && (
+              {/* Contact (Guest only) */}
+              {!currentUser && (
                 <Link
-                  href="/dashboard"
-                  className={`px-3.5 py-2 text-sm font-semibold rounded-xl transition-all ${
-                    pathname.startsWith("/dashboard")
-                      ? "text-sky-700 bg-sky-50 font-bold"
-                      : "text-slate-600 hover:text-sky-600 hover:bg-sky-50/50"
-                  }`}
+                  href="/#inquiry-form"
+                  className="px-3.5 py-2 text-sm font-semibold rounded-xl transition-all text-slate-600 hover:text-sky-600 hover:bg-sky-50/50"
                 >
-                  Dashboard
+                  Contact
                 </Link>
               )}
             </nav>
@@ -164,11 +152,11 @@ export function Navbar() {
                   className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-2 rounded-xl border border-slate-200 bg-slate-50/90 hover:bg-slate-100 hover:border-slate-300 transition-all text-xs font-bold text-slate-800 cursor-pointer shadow-xs"
                   aria-label="User Account Menu"
                 >
-                  <div className="w-6 h-6 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-[11px] uppercase">
+                  <div className="w-6 h-6 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-[11px] uppercase flex-shrink-0">
                     {currentUser.profile.fullName?.charAt(0) || "C"}
                   </div>
-                  <span className="hidden lg:inline truncate max-w-[120px]">
-                    {currentUser.profile.companyName || currentUser.profile.fullName}
+                  <span className="hidden sm:inline truncate max-w-[130px]">
+                    {currentUser.profile.companyName || currentUser.profile.fullName || "Industrial Partner"}
                   </span>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                 </button>
@@ -180,7 +168,7 @@ export function Navbar() {
                         {currentUser.profile.fullName}
                       </p>
                       <p className="text-[11px] text-slate-500 truncate">
-                        {currentUser.profile.companyName}
+                        {currentUser.profile.companyName || "Industrial Partner"}
                       </p>
                     </div>
                     <Link
@@ -215,27 +203,39 @@ export function Navbar() {
               </Link>
             )}
 
-            {/* Request Quote Button */}
-            <Link
-              href="/#inquiry-form"
-              className="hidden sm:inline-flex items-center gap-2 text-xs font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 text-white hover:opacity-95 transition-all shadow-md shadow-sky-500/20"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Request Quote</span>
-            </Link>
+            {/* Request Quote Button (Guest only) */}
+            {!currentUser && (
+              <Link
+                href="/#inquiry-form"
+                className="hidden sm:inline-flex items-center gap-2 text-xs font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 text-white hover:opacity-95 transition-all shadow-md shadow-sky-500/20"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Request Quote</span>
+              </Link>
+            )}
 
-            {/* Cart / Quote Trigger */}
+            {/* Cart Trigger */}
             <Button
               variant="outline"
               size="default"
               onClick={openDrawer}
-              className="relative flex items-center gap-2 border-slate-200 bg-white hover:bg-slate-50 hover:border-sky-300 text-slate-800 rounded-xl shadow-sm px-3.5"
+              className={`relative flex items-center justify-center border-slate-200 bg-white hover:bg-slate-50 hover:border-sky-300 text-slate-800 rounded-xl shadow-xs transition-all ${
+                currentUser ? "h-10 w-10 p-0" : "gap-2 px-3.5 h-10"
+              }`}
               aria-label="View Cart and Quote Request"
             >
-              <ShoppingCart className="w-4 h-4 text-sky-600" />
-              <span className="hidden sm:inline text-xs font-semibold">Cart / Quote</span>
+              <ShoppingCart className={currentUser ? "w-5 h-5 text-sky-600" : "w-4 h-4 text-sky-600"} />
+              {!currentUser && (
+                <span className="hidden sm:inline text-xs font-semibold">Cart / Quote</span>
+              )}
               {totalItemsCount > 0 && (
-                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-1.5 text-[11px] font-bold text-white shadow-sm">
+                <span
+                  className={`flex items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-blue-600 text-white font-bold shadow-xs ${
+                    currentUser
+                      ? "absolute -top-1.5 -right-1.5 h-5 min-w-[20px] px-1 text-[10px]"
+                      : "h-5 min-w-[20px] px-1.5 text-[11px]"
+                  }`}
+                >
                   {totalItemsCount}
                 </span>
               )}
@@ -289,26 +289,14 @@ export function Navbar() {
               About Us
             </Link>
 
-            <Link
-              href="/#inquiry-form"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="block px-3.5 py-2.5 text-sm font-semibold rounded-xl text-slate-700 hover:bg-slate-50"
-            >
-              Contact
-            </Link>
-
-            {/* Dashboard Link in Mobile (if authenticated) */}
-            {currentUser && (
+            {/* Contact (Guest only) */}
+            {!currentUser && (
               <Link
-                href="/dashboard"
+                href="/#inquiry-form"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`block px-3.5 py-2.5 text-sm font-semibold rounded-xl ${
-                  pathname.startsWith("/dashboard")
-                    ? "bg-sky-50 text-sky-700 font-bold"
-                    : "text-slate-700 hover:bg-slate-50"
-                }`}
+                className="block px-3.5 py-2.5 text-sm font-semibold rounded-xl text-slate-700 hover:bg-slate-50"
               >
-                Client Dashboard
+                Contact
               </Link>
             )}
           </div>
@@ -316,25 +304,36 @@ export function Navbar() {
           {/* User Account / Auth Actions */}
           <div className="pt-3 border-t border-slate-100 space-y-2">
             {currentUser ? (
-              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-slate-900 truncate">
-                    {currentUser.profile.fullName}
-                  </p>
-                  <p className="text-[11px] text-slate-500 truncate">
-                    {currentUser.profile.companyName}
-                  </p>
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 truncate">
+                      {currentUser.profile.fullName}
+                    </p>
+                    <p className="text-[11px] text-slate-500 truncate">
+                      {currentUser.profile.companyName || "Industrial Partner"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setIsMobileMenuOpen(false);
+                      await signOut();
+                    }}
+                    className="px-3 py-1.5 rounded-lg border border-rose-200 text-rose-600 font-bold text-xs hover:bg-rose-50 cursor-pointer"
+                  >
+                    Sign Out
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setIsMobileMenuOpen(false);
-                    await signOut();
-                  }}
-                  className="px-3 py-1.5 rounded-lg border border-rose-200 text-rose-600 font-bold text-xs hover:bg-rose-50 cursor-pointer"
+
+                <Link
+                  href="/dashboard"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center justify-center gap-1.5 w-full py-2.5 px-3 rounded-xl bg-slate-900 text-white font-bold text-xs shadow-xs"
                 >
-                  Sign Out
-                </button>
+                  <LayoutGrid className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Client Dashboard</span>
+                </Link>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
@@ -373,13 +372,16 @@ export function Navbar() {
               </div>
             </div>
 
-            <Link
-              href="/#inquiry-form"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="block w-full py-3 px-4 text-sm font-bold text-white bg-gradient-to-r from-sky-400 via-sky-600 to-blue-700 rounded-xl text-center shadow-md shadow-sky-500/20"
-            >
-              Request Commercial Quote
-            </Link>
+            {/* Request Quote Button (Guest only) */}
+            {!currentUser && (
+              <Link
+                href="/#inquiry-form"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block w-full py-3 px-4 text-sm font-bold text-white bg-gradient-to-r from-sky-400 via-sky-600 to-blue-700 rounded-xl text-center shadow-md shadow-sky-500/20"
+              >
+                Request Commercial Quote
+              </Link>
+            )}
           </div>
         </div>
       )}
