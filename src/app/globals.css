@@ -96,6 +96,42 @@
     animation: fadeInSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
+  /* Smooth Tab Transition Utilities */
+  @keyframes tabEnter {
+    from {
+      opacity: var(--tw-enter-opacity, 0.5);
+      transform: translateY(var(--tw-enter-translate-y, 0.5rem));
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-in {
+    animation-name: tabEnter;
+    animation-duration: 300ms;
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+    animation-fill-mode: both;
+    will-change: transform, opacity;
+  }
+
+  .fade-in-50 {
+    --tw-enter-opacity: 0.5;
+  }
+
+  .slide-in-from-bottom-2 {
+    --tw-enter-translate-y: 0.5rem;
+  }
+
+  .animate-in.duration-300 {
+    animation-duration: 300ms;
+  }
+
+  .animate-in.ease-out {
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+
   .card-hover-effect {
     transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease;
   }

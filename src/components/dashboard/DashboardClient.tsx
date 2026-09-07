@@ -76,6 +76,18 @@ interface DashboardClientProps {
 
 type TabKey = "overview" | "reorders" | "invoices" | "settings" | "help";
 
+const NAV_ITEMS: {
+  key: TabKey;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  { key: "overview", label: "Overview & Orders", icon: LayoutDashboard },
+  { key: "reorders", label: "Quick Reorders", icon: RotateCw },
+  { key: "invoices", label: "Invoices & Statements", icon: Receipt },
+  { key: "settings", label: "Account & Company", icon: Settings },
+  { key: "help", label: "Support Hotline", icon: HelpCircle },
+];
+
 export function DashboardClient({ profile, orders }: DashboardClientProps) {
   const addItem = useCartStore((state) => state.addItem);
   const openDrawer = useCartStore((state) => state.openDrawer);
@@ -236,75 +248,29 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
 
           {/* Navigation Menu Links */}
           <nav className="space-y-1">
-            {/* Overview / Orders */}
-            <button
-              type="button"
-              onClick={() => handleTabClick("overview")}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
-                activeTab === "overview"
-                  ? "bg-slate-900 text-white shadow-sm"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              <span>Overview & Orders</span>
-            </button>
-
-            {/* Quick Reorders */}
-            <button
-              type="button"
-              onClick={() => handleTabClick("reorders")}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
-                activeTab === "reorders"
-                  ? "bg-slate-900 text-white shadow-sm"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
-              }`}
-            >
-              <RotateCw className="w-4 h-4" />
-              <span>Quick Reorders</span>
-            </button>
-
-            {/* Invoices & Statements */}
-            <button
-              type="button"
-              onClick={() => handleTabClick("invoices")}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
-                activeTab === "invoices"
-                  ? "bg-slate-900 text-white shadow-sm"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
-              }`}
-            >
-              <Receipt className="w-4 h-4" />
-              <span>Invoices & Statements</span>
-            </button>
-
-            {/* Account Settings / Company Profile */}
-            <button
-              type="button"
-              onClick={() => handleTabClick("settings")}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
-                activeTab === "settings"
-                  ? "bg-slate-900 text-white shadow-sm"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
-              }`}
-            >
-              <Settings className="w-4 h-4" />
-              <span>Account & Company</span>
-            </button>
-
-            {/* Help / Support Hotline */}
-            <button
-              type="button"
-              onClick={() => handleTabClick("help")}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
-                activeTab === "help"
-                  ? "bg-slate-900 text-white shadow-sm"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
-              }`}
-            >
-              <HelpCircle className="w-4 h-4" />
-              <span>Support Hotline</span>
-            </button>
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.key;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => handleTabClick(item.key)}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 ease-in-out text-left border-l-4 cursor-pointer ${
+                    isActive
+                      ? "border-blue-600 bg-slate-100/80 font-medium text-blue-900 shadow-xs"
+                      : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-medium"
+                  }`}
+                >
+                  <Icon
+                    className={`w-4 h-4 transition-colors duration-200 ${
+                      isActive ? "text-blue-600" : "text-slate-400"
+                    }`}
+                  />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
           </nav>
 
           {/* Quick Shop Link */}
@@ -432,110 +398,141 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
           </div>
         )}
 
-        {/* TAB 1: OVERVIEW & ORDERS (or REORDERS) */}
-        {(activeTab === "overview" || activeTab === "reorders") && (
-          <>
-            {/* Welcome Banner */}
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm relative overflow-hidden">
-              <div className="absolute right-0 top-0 w-80 h-full bg-gradient-to-l from-sky-50/70 to-transparent pointer-events-none hidden md:block" />
+        {/* Main Tab View Container with Smooth Transition */}
+        <div
+          key={activeTab}
+          className="animate-in fade-in-50 slide-in-from-bottom-2 duration-300 ease-out space-y-8"
+        >
+          {/* TAB 1: OVERVIEW & ORDERS (or REORDERS) */}
+          {(activeTab === "overview" || activeTab === "reorders") && (
+            <>
+              {activeTab === "overview" ? (
+                <>
+                  {/* Welcome Banner */}
+                  <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm relative overflow-hidden">
+                    <div className="absolute right-0 top-0 w-80 h-full bg-gradient-to-l from-sky-50/70 to-transparent pointer-events-none hidden md:block" />
 
-              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-100 text-[11px] font-bold text-blue-800 uppercase tracking-wider">
-                      Commercial Account
-                    </span>
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-[11px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                      Factory Direct Pricing
-                    </span>
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-100 text-[11px] font-bold text-blue-800 uppercase tracking-wider">
+                            Commercial Account
+                          </span>
+                          <span className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-[11px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            Factory Direct Pricing
+                          </span>
+                        </div>
+
+                        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                          Welcome back, {profile.fullName}
+                        </h1>
+
+                        <p className="text-xs sm:text-sm text-slate-600 flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-slate-800 flex items-center gap-1">
+                            <Building2 className="w-3.5 h-3.5 text-slate-500" />
+                            {profile.companyName}
+                          </span>
+                          <span className="text-slate-300">•</span>
+                          <span>{profile.email}</span>
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <Link
+                          href="/products"
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-bold transition-all"
+                        >
+                          <Package className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Browse Catalog</span>
+                        </Link>
+
+                        <Link
+                          href="/#inquiry-form"
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-blue-950 text-white text-xs font-bold transition-all shadow-xs"
+                        >
+                          <FileSpreadsheet className="w-3.5 h-3.5 text-sky-400" />
+                          <span>Custom Truckload Quote</span>
+                        </Link>
+                      </div>
+                    </div>
                   </div>
 
-                  <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                    Welcome back, {profile.fullName}
-                  </h1>
+                  {/* KPI Stats Row */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                    {/* Total Orders */}
+                    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xs space-y-2">
+                      <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
+                        <span>Total Recurring Orders</span>
+                        <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                          <Package className="w-4 h-4" />
+                        </div>
+                      </div>
+                      <div className="text-2xl sm:text-3xl font-black text-slate-900">
+                        {orders.length} <span className="text-sm font-semibold text-slate-400">PO Orders</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        Total historical procurement: <strong className="text-slate-800">{formatCurrency(totalSpend)} USD</strong>
+                      </p>
+                    </div>
 
-                  <p className="text-xs sm:text-sm text-slate-600 flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-slate-800 flex items-center gap-1">
-                      <Building2 className="w-3.5 h-3.5 text-slate-500" />
-                      {profile.companyName}
-                    </span>
-                    <span className="text-slate-300">•</span>
-                    <span>{profile.email}</span>
-                  </p>
-                </div>
+                    {/* Last Order Date */}
+                    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xs space-y-2">
+                      <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
+                        <span>Last Order Dispatched</span>
+                        <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                          <Truck className="w-4 h-4" />
+                        </div>
+                      </div>
+                      <div className="text-2xl sm:text-3xl font-black text-slate-900">
+                        {lastOrder ? lastOrder.date : "No Recent PO"}
+                      </div>
+                      <p className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Direct plant dispatch in 24–48 hours</span>
+                      </p>
+                    </div>
 
-                <div className="flex items-center gap-3">
-                  <Link
-                    href="/products"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-bold transition-all"
-                  >
-                    <Package className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Browse Catalog</span>
-                  </Link>
-
-                  <Link
-                    href="/#inquiry-form"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-blue-950 text-white text-xs font-bold transition-all shadow-xs"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5 text-sky-400" />
-                    <span>Custom Truckload Quote</span>
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            {/* KPI Stats Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-              {/* Total Orders */}
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xs space-y-2">
-                <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
-                  <span>Total Recurring Orders</span>
-                  <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                    <Package className="w-4 h-4" />
+                    {/* Quick Reorder Status */}
+                    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xs space-y-2">
+                      <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
+                        <span>Quick Reorder Status</span>
+                        <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                          <Zap className="w-4 h-4" />
+                        </div>
+                      </div>
+                      <div className="text-2xl sm:text-3xl font-black text-slate-900 flex items-center gap-2">
+                        <span>1-Click Active</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        Direct factory volume pricing locked to your account.
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* Reorders Header Banner */
+                <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm relative overflow-hidden">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-100 text-[11px] font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <RotateCw className="w-3.5 h-3.5 text-blue-600" />
+                        Quick Reorder Hub
+                      </span>
+                      <span className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-[11px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                        Factory Direct Schedule
+                      </span>
+                    </div>
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                      Instant Pallet & PO Reorders
+                    </h1>
+                    <p className="text-xs sm:text-sm text-slate-600 max-w-2xl">
+                      Quickly repeat prior purchase orders or dispatch calibrated full pallet batches directly into your production line without re-negotiating terms.
+                    </p>
                   </div>
                 </div>
-                <div className="text-2xl sm:text-3xl font-black text-slate-900">
-                  {orders.length} <span className="text-sm font-semibold text-slate-400">PO Orders</span>
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  Total historical procurement: <strong className="text-slate-800">{formatCurrency(totalSpend)} USD</strong>
-                </p>
-              </div>
-
-              {/* Last Order Date */}
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xs space-y-2">
-                <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
-                  <span>Last Order Dispatched</span>
-                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                    <Truck className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-2xl sm:text-3xl font-black text-slate-900">
-                  {lastOrder ? lastOrder.date : "No Recent PO"}
-                </div>
-                <p className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Direct plant dispatch in 24–48 hours</span>
-                </p>
-              </div>
-
-              {/* Quick Reorder Status */}
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xs space-y-2">
-                <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
-                  <span>Quick Reorder Status</span>
-                  <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-                    <Zap className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-2xl sm:text-3xl font-black text-slate-900 flex items-center gap-2">
-                  <span>1-Click Active</span>
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  Direct factory volume pricing locked to your account.
-                </p>
-              </div>
-            </div>
+              )}
 
             {/* Fast-Order Standard Batches Shortcut Section */}
             <div className="space-y-4">
@@ -1008,6 +1005,7 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
             </div>
           </div>
         )}
+        </div>
       </main>
     </div>
   );
