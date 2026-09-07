@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useCartStore } from "@/lib/store/useCartStore";
+import { getCurrentUser, signOut, CurrentUserResponse } from "@/actions/auth";
 import {
   ShoppingCart,
   Menu,
@@ -16,6 +17,8 @@ import {
   ArrowRight,
   Phone,
   LayoutGrid,
+  User,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -24,14 +27,28 @@ export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProductsDropdownOpen, setIsProductsDropdownOpen] = useState(false);
   const [isMobileProductsOpen, setIsMobileProductsOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<CurrentUserResponse | null>(null);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const items = useCartStore((state) => state.items);
   const openDrawer = useCartStore((state) => state.openDrawer);
 
   const totalItemsCount = items.reduce((acc, item) => acc + item.quantity, 0);
 
-  // Click outside listener for Products dropdown
+  // Fetch session on load and route changes
+  useEffect(() => {
+    let isMounted = true;
+    getCurrentUser().then((res) => {
+      if (isMounted) setCurrentUser(res);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [pathname]);
+
+  // Click outside listener for dropdowns
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -39,6 +56,12 @@ export function Navbar() {
         !dropdownRef.current.contains(event.target as Node)
       ) {
         setIsProductsDropdownOpen(false);
+      }
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsUserMenuOpen(false);
       }
     }
 
@@ -52,6 +75,7 @@ export function Navbar() {
   useEffect(() => {
     setIsMobileMenuOpen(false);
     setIsProductsDropdownOpen(false);
+    setIsUserMenuOpen(false);
   }, [pathname]);
 
   return (
@@ -112,11 +136,85 @@ export function Navbar() {
               >
                 Contact
               </Link>
+
+              {/* Client Dashboard (if authenticated) */}
+              {currentUser && (
+                <Link
+                  href="/dashboard"
+                  className={`px-3.5 py-2 text-sm font-semibold rounded-xl transition-all ${
+                    pathname.startsWith("/dashboard")
+                      ? "text-sky-700 bg-sky-50 font-bold"
+                      : "text-slate-600 hover:text-sky-600 hover:bg-sky-50/50"
+                  }`}
+                >
+                  Dashboard
+                </Link>
+              )}
             </nav>
           </div>
 
           {/* Right Action CTAs */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            {/* User Session / Sign In Trigger */}
+            {currentUser ? (
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-2 rounded-xl border border-slate-200 bg-slate-50/90 hover:bg-slate-100 hover:border-slate-300 transition-all text-xs font-bold text-slate-800 cursor-pointer shadow-xs"
+                  aria-label="User Account Menu"
+                >
+                  <div className="w-6 h-6 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-[11px] uppercase">
+                    {currentUser.profile.fullName?.charAt(0) || "C"}
+                  </div>
+                  <span className="hidden lg:inline truncate max-w-[120px]">
+                    {currentUser.profile.companyName || currentUser.profile.fullName}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                </button>
+
+                {isUserMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white border border-slate-200 shadow-xl py-2 z-50 animate-fade-in-up">
+                    <div className="px-4 py-2 border-b border-slate-100">
+                      <p className="text-xs font-bold text-slate-900 truncate">
+                        {currentUser.profile.fullName}
+                      </p>
+                      <p className="text-[11px] text-slate-500 truncate">
+                        {currentUser.profile.companyName}
+                      </p>
+                    </div>
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors"
+                    >
+                      <LayoutGrid className="w-4 h-4 text-slate-400" />
+                      <span>Client Dashboard</span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setIsUserMenuOpen(false);
+                        await signOut();
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors text-left cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4 text-rose-500" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 hover:text-blue-700 hover:bg-blue-50/60 rounded-xl transition-all border border-slate-200/90 bg-white shadow-xs"
+              >
+                <User className="w-4 h-4 text-slate-500" />
+                <span className="hidden sm:inline">Sign In</span>
+              </Link>
+            )}
+
             {/* Request Quote Button */}
             <Link
               href="/#inquiry-form"
@@ -198,10 +296,68 @@ export function Navbar() {
             >
               Contact
             </Link>
+
+            {/* Dashboard Link in Mobile (if authenticated) */}
+            {currentUser && (
+              <Link
+                href="/dashboard"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block px-3.5 py-2.5 text-sm font-semibold rounded-xl ${
+                  pathname.startsWith("/dashboard")
+                    ? "bg-sky-50 text-sky-700 font-bold"
+                    : "text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                Client Dashboard
+              </Link>
+            )}
+          </div>
+
+          {/* User Account / Auth Actions */}
+          <div className="pt-3 border-t border-slate-100 space-y-2">
+            {currentUser ? (
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-slate-900 truncate">
+                    {currentUser.profile.fullName}
+                  </p>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    {currentUser.profile.companyName}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setIsMobileMenuOpen(false);
+                    await signOut();
+                  }}
+                  className="px-3 py-1.5 rounded-lg border border-rose-200 text-rose-600 font-bold text-xs hover:bg-rose-50 cursor-pointer"
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <Link
+                  href="/login"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="py-2.5 px-3 text-center text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/register"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="py-2.5 px-3 text-center text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-xl"
+                >
+                  Register
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Quick Contact & Action Buttons */}
-          <div className="pt-3 border-t border-slate-100 space-y-2.5">
+          <div className="pt-2 border-t border-slate-100 space-y-2.5">
             <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 text-xs space-y-1">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">
                 Direct Sales Hotline:
