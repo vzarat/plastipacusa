@@ -226,20 +226,19 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
         <div className="flex items-center gap-2">
           <LanguageToggle showIcon={false} />
 
-          <Button
-            variant="outline"
-            size="sm"
+          <button
+            type="button"
             onClick={openDrawer}
-            className="relative flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-xl border-slate-200 text-slate-800"
+            className="relative p-2 text-slate-700 hover:text-blue-600 rounded-full border border-slate-200 hover:border-slate-300 transition-colors cursor-pointer"
+            aria-label="Shopping Cart"
           >
             <ShoppingCart className="w-4 h-4 text-sky-600" />
-            <span className="font-bold">Cart</span>
             {totalCartCount > 0 && (
-              <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold text-white">
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white shadow-sm">
                 {totalCartCount}
               </span>
             )}
-          </Button>
+          </button>
         </div>
       </div>
 
@@ -310,28 +309,52 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
         {/* Bottom Sidebar: User Capsule & Sign Out */}
         <div className="pt-6 border-t border-slate-100 space-y-3">
           {/* User Profile Capsule */}
-          <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
+          <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2.5">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs uppercase flex-shrink-0">
+              <div className={`w-8 h-8 rounded-xl text-white flex items-center justify-center font-bold text-xs uppercase flex-shrink-0 ${
+                profile.role === "admin" ? "bg-purple-700" : "bg-slate-900"
+              }`}>
                 {profile.fullName?.charAt(0) || "C"}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-bold text-slate-900 truncate">
-                  {profile.fullName}
+                  {profile.fullName || profile.email}
                 </p>
                 <p className="text-[11px] text-slate-500 truncate">
-                  {profile.companyName}
+                  {profile.companyName || t("role.partner")}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-[10px] text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                {t("dashboard.tier")}
+            {/* Role Badge */}
+            <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
+              {profile.role === "admin" ? (
+                <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-800 border border-purple-200 text-xs font-semibold px-2 py-0.5 rounded-full">
+                  <ShieldCheck className="w-3 h-3 text-purple-600" />
+                  {t("role.admin")}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 border border-blue-200 text-xs font-semibold px-2 py-0.5 rounded-full">
+                  <Building2 className="w-3 h-3 text-blue-600" />
+                  {t("role.client")}
+                </span>
+              )}
+              <span className="uppercase text-[9px] font-bold text-slate-400">
+                {t("common.active")}
               </span>
-              <span className="uppercase text-[9px] text-emerald-600">{t("common.active")}</span>
             </div>
+
+            {/* If admin, quick link to Admin Operations */}
+            {profile.role === "admin" && (
+              <Link
+                href="/admin"
+                prefetch={false}
+                className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs shadow-xs transition-colors"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-purple-300" />
+                <span>{t("nav.adminPortal")}</span>
+              </Link>
+            )}
           </div>
 
           {/* Sign Out Button */}
@@ -382,20 +405,19 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
             <LanguageToggle />
 
             {/* Cart Trigger */}
-            <Button
-              variant="outline"
-              size="sm"
+            <button
+              type="button"
               onClick={openDrawer}
-              className="relative flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl border-slate-200 bg-white hover:bg-slate-50 text-slate-800 shadow-xs"
+              className="relative p-2 text-slate-700 hover:text-blue-600 rounded-full border border-slate-200 hover:border-slate-300 transition-colors cursor-pointer"
+              aria-label="Shopping Cart"
             >
-              <ShoppingCart className="w-4 h-4 text-sky-600" />
-              <span className="hidden sm:inline">{t("nav.cartOnly")}</span>
+              <ShoppingCart className="w-5 h-5 text-sky-600" />
               {totalCartCount > 0 && (
-                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-blue-600 px-1.5 text-[11px] font-bold text-white shadow-xs">
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white shadow-sm">
                   {totalCartCount}
                 </span>
               )}
-            </Button>
+            </button>
           </div>
         </div>
 

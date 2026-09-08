@@ -44,7 +44,7 @@ interface AdminOrdersClientProps {
   profile: UserProfile;
 }
 
-type FilterTab = "all" | "unfulfilled" | "unpaid" | "open" | "archived";
+type FilterTab = "all" | "unfulfilled" | "unpaid" | "fulfilled" | "open" | "archived";
 
 export function AdminOrdersClient({
   initialOrders,
@@ -97,6 +97,7 @@ export function AdminOrdersClient({
       all: orders.length,
       unfulfilled: orders.filter((o) => o.fulfillmentStatus === "unfulfilled").length,
       unpaid: orders.filter((o) => o.paymentStatus === "pending").length,
+      fulfilled: orders.filter((o) => o.fulfillmentStatus === "fulfilled").length,
       open: orders.filter(
         (o) => o.fulfillmentStatus !== "fulfilled" && o.fulfillmentStatus !== "cancelled"
       ).length,
@@ -112,6 +113,9 @@ export function AdminOrdersClient({
         return false;
       }
       if (activeTab === "unpaid" && order.paymentStatus !== "pending") {
+        return false;
+      }
+      if (activeTab === "fulfilled" && order.fulfillmentStatus !== "fulfilled") {
         return false;
       }
       if (
@@ -356,26 +360,28 @@ export function AdminOrdersClient({
             {/* Right: Quick Storefront link + Language Toggle + Admin user capsule */}
             <div className="flex items-center gap-2.5 sm:gap-3">
               <Link
-                href="/dashboard"
+                href="/products"
+                prefetch={false}
                 className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors"
               >
                 <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-                <span>{t("admin.clientPortal")}</span>
+                <span>{t("nav.products")}</span>
               </Link>
 
               <LanguageToggle />
 
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100/80 rounded-xl border border-slate-200 text-xs">
-                <div className="w-6 h-6 rounded-lg bg-blue-700 text-white flex items-center justify-center font-bold text-[11px] uppercase">
+              <div className="flex items-center gap-2.5 px-3 py-1.5 bg-slate-100/80 rounded-xl border border-slate-200 text-xs">
+                <div className="w-7 h-7 rounded-lg bg-purple-700 text-white flex items-center justify-center font-bold text-xs uppercase flex-shrink-0">
                   {profile.fullName?.charAt(0) || "A"}
                 </div>
-                <div className="hidden md:block text-left">
+                <div className="hidden md:block text-left space-y-0.5">
                   <p className="font-bold text-slate-900 leading-tight">
-                    {profile.fullName}
+                    {profile.fullName || profile.email}
                   </p>
-                  <p className="text-[10px] text-slate-500 font-medium">
-                    Operations Lead
-                  </p>
+                  <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-800 border border-purple-200 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                    <ShieldCheck className="w-2.5 h-2.5 text-purple-600" />
+                    {t("role.admin")}
+                  </span>
                 </div>
               </div>
 
@@ -524,12 +530,12 @@ export function AdminOrdersClient({
                   count: tabCounts.unfulfilled,
                 },
                 { key: "unpaid", label: t("admin.unpaid"), count: tabCounts.unpaid },
-                { key: "open", label: t("admin.open"), count: tabCounts.open },
                 {
-                  key: "archived",
-                  label: t("admin.archived"),
-                  count: tabCounts.archived,
+                  key: "fulfilled",
+                  label: t("admin.fulfilled", "Fulfilled"),
+                  count: tabCounts.fulfilled,
                 },
+                { key: "open", label: t("admin.open"), count: tabCounts.open },
               ] as const
             ).map((tab) => {
               const isActive = activeTab === tab.key;

@@ -18,6 +18,8 @@ import {
   LayoutGrid,
   User,
   LogOut,
+  Building2,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/context/LanguageContext";
@@ -157,40 +159,81 @@ export function Navbar() {
                   className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-2 rounded-xl border border-slate-200 bg-slate-50/90 hover:bg-slate-100 hover:border-slate-300 transition-all text-xs font-bold text-slate-800 cursor-pointer shadow-xs"
                   aria-label="User Account Menu"
                 >
-                  <div className="w-6 h-6 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-[11px] uppercase flex-shrink-0">
+                  <div className={`w-6 h-6 rounded-lg text-white flex items-center justify-center font-bold text-[11px] uppercase flex-shrink-0 ${
+                    currentUser.profile.role === "admin" ? "bg-purple-700" : "bg-slate-900"
+                  }`}>
                     {currentUser.profile.fullName?.charAt(0) || "C"}
                   </div>
-                  <span className="hidden sm:inline truncate max-w-[130px]">
-                    {currentUser.profile.companyName || currentUser.profile.fullName || t("nav.portal")}
+                  <span className="hidden sm:inline truncate max-w-[120px]">
+                    {currentUser.profile.fullName || currentUser.user.email?.split("@")[0]}
                   </span>
+                  {currentUser.profile.role === "admin" ? (
+                    <span className="hidden md:inline-flex items-center gap-1 bg-purple-100 text-purple-800 border border-purple-200 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                      <ShieldCheck className="w-2.5 h-2.5 text-purple-600" />
+                      {t("role.admin")}
+                    </span>
+                  ) : (
+                    <span className="hidden md:inline-flex items-center gap-1 bg-blue-100 text-blue-800 border border-blue-200 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                      <Building2 className="w-2.5 h-2.5 text-blue-600" />
+                      {t("role.client")}
+                    </span>
+                  )}
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                 </button>
 
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white border border-slate-200 shadow-xl py-2 z-50 animate-fade-in-up">
-                    <div className="px-4 py-2 border-b border-slate-100">
+                  <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white border border-slate-200 shadow-xl py-2 z-50 animate-fade-in-up">
+                    <div className="px-4 py-2.5 border-b border-slate-100 space-y-1.5">
                       <p className="text-xs font-bold text-slate-900 truncate">
-                        {currentUser.profile.fullName}
+                        {currentUser.profile.fullName || currentUser.user.email}
                       </p>
-                      <p className="text-[11px] text-slate-500 truncate">
-                        {currentUser.profile.companyName || t("nav.portal")}
-                      </p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {currentUser.profile.role === "admin" ? (
+                          <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-800 border border-purple-200 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                            <ShieldCheck className="w-2.5 h-2.5 text-purple-600" />
+                            {t("role.admin")}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 border border-blue-200 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                            <Building2 className="w-2.5 h-2.5 text-blue-600" />
+                            {t("role.client")}
+                          </span>
+                        )}
+                        <span className="text-[11px] text-slate-500 truncate max-w-[120px]">
+                          {currentUser.profile.companyName || t("role.partner")}
+                        </span>
+                      </div>
                     </div>
-                    <Link
-                      href="/dashboard"
-                      onClick={() => setIsUserMenuOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors"
-                    >
-                      <LayoutGrid className="w-4 h-4 text-slate-400" />
-                      <span>{t("nav.dashboard")}</span>
-                    </Link>
+
+                    {currentUser.profile.role === "admin" ? (
+                      <Link
+                        href="/admin"
+                        prefetch={false}
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-purple-700 hover:bg-purple-50 transition-colors"
+                      >
+                        <ShieldCheck className="w-4 h-4 text-purple-600" />
+                        <span>{t("nav.adminPortal")}</span>
+                      </Link>
+                    ) : (
+                      <Link
+                        href="/dashboard"
+                        prefetch={false}
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors"
+                      >
+                        <LayoutGrid className="w-4 h-4 text-slate-400" />
+                        <span>{t("nav.dashboard")}</span>
+                      </Link>
+                    )}
+
                     <button
                       type="button"
                       onClick={async () => {
                         setIsUserMenuOpen(false);
                         await signOut();
                       }}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors text-left cursor-pointer"
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors text-left cursor-pointer border-t border-slate-100"
                     >
                       <LogOut className="w-4 h-4 text-rose-500" />
                       <span>{t("nav.signOut")}</span>
@@ -209,31 +252,40 @@ export function Navbar() {
             )}
 
             {/* Cart Trigger */}
-            <Button
-              variant="outline"
-              size="default"
-              onClick={openDrawer}
-              className={`relative flex items-center justify-center border-slate-200 bg-white hover:bg-slate-50 hover:border-sky-300 text-slate-800 rounded-xl shadow-xs transition-all ${
-                currentUser ? "h-10 w-10 p-0" : "gap-2 px-3.5 h-10"
-              }`}
-              aria-label="View Cart and Quote Request"
-            >
-              <ShoppingCart className={currentUser ? "w-5 h-5 text-sky-600" : "w-4 h-4 text-sky-600"} />
-              {!currentUser && (
+            {currentUser ? (
+              <Link
+                href="/cart"
+                onClick={(e) => {
+                  e.preventDefault();
+                  openDrawer();
+                }}
+                className="relative p-2 text-slate-700 hover:text-blue-600 rounded-full border border-slate-200 hover:border-slate-300 transition-colors"
+                aria-label="Shopping Cart"
+              >
+                <ShoppingCart className="w-5 h-5" />
+                {totalItemsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white shadow-sm">
+                    {totalItemsCount}
+                  </span>
+                )}
+              </Link>
+            ) : (
+              <Button
+                variant="outline"
+                size="default"
+                onClick={openDrawer}
+                className="relative flex items-center gap-2 px-3.5 h-10 border-slate-200 bg-white hover:bg-slate-50 hover:border-sky-300 text-slate-800 rounded-xl shadow-xs transition-all cursor-pointer"
+                aria-label="View Cart and Quote Request"
+              >
+                <ShoppingCart className="w-4 h-4 text-sky-600" />
                 <span className="hidden sm:inline text-xs font-semibold">{t("nav.cart")}</span>
-              )}
-              {totalItemsCount > 0 && (
-                <span
-                  className={`flex items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-blue-600 text-white font-bold shadow-xs ${
-                    currentUser
-                      ? "absolute -top-1.5 -right-1.5 h-5 min-w-[20px] px-1 text-[10px]"
-                      : "h-5 min-w-[20px] px-1.5 text-[11px]"
-                  }`}
-                >
-                  {totalItemsCount}
-                </span>
-              )}
-            </Button>
+                {totalItemsCount > 0 && (
+                  <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-1.5 text-[11px] font-bold text-white shadow-xs">
+                    {totalItemsCount}
+                  </span>
+                )}
+              </Button>
+            )}
 
             {/* Mobile Menu Toggle */}
             <button
@@ -305,14 +357,27 @@ export function Navbar() {
           <div className="pt-3 border-t border-slate-100 space-y-2">
             {currentUser ? (
               <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 truncate">
-                      {currentUser.profile.fullName}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold text-slate-900 truncate max-w-[180px]">
+                      {currentUser.profile.fullName || currentUser.user.email}
                     </p>
-                    <p className="text-[11px] text-slate-500 truncate">
-                      {currentUser.profile.companyName || t("nav.portal")}
-                    </p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {currentUser.profile.role === "admin" ? (
+                        <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-800 border border-purple-200 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                          <ShieldCheck className="w-2.5 h-2.5 text-purple-600" />
+                          {t("role.admin")}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 border border-blue-200 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                          <Building2 className="w-2.5 h-2.5 text-blue-600" />
+                          {t("role.client")}
+                        </span>
+                      )}
+                      <span className="text-[11px] text-slate-500 truncate max-w-[130px]">
+                        {currentUser.profile.companyName || t("role.partner")}
+                      </span>
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -320,20 +385,35 @@ export function Navbar() {
                       setIsMobileMenuOpen(false);
                       await signOut();
                     }}
-                    className="px-3 py-1.5 rounded-lg border border-rose-200 text-rose-600 font-bold text-xs hover:bg-rose-50 cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-lg border border-rose-200 text-rose-600 font-bold text-xs hover:bg-rose-50 cursor-pointer"
                   >
                     {t("nav.signOut")}
                   </button>
                 </div>
 
-                <Link
-                  href="/dashboard"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center justify-center gap-1.5 w-full py-2.5 px-3 rounded-xl bg-slate-900 text-white font-bold text-xs shadow-xs"
-                >
-                  <LayoutGrid className="w-3.5 h-3.5 text-sky-400" />
-                  <span>{t("nav.dashboard")}</span>
-                </Link>
+                {currentUser.profile.role === "admin" ? (
+                  <div className="pt-1">
+                    <Link
+                      href="/admin"
+                      prefetch={false}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center justify-center gap-1.5 w-full py-2.5 px-3 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs shadow-xs"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 text-purple-300" />
+                      <span>{t("nav.adminPortal")}</span>
+                    </Link>
+                  </div>
+                ) : (
+                  <Link
+                    href="/dashboard"
+                    prefetch={false}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center justify-center gap-1.5 w-full py-2.5 px-3 rounded-xl bg-slate-900 text-white font-bold text-xs shadow-xs"
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5 text-sky-400" />
+                    <span>{t("nav.dashboard")}</span>
+                  </Link>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2">

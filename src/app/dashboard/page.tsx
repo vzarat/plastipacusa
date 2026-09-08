@@ -16,6 +16,11 @@ export default async function DashboardPage() {
     redirect("/login?redirect=/dashboard");
   }
 
+  // If user is admin, perform a clean single redirect to the Admin Portal
+  if (currentUser.profile.role === "admin") {
+    redirect("/admin");
+  }
+
   // Sample standard commercial orders for the user's company account
   // In production, these can be retrieved from public.orders if configured
   const sampleOrders: DashboardOrder[] = [

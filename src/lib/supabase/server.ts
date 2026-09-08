@@ -26,11 +26,19 @@ export function createServerClient() {
       autoRefreshToken: false,
     },
     global: {
-      fetch: (url, options = {}) =>
-        fetch(url, {
+      fetch: (url, options = {}) => {
+        const urlStr = String(url);
+        if (urlStr.includes("/auth/v1/")) {
+          return fetch(url, {
+            ...options,
+            cache: "no-store",
+          });
+        }
+        return fetch(url, {
           ...options,
           next: { revalidate: 3600 },
-        }),
+        });
+      },
     },
   });
 }

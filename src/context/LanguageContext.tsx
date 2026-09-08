@@ -15,12 +15,17 @@ export const translations = {
     "nav.register": "Register",
     "nav.requestQuote": "Request Quote",
     "nav.cart": "Cart / Quote",
-    "nav.cartOnly": "Cart",
     "nav.dashboard": "Client Dashboard",
+    "nav.adminPortal": "Admin Operations",
     "nav.signOut": "Sign Out",
     "nav.hotline": "Direct Sales Hotline",
     "nav.portal": "Industrial Partner",
     "nav.language": "Language",
+
+    // Roles
+    "role.admin": "Admin",
+    "role.client": "Commercial Client",
+    "role.partner": "Industrial Partner",
 
     // Common
     "common.active": "Active",
@@ -134,8 +139,10 @@ export const translations = {
     "admin.all": "All",
     "admin.unfulfilled": "Unfulfilled",
     "admin.unpaid": "Unpaid",
+    "admin.fulfilled": "Fulfilled",
     "admin.open": "Open",
     "admin.archived": "Archived",
+    "admin.aovShort": "Average Order Value (AOV)",
     "admin.searchPlaceholder": "Filter orders by ID, client, company, or spec...",
     "admin.paymentAll": "Payment: All",
     "admin.paymentPaid": "Payment: Paid",
@@ -169,6 +176,54 @@ export const translations = {
     "admin.placedOn": "Placed on",
     "admin.updateStatus": "Update Status",
     "admin.clientPortal": "Client Portal",
+
+    // Hero Section
+    "hero.badge": "Engineered for Maximum Pallet Load Containment",
+    "hero.titlePart1": "Industrial Strength.",
+    "hero.titlePart2": "Precision Stretch Film.",
+    "hero.description": "Plastipac USA manufactures high-performance cast stretch films engineered with multi-layer nano-technology. Cut film consumption by up to 40% while locking pallets down with zero freight damage.",
+    "hero.exploreBtn": "Explore Product Catalog",
+    "hero.quoteBtn": "Request Wholesale Quote",
+    "hero.badgePreStretch": "Up to 300%+ Pre-stretch yield",
+    "hero.badgePreStretchTitle": "Up to 300%+",
+    "hero.badgePreStretchSub": "Pre-stretch yield",
+    "hero.badgePuncture": "Extreme Puncture Hold Multi-layer cast strength",
+    "hero.badgePunctureTitle": "Extreme Puncture Hold",
+    "hero.badgePunctureSub": "Multi-layer cast strength",
+    "hero.badgeFactory": "Factory Direct Truckload pricing",
+    "hero.badgeFactoryTitle": "Factory Direct",
+    "hero.badgeFactorySub": "Truckload pricing",
+    "hero.flagshipSeries": "★ Flagship Series",
+    "hero.seriesName": "Force™ Cast Series",
+    "hero.floatingCardTitle": "Force™ Hand Stretch Film",
+    "hero.filmGauge": "Film Gauge",
+    "hero.gaugeValue": "50 Gauge",
+    "hero.width": "Width",
+    "hero.widthValue": "18\" Manual",
+    "hero.application": "Application",
+    "hero.appValue": "Manual Pallet Hold",
+    "hero.startingAt": "Starting At",
+    "hero.priceValue": "$20.71 / Box",
+    "hero.readyToShip": "Ready to ship by case or pallet",
+    "hero.viewMatrix": "View Matrix",
+
+    // Direct key aliases for hero
+    "badge": "Engineered for Maximum Pallet Load Containment",
+    "titlePart1": "Industrial Strength.",
+    "titlePart2": "Precision Stretch Film.",
+    "description": "Plastipac USA manufactures high-performance cast stretch films engineered with multi-layer nano-technology. Cut film consumption by up to 40% while locking pallets down with zero freight damage.",
+    "exploreBtn": "Explore Product Catalog",
+    "quoteBtn": "Request Wholesale Quote",
+    "badgePreStretch": "Up to 300%+ Pre-stretch yield",
+    "badgePuncture": "Extreme Puncture Hold Multi-layer cast strength",
+    "badgeFactory": "Factory Direct Truckload pricing",
+    "floatingCardTitle": "Force™ Hand Stretch Film",
+    "filmGauge": "Film Gauge",
+    "width": "Width",
+    "application": "Application",
+    "startingAt": "Starting At",
+    "viewMatrix": "View Matrix",
+    "readyToShip": "Ready to ship by case or pallet",
   },
   es: {
     // Navigation
@@ -179,13 +234,17 @@ export const translations = {
     "nav.signIn": "Iniciar Sesión",
     "nav.register": "Registrarse",
     "nav.requestQuote": "Solicitar Cotización",
-    "nav.cart": "Carrito",
-    "nav.cartOnly": "Carrito",
     "nav.dashboard": "Panel de Cliente",
+    "nav.adminPortal": "Operaciones Admin",
     "nav.signOut": "Cerrar Sesión",
     "nav.hotline": "Línea Directa de Ventas",
     "nav.portal": "Socio Industrial",
     "nav.language": "Idioma",
+
+    // Roles
+    "role.admin": "Admin",
+    "role.client": "Cliente Comercial",
+    "role.partner": "Socio Industrial",
 
     // Common
     "common.active": "Activo",
@@ -299,8 +358,10 @@ export const translations = {
     "admin.all": "Todos",
     "admin.unfulfilled": "Por Enviar",
     "admin.unpaid": "No Pagados",
+    "admin.fulfilled": "Entregados",
     "admin.open": "Abiertos",
     "admin.archived": "Archivados",
+    "admin.aovShort": "Valor Promedio del Pedido (AOV)",
     "admin.searchPlaceholder": "Filtrar pedidos por ID, cliente, empresa o especificación...",
     "admin.paymentAll": "Pago: Todos",
     "admin.paymentPaid": "Pago: Pagado",
@@ -334,6 +395,54 @@ export const translations = {
     "admin.placedOn": "Realizado el",
     "admin.updateStatus": "Actualizar Estado",
     "admin.clientPortal": "Portal de Cliente",
+
+    // Hero Section
+    "hero.badge": "Diseñado para la Máxima Contención de Cargas en Palets",
+    "hero.titlePart1": "Fuerza Industrial.",
+    "hero.titlePart2": "Película Estirable de Precisión.",
+    "hero.description": "Plastipac USA fabrica películas estirables cast de alto rendimiento con nanotecnología multicapa. Reduce el consumo de plástico hasta un 40% asegurando tus palets sin daños de transporte.",
+    "hero.exploreBtn": "Explorar Catálogo de Productos",
+    "hero.quoteBtn": "Solicitar Cotización por Mayor",
+    "hero.badgePreStretch": "Hasta 300%+ Rendimiento de pre-estirado",
+    "hero.badgePreStretchTitle": "Hasta 300%+",
+    "hero.badgePreStretchSub": "Rendimiento de pre-estirado",
+    "hero.badgePuncture": "Máxima Resistencia a la Punción Resistencia multicapa cast",
+    "hero.badgePunctureTitle": "Máxima Resistencia a la Punción",
+    "hero.badgePunctureSub": "Resistencia multicapa cast",
+    "hero.badgeFactory": "Precios Directos de Fábrica Cargas completas",
+    "hero.badgeFactoryTitle": "Precios Directos de Fábrica",
+    "hero.badgeFactorySub": "Cargas completas",
+    "hero.flagshipSeries": "★ Serie Insignia",
+    "hero.seriesName": "Serie Cast Force™",
+    "hero.floatingCardTitle": "Película Estirable Manual Force™",
+    "hero.filmGauge": "Calibre",
+    "hero.gaugeValue": "Calibre 50",
+    "hero.width": "Ancho",
+    "hero.widthValue": "18\" Manual",
+    "hero.application": "Aplicación",
+    "hero.appValue": "Contención Manual de Palets",
+    "hero.startingAt": "Desde",
+    "hero.priceValue": "$20.71 / Caja",
+    "hero.readyToShip": "Listo para envío por caja o palet",
+    "hero.viewMatrix": "Ver Matriz",
+
+    // Direct key aliases for hero
+    "badge": "Diseñado para la Máxima Contención de Cargas en Palets",
+    "titlePart1": "Fuerza Industrial.",
+    "titlePart2": "Película Estirable de Precisión.",
+    "description": "Plastipac USA fabrica películas estirables cast de alto rendimiento con nanotecnología multicapa. Reduce el consumo de plástico hasta un 40% asegurando tus palets sin daños de transporte.",
+    "exploreBtn": "Explorar Catálogo de Productos",
+    "quoteBtn": "Solicitar Cotización por Mayor",
+    "badgePreStretch": "Hasta 300%+ Rendimiento de pre-estirado",
+    "badgePuncture": "Máxima Resistencia a la Punción Resistencia multicapa cast",
+    "badgeFactory": "Precios Directos de Fábrica Cargas completas",
+    "floatingCardTitle": "Película Estirable Manual Force™",
+    "filmGauge": "Calibre",
+    "width": "Ancho",
+    "application": "Aplicación",
+    "startingAt": "Desde",
+    "viewMatrix": "Ver Matriz",
+    "readyToShip": "Listo para envío por caja o palet",
   },
 } as const;
 
@@ -341,6 +450,7 @@ export type TranslationKey = keyof typeof translations.en;
 
 interface LanguageContextType {
   locale: Locale;
+  language: Locale;
   setLocale: (locale: Locale) => void;
   toggleLocale: () => void;
   t: (key: TranslationKey | string, fallback?: string) => string;
@@ -408,6 +518,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     <LanguageContext.Provider
       value={{
         locale,
+        language: locale,
         setLocale,
         toggleLocale,
         t,
@@ -425,6 +536,7 @@ export function useLanguage() {
     // Safe fallback if used outside provider
     return {
       locale: "en" as Locale,
+      language: "en" as Locale,
       setLocale: () => {},
       toggleLocale: () => {},
       t: (key: string, fallback?: string) => fallback || key,

@@ -71,7 +71,43 @@ export async function signIn({
       });
     }
 
-    return { success: true };
+    // Fetch user role from public.profiles or user metadata
+    let userRole: "client" | "admin" | "specialist" = "client";
+
+    if (data.user) {
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", data.user.id)
+          .single();
+
+        if (profile?.role) {
+          userRole = profile.role as "client" | "admin" | "specialist";
+        } else if (data.user.user_metadata?.role) {
+          userRole = data.user.user_metadata.role as "client" | "admin" | "specialist";
+        }
+      } catch (error) {
+        if (data.user.user_metadata?.role) {
+          userRole = data.user.user_metadata.role as "client" | "admin" | "specialist";
+        }
+      }
+
+      // Consistent admin fallback if user email is designated admin
+      const emailLower = data.user.email?.toLowerCase() || "";
+      if (
+        userRole === "client" &&
+        (emailLower.startsWith("admin@") || emailLower.includes("admin@plastipacusa"))
+      ) {
+        userRole = "admin";
+      }
+    }
+
+    return {
+      success: true,
+      role: userRole,
+      redirectUrl: userRole === "admin" ? "/admin" : "/dashboard",
+    };
   } catch (err: any) {
     console.error("signIn error:", err);
     return {
@@ -131,11 +167,16 @@ export async function signUp({
     // Attempt to upsert into public.profiles if table exists
     if (data.user) {
       try {
+        const initialRole =
+          normalizedEmail.startsWith("admin@") || normalizedEmail.includes("admin@plastipacusa")
+            ? "admin"
+            : "client";
+
         await supabase.from("profiles").upsert({
           id: data.user.id,
           full_name: fullName.trim(),
           company_name: companyName.trim(),
-          role: "client",
+          role: initialRole,
           email: normalizedEmail,
         });
       } catch (profileErr) {
@@ -219,15 +260,17 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
       return null;
     }
 
-    // Try fetching from public.profiles table
+    // Explicitly query id, email, full_name, role, company_name from public.profiles
     let profileData: any = null;
     try {
-      const { data } = await supabase
+      const { data: profile, error: profileErr } = await supabase
         .from("profiles")
-        .select("*")
+        .select("id, email, full_name, role, company_name")
         .eq("id", user.id)
         .single();
-      profileData = data;
+      if (!profileErr && profile) {
+        profileData = profile;
+      }
     } catch {
       // Ignore if profiles table does not exist or fails
     }
@@ -247,10 +290,20 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
       user.user_metadata?.companyName ||
       "Industrial Partner";
 
-    const role =
-      profileData?.role ||
-      user.user_metadata?.role ||
-      "client";
+    const emailLower = user.email?.toLowerCase() || "";
+    const isEmailAdmin =
+      emailLower.startsWith("admin@") ||
+      emailLower.includes("admin@plastipacusa");
+
+    // Do NOT default or force role = 'client' if profile?.role === 'admin'
+    let resolvedRole: "client" | "admin" | "specialist" = "client";
+    if (profileData?.role) {
+      resolvedRole = profileData.role as "client" | "admin" | "specialist";
+    } else if (user.user_metadata?.role) {
+      resolvedRole = user.user_metadata.role as "client" | "admin" | "specialist";
+    } else if (isEmailAdmin) {
+      resolvedRole = "admin";
+    }
 
     return {
       user: {
@@ -262,7 +315,7 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
         email: user.email,
         fullName,
         companyName,
-        role: role as "client" | "admin" | "specialist",
+        role: resolvedRole,
         createdAt: user.created_at,
       },
     };

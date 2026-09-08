@@ -38,7 +38,20 @@ function LoginForm() {
       const res = await signIn({ email, password });
       if (res.success) {
         // Full refresh to ensure server components read updated cookies
-        window.location.href = redirectTarget;
+        const explicitRedirect = searchParams.get("redirect");
+        let target = res.role === "admin" ? "/admin" : "/dashboard";
+
+        if (explicitRedirect) {
+          if (res.role === "admin") {
+            // Admin only honors admin redirects, otherwise goes directly to /admin
+            target = explicitRedirect.startsWith("/admin") ? explicitRedirect : "/admin";
+          } else {
+            // Client never routes to /admin
+            target = !explicitRedirect.startsWith("/admin") ? explicitRedirect : "/dashboard";
+          }
+        }
+
+        window.location.replace(target);
       } else {
         setErrorMsg(res.error || "Failed to sign in. Please verify your credentials.");
       }
