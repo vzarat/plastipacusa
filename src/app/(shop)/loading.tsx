@@ -4,25 +4,25 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function HomeLoading() {
   return (
-    <div className="space-y-0 bg-white animate-fade-in-up">
+    <div className="space-y-0 animate-fade-in-up">
       {/* Hero Skeleton */}
-      <section className="relative overflow-hidden bg-white pt-12 pb-20 lg:pt-20 lg:pb-28 border-b border-slate-100">
+      <section className="relative overflow-hidden bg-slate-950 py-16 md:py-24 border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="lg:col-span-7 space-y-6">
-              <Skeleton className="w-64 h-7 rounded-full" />
+              <Skeleton className="w-64 h-7 rounded-full bg-slate-800" />
               <div className="space-y-3">
-                <Skeleton className="w-full max-w-lg h-12 rounded-xl" />
-                <Skeleton className="w-3/4 h-12 rounded-xl" />
+                <Skeleton className="w-full max-w-lg h-12 rounded-xl bg-slate-800" />
+                <Skeleton className="w-3/4 h-12 rounded-xl bg-slate-800" />
               </div>
-              <Skeleton className="w-full max-w-xl h-16 rounded-lg" />
+              <Skeleton className="w-full max-w-xl h-16 rounded-lg bg-slate-800" />
               <div className="flex gap-4 pt-2">
-                <Skeleton className="w-48 h-12 rounded-xl" />
-                <Skeleton className="w-48 h-12 rounded-xl" />
+                <Skeleton className="w-48 h-12 rounded-xl bg-slate-800" />
+                <Skeleton className="w-48 h-12 rounded-xl bg-slate-800" />
               </div>
             </div>
             <div className="lg:col-span-5">
-              <div className="rounded-3xl border border-slate-200/90 bg-white p-7 shadow-xl space-y-6">
+              <div className="rounded-3xl border border-white/20 bg-white/95 p-7 shadow-xl space-y-6">
                 <div className="flex items-center gap-3">
                   <Skeleton className="w-12 h-12 rounded-2xl" />
                   <div className="space-y-2">

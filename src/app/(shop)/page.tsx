@@ -12,7 +12,7 @@ export default async function HomePage() {
   const products = await getProducts();
 
   return (
-    <div className="space-y-0 bg-white">
+    <div className="space-y-0">
       {/* 1. Hero Section */}
       <HeroBanner />
 

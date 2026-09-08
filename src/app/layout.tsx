@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { CartDrawer } from "@/components/layout/CartDrawer";
+import { LanguageProvider } from "@/context/LanguageContext";
 
 export const metadata: Metadata = {
   title: "Plastipac USA | Industrial High-Performance Stretch Film & Packaging",
@@ -25,8 +26,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className="min-h-screen bg-slate-50/50 text-slate-900 antialiased selection:bg-sky-500 selection:text-white">
-        {children}
-        <CartDrawer />
+        <LanguageProvider>
+          {children}
+          <CartDrawer />
+        </LanguageProvider>
       </body>
     </html>
   );

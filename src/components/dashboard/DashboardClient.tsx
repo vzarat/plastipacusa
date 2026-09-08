@@ -36,6 +36,8 @@ import {
   UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/context/LanguageContext";
+import { LanguageToggle } from "@/components/common/LanguageToggle";
 
 export interface DashboardOrderItem {
   productId: number;
@@ -89,10 +91,28 @@ const NAV_ITEMS: {
 ];
 
 export function DashboardClient({ profile, orders }: DashboardClientProps) {
+  const { t } = useLanguage();
   const addItem = useCartStore((state) => state.addItem);
   const openDrawer = useCartStore((state) => state.openDrawer);
   const items = useCartStore((state) => state.items);
   const totalCartCount = items.reduce((acc, item) => acc + item.quantity, 0);
+
+  const getTabLabel = (key: TabKey) => {
+    switch (key) {
+      case "overview":
+        return t("dashboard.overviewOrders");
+      case "reorders":
+        return t("dashboard.quickReorders");
+      case "invoices":
+        return t("dashboard.invoices");
+      case "settings":
+        return t("dashboard.account");
+      case "help":
+        return t("dashboard.support");
+      default:
+        return key;
+    }
+  };
 
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -204,6 +224,8 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          <LanguageToggle showIcon={false} />
+
           <Button
             variant="outline"
             size="sm"
@@ -267,7 +289,7 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                       isActive ? "text-blue-600" : "text-slate-400"
                     }`}
                   />
-                  <span>{item.label}</span>
+                  <span>{getTabLabel(item.key)}</span>
                 </button>
               );
             })}
@@ -280,7 +302,7 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
               className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 hover:text-sky-700 hover:border-sky-300 text-xs font-semibold bg-slate-50/50 transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5 text-slate-400" />
-              <span>Storefront Catalog</span>
+              <span>{t("dashboard.storefrontCatalog")}</span>
             </Link>
           </div>
         </div>
@@ -306,9 +328,9 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
             <div className="flex items-center justify-between text-[10px] text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">
               <span className="flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Factory Direct Tier
+                {t("dashboard.tier")}
               </span>
-              <span className="uppercase text-[9px] text-emerald-600">Active</span>
+              <span className="uppercase text-[9px] text-emerald-600">{t("common.active")}</span>
             </div>
           </div>
 
@@ -321,7 +343,7 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
             className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 text-xs font-bold transition-all cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span>Sign Out</span>
+            <span>{t("nav.signOut")}</span>
           </button>
         </div>
       </aside>
@@ -339,18 +361,10 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
         {/* Top Minimal Action Bar */}
         <div className="flex items-center justify-between border-b border-slate-200/80 pb-4">
           <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-            <span>Commercial Portal</span>
+            <span>{t("dashboard.title")}</span>
             <span>/</span>
             <span className="text-slate-900 font-bold capitalize">
-              {activeTab === "overview"
-                ? "Overview & Orders"
-                : activeTab === "reorders"
-                ? "Quick Reorders"
-                : activeTab === "invoices"
-                ? "Invoices & Statements"
-                : activeTab === "settings"
-                ? "Account & Company Profile"
-                : "Support Desk"}
+              {getTabLabel(activeTab)}
             </span>
           </div>
 
@@ -358,11 +372,14 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
             {/* Sales Hotline */}
             <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-500">
               <Phone className="w-3.5 h-3.5 text-sky-600" />
-              <span>Direct Desk:</span>
+              <span>{t("dashboard.directDesk")}</span>
               <a href="tel:+19564003683" className="font-bold text-slate-900 hover:text-sky-600">
                 (956) 400 36 83
               </a>
             </div>
+
+            {/* Language Switcher */}
+            <LanguageToggle />
 
             {/* Cart Trigger */}
             <Button
@@ -372,7 +389,7 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
               className="relative flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl border-slate-200 bg-white hover:bg-slate-50 text-slate-800 shadow-xs"
             >
               <ShoppingCart className="w-4 h-4 text-sky-600" />
-              <span className="hidden sm:inline">Active Cart</span>
+              <span className="hidden sm:inline">{t("nav.cartOnly")}</span>
               {totalCartCount > 0 && (
                 <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-blue-600 px-1.5 text-[11px] font-bold text-white shadow-xs">
                   {totalCartCount}
@@ -393,7 +410,7 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
               onClick={() => openDrawer()}
               className="px-3 py-1.5 bg-white text-emerald-950 font-bold text-xs rounded-xl hover:bg-emerald-50 transition-colors shadow-xs cursor-pointer"
             >
-              Review Cart →
+              {t("dashboard.reviewCart")}
             </button>
           </div>
         )}
@@ -416,16 +433,16 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-100 text-[11px] font-bold text-blue-800 uppercase tracking-wider">
-                            Commercial Account
+                            {t("dashboard.commercialAccount")}
                           </span>
                           <span className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-[11px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
                             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                            Factory Direct Pricing
+                            {t("dashboard.factoryDirectPricing")}
                           </span>
                         </div>
 
                         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                          Welcome back, {profile.fullName}
+                          {t("dashboard.welcome")}, {profile.fullName}
                         </h1>
 
                         <p className="text-xs sm:text-sm text-slate-600 flex items-center gap-2 flex-wrap">
@@ -444,7 +461,7 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-bold transition-all"
                         >
                           <Package className="w-3.5 h-3.5 text-slate-500" />
-                          <span>Browse Catalog</span>
+                          <span>{t("dashboard.browseCatalog")}</span>
                         </Link>
 
                         <Link
@@ -452,7 +469,7 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-blue-950 text-white text-xs font-bold transition-all shadow-xs"
                         >
                           <FileSpreadsheet className="w-3.5 h-3.5 text-sky-400" />
-                          <span>Custom Truckload Quote</span>
+                          <span>{t("dashboard.customTruckload")}</span>
                         </Link>
                       </div>
                     </div>
@@ -463,49 +480,49 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                     {/* Total Orders */}
                     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xs space-y-2">
                       <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
-                        <span>Total Recurring Orders</span>
+                        <span>{t("dashboard.totalOrders")}</span>
                         <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                           <Package className="w-4 h-4" />
                         </div>
                       </div>
                       <div className="text-2xl sm:text-3xl font-black text-slate-900">
-                        {orders.length} <span className="text-sm font-semibold text-slate-400">PO Orders</span>
+                        {orders.length} <span className="text-sm font-semibold text-slate-400">{t("dashboard.poOrders")}</span>
                       </div>
                       <p className="text-[11px] text-slate-500">
-                        Total historical procurement: <strong className="text-slate-800">{formatCurrency(totalSpend)} USD</strong>
+                        {t("dashboard.totalProcurement")} <strong className="text-slate-800">{formatCurrency(totalSpend)} USD</strong>
                       </p>
                     </div>
 
                     {/* Last Order Date */}
                     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xs space-y-2">
                       <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
-                        <span>Last Order Dispatched</span>
+                        <span>{t("dashboard.lastOrder")}</span>
                         <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
                           <Truck className="w-4 h-4" />
                         </div>
                       </div>
                       <div className="text-2xl sm:text-3xl font-black text-slate-900">
-                        {lastOrder ? lastOrder.date : "No Recent PO"}
+                        {lastOrder ? lastOrder.date : t("dashboard.noRecentPo")}
                       </div>
                       <p className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Direct plant dispatch in 24–48 hours</span>
+                        <span>{t("dashboard.dispatchTime")}</span>
                       </p>
                     </div>
 
                     {/* Quick Reorder Status */}
                     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xs space-y-2">
                       <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
-                        <span>Quick Reorder Status</span>
+                        <span>{t("dashboard.reorderStatus")}</span>
                         <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
                           <Zap className="w-4 h-4" />
                         </div>
                       </div>
                       <div className="text-2xl sm:text-3xl font-black text-slate-900 flex items-center gap-2">
-                        <span>1-Click Active</span>
+                        <span>{t("dashboard.oneClickActive")}</span>
                       </div>
                       <p className="text-[11px] text-slate-500">
-                        Direct factory volume pricing locked to your account.
+                        {t("dashboard.pricingLocked")}
                       </p>
                     </div>
                   </div>
@@ -517,18 +534,18 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                     <div className="flex items-center gap-2">
                       <span className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-100 text-[11px] font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
                         <RotateCw className="w-3.5 h-3.5 text-blue-600" />
-                        Quick Reorder Hub
+                        {t("dashboard.reorderHub")}
                       </span>
                       <span className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-[11px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
                         <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                        Factory Direct Schedule
+                        {t("dashboard.directSchedule")}
                       </span>
                     </div>
                     <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                      Instant Pallet & PO Reorders
+                      {t("dashboard.instantReorders")}
                     </h1>
                     <p className="text-xs sm:text-sm text-slate-600 max-w-2xl">
-                      Quickly repeat prior purchase orders or dispatch calibrated full pallet batches directly into your production line without re-negotiating terms.
+                      {t("dashboard.reorderDesc")}
                     </p>
                   </div>
                 </div>
@@ -540,10 +557,10 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                 <div>
                   <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
                     <Zap className="w-5 h-5 text-amber-500" />
-                    1-Click Fast Reorder: Standard Pallet Batches
+                    {t("dashboard.fastOrderPallet")}
                   </h2>
                   <p className="text-xs text-slate-500">
-                    Frequently replenished warehouse specs. Click to add a calibrated full pallet batch immediately into your cart.
+                    {t("dashboard.fastOrderDesc")}
                   </p>
                 </div>
               </div>
@@ -570,7 +587,7 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                     </div>
                   </div>
 
-                  <Button
+                    <Button
                     type="button"
                     onClick={() =>
                       handleFastOrder(
@@ -592,7 +609,7 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                     className="w-full text-xs font-bold py-2.5 rounded-xl border-blue-200 bg-blue-50/50 hover:bg-blue-600 hover:text-white hover:border-blue-600 text-blue-800 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <ShoppingCart className="w-3.5 h-3.5" />
-                    <span>Fast Order Pallet (64 Boxes)</span>
+                    <span>{t("dashboard.orderPallet64")}</span>
                   </Button>
                 </div>
 
@@ -639,7 +656,7 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                     className="w-full text-xs font-bold py-2.5 rounded-xl border-amber-200 bg-amber-50/50 hover:bg-amber-600 hover:text-white hover:border-amber-600 text-amber-900 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <ShoppingCart className="w-3.5 h-3.5" />
-                    <span>Fast Order Pallet (64 Boxes)</span>
+                    <span>{t("dashboard.orderPallet64")}</span>
                   </Button>
                 </div>
 
@@ -686,7 +703,7 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                     className="w-full text-xs font-bold py-2.5 rounded-xl border-rose-200 bg-rose-50/50 hover:bg-rose-600 hover:text-white hover:border-rose-600 text-rose-900 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <ShoppingCart className="w-3.5 h-3.5" />
-                    <span>Fast Order Pallet (50 Rolls)</span>
+                    <span>{t("dashboard.orderPallet50")}</span>
                   </Button>
                 </div>
               </div>
@@ -697,10 +714,10 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg sm:text-xl font-bold text-slate-900">
-                    Order History & Quick Reorder
+                    {t("dashboard.orderHistory")}
                   </h2>
                   <p className="text-xs text-slate-500">
-                    Review past purchase orders, dispatch tracking, and trigger 1-click repeat orders.
+                    {t("dashboard.historyDesc")}
                   </p>
                 </div>
               </div>
@@ -711,12 +728,12 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
                       <tr>
-                        <th className="py-3.5 px-4 sm:px-6">PO / Order ID</th>
-                        <th className="py-3.5 px-4">Date</th>
-                        <th className="py-3.5 px-4">Products & Batch Summary</th>
-                        <th className="py-3.5 px-4">Total (USD)</th>
-                        <th className="py-3.5 px-4">Fulfillment Status</th>
-                        <th className="py-3.5 px-4 sm:px-6 text-right">Action</th>
+                        <th className="py-3.5 px-4 sm:px-6">{t("dashboard.tablePoId")}</th>
+                        <th className="py-3.5 px-4">{t("dashboard.tableDate")}</th>
+                        <th className="py-3.5 px-4">{t("dashboard.tableProducts")}</th>
+                        <th className="py-3.5 px-4">{t("dashboard.tableTotal")}</th>
+                        <th className="py-3.5 px-4">{t("dashboard.tableStatus")}</th>
+                        <th className="py-3.5 px-4 sm:px-6 text-right">{t("dashboard.tableAction")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -756,17 +773,17 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                               {isDelivered ? (
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold text-[11px]">
                                   <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                  Delivered
+                                  {t("dashboard.statusDelivered")}
                                 </span>
                               ) : isShipped ? (
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-800 font-semibold text-[11px]">
                                   <Truck className="w-3 h-3 text-blue-600" />
-                                  In Transit
+                                  {t("dashboard.statusInTransit")}
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 font-semibold text-[11px]">
                                   <Clock className="w-3 h-3 text-amber-600" />
-                                  Production Queue
+                                  {t("dashboard.statusQueue")}
                                 </span>
                               )}
                             </td>
@@ -779,7 +796,7 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-blue-950 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
                               >
                                 <RotateCw className="w-3.5 h-3.5 text-sky-400" />
-                                <span>Quick Reorder</span>
+                                <span>{t("dashboard.btnQuickReorder")}</span>
                               </button>
                             </td>
                           </tr>
@@ -798,10 +815,10 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
           <div className="space-y-6">
             <div className="space-y-1">
               <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                Invoices & Commercial Statements
+                {t("dashboard.invoicesTitle")}
               </h2>
               <p className="text-xs text-slate-500">
-                Download verified tax invoices, proof of bill of lading (BOL), and accounting summaries.
+                {t("dashboard.invoicesDesc")}
               </p>
             </div>
 
@@ -810,13 +827,13 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
                     <tr>
-                      <th className="py-3.5 px-4 sm:px-6">Invoice #</th>
-                      <th className="py-3.5 px-4">PO Ref</th>
-                      <th className="py-3.5 px-4">Issue Date</th>
-                      <th className="py-3.5 px-4">Payment Terms</th>
-                      <th className="py-3.5 px-4">Amount</th>
-                      <th className="py-3.5 px-4">Status</th>
-                      <th className="py-3.5 px-4 sm:px-6 text-right">Document</th>
+                      <th className="py-3.5 px-4 sm:px-6">{t("dashboard.invNumber")}</th>
+                      <th className="py-3.5 px-4">{t("dashboard.invPoRef")}</th>
+                      <th className="py-3.5 px-4">{t("dashboard.invDate")}</th>
+                      <th className="py-3.5 px-4">{t("dashboard.invTerms")}</th>
+                      <th className="py-3.5 px-4">{t("dashboard.invAmount")}</th>
+                      <th className="py-3.5 px-4">{t("dashboard.invStatus")}</th>
+                      <th className="py-3.5 px-4 sm:px-6 text-right">{t("dashboard.invDocument")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -832,15 +849,15 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                           {order.date}
                         </td>
                         <td className="py-4 px-4 text-slate-700 font-semibold">
-                          Commercial Net 30
+                          {t("dashboard.net30")}
                         </td>
                         <td className="py-4 px-4 font-black text-slate-900 text-sm">
                           {formatCurrency(order.totalUsd)}
                         </td>
                         <td className="py-4 px-4">
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold text-[11px]">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            Paid & Cleared
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            {t("dashboard.paidCleared")}
                           </span>
                         </td>
                         <td className="py-4 px-4 sm:px-6 text-right">
@@ -852,7 +869,7 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
                           >
                             <Download className="w-3.5 h-3.5 text-slate-500" />
-                            <span>PDF Invoice</span>
+                            <span>{t("dashboard.pdfInvoice")}</span>
                           </button>
                         </td>
                       </tr>
@@ -869,10 +886,10 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
           <div className="space-y-6">
             <div className="space-y-1">
               <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                Account Settings & Company Profile
+                {t("dashboard.settingsTitle")}
               </h2>
               <p className="text-xs text-slate-500">
-                Verified B2B organization records, shipping locations, and direct procurement contacts.
+                {t("dashboard.settingsDesc")}
               </p>
             </div>
 
@@ -881,30 +898,30 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
               <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 space-y-4 shadow-sm">
                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-blue-600" />
-                  Commercial Entity Registration
+                  {t("dashboard.entityReg")}
                 </h3>
                 <div className="space-y-3 text-xs">
                   <div className="flex justify-between py-2 border-b border-slate-100">
-                    <span className="text-slate-500 font-medium">Registered Entity</span>
+                    <span className="text-slate-500 font-medium">{t("dashboard.regEntity")}</span>
                     <span className="font-bold text-slate-900">{profile.companyName}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-slate-100">
-                    <span className="text-slate-500 font-medium">Primary Procurement Contact</span>
+                    <span className="text-slate-500 font-medium">{t("dashboard.primaryContact")}</span>
                     <span className="font-bold text-slate-900">{profile.fullName}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-slate-100">
-                    <span className="text-slate-500 font-medium">Corporate Email</span>
+                    <span className="text-slate-500 font-medium">{t("dashboard.corpEmail")}</span>
                     <span className="font-mono text-slate-900">{profile.email}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-slate-100">
-                    <span className="text-slate-500 font-medium">Pricing Schedule</span>
-                    <span className="font-bold text-emerald-700">Factory Direct Wholesale Schedule</span>
+                    <span className="text-slate-500 font-medium">{t("dashboard.priceSchedule")}</span>
+                    <span className="font-bold text-emerald-700">{t("dashboard.wholesaleSchedule")}</span>
                   </div>
                   <div className="flex justify-between py-2">
-                    <span className="text-slate-500 font-medium">Resale Tax Certificate</span>
+                    <span className="text-slate-500 font-medium">{t("dashboard.taxCert")}</span>
                     <span className="inline-flex items-center gap-1 font-bold text-emerald-700">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                      Active / Verified
+                      {t("dashboard.activeVerified")}
                     </span>
                   </div>
                 </div>
@@ -914,27 +931,27 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
               <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 space-y-4 shadow-sm">
                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                   <UserCheck className="w-4 h-4 text-blue-600" />
-                  Assigned Factory Representative
+                  {t("dashboard.assignedRep")}
                 </h3>
                 <div className="space-y-3 text-xs">
                   <div className="flex justify-between py-2 border-b border-slate-100">
-                    <span className="text-slate-500 font-medium">Account Specialist</span>
-                    <span className="font-bold text-slate-900">Commercial Operations Desk</span>
+                    <span className="text-slate-500 font-medium">{t("dashboard.accountSpecialist")}</span>
+                    <span className="font-bold text-slate-900">{t("dashboard.opsDesk")}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-slate-100">
-                    <span className="text-slate-500 font-medium">Hotline</span>
+                    <span className="text-slate-500 font-medium">{t("dashboard.hotlineDesk")}</span>
                     <a href="tel:+19564003683" className="font-bold text-blue-700 hover:underline">
                       (956) 400 36 83
                     </a>
                   </div>
                   <div className="flex justify-between py-2 border-b border-slate-100">
-                    <span className="text-slate-500 font-medium">Dispatch Assistance</span>
+                    <span className="text-slate-500 font-medium">{t("dashboard.dispatchAssist")}</span>
                     <a href="tel:+19564006563" className="font-bold text-blue-700 hover:underline">
                       (956) 400 65 63
                     </a>
                   </div>
                   <div className="flex justify-between py-2">
-                    <span className="text-slate-500 font-medium">Direct Email</span>
+                    <span className="text-slate-500 font-medium">{t("dashboard.directEmail")}</span>
                     <span className="font-mono text-slate-900">sales@plastipacusa.com</span>
                   </div>
                 </div>
@@ -948,10 +965,10 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
           <div className="space-y-6">
             <div className="space-y-1">
               <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                Manufacturer Support & Freight Desk
+                {t("dashboard.helpTitle")}
               </h2>
               <p className="text-xs text-slate-500">
-                Need emergency truckload fulfillment, custom micrometer gauge calibration, or logistics coordination?
+                {t("dashboard.helpDesc")}
               </p>
             </div>
 
@@ -962,9 +979,9 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                   <Phone className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Direct Sales Hotline</h3>
+                  <h3 className="text-base font-bold text-slate-900">{t("dashboard.hotlineTitle")}</h3>
                   <p className="text-xs text-slate-600 mt-1">
-                    Direct communication with packaging engineers and contract managers.
+                    {t("dashboard.hotlineSubtitle")}
                   </p>
                 </div>
                 <div className="space-y-1.5 pt-2">
@@ -978,7 +995,7 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                     href="tel:+19564006563"
                     className="block font-bold text-sm text-blue-700 hover:underline"
                   >
-                    (956) 400 65 63 (Freight Desk)
+                    (956) 400 65 63 ({t("dashboard.freightDesk")})
                   </a>
                 </div>
               </div>
@@ -989,14 +1006,14 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                   <MapPin className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Manufacturing Facility</h3>
+                  <h3 className="text-base font-bold text-slate-900">{t("dashboard.facilityTitle")}</h3>
                   <p className="text-xs text-slate-600 mt-1">
-                    State-of-the-art cast co-extrusion production facility located in Texas.
+                    {t("dashboard.facilitySubtitle")}
                   </p>
                 </div>
                 <div className="text-xs text-slate-700 space-y-1 pt-2">
-                  <p className="font-semibold">Plastipac USA Manufacturing Plant</p>
-                  <p className="text-slate-500">Texas, United States</p>
+                  <p className="font-semibold">{t("dashboard.plantName")}</p>
+                  <p className="text-slate-500">{t("dashboard.plantLocation")}</p>
                   <p className="font-mono text-blue-700 font-semibold pt-1">
                     sales@plastipacusa.com
                   </p>

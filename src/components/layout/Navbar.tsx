@@ -10,7 +10,6 @@ import {
   ShoppingCart,
   Menu,
   X,
-  FileText,
   ChevronDown,
   Hand,
   Cpu,
@@ -21,9 +20,12 @@ import {
   LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/context/LanguageContext";
+import { LanguageToggle } from "@/components/common/LanguageToggle";
 
 export function Navbar() {
   const pathname = usePathname();
+  const { t } = useLanguage();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProductsDropdownOpen, setIsProductsDropdownOpen] = useState(false);
   const [isMobileProductsOpen, setIsMobileProductsOpen] = useState(false);
@@ -106,7 +108,7 @@ export function Navbar() {
                     : "text-slate-600 hover:text-sky-600 hover:bg-sky-50/50"
                 }`}
               >
-                Products
+                {t("nav.products")}
               </Link>
 
               {/* Categories */}
@@ -114,7 +116,7 @@ export function Navbar() {
                 href="/#category-showcase"
                 className="px-3.5 py-2 text-sm font-semibold rounded-xl transition-all text-slate-600 hover:text-sky-600 hover:bg-sky-50/50"
               >
-                Categories
+                {t("nav.categories")}
               </Link>
 
               {/* About Us */}
@@ -126,7 +128,7 @@ export function Navbar() {
                     : "text-slate-600 hover:text-sky-600 hover:bg-sky-50/50"
                 }`}
               >
-                About Us
+                {t("nav.about")}
               </Link>
 
               {/* Contact (Guest only) */}
@@ -135,14 +137,17 @@ export function Navbar() {
                   href="/#inquiry-form"
                   className="px-3.5 py-2 text-sm font-semibold rounded-xl transition-all text-slate-600 hover:text-sky-600 hover:bg-sky-50/50"
                 >
-                  Contact
+                  {t("nav.contact")}
                 </Link>
               )}
             </nav>
           </div>
 
           {/* Right Action CTAs */}
-          <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Language Switcher */}
+            <LanguageToggle />
+
             {/* User Session / Sign In Trigger */}
             {currentUser ? (
               <div className="relative" ref={userMenuRef}>
@@ -156,7 +161,7 @@ export function Navbar() {
                     {currentUser.profile.fullName?.charAt(0) || "C"}
                   </div>
                   <span className="hidden sm:inline truncate max-w-[130px]">
-                    {currentUser.profile.companyName || currentUser.profile.fullName || "Industrial Partner"}
+                    {currentUser.profile.companyName || currentUser.profile.fullName || t("nav.portal")}
                   </span>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                 </button>
@@ -168,7 +173,7 @@ export function Navbar() {
                         {currentUser.profile.fullName}
                       </p>
                       <p className="text-[11px] text-slate-500 truncate">
-                        {currentUser.profile.companyName || "Industrial Partner"}
+                        {currentUser.profile.companyName || t("nav.portal")}
                       </p>
                     </div>
                     <Link
@@ -177,7 +182,7 @@ export function Navbar() {
                       className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors"
                     >
                       <LayoutGrid className="w-4 h-4 text-slate-400" />
-                      <span>Client Dashboard</span>
+                      <span>{t("nav.dashboard")}</span>
                     </Link>
                     <button
                       type="button"
@@ -188,7 +193,7 @@ export function Navbar() {
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors text-left cursor-pointer"
                     >
                       <LogOut className="w-4 h-4 text-rose-500" />
-                      <span>Sign Out</span>
+                      <span>{t("nav.signOut")}</span>
                     </button>
                   </div>
                 )}
@@ -196,21 +201,10 @@ export function Navbar() {
             ) : (
               <Link
                 href="/login"
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 hover:text-blue-700 hover:bg-blue-50/60 rounded-xl transition-all border border-slate-200/90 bg-white shadow-xs"
+                className="flex items-center gap-2 bg-gradient-to-r from-sky-400 via-sky-600 to-blue-700 text-white font-semibold text-xs sm:text-sm px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl shadow-md shadow-sky-500/20 hover:shadow-lg hover:shadow-sky-500/30 hover:opacity-95 transition-all cursor-pointer"
               >
-                <User className="w-4 h-4 text-slate-500" />
-                <span className="hidden sm:inline">Sign In</span>
-              </Link>
-            )}
-
-            {/* Request Quote Button (Guest only) */}
-            {!currentUser && (
-              <Link
-                href="/#inquiry-form"
-                className="hidden sm:inline-flex items-center gap-2 text-xs font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 text-white hover:opacity-95 transition-all shadow-md shadow-sky-500/20"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Request Quote</span>
+                <User className="w-4 h-4 text-white" />
+                <span>{t("nav.signIn")}</span>
               </Link>
             )}
 
@@ -226,7 +220,7 @@ export function Navbar() {
             >
               <ShoppingCart className={currentUser ? "w-5 h-5 text-sky-600" : "w-4 h-4 text-sky-600"} />
               {!currentUser && (
-                <span className="hidden sm:inline text-xs font-semibold">Cart / Quote</span>
+                <span className="hidden sm:inline text-xs font-semibold">{t("nav.cart")}</span>
               )}
               {totalItemsCount > 0 && (
                 <span
@@ -266,7 +260,7 @@ export function Navbar() {
                   : "text-slate-700 hover:bg-slate-50"
               }`}
             >
-              Products
+              {t("nav.products")}
             </Link>
 
             <Link
@@ -274,7 +268,7 @@ export function Navbar() {
               onClick={() => setIsMobileMenuOpen(false)}
               className="block px-3.5 py-2.5 text-sm font-semibold rounded-xl text-slate-700 hover:bg-slate-50"
             >
-              Categories
+              {t("nav.categories")}
             </Link>
 
             <Link
@@ -286,7 +280,7 @@ export function Navbar() {
                   : "text-slate-700 hover:bg-slate-50"
               }`}
             >
-              About Us
+              {t("nav.about")}
             </Link>
 
             {/* Contact (Guest only) */}
@@ -296,9 +290,15 @@ export function Navbar() {
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="block px-3.5 py-2.5 text-sm font-semibold rounded-xl text-slate-700 hover:bg-slate-50"
               >
-                Contact
+                {t("nav.contact")}
               </Link>
             )}
+
+            {/* Mobile Language Switcher Row */}
+            <div className="flex items-center justify-between px-3.5 py-2.5 mt-2 rounded-xl bg-slate-50 border border-slate-200/70">
+              <span className="text-xs font-bold text-slate-600">{t("nav.language")}:</span>
+              <LanguageToggle />
+            </div>
           </div>
 
           {/* User Account / Auth Actions */}
@@ -311,7 +311,7 @@ export function Navbar() {
                       {currentUser.profile.fullName}
                     </p>
                     <p className="text-[11px] text-slate-500 truncate">
-                      {currentUser.profile.companyName || "Industrial Partner"}
+                      {currentUser.profile.companyName || t("nav.portal")}
                     </p>
                   </div>
                   <button
@@ -322,7 +322,7 @@ export function Navbar() {
                     }}
                     className="px-3 py-1.5 rounded-lg border border-rose-200 text-rose-600 font-bold text-xs hover:bg-rose-50 cursor-pointer"
                   >
-                    Sign Out
+                    {t("nav.signOut")}
                   </button>
                 </div>
 
@@ -332,7 +332,7 @@ export function Navbar() {
                   className="flex items-center justify-center gap-1.5 w-full py-2.5 px-3 rounded-xl bg-slate-900 text-white font-bold text-xs shadow-xs"
                 >
                   <LayoutGrid className="w-3.5 h-3.5 text-sky-400" />
-                  <span>Client Dashboard</span>
+                  <span>{t("nav.dashboard")}</span>
                 </Link>
               </div>
             ) : (
@@ -340,16 +340,16 @@ export function Navbar() {
                 <Link
                   href="/login"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="py-2.5 px-3 text-center text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl"
+                  className="py-2.5 px-3 text-center text-xs font-semibold text-white bg-gradient-to-r from-sky-400 via-sky-600 to-blue-700 hover:opacity-95 rounded-xl transition-all shadow-md shadow-sky-500/20"
                 >
-                  Sign In
+                  {t("nav.signIn")}
                 </Link>
                 <Link
                   href="/register"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="py-2.5 px-3 text-center text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-xl"
+                  className="py-2.5 px-3 text-center text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
                 >
-                  Register
+                  {t("nav.register")}
                 </Link>
               </div>
             )}
@@ -359,7 +359,7 @@ export function Navbar() {
           <div className="pt-2 border-t border-slate-100 space-y-2.5">
             <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 text-xs space-y-1">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                Direct Sales Hotline:
+                {t("nav.hotline")}:
               </span>
               <div className="flex items-center justify-between font-bold text-slate-800">
                 <a href="tel:+19564003683" className="flex items-center gap-1.5 text-sky-700 hover:underline">
@@ -371,17 +371,6 @@ export function Navbar() {
                 </a>
               </div>
             </div>
-
-            {/* Request Quote Button (Guest only) */}
-            {!currentUser && (
-              <Link
-                href="/#inquiry-form"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="block w-full py-3 px-4 text-sm font-bold text-white bg-gradient-to-r from-sky-400 via-sky-600 to-blue-700 rounded-xl text-center shadow-md shadow-sky-500/20"
-              >
-                Request Commercial Quote
-              </Link>
-            )}
           </div>
         </div>
       )}
