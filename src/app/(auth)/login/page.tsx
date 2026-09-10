@@ -4,6 +4,7 @@ import React, { useState, useTransition, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "@/actions/auth";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { supabase } from "@/lib/supabase/client";
 import {
   Lock,
@@ -176,14 +177,7 @@ function LoginForm() {
         </span>
       </div>
 
-      <button
-        type="button"
-        onClick={handleGoogleSignIn}
-        className="w-full py-3.5 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm tracking-wide shadow-sm transition-all flex items-center justify-center gap-2"
-      >
-        <span className="text-base">G</span>
-        <span>Continue with Google</span>
-      </button>
+      <GoogleSignInButton onClick={handleGoogleSignIn} />
 
       {/* Divider */}
       <div className="relative border-t border-slate-100">
