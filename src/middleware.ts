@@ -7,6 +7,10 @@ export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const token = request.cookies.get(ACCESS_COOKIE)?.value;
 
+  if (pathname.startsWith("/auth/callback")) {
+    return NextResponse.next();
+  }
+
   const isProtectedRoute = pathname.startsWith("/dashboard") || pathname.startsWith("/admin");
 
   // Protect /dashboard and /admin routes: redirect to /login if unauthenticated
