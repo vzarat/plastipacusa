@@ -46,8 +46,7 @@ function LoginForm() {
     await supabaseClient.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/auth/setup-password`,
-        skipBrowserRedirect: false,
+        redirectTo: `${window.location.origin}/login`,
       },
     });
   };
@@ -59,14 +58,31 @@ function LoginForm() {
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
+    const supabaseClient = createClient();
+
+    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(
+      async (event, session) => {
+        if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session) {
+          window.location.href = "/auth/setup-password";
+        }
+      }
+    );
+
     const checkHashSession = async () => {
       if (typeof window === "undefined") return;
 
       const hash = window.location.hash;
-      if (!hash) return;
+      if (!hash) {
+        const { data: { session }, error } = await supabaseClient.auth.getSession();
+
+        if (!error && session) {
+          window.location.href = "/auth/setup-password";
+        }
+
+        return;
+      }
 
       if (hash.includes("access_token") || hash.includes("refresh_token")) {
-        const supabaseClient = createClient();
         const {
           data: { session },
           error,
@@ -99,6 +115,10 @@ function LoginForm() {
     };
 
     checkHashSession();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {

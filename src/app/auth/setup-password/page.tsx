@@ -1,15 +1,31 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Lock, AlertCircle, Loader2, ShieldCheck } from "lucide-react";
-import { supabase } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/context/LanguageContext";
 
 export default function SetupPasswordPage() {
   const router = useRouter();
   const { t, locale } = useLanguage();
+
+  useEffect(() => {
+    const verifySession = async () => {
+      const supabaseClient = createClient();
+      const {
+        data: { session },
+        error,
+      } = await supabaseClient.auth.getSession();
+
+      if (error || !session) {
+        router.replace("/login");
+      }
+    };
+
+    verifySession();
+  }, [router]);
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -41,7 +57,18 @@ export default function SetupPasswordPage() {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({
+      const supabaseClient = createClient();
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabaseClient.auth.getSession();
+
+      if (sessionError || !session) {
+        router.replace("/login");
+        return;
+      }
+
+      const { error } = await supabaseClient.auth.updateUser({
         password,
       });
 
