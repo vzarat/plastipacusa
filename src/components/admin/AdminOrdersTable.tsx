@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { AdminOrder, updateOrderStatus } from "@/actions/admin";
+import { AdminOrder, createOrder, updateOrderStatus } from "@/actions/admin";
 import { formatCurrency } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
 import {
@@ -57,7 +57,7 @@ export function AdminOrdersTable({
   setIsCreateModalOpen,
   showToast,
 }: AdminOrdersTableProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
 
   const [activeTab, setActiveTab] = useState<FilterTabKey>(
     (initialFilterTab as FilterTabKey) || "all"
@@ -249,7 +249,7 @@ export function AdminOrdersTable({
   };
 
   // Create Draft Order submit
-  const handleCreateDraftSubmit = (e: React.FormEvent) => {
+  const handleCreateDraftSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!draftCustomerName.trim() || !draftCompany.trim()) {
       showToast("Please provide Customer Name and Commercial Company.");
@@ -306,14 +306,25 @@ export function AdminOrdersTable({
           quantity: draftPallets,
         },
       ],
+      locale,
     };
 
-    onCreateOrder(newOrder);
-    setIsCreateModalOpen(false);
-    setDraftCustomerName("");
-    setDraftCompany("");
-    setDraftEmail("");
-    showToast(`Order ${newId} created successfully!`);
+    try {
+      const result = await createOrder(newOrder);
+      if (!result.success) {
+        showToast(result.error || "Failed to create order.");
+        return;
+      }
+
+      onCreateOrder(newOrder);
+      setIsCreateModalOpen(false);
+      setDraftCustomerName("");
+      setDraftCompany("");
+      setDraftEmail("");
+      showToast(`Order ${newId} created successfully!`);
+    } catch {
+      showToast("Error creating order.");
+    }
   };
 
   const handleStatusChangeAction = async (

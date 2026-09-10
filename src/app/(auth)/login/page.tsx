@@ -4,6 +4,7 @@ import React, { useState, useTransition, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "@/actions/auth";
+import { supabase } from "@/lib/supabase/client";
 import {
   Lock,
   Mail,
@@ -18,6 +19,15 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTarget = searchParams.get("redirect") || "/dashboard";
+
+  const handleGoogleSignIn = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+  };
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -159,6 +169,21 @@ function LoginForm() {
           )}
         </button>
       </form>
+
+      <div className="relative border-t border-slate-100">
+        <span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+          Or continue with
+        </span>
+      </div>
+
+      <button
+        type="button"
+        onClick={handleGoogleSignIn}
+        className="w-full py-3.5 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm tracking-wide shadow-sm transition-all flex items-center justify-center gap-2"
+      >
+        <span className="text-base">G</span>
+        <span>Continue with Google</span>
+      </button>
 
       {/* Divider */}
       <div className="relative border-t border-slate-100">

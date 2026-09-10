@@ -1,6 +1,7 @@
 import React from "react";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/actions/auth";
+import { SetPasswordModal } from "@/components/auth/SetPasswordModal";
 import { DashboardClient, DashboardOrder } from "@/components/dashboard/DashboardClient";
 import type { Metadata } from "next";
 
@@ -9,8 +10,10 @@ export const metadata: Metadata = {
   description: "Manage recurring stretch film orders, review dispatch statuses, and trigger 1-click batch reorders.",
 };
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: any) {
   const currentUser = await getCurrentUser();
+  const shouldSetupPassword =
+    searchParams?.setup_password === "true" || currentUser?.profile?.hasPassword === false;
 
   if (!currentUser) {
     redirect("/login?redirect=/dashboard");
@@ -122,6 +125,11 @@ export default async function DashboardPage() {
     },
   ];
 
-  return <DashboardClient profile={currentUser.profile} orders={sampleOrders} />;
+  return (
+    <>
+      <DashboardClient profile={currentUser.profile} orders={sampleOrders} />
+      <SetPasswordModal isOpen={shouldSetupPassword} />
+    </>
+  );
 }
 

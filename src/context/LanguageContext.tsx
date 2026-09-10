@@ -27,6 +27,9 @@ export const translations = {
     "role.client": "Commercial Client",
     "role.partner": "Industrial Partner",
 
+    // Auth
+    "auth.googleContinue": "Continue with Google",
+
     // Common
     "common.active": "Active",
     "common.close": "Close",
@@ -329,6 +332,9 @@ export const translations = {
     "role.admin": "Admin",
     "role.client": "Cliente Comercial",
     "role.partner": "Socio Industrial",
+
+    // Auth
+    "auth.googleContinue": "Continuar con Google",
 
     // Common
     "common.active": "Activo",

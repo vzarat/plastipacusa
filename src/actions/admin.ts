@@ -1,8 +1,11 @@
 "use server";
 
+import React from "react";
+import { Resend } from "resend";
 import { getCurrentUser } from "./auth";
 import { supabase } from "@/lib/supabase/client";
 import { revalidatePath } from "next/cache";
+import { OrderConfirmationEmail } from "@/emails/OrderConfirmationEmail";
 
 export interface AdminOrderItem {
   productId: number;
@@ -47,6 +50,7 @@ export interface AdminOrder {
   carrier?: string;
   notes?: string;
   items: AdminOrderItem[];
+  locale?: "en" | "es";
 }
 
 // Initial realistic B2B orders fallback
@@ -406,6 +410,82 @@ export async function verifyAdmin() {
  * Retrieve all orders joined with client profile info from Supabase public.orders.
  * Fallbacks to standardized commercial B2B orders if table is empty or unmigrated.
  */
+export async function createOrder(order: AdminOrder) {
+  try {
+    const orderId = order.id;
+    const locale = order.locale || "en";
+    const insertPayload = {
+      id: orderId,
+      created_at: order.createdAt || new Date().toISOString(),
+      customer_name: order.customerName,
+      customer_email: order.customerEmail,
+      company_name: order.customerCompany,
+      phone: order.customerPhone || null,
+      shipping_address: order.shippingAddress,
+      total_usd: Number(order.totalUsd || 0),
+      payment_status: order.paymentStatus || "pending",
+      fulfillment_status: order.fulfillmentStatus || "unfulfilled",
+      items_summary: order.itemsSummary,
+      tracking_number: order.trackingNumber || null,
+      carrier: order.carrier || null,
+      notes: order.notes || null,
+      items: Array.isArray(order.items) ? order.items : [],
+      locale,
+    };
+
+    const { error } = await supabase.from("orders").insert(insertPayload);
+
+    if (error) {
+      console.error("createOrder insert error:", error);
+      return { success: false, error: error.message || "Failed to save order." };
+    }
+
+    const resendApiKey = process.env.RESEND_API_KEY;
+    const adminNotificationEmail = process.env.ADMIN_NOTIFICATION_EMAIL || "vzarat96@gmail.com";
+
+    if (resendApiKey) {
+      try {
+        const resend = new Resend(resendApiKey);
+        const recipients = Array.from(
+          new Set([order.customerEmail, adminNotificationEmail].filter(Boolean))
+        );
+
+        await resend.emails.send({
+          from: "Plastipac Orders <onboarding@resend.dev>",
+          to: recipients,
+          subject:
+            locale === "es"
+              ? `Confirmación de Pedido #${orderId} - Plastipac USA`
+              : `Order Confirmation #${orderId} - Plastipac USA`,
+          react: React.createElement(OrderConfirmationEmail, {
+            orderId,
+            customerName: order.customerName,
+            companyName: order.customerCompany,
+            orderDate: order.createdAt,
+            totalAmount: Number(order.totalUsd || 0),
+            items: order.items.map((item) => ({
+              quantity: item.quantity,
+              productName: item.productName,
+              linePrice: Number((item.unitPrice || 0) * (item.quantity || 1)),
+            })),
+            locale,
+          }),
+        });
+      } catch (emailError) {
+        console.error("createOrder email dispatch error:", emailError);
+      }
+    }
+
+    return { success: true, orderId, locale };
+  } catch (err: any) {
+    console.error("createOrder error:", err);
+    return {
+      success: false,
+      error: err?.message || "Failed to create order.",
+    };
+  }
+}
+
 export async function getAdminOrders(): Promise<AdminOrder[]> {
   try {
     const { data: dbOrders, error } = await supabase
