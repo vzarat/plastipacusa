@@ -322,7 +322,7 @@ export function AdminDashboardOverview({
                           {order.id}
                         </span>
                         <span className="block text-[10px] text-slate-400">
-                          {order.date}
+                          {order.createdAt || "N/A"}
                         </span>
                       </td>
 
