@@ -78,20 +78,20 @@ interface DashboardClientProps {
 
 type TabKey = "overview" | "reorders" | "invoices" | "settings" | "help";
 
-const NAV_ITEMS: {
-  key: TabKey;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-}[] = [
-  { key: "overview", label: "Overview & Orders", icon: LayoutDashboard },
-  { key: "reorders", label: "Quick Reorders", icon: RotateCw },
-  { key: "invoices", label: "Invoices & Statements", icon: Receipt },
-  { key: "settings", label: "Account & Company", icon: Settings },
-  { key: "help", label: "Support Hotline", icon: HelpCircle },
-];
-
 export function DashboardClient({ profile, orders }: DashboardClientProps) {
   const { t } = useLanguage();
+
+  const NAV_ITEMS: {
+    key: TabKey;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }[] = [
+    { key: "overview", label: t("dashboard.overviewOrders"), icon: LayoutDashboard },
+    { key: "reorders", label: t("dashboard.quickReorders"), icon: RotateCw },
+    { key: "invoices", label: t("dashboard.invoices"), icon: Receipt },
+    { key: "settings", label: t("dashboard.account"), icon: Settings },
+    { key: "help", label: t("dashboard.support"), icon: HelpCircle },
+  ];
   const addItem = useCartStore((state) => state.addItem);
   const openDrawer = useCartStore((state) => state.openDrawer);
   const items = useCartStore((state) => state.items);
@@ -145,7 +145,9 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
     });
 
     openDrawer();
-    setReorderNotice(`All items from ${order.id} were added to your cart for instant reorder.`);
+    setReorderNotice(
+      t("dashboard.quickReorderAdded").replace("{orderId}", order.id)
+    );
     setTimeout(() => setReorderNotice(null), 4000);
   };
 
@@ -187,7 +189,9 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
     });
 
     openDrawer();
-    setReorderNotice(`1 Full Pallet batch of ${name} was added to your cart.`);
+    setReorderNotice(
+      t("dashboard.fastPalletAdded").replace("{productName}", name)
+    );
     setTimeout(() => setReorderNotice(null), 4000);
   };
 
@@ -244,7 +248,7 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
 
       {/* Left Sidebar Navigation Column */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200/90 flex flex-col justify-between p-6 transition-transform duration-200 md:static md:translate-x-0 md:h-screen md:sticky md:top-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200/90 flex flex-col justify-between p-6 transition-transform duration-200 md:sticky md:translate-x-0 md:h-screen md:top-0 ${
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -263,7 +267,7 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
             </Link>
             <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-blue-900 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100">
               <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-              <span>B2B Commercial Portal</span>
+              <span>{t("dashboard.portalCommercial")}</span>
             </div>
           </div>
 

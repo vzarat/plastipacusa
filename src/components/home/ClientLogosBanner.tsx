@@ -1,5 +1,8 @@
+"use client";
+
 import React from "react";
 import Image from "next/image";
+import { useLanguage } from "@/context/LanguageContext";
 
 export interface ClientLogoItem {
   id: string;
@@ -13,11 +16,36 @@ export interface ClientLogoItem {
 }
 
 export const CLIENT_LOGOS: ClientLogoItem[] = [
-  { id: "corning", name: "CORNING" },
-  { id: "vertiv", name: "VERTIV" },
-  { id: "eaton", name: "EATON" },
-  { id: "regal-rexnord", name: "REGAL REXNORD" },
-  { id: "horizon-global", name: "HORIZON GLOBAL" },
+  {
+    id: "vertiv",
+    name: "VERTIV",
+    logoUrl:
+      "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/Vertiv_logo.svg",
+  },
+  {
+    id: "regal-rexnord",
+    name: "REGAL REXNORD",
+    logoUrl:
+      "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/Regal_Rexnord_Corporation_logo.jpg",
+  },
+  {
+    id: "corning",
+    name: "CORNING",
+    logoUrl:
+      "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/Corning_Incorporated_Logo.svg",
+  },
+  {
+    id: "eaton",
+    name: "EATON",
+    logoUrl:
+      "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/Eaton_Corporation_Logo.svg",
+  },
+  {
+    id: "horizon-global",
+    name: "HORIZON GLOBAL",
+    logoUrl:
+      "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/horizon-global-corporation-vector-logo.svg",
+  },
 ];
 
 /**
@@ -28,18 +56,29 @@ export function ClientLogoSlot({ client }: { client: ClientLogoItem }) {
   if (!client) return null;
 
   const content = (
-    <div className="flex items-center justify-center h-12 px-6 sm:px-8 py-2 transition-all duration-300">
+    <div className="h-16 w-44 md:h-20 md:w-56 flex items-center justify-center p-2 transition-all duration-300">
       {client.logoSvg ? (
         <div className="h-8 max-w-[160px] flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
           {client.logoSvg}
         </div>
       ) : client.logoUrl ? (
-        <div className="relative h-8 w-36">
+        <div
+          className={`relative flex h-full w-full items-center justify-center rounded-lg ${
+            client.id === "regal-rexnord" ? "bg-white/70" : "bg-transparent"
+          }`}
+        >
           <Image
             src={client.logoUrl}
             alt={`${client.name} logo`}
-            fill
-            className="object-contain filter grayscale opacity-60 hover:opacity-100 transition-opacity"
+            width={160}
+            height={60}
+            className={
+              client.id === "horizon-global"
+                ? "h-auto max-h-20 w-auto max-w-full md:max-h-28 object-contain scale-150 md:scale-175 grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
+                : client.id === "regal-rexnord"
+                ? "h-auto max-h-12 w-auto max-w-full md:max-h-16 object-contain mix-blend-multiply grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
+                : "h-auto max-h-12 w-auto max-w-full md:max-h-16 object-contain grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
+            }
           />
         </div>
       ) : (
@@ -76,13 +115,16 @@ interface ClientLogosBannerProps {
 }
 
 export function ClientLogosBanner({
-  title = "Trusted by Industrial Leaders",
+  title,
   clients = CLIENT_LOGOS,
   className = "",
 }: ClientLogosBannerProps) {
+  const { t } = useLanguage();
+
   // Duplicate list inline to guarantee seamless continuity across any screen size
   const safeClients = clients && clients.length > 0 ? clients : CLIENT_LOGOS;
   const repeatedClients = [...safeClients, ...safeClients];
+  const resolvedTitle = title ?? t("home.clientLogosTitle");
 
   return (
     <section
@@ -92,7 +134,7 @@ export function ClientLogosBanner({
       {/* Top Header / Micro-label */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6 sm:mb-8 text-center">
         <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-400 select-none">
-          {title}
+          {resolvedTitle}
         </p>
       </div>
 

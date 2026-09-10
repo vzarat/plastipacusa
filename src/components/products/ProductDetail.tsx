@@ -5,12 +5,14 @@ import { ProductWithVariants, ProductVariant } from "@/types";
 import { VariantSelector } from "@/components/products/VariantSelector";
 import { formatCurrency } from "@/lib/utils";
 import { PhoneCall } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface ProductDetailProps {
   product: ProductWithVariants;
 }
 
 export function ProductDetail({ product }: ProductDetailProps) {
+  const { t } = useLanguage();
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant>(
     product.variants[0]
   );
@@ -43,7 +45,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
             {formatCurrency(mainPrice)}
           </span>
           <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            USD / Unit
+            {t("products.usdPerUnit")}
           </span>
           {selectedVariant && (
             <span className="ml-2 text-xs font-semibold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">
@@ -68,13 +70,15 @@ export function ProductDetail({ product }: ProductDetailProps) {
       <div className="p-4 rounded-2xl border border-slate-200 bg-white flex items-center justify-between text-xs shadow-sm">
         <div className="flex items-center gap-2 text-slate-600">
           <PhoneCall className="w-4 h-4 text-sky-600" />
-          <span>Need custom specs? Call <strong className="text-slate-900">(956) 400 36 83</strong></span>
+          <span>
+            {t("products.needCustomSpecs")} <strong className="text-slate-900">(956) 400 36 83</strong>
+          </span>
         </div>
         <a
           href="tel:+19564003683"
           className="font-bold text-sky-600 hover:text-sky-700 transition-colors"
         >
-          Call Specialist →
+          {t("products.callSpecialist")}
         </a>
       </div>
     </div>

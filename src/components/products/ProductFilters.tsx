@@ -3,10 +3,12 @@
 import React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Filter, RotateCcw } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function ProductFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useLanguage();
 
   const currentApp = searchParams.get("app") || "all";
   const currentGauge = searchParams.get("gauge") || "all";
@@ -40,7 +42,7 @@ export function ProductFilters() {
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
           <Filter className="w-4 h-4 text-sky-600" />
-          <span>Filter Products</span>
+          <span>{t("products.filterProducts")}</span>
         </div>
         {(currentApp !== "all" || currentGauge !== "all") && (
           <button
@@ -48,7 +50,7 @@ export function ProductFilters() {
             className="text-xs text-slate-500 hover:text-sky-600 flex items-center gap-1 transition-colors font-medium"
           >
             <RotateCcw className="w-3 h-3" />
-            Reset
+            {t("products.reset")}
           </button>
         )}
       </div>
@@ -56,7 +58,7 @@ export function ProductFilters() {
       {/* Application Type */}
       <div className="space-y-2">
         <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
-          Application Type
+          {t("products.applicationType")}
         </label>
         <div className="flex flex-col gap-1.5">
           <button
@@ -68,7 +70,7 @@ export function ProductFilters() {
                 : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
             }`}
           >
-            All Packaging Films
+            {t("products.allPackagingFilms")}
           </button>
           <button
             type="button"
@@ -79,7 +81,7 @@ export function ProductFilters() {
                 : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
             }`}
           >
-            Hand Stretch Film Series
+            {t("products.handStretchFilmSeries")}
           </button>
           <button
             type="button"
@@ -90,7 +92,7 @@ export function ProductFilters() {
                 : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
             }`}
           >
-            Machine High-Yield Film
+            {t("products.machineHighYieldFilm")}
           </button>
         </div>
       </div>
@@ -98,7 +100,7 @@ export function ProductFilters() {
       {/* Thickness / Gauge Range */}
       <div className="space-y-2 pt-3 border-t border-slate-100">
         <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
-          Target Gauge
+          {t("products.targetGauge")}
         </label>
         <div className="grid grid-cols-2 gap-2">
           {["all", "50", "60", "70", "80"].map((g) => {
@@ -114,7 +116,7 @@ export function ProductFilters() {
                     : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
                 }`}
               >
-                {g === "all" ? "All Gauges" : `${g} Ga`}
+                {g === "all" ? t("products.allGauges") : `${g} Ga`}
               </button>
             );
           })}

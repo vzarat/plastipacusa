@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react";
 import { ProductWithVariants, ProductVariant } from "@/types";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency } from "@/lib/utils";
+import { useLanguage } from "@/context/LanguageContext";
 import {
   ShoppingCart,
   CheckCircle2,
@@ -31,6 +32,7 @@ export function VariantSelector({
   onVariantChange,
   ...props
 }: VariantSelectorProps) {
+  const { t } = useLanguage();
   const variants = product?.variants || [];
   const addItem = useCartStore((state) => state.addItem);
 
@@ -107,7 +109,7 @@ export function VariantSelector({
       <div className="pb-5 border-b border-slate-100 flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <span className="text-[11px] uppercase tracking-widest text-slate-400 font-bold block mb-1">
-            Official Factory Direct Price
+            {t("products.officialFactoryDirectPrice")}
           </span>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
@@ -119,7 +121,7 @@ export function VariantSelector({
 
         <div className="flex items-center gap-2">
           <Badge variant="success" className="text-xs font-semibold px-3 py-1">
-            ● In Stock
+            ● {t("products.inStock")}
           </Badge>
         </div>
       </div>
@@ -128,7 +130,7 @@ export function VariantSelector({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
-            Package Options
+            {t("products.packageOptions")}
           </label>
           <span className="text-xs font-semibold text-blue-700">
             {(selectedVariant as any)?.title || selectedVariant?.packageSize}
@@ -242,29 +244,29 @@ export function VariantSelector({
         return (
           <div className="space-y-2">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
-              Specifications
+              {t("products.specifications")}
             </label>
             <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div>
-                <span className="text-slate-400 block text-[10px] uppercase font-semibold">Width</span>
+                <span className="text-slate-400 block text-[10px] uppercase font-semibold">{t("products.width")}</span>
                 <span className="font-bold text-slate-900">
                   {widthFormatted}" Inches
                 </span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[10px] uppercase font-semibold">Gauge</span>
+                <span className="text-slate-400 block text-[10px] uppercase font-semibold">{t("products.gauge")}</span>
                 <span className="font-bold text-slate-900">
                   {gaugeVal} Gauge
                 </span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[10px] uppercase font-semibold">Length</span>
+                <span className="text-slate-400 block text-[10px] uppercase font-semibold">{t("products.length")}</span>
                 <span className="font-bold text-slate-900">
                   {Number(lengthVal).toLocaleString()} Feet
                 </span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[10px] uppercase font-semibold">Core Type</span>
+                <span className="text-slate-400 block text-[10px] uppercase font-semibold">{t("products.coreType")}</span>
                 <span className="font-bold text-slate-900">{coreType}</span>
               </div>
             </div>
@@ -277,7 +279,7 @@ export function VariantSelector({
         {/* Quantity Increment/Decrement */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-600 font-bold uppercase">Quantity:</span>
+            <span className="text-xs text-slate-600 font-bold uppercase">{t("products.quantity")}:</span>
             <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
               <button
                 type="button"
@@ -304,7 +306,7 @@ export function VariantSelector({
           </div>
 
           <div className="text-right">
-            <span className="text-[10px] text-slate-400 uppercase block font-semibold">Subtotal</span>
+            <span className="text-[10px] text-slate-400 uppercase block font-semibold">{t("products.subtotal")}</span>
             <span className="text-xl sm:text-2xl font-black text-slate-900">
               {formatCurrency(totalPrice)} <span className="text-xs font-semibold text-slate-500">USD</span>
             </span>
@@ -321,7 +323,7 @@ export function VariantSelector({
             className="w-full flex items-center justify-center gap-2 text-sm font-bold shadow-lg shadow-sky-500/20 py-6 rounded-2xl"
           >
             <ShoppingCart className="w-4 h-4" />
-            <span>Add to Cart</span>
+            <span>{t("products.addToCart")}</span>
           </Button>
 
           {/* Express PayPal Button Placeholder */}
@@ -332,7 +334,7 @@ export function VariantSelector({
           >
             <span className="italic font-black text-blue-900 text-base">Pay</span>
             <span className="italic font-black text-sky-600 text-base -ml-1">Pal</span>
-            <span className="text-slate-800 text-xs font-bold ml-1">Express Checkout</span>
+            <span className="text-slate-800 text-xs font-bold ml-1">{t("products.paypalExpressCheckout")}</span>
           </button>
         </div>
       </div>
@@ -340,7 +342,11 @@ export function VariantSelector({
       {addedNotice && (
         <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs flex items-center gap-2 font-semibold shadow-sm animate-fade-in-up">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-          <span>Added {quantity}x {selectedVariant?.packageSize} to your cart!</span>
+          <span>
+            {t("products.addedToCart")
+              .replace("{count}", String(quantity))
+              .replace("{product}", String(selectedVariant?.packageSize || "this product"))}
+          </span>
         </div>
       )}
     </div>

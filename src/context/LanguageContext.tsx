@@ -39,6 +39,7 @@ export const translations = {
 
     // Dashboard
     "dashboard.title": "Commercial Portal",
+    "dashboard.portalCommercial": "B2B Commercial Portal",
     "dashboard.welcome": "Welcome back",
     "dashboard.orders": "Orders",
     "dashboard.overviewOrders": "Orders",
@@ -60,6 +61,8 @@ export const translations = {
     "dashboard.lastOrder": "Last Order Dispatched",
     "dashboard.noRecentPo": "No Recent PO",
     "dashboard.dispatchTime": "Direct plant dispatch in 24–48 hours",
+    "dashboard.quickReorderAdded": "All items from {orderId} were added to your cart for instant reorder.",
+    "dashboard.fastPalletAdded": "1 Full Pallet batch of {productName} was added to your cart.",
     "dashboard.reorderStatus": "Quick Reorder Status",
     "dashboard.oneClickActive": "1-Click Active",
     "dashboard.pricingLocked": "Direct factory volume pricing locked to your account.",
@@ -226,6 +229,38 @@ export const translations = {
     "admin.truckloads": "Truckloads",
     "admin.pallets": "Pallets",
 
+    // Product Catalog / Detail
+    "products.filterProducts": "Filter Products",
+    "products.filter": "Filter",
+    "products.reset": "Reset",
+    "products.applicationType": "Application Type",
+    "products.allPackagingFilms": "All Packaging Films",
+    "products.handStretchFilmSeries": "Hand Stretch Film Series",
+    "products.machineHighYieldFilm": "Machine High-Yield Film",
+    "products.targetGauge": "Target Gauge",
+    "products.allGauges": "All Gauges",
+    "products.packageOptions": "Package Options",
+    "products.specifications": "Specifications",
+    "products.width": "Width",
+    "products.gauge": "Gauge",
+    "products.length": "Length",
+    "products.coreType": "Core Type",
+    "products.quantity": "Quantity",
+    "products.subtotal": "Subtotal",
+    "products.addToCart": "Add to Cart",
+    "products.paypalExpressCheckout": "Express Checkout",
+    "products.inStock": "In Stock",
+    "products.officialFactoryDirectPrice": "Official Factory Direct Price",
+    "products.usd": "USD",
+    "products.usdPerUnit": "USD / Unit",
+    "products.addedToCart": "Added {count}x {product} to your cart!",
+    "products.needCustomSpecs": "Need custom specs? Call",
+    "products.callSpecialist": "Call Specialist →",
+    "products.portalCommercial": "B2B Commercial Portal",
+
+    // Home / Landing
+    "home.clientLogosTitle": "Industry leaders that trust our high-performance packaging solutions",
+
     // Hero Section
     "hero.badge": "Engineered for Maximum Pallet Load Containment",
     "hero.titlePart1": "Industrial Strength.",
@@ -307,6 +342,7 @@ export const translations = {
 
     // Dashboard
     "dashboard.title": "Portal Comercial",
+    "dashboard.portalCommercial": "Portal Comercial B2B",
     "dashboard.welcome": "Bienvenido de nuevo",
     "dashboard.orders": "Pedidos",
     "dashboard.overviewOrders": "Pedidos",
@@ -328,6 +364,8 @@ export const translations = {
     "dashboard.lastOrder": "Último Pedido Despachado",
     "dashboard.noRecentPo": "Sin Pedidos Recientes",
     "dashboard.dispatchTime": "Despacho directo de planta en 24–48 horas",
+    "dashboard.quickReorderAdded": "Todos los artículos de {orderId} se agregaron a tu carrito para reorden rápido.",
+    "dashboard.fastPalletAdded": "Se agregó un lote de 1 tarima completa de {productName} a tu carrito.",
     "dashboard.reorderStatus": "Estado de Reorden",
     "dashboard.oneClickActive": "1-Clic Activo",
     "dashboard.pricingLocked": "Precios por volumen de fábrica asegurados para su cuenta.",
@@ -494,6 +532,38 @@ export const translations = {
     "admin.truckloads": "Cargas Completas",
     "admin.pallets": "Palets",
 
+    // Product Catalog / Detail
+    "products.filterProducts": "Filtrar Productos",
+    "products.filter": "Filtrar",
+    "products.reset": "Restablecer",
+    "products.applicationType": "Tipo de Aplicación",
+    "products.allPackagingFilms": "Todas las Películas",
+    "products.handStretchFilmSeries": "Serie de Película Estirable Manual",
+    "products.machineHighYieldFilm": "Película de Máquina de Alto Rendimiento",
+    "products.targetGauge": "Calibre Objetivo",
+    "products.allGauges": "Todos los Calibres",
+    "products.packageOptions": "Opciones de Empaque",
+    "products.specifications": "Especificaciones",
+    "products.width": "Ancho",
+    "products.gauge": "Calibre",
+    "products.length": "Longitud",
+    "products.coreType": "Tipo de Núcleo",
+    "products.quantity": "Cantidad",
+    "products.subtotal": "Subtotal",
+    "products.addToCart": "Agregar al Carrito",
+    "products.paypalExpressCheckout": "Pago Express",
+    "products.inStock": "En Inventario",
+    "products.officialFactoryDirectPrice": "Precio Oficial Directo de Fábrica",
+    "products.usd": "USD",
+    "products.usdPerUnit": "USD / Unidad",
+    "products.addedToCart": "¡Se agregaron {count}x {product} a tu carrito!",
+    "products.needCustomSpecs": "¿Necesitas especificaciones personalizadas? Llama",
+    "products.callSpecialist": "Llamar a Especialista →",
+    "products.portalCommercial": "Portal Comercial B2B",
+
+    // Home / Landing
+    "home.clientLogosTitle": "Empresas líderes que confían en nuestros empaques de alto rendimiento",
+
     // Hero Section
     "hero.badge": "Diseñado para la Máxima Contención de Cargas en Palets",
     "hero.titlePart1": "Fuerza Industrial.",
@@ -543,6 +613,22 @@ export const translations = {
     "readyToShip": "Listo para envío por caja o palet",
   },
 } as const;
+
+export const getStatusLabel = (status: string, lang: Locale) => {
+  const labels: Record<string, { en: string; es: string }> = {
+    fulfilled: { en: "Fulfilled", es: "Entregado" },
+    delivered: { en: "Delivered", es: "Entregado" },
+    in_transit: { en: "In Transit", es: "En Tránsito" },
+    pending: { en: "Pending Payment", es: "Pago Pendiente" },
+    unfulfilled: { en: "Unfulfilled", es: "Sin Despachar" },
+    shipped: { en: "Shipped", es: "Enviado" },
+    cancelled: { en: "Cancelled", es: "Cancelado" },
+    refunded: { en: "Refunded", es: "Reembolsado" },
+    paid: { en: "Paid", es: "Pagado" },
+  };
+
+  return labels[status]?.[lang] || status;
+};
 
 export type TranslationKey = keyof typeof translations.en;
 
