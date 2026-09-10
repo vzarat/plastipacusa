@@ -26,6 +26,12 @@ export default async function AdminOrdersPage() {
   // Fetch all orders joined with customer profile info
   const orders = await getAdminOrders();
 
-  return <AdminOrdersClient initialOrders={orders} profile={currentUser.profile} />;
+  return (
+    <AdminOrdersClient
+      initialOrders={orders}
+      profile={currentUser.profile}
+      initialTab="orders"
+    />
+  );
 }
 
