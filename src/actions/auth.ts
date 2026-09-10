@@ -1,5 +1,6 @@
 "use server";
 
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
@@ -249,44 +250,37 @@ export async function signOut() {
 export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get(ACCESS_COOKIE)?.value;
 
-    console.error("[getCurrentUser] token check", {
-      hasToken: !!token,
-      tokenName: ACCESS_COOKIE,
-      cookieNames: cookieStore.getAll().map((cookie) => cookie.name),
-    });
-
-    if (!token) {
-      console.error("[getCurrentUser] returning null: missing access token cookie");
-      return null;
-    }
+    const supabaseServer = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
 
     const {
       data: { user },
       error,
-    } = await supabase.auth.getUser(token);
-
-    console.error("[getCurrentUser] auth.getUser result", {
-      hasUser: !!user,
-      errorMessage: error?.message,
-      errorCode: error?.status,
-      userId: user?.id,
-      userEmail: user?.email,
-    });
+    } = await supabaseServer.auth.getUser();
 
     if (error || !user) {
-      console.error("[getCurrentUser] returning null: auth.getUser failed", {
-        errorMessage: error?.message,
-        errorCode: error?.status,
-      });
       return null;
     }
 
-    // Explicitly query id, email, full_name, role, company_name from public.profiles
     let profileData: any = null;
+
     try {
-      const { data: profile, error: profileErr } = await supabase
+      const { data: profile, error: profileErr } = await supabaseServer
         .from("profiles")
         .select(
           "id, email, full_name, role, company_name, has_password, password_setup_skipped"
@@ -294,18 +288,10 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
         .eq("id", user.id)
         .single();
 
-      console.error("[getCurrentUser] profiles select result", {
-        profileExists: !!profile,
-        profileErrMessage: profileErr?.message,
-        profileErrCode: profileErr?.code,
-        profileData,
-      });
-
       if (!profileErr && profile) {
         profileData = profile;
       }
-    } catch (err) {
-      console.error("[getCurrentUser] profiles select threw", err);
+    } catch {
       // Ignore if profiles table does not exist or fails
     }
 
@@ -331,12 +317,13 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
     const passwordSetupSkipped = Boolean(
       profileData?.password_setup_skipped ?? user.user_metadata?.password_setup_skipped ?? false
     );
+
     const isEmailAdmin =
       emailLower.startsWith("admin@") ||
       emailLower.includes("admin@plastipacusa");
 
-    // Do NOT default or force role = 'client' if profile?.role === 'admin'
     let resolvedRole: "client" | "admin" | "specialist" = "client";
+
     if (profileData?.role) {
       resolvedRole = profileData.role as "client" | "admin" | "specialist";
     } else if (user.user_metadata?.role) {
@@ -361,8 +348,7 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
         createdAt: user.created_at,
       },
     };
-  } catch (err) {
-    console.error("[getCurrentUser] outer catch", err);
+  } catch {
     return null;
   }
 }
