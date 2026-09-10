@@ -42,11 +42,13 @@ function LoginForm() {
 
   const handleGoogleSignIn = async () => {
     const supabaseClient = createClient();
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "https://plastipacusa.vercel.app";
 
     await supabaseClient.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/login`,
+        redirectTo: `${origin}/auth/callback?next=/auth/setup-password`,
       },
     });
   };
@@ -59,6 +61,20 @@ function LoginForm() {
 
   useEffect(() => {
     const supabaseClient = createClient();
+
+    const exchangeCode = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get("code");
+
+      if (code) {
+        const { error } = await supabaseClient.auth.exchangeCodeForSession(code);
+
+        if (!error) {
+          window.location.href = "/auth/setup-password";
+          return;
+        }
+      }
+    };
 
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(
       async (event, session) => {
