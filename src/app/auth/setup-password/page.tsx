@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Lock, AlertCircle, Loader2, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -10,6 +9,7 @@ import { useLanguage } from "@/context/LanguageContext";
 export default function SetupPasswordPage() {
   const router = useRouter();
   const { t, locale } = useLanguage();
+  const authenticatedHomeRoute = "/dashboard";
 
   useEffect(() => {
     const verifySession = async () => {
@@ -76,7 +76,7 @@ export default function SetupPasswordPage() {
         throw error;
       }
 
-      router.push("/dashboard");
+      router.replace(authenticatedHomeRoute);
     } catch (err: any) {
       setErrorMsg(
         err?.message ||
@@ -163,12 +163,13 @@ export default function SetupPasswordPage() {
         </form>
 
         <div className="mt-4 text-center">
-          <Link
-            href="/dashboard"
+          <button
+            type="button"
+            onClick={() => router.replace(authenticatedHomeRoute)}
             className="inline-flex items-center justify-center text-sm font-semibold text-slate-600 transition hover:text-slate-900"
           >
             {t("auth.skipForNow")}
-          </Link>
+          </button>
         </div>
       </div>
     </div>
