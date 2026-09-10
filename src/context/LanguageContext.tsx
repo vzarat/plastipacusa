@@ -29,6 +29,12 @@ export const translations = {
 
     // Auth
     "auth.googleContinue": "Continue with Google",
+    "auth.setupPasswordTitle": "Set your backup password",
+    "auth.setupPasswordSubtitle": "Set a password so you can also log in directly with your email.",
+    "auth.password": "Password",
+    "auth.confirmPassword": "Confirm Password",
+    "auth.savePassword": "Save Password",
+    "auth.skipForNow": "Skip for now",
 
     // Common
     "common.active": "Active",
@@ -335,6 +341,12 @@ export const translations = {
 
     // Auth
     "auth.googleContinue": "Continuar con Google",
+    "auth.setupPasswordTitle": "Crea tu contraseña de respaldo",
+    "auth.setupPasswordSubtitle": "Configura una contraseña para que también puedas ingresar directamente con tu correo.",
+    "auth.password": "Contraseña",
+    "auth.confirmPassword": "Confirmar Contraseña",
+    "auth.savePassword": "Guardar Contraseña",
+    "auth.skipForNow": "Omitir por ahora",
 
     // Common
     "common.active": "Activo",

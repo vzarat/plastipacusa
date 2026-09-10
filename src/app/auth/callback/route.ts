@@ -8,11 +8,11 @@ export async function GET(request: Request) {
   const next = searchParams.get("next") ?? "/dashboard";
 
   if (!code) {
-    return NextResponse.redirect(new URL("/login?error=oauth", origin));
+    return NextResponse.redirect(new URL("/login?error=auth-failed", origin));
   }
 
   try {
-    const cookieStore = await cookies();
+    const cookieStore = cookies();
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
                 cookieStore.set(name, value, options)
               );
             } catch {
-              // The `setAll` method can throw in some cases if the cookie store is unavailable.
+              // Called from Server Component
             }
           },
         },
@@ -39,28 +39,12 @@ export async function GET(request: Request) {
 
     if (error) {
       console.error("OAuth callback exchangeCodeForSession error:", error);
-      return NextResponse.redirect(new URL("/login?error=oauth", origin));
+      return NextResponse.redirect(new URL("/login?error=auth-failed", origin));
     }
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      console.error("OAuth callback getUser error:", userError);
-      return NextResponse.redirect(new URL("/login?error=oauth", origin));
-    }
-
-    const hasPassword = Boolean(
-      user.user_metadata?.has_password || user.app_metadata?.has_password
-    );
-
-    const target = hasPassword ? next : "/dashboard?setup_password=true";
-
-    return NextResponse.redirect(new URL(target, origin));
+    return NextResponse.redirect(new URL(next, origin));
   } catch (error) {
     console.error("OAuth callback route error:", error);
-    return NextResponse.redirect(new URL("/login?error=oauth", origin));
+    return NextResponse.redirect(new URL("/login?error=auth-failed", origin));
   }
 }
