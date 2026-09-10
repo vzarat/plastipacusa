@@ -251,7 +251,14 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
     const cookieStore = await cookies();
     const token = cookieStore.get(ACCESS_COOKIE)?.value;
 
+    console.error("[getCurrentUser] token check", {
+      hasToken: !!token,
+      tokenName: ACCESS_COOKIE,
+      cookieNames: cookieStore.getAll().map((cookie) => cookie.name),
+    });
+
     if (!token) {
+      console.error("[getCurrentUser] returning null: missing access token cookie");
       return null;
     }
 
@@ -260,7 +267,19 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
       error,
     } = await supabase.auth.getUser(token);
 
+    console.error("[getCurrentUser] auth.getUser result", {
+      hasUser: !!user,
+      errorMessage: error?.message,
+      errorCode: error?.status,
+      userId: user?.id,
+      userEmail: user?.email,
+    });
+
     if (error || !user) {
+      console.error("[getCurrentUser] returning null: auth.getUser failed", {
+        errorMessage: error?.message,
+        errorCode: error?.status,
+      });
       return null;
     }
 
@@ -274,10 +293,19 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
         )
         .eq("id", user.id)
         .single();
+
+      console.error("[getCurrentUser] profiles select result", {
+        profileExists: !!profile,
+        profileErrMessage: profileErr?.message,
+        profileErrCode: profileErr?.code,
+        profileData,
+      });
+
       if (!profileErr && profile) {
         profileData = profile;
       }
-    } catch {
+    } catch (err) {
+      console.error("[getCurrentUser] profiles select threw", err);
       // Ignore if profiles table does not exist or fails
     }
 
@@ -334,7 +362,7 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
       },
     };
   } catch (err) {
-    console.error("getCurrentUser error:", err);
+    console.error("[getCurrentUser] outer catch", err);
     return null;
   }
 }
