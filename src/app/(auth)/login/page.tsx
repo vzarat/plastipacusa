@@ -59,17 +59,20 @@ function LoginForm() {
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    const handleHashAuth = async () => {
+    const checkHashSession = async () => {
       if (typeof window === "undefined") return;
 
       const hash = window.location.hash;
       if (!hash) return;
 
-      if (hash.includes("access_token")) {
+      if (hash.includes("access_token") || hash.includes("refresh_token")) {
         const supabaseClient = createClient();
-        const { data, error } = await supabaseClient.auth.getSession();
+        const {
+          data: { session },
+          error,
+        } = await supabaseClient.auth.getSession();
 
-        if (!error && data.session) {
+        if (!error && session) {
           window.location.href = "/auth/setup-password";
           return;
         }
@@ -95,7 +98,7 @@ function LoginForm() {
       }
     };
 
-    handleHashAuth();
+    checkHashSession();
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
