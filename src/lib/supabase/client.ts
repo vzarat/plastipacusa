@@ -23,6 +23,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: false,
     autoRefreshToken: false,
+    flowType: "pkce",
   },
   global: {
     fetch: (url, options = {}) => {

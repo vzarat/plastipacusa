@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition, Suspense } from "react";
+import React, { useEffect, useState, useTransition, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "@/actions/auth";
@@ -20,6 +20,25 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTarget = searchParams.get("redirect") || "/dashboard";
+  const authError = searchParams.get("error");
+  const errorCode = searchParams.get("error_code");
+  const errorDescription = searchParams.get("error_description");
+  const authErrorKey = [authError, errorCode, errorDescription].join("|");
+
+  const [showAuthDetails, setShowAuthDetails] = useState(false);
+  const [dismissAuthError, setDismissAuthError] = useState(false);
+
+  useEffect(() => {
+    setShowAuthDetails(false);
+    setDismissAuthError(false);
+  }, [authErrorKey]);
+
+  const hasAuthError = Boolean(authError || errorCode);
+  const authErrorMessage =
+    errorDescription ||
+    (authError === "auth-failed"
+      ? "Could not complete Google Sign-In. Please try again."
+      : "Authentication Error. Please try again.");
 
   const handleGoogleSignIn = async () => {
     await supabase.auth.signInWithOAuth({
@@ -84,6 +103,60 @@ function LoginForm() {
           Access your factory direct pricing, recurring orders, and shipping tracking.
         </p>
       </div>
+
+      {hasAuthError && !dismissAuthError && (
+        <div className="p-4 rounded-2xl border border-rose-200 bg-rose-50 shadow-sm animate-fade-in-up">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <AlertCircle className="w-5 h-5 text-rose-600" />
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-bold text-rose-900">Authentication Error</div>
+              <p className="mt-1 text-xs text-rose-800">{authErrorMessage}</p>
+
+              {showAuthDetails && (
+                <div className="mt-3 rounded-xl border border-rose-200 bg-white/70 p-3 text-[11px] text-rose-900">
+                  <div className="font-semibold uppercase tracking-wide text-rose-700">Technical details</div>
+                  <div className="mt-2 space-y-1">
+                    <p>
+                      <span className="font-semibold">Error:</span> {authError || "auth-failed"}
+                    </p>
+                    {errorCode && (
+                      <p>
+                        <span className="font-semibold">Code:</span> {errorCode}
+                      </p>
+                    )}
+                    {errorDescription && (
+                      <p>
+                        <span className="font-semibold">Description:</span> {errorDescription}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAuthDetails((prev) => !prev)}
+                className="text-[11px] font-semibold text-rose-700 hover:text-rose-900 underline underline-offset-2"
+              >
+                {showAuthDetails ? "Hide details" : "View details"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDismissAuthError(true)}
+                className="text-lg leading-none text-rose-500 hover:text-rose-700"
+                aria-label="Close authentication error"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Error Alert */}
       {errorMsg && (

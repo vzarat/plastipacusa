@@ -6,9 +6,24 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/dashboard";
+  const error = searchParams.get("error");
+  const errorCode = searchParams.get("error_code");
+  const errorDescription = searchParams.get("error_description");
+
+  const redirectToLogin = (fallbackError = "auth-failed") => {
+    const loginParams = new URLSearchParams();
+
+    if (error) loginParams.set("error", error);
+    else loginParams.set("error", fallbackError);
+
+    if (errorCode) loginParams.set("error_code", errorCode);
+    if (errorDescription) loginParams.set("error_description", errorDescription);
+
+    return NextResponse.redirect(new URL(`/login?${loginParams.toString()}`, origin));
+  };
 
   if (!code) {
-    return NextResponse.redirect(new URL("/login?error=auth-failed", origin));
+    return redirectToLogin();
   }
 
   try {
@@ -39,12 +54,12 @@ export async function GET(request: Request) {
 
     if (error) {
       console.error("OAuth callback exchangeCodeForSession error:", error);
-      return NextResponse.redirect(new URL("/login?error=auth-failed", origin));
+      return redirectToLogin();
     }
 
     return NextResponse.redirect(new URL(next, origin));
   } catch (error) {
     console.error("OAuth callback route error:", error);
-    return NextResponse.redirect(new URL("/login?error=auth-failed", origin));
+    return redirectToLogin();
   }
 }
