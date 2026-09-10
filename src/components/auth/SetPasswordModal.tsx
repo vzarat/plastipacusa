@@ -65,6 +65,7 @@ export function SetPasswordModal({ isOpen }: SetPasswordModalProps) {
             id: user.id,
             email: user.email,
             has_password: true,
+            password_setup_skipped: false,
           },
           { onConflict: "id" }
         );

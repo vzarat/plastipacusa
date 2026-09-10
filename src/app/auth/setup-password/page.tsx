@@ -76,6 +76,27 @@ export default function SetupPasswordPage() {
         throw error;
       }
 
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabaseClient.auth.getUser();
+
+        if (!userError && user) {
+          await supabaseClient.from("profiles").upsert(
+            {
+              id: user.id,
+              email: user.email,
+              has_password: true,
+              password_setup_skipped: false,
+            },
+            { onConflict: "id" }
+          );
+        }
+      } catch {
+        // Ignore profile write errors so the user can still continue into the dashboard.
+      }
+
       router.replace(authenticatedHomeRoute);
     } catch (err: any) {
       setErrorMsg(
@@ -165,7 +186,31 @@ export default function SetupPasswordPage() {
         <div className="mt-4 text-center">
           <button
             type="button"
-            onClick={() => router.replace(authenticatedHomeRoute)}
+            onClick={async () => {
+              try {
+                const supabaseClient = createClient();
+                const {
+                  data: { user },
+                  error: userError,
+                } = await supabaseClient.auth.getUser();
+
+                if (!userError && user) {
+                  await supabaseClient.from("profiles").upsert(
+                    {
+                      id: user.id,
+                      email: user.email,
+                      has_password: false,
+                      password_setup_skipped: true,
+                    },
+                    { onConflict: "id" }
+                  );
+                }
+              } catch {
+                // Ignore profile write errors and continue to the dashboard.
+              }
+
+              router.replace(authenticatedHomeRoute);
+            }}
             className="inline-flex items-center justify-center text-sm font-semibold text-slate-600 transition hover:text-slate-900"
           >
             {t("auth.skipForNow")}

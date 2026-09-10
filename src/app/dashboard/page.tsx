@@ -13,7 +13,8 @@ export const metadata: Metadata = {
 export default async function DashboardPage({ searchParams }: any) {
   const currentUser = await getCurrentUser();
   const shouldSetupPassword =
-    searchParams?.setup_password === "true" || currentUser?.profile?.hasPassword === false;
+    searchParams?.setup_password === "true" ||
+    (currentUser?.profile?.hasPassword === false && !currentUser?.profile?.passwordSetupSkipped);
 
   if (!currentUser) {
     redirect("/login?redirect=/dashboard");

@@ -11,6 +11,7 @@ export interface UserProfile {
   companyName: string;
   role: "client" | "admin" | "specialist";
   hasPassword?: boolean;
+  passwordSetupSkipped?: boolean;
   createdAt?: string;
 }
 
@@ -180,6 +181,7 @@ export async function signUp({
           role: initialRole,
           email: normalizedEmail,
           has_password: true,
+          password_setup_skipped: false,
         });
       } catch (profileErr) {
         console.warn("Notice: public.profiles table upsert skipped:", profileErr);
@@ -267,7 +269,9 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
     try {
       const { data: profile, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, email, full_name, role, company_name, has_password")
+        .select(
+          "id, email, full_name, role, company_name, has_password, password_setup_skipped"
+        )
         .eq("id", user.id)
         .single();
       if (!profileErr && profile) {
@@ -296,6 +300,9 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
     const hasPassword = Boolean(
       profileData?.has_password ?? user.user_metadata?.has_password ?? false
     );
+    const passwordSetupSkipped = Boolean(
+      profileData?.password_setup_skipped ?? user.user_metadata?.password_setup_skipped ?? false
+    );
     const isEmailAdmin =
       emailLower.startsWith("admin@") ||
       emailLower.includes("admin@plastipacusa");
@@ -322,6 +329,7 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
         companyName,
         role: resolvedRole,
         hasPassword,
+        passwordSetupSkipped,
         createdAt: user.created_at,
       },
     };
