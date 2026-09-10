@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "@/actions/auth";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
-import { supabase } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import {
   Lock,
   Mail,
@@ -41,10 +41,13 @@ function LoginForm() {
       : "Authentication Error. Please try again.");
 
   const handleGoogleSignIn = async () => {
-    await supabase.auth.signInWithOAuth({
+    const supabaseClient = createClient();
+
+    await supabaseClient.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback?next=/auth/setup-password`,
+        skipBrowserRedirect: false,
       },
     });
   };
@@ -54,6 +57,46 @@ function LoginForm() {
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    const handleHashAuth = async () => {
+      if (typeof window === "undefined") return;
+
+      const hash = window.location.hash;
+      if (!hash) return;
+
+      if (hash.includes("access_token")) {
+        const supabaseClient = createClient();
+        const { data, error } = await supabaseClient.auth.getSession();
+
+        if (!error && data.session) {
+          window.location.href = "/auth/setup-password";
+          return;
+        }
+      }
+
+      if (hash.includes("error")) {
+        const hashParams = new URLSearchParams(hash.replace(/^#/, ""));
+        const errorCode = hashParams.get("error") || "auth-failed";
+        const errorDescription = hashParams.get("error_description") || "";
+
+        const loginUrl = new URL("/login", window.location.origin);
+        loginUrl.searchParams.set("error", errorCode);
+
+        if (errorCode) {
+          loginUrl.searchParams.set("error_code", errorCode);
+        }
+
+        if (errorDescription) {
+          loginUrl.searchParams.set("error_description", errorDescription);
+        }
+
+        window.location.href = loginUrl.toString();
+      }
+    };
+
+    handleHashAuth();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

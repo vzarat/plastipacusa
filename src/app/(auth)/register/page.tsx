@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signUp } from "@/actions/auth";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
-import { supabase } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import {
   Lock,
   Mail,
@@ -25,10 +25,13 @@ function RegisterForm() {
   const redirectTarget = searchParams.get("redirect") || "/dashboard";
 
   const handleGoogleSignIn = async () => {
-    await supabase.auth.signInWithOAuth({
+    const supabaseClient = createClient();
+
+    await supabaseClient.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback?next=/auth/setup-password`,
+        skipBrowserRedirect: false,
       },
     });
   };

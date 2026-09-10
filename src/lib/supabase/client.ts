@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -19,25 +19,28 @@ export const isSupabaseConfigured = Boolean(
 /**
  * Direct Supabase PostgreSQL client with Next.js server-side caching (revalidate: 3600 seconds)
  */
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    flowType: "pkce",
-  },
-  global: {
-    fetch: (url, options = {}) => {
-      const urlStr = String(url);
-      if (urlStr.includes("/auth/v1/")) {
+export const createClient = () =>
+  createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      flowType: "pkce",
+    },
+    global: {
+      fetch: (url, options = {}) => {
+        const urlStr = String(url);
+        if (urlStr.includes("/auth/v1/")) {
+          return fetch(url, {
+            ...options,
+            cache: "no-store",
+          });
+        }
         return fetch(url, {
           ...options,
-          cache: "no-store",
+          next: { revalidate: 3600 },
         });
-      }
-      return fetch(url, {
-        ...options,
-        next: { revalidate: 3600 },
-      });
+      },
     },
-  },
-});
+  });
+
+export const supabase = createClient();

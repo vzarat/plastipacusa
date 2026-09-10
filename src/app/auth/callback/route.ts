@@ -22,6 +22,10 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL(`/login?${loginParams.toString()}`, origin));
   };
 
+  if (!code && !error) {
+    return NextResponse.redirect(new URL(next, origin));
+  }
+
   if (!code) {
     return redirectToLogin();
   }
