@@ -67,7 +67,7 @@ export function InquiryForm() {
           {/* Left Column: Info & Value Proposition */}
           <div className="lg:col-span-5 space-y-6">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-50 border border-sky-200 text-sky-700 text-xs font-semibold shadow-sm">
-              <Building2 className="w-3.5 h-3.5 text-sky-600" /> Direct B2B Wholesale Pricing
+              <Building2 className="w-3.5 h-3.5 text-sky-600" /> Direct Wholesale Pricing
             </div>
 
             <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
@@ -128,7 +128,7 @@ export function InquiryForm() {
           {/* Right Column: Clean White Form */}
           <div className="lg:col-span-7">
             <div className="rounded-3xl border border-slate-200/90 bg-white p-8 sm:p-10 shadow-xl shadow-slate-200/40">
-              <h3 className="text-xl font-bold text-slate-900 mb-1.5">B2B Commercial Quote Generator</h3>
+              <h3 className="text-xl font-bold text-slate-900 mb-1.5">Commercial Quote Generator</h3>
               <p className="text-xs text-slate-500 mb-6">
                 Fill out your load specifications below for immediate volume pricing.
               </p>
@@ -272,7 +272,7 @@ export function InquiryForm() {
                   className="w-full flex items-center justify-center gap-2 font-bold shadow-lg shadow-sky-500/20"
                 >
                   <Send className="w-4 h-4" />
-                  <span>{loading ? "Calculating & Transmitting..." : "Submit B2B Quote Request"}</span>
+                  <span>{loading ? "Calculating & Transmitting..." : "Submit Quote Request"}</span>
                 </Button>
               </form>
             </div>

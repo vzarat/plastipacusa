@@ -4,6 +4,7 @@ import React from "react";
 import { Resend } from "resend";
 import { getCurrentUser } from "./auth";
 import { createServerClient } from "@/lib/supabase/server";
+import { formatOrderId } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { OrderConfirmationEmail } from "@/emails/OrderConfirmationEmail";
 
@@ -97,10 +98,15 @@ export async function verifyAdmin() {
 export async function createOrder(order: AdminOrder) {
   try {
     const supabase = await createServerClient();
-    const orderId = order.id;
+    const createdAt = order.createdAt || new Date().toISOString();
+    const normalizedOrderId = formatOrderId({
+      id: order.id,
+      createdAt,
+      items: order.items,
+    });
     const locale = order.locale || "en";
     const insertPayload = {
-      id: orderId,
+      id: normalizedOrderId,
       created_at: order.createdAt || new Date().toISOString(),
       customer_name: order.customerName,
       customer_email: order.customerEmail,
@@ -127,6 +133,7 @@ export async function createOrder(order: AdminOrder) {
 
     const resendApiKey = process.env.RESEND_API_KEY;
     const adminNotificationEmail = process.env.ADMIN_NOTIFICATION_EMAIL || "vzarat96@gmail.com";
+    const orderId = normalizedOrderId;
 
     if (resendApiKey) {
       try {

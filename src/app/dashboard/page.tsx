@@ -7,7 +7,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Commercial Client Dashboard | Plastipac USA",
+  title: "Customer Dashboard | Plastipac USA",
   description: "Manage recurring stretch film orders, review dispatch statuses, and trigger 1-click batch reorders.",
 };
 
@@ -56,6 +56,7 @@ async function getDashboardOrders(
 
         return {
           id: row.id || row.po_number || `PO-USA-${row.id}`,
+          createdAt: row.created_at || undefined,
           date: row.created_at
             ? new Date(row.created_at).toLocaleDateString("en-US", {
                 month: "short",

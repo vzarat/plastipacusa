@@ -4,6 +4,7 @@ import React from "react";
 import Stripe from "stripe";
 import { Resend } from "resend";
 import { createServerClient } from "@/lib/supabase/server";
+import { formatOrderId } from "@/lib/utils";
 import { OrderConfirmationEmail } from "@/emails/OrderConfirmationEmail";
 import { AdminOrderNotificationEmail } from "@/emails/AdminOrderNotificationEmail";
 
@@ -52,14 +53,11 @@ export async function createOrderFromCheckout(
       error: userError,
     } = await supabase.auth.getUser();
 
-    user = currentUser;
-
-    if (userError || !user?.id) {
-      return {
-        success: false,
-        error: "User must be logged in to place an order.",
-      };
+    if (userError || !currentUser?.id) {
+      throw new Error("User must be logged in to place an order.");
     }
+
+    user = currentUser;
 
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
     let paymentIntentDetails: any = null;
@@ -74,6 +72,10 @@ export async function createOrderFromCheckout(
       } catch (fallbackError) {
         console.warn("Unable to load Stripe payment intent fallback details:", fallbackError);
       }
+    }
+
+    if (paymentIntentDetails && paymentIntentDetails.status !== "succeeded") {
+      throw new Error("Stripe payment was not completed successfully.");
     }
 
     total = cartItems.reduce((sum, item) => {
@@ -144,18 +146,27 @@ export async function createOrderFromCheckout(
     if (existingOrder) {
       return {
         success: true,
-        orderId: existingOrder.id,
+        orderId: formatOrderId({ id: existingOrder.id, createdAt: new Date().toISOString(), items: cartItems }),
       };
     }
 
-    const { data, error } = await supabase.from("orders").insert(payload).select("id");
+    const { data, error } = await supabase.from("orders").insert(payload).select("id, status");
 
     if (error) {
       throw new Error(error.message || "Failed to save the order.");
     }
 
     const insertedOrder = Array.isArray(data) ? data[0] : data;
-    const createdOrderId = insertedOrder?.id || paymentIntentId;
+
+    if (insertedOrder?.status !== "paid") {
+      throw new Error("Order was not persisted with a paid status.");
+    }
+
+    const createdOrderId = formatOrderId({
+      id: insertedOrder?.id || paymentIntentId,
+      createdAt: new Date().toISOString(),
+      items: cartItems,
+    });
 
     try {
       const orderItems = (cartItems || []).map((item: any) => ({

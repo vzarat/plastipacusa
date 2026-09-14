@@ -278,7 +278,7 @@ export function CartDrawer() {
                     className="w-full flex items-center justify-center gap-2 text-xs font-bold shadow-md shadow-sky-500/20"
                   >
                     <Send className="w-3.5 h-3.5" />
-                    Request Official B2B Quote
+                    Request Official Quote
                   </Button>
                   <Button
                     onClick={() => {

@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export interface B2BCustomer {
+export interface CustomerRecord {
   id: string;
   companyName: string;
   contactName: string;
@@ -34,7 +34,7 @@ export interface B2BCustomer {
 }
 
 interface AdminCustomersViewProps {
-  customers?: B2BCustomer[];
+  customers?: CustomerRecord[];
 }
 
 export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) {
@@ -71,16 +71,6 @@ export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) 
             {t("admin.manageCustomers")}
           </p>
         </div>
-
-        <div className="flex items-center gap-2.5">
-          <Button
-            size="sm"
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-purple-700 hover:bg-purple-800 text-white shadow-xs cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add B2B Commercial Account</span>
-          </Button>
-        </div>
       </div>
 
       {/* Customers Table Container */}
@@ -93,7 +83,7 @@ export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) 
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by company, procurement agent, or city..."
+              placeholder="Search by name, company, or email..."
               className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-600/10 focus:border-purple-400"
             />
           </div>
@@ -115,7 +105,7 @@ export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) 
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
                 <tr>
-                  <th className="py-3.5 px-4 sm:px-6">Commercial Account</th>
+                  <th className="py-3.5 px-4 sm:px-6">Customer</th>
                   <th className="py-3.5 px-3">Primary Contact</th>
                   <th className="py-3.5 px-3">Location</th>
                   <th className="py-3.5 px-3">Credit Terms</th>

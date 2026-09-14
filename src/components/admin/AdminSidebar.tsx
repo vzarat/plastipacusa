@@ -112,7 +112,7 @@ export function AdminSidebar({
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 bg-white border-r border-slate-200/90 flex flex-col justify-between transition-all duration-300 ease-in-out md:static md:translate-x-0 md:h-screen md:sticky md:top-0 flex-shrink-0 ${
+        className={`fixed inset-y-0 left-0 z-50 bg-white border-r border-slate-200/90 flex flex-col justify-between transition-all duration-300 ease-in-out md:h-screen md:sticky md:top-0 flex-shrink-0 ${
           isCollapsed ? "w-72 md:w-20 p-6 md:p-3" : "w-72 p-6"
         } ${isMobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0"}`}
       >
@@ -206,16 +206,16 @@ export function AdminSidebar({
           {!isCollapsed ? (
             <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-blue-900 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-200/80">
               <ShieldCheck className="w-4 h-4 text-blue-600 flex-shrink-0" />
-              <span className="truncate">Shopify B2B Operations Admin</span>
+              <span className="truncate">Admin Portal</span>
             </div>
           ) : (
             <div
               className="hidden md:flex items-center justify-center p-2 text-blue-600 bg-blue-50 rounded-xl border border-blue-200 relative group cursor-pointer"
-              title="Shopify B2B Operations Admin"
+              title="Admin Portal"
             >
               <ShieldCheck className="w-4 h-4" />
               <div className="absolute left-full ml-3 px-2.5 py-1 bg-slate-900 text-white text-xs font-semibold rounded-lg shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap">
-                Shopify B2B Operations Admin
+                Admin Portal
               </div>
             </div>
           )}

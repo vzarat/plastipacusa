@@ -2,7 +2,7 @@
 
 import React, { useMemo } from "react";
 import { AdminOrder } from "@/actions/admin";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatOrderId } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   DollarSign,
@@ -319,7 +319,7 @@ export function AdminDashboardOverview({
                     >
                       <td className="px-4 py-3">
                         <span className="font-mono font-bold text-xs text-slate-900 group-hover:text-blue-600 transition-colors">
-                          {order.id}
+                          {formatOrderId(order)}
                         </span>
                         <span className="block text-[10px] text-slate-400">
                           {order.createdAt || "N/A"}

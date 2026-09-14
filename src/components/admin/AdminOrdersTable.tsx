@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { AdminOrder, createOrder, updateOrderStatus } from "@/actions/admin";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatOrderId } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   Search,
@@ -118,7 +118,7 @@ export function AdminOrdersTable({
       // Search query filter (Order #, Customer Name, Company, PO Number)
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
-        const matchesId = order.id.toLowerCase().includes(query);
+        const matchesId = formatOrderId(order).toLowerCase().includes(query);
         const matchesCustomer = order.customerName.toLowerCase().includes(query);
         const matchesCompany = order.customerCompany.toLowerCase().includes(query);
         const matchesEmail = order.customerEmail.toLowerCase().includes(query);
@@ -183,7 +183,7 @@ export function AdminOrdersTable({
     ];
 
     const rows = listToExport.map((o) => [
-      `"${o.id}"`,
+      `"${formatOrderId(o)}"`,
       `"${new Date(o.createdAt).toLocaleDateString()}"`,
       `"${o.customerName}"`,
       `"${o.customerCompany}"`,
@@ -216,6 +216,7 @@ export function AdminOrdersTable({
 
   // Download Single Invoice CSV
   const handleDownloadSingleInvoice = (order: AdminOrder) => {
+    const formattedOrderId = formatOrderId(order);
     const headers = ["Item", "Specification", "Quantity", "Unit Price", "Subtotal"];
     const rows = order.items.map((item) => [
       `"${item.productName}"`,
@@ -229,7 +230,7 @@ export function AdminOrdersTable({
       "data:text/csv;charset=utf-8," +
       [
         `"COMMERCIAL INVOICE - PLASTIPAC USA"`,
-        `"Order ID: ${order.id}"`,
+        `"Order ID: ${formattedOrderId}"`,
         `"Customer: ${order.customerName} (${order.customerCompany})"`,
         `"Date: ${new Date(order.createdAt).toLocaleDateString()}"`,
         `"Total: $${order.totalUsd.toFixed(2)} USD"`,
@@ -241,11 +242,11 @@ export function AdminOrdersTable({
     const encodedUri = encodeURI(csv);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Invoice_${order.id}.csv`);
+    link.setAttribute("download", `Invoice_${formattedOrderId}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast(`Invoice for ${order.id} downloaded.`);
+    showToast(`Invoice for ${formattedOrderId} downloaded.`);
   };
 
   // Create Draft Order submit
@@ -575,7 +576,7 @@ export function AdminOrdersTable({
                           onClick={() => setInspectOrder(order)}
                           className="hover:text-purple-700 transition-colors underline decoration-slate-300 underline-offset-2 cursor-pointer text-left"
                         >
-                          #{order.id}
+                          {formatOrderId(order)}
                         </button>
                       </td>
 
@@ -728,7 +729,7 @@ export function AdminOrdersTable({
                       Order Inspection
                     </span>
                     <h2 className="text-xl font-black text-slate-900">
-                      #{inspectOrder.id}
+                      {formatOrderId(inspectOrder)}
                     </h2>
                   </div>
                   <button

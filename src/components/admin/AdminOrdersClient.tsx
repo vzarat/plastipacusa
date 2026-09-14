@@ -11,7 +11,7 @@ import { AdminSidebar, AdminTabKey } from "./AdminSidebar";
 import { AdminDashboardOverview } from "./AdminDashboardOverview";
 import { AdminOrdersTable } from "./AdminOrdersTable";
 import { AdminCatalogView } from "./AdminCatalogView";
-import { AdminCustomersView, B2BCustomer } from "./AdminCustomersView";
+import { AdminCustomersView, CustomerRecord } from "./AdminCustomersView";
 import { AdminSettingsView } from "./AdminSettingsView";
 import {
   Menu,
@@ -25,7 +25,7 @@ import {
 interface AdminOrdersClientProps {
   initialOrders: AdminOrder[];
   profile: UserProfile;
-  customers?: B2BCustomer[];
+  customers?: CustomerRecord[];
   initialTab?: AdminTabKey;
 }
 

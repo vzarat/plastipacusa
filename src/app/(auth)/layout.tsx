@@ -16,7 +16,7 @@ export default function AuthLayout({
           <Link href="/" className="flex items-center group py-1.5">
             <Image
               src="https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PLASTIPAC_USA_LOGO%202.svg"
-              alt="Plastipac USA - Commercial Client Portal"
+              alt="Plastipac USA - Customer Portal"
               width={220}
               height={60}
               priority
@@ -56,7 +56,7 @@ export default function AuthLayout({
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>256-Bit Encrypted B2B Client Portal</span>
+            <span>256-Bit Encrypted Customer Portal</span>
           </div>
           <div>
             © {new Date().getFullYear()} Plastipac USA LLC. Factory-Direct Industrial Stretch Film.

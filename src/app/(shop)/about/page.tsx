@@ -112,7 +112,7 @@ export default function AboutPage() {
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button asChild variant="gradient" size="lg" className="shadow-lg shadow-sky-500/20 font-bold">
               <Link href="/#quote-section">
-                <span>Request B2B Quote</span>
+                <span>Request Quote</span>
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Link>
             </Button>

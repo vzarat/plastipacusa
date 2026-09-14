@@ -109,7 +109,7 @@ function LoginForm() {
       <div className="space-y-1.5 text-center sm:text-left">
         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-100 text-[11px] font-bold text-blue-800 uppercase tracking-wider mb-1">
           <Building2 className="w-3.5 h-3.5 text-blue-600" />
-          Commercial Client Portal
+          Customer Portal
         </div>
         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
           Sign In to Your Account
@@ -270,20 +270,20 @@ function LoginForm() {
       {/* Divider */}
       <div className="relative border-t border-slate-100">
         <span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-          New Commercial Client?
+          New Customer?
         </span>
       </div>
 
       {/* Register Prompt */}
       <div className="text-center space-y-2">
         <p className="text-xs text-slate-600">
-          Need a wholesale commercial account for volume packaging procurement?
+          Need an account to place orders and track shipments?
         </p>
         <Link
           href={`/register${redirectTarget !== "/dashboard" ? `?redirect=${encodeURIComponent(redirectTarget)}` : ""}`}
           className="inline-flex items-center justify-center gap-1.5 w-full py-3 px-4 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-50/70 hover:bg-slate-100/70 text-slate-800 text-xs font-bold transition-all"
         >
-          <span>Register Commercial Client Account</span>
+          <span>Register Customer Account</span>
           <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
         </Link>
       </div>

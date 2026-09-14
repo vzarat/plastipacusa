@@ -127,7 +127,7 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/#quote-section" className="hover:text-sky-600 transition-colors">
-                  Request Wholesale B2B Quote
+                  Request Quote
                 </Link>
               </li>
               <li>

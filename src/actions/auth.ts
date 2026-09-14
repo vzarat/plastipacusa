@@ -125,7 +125,7 @@ export async function signIn({
 }
 
 /**
- * Register a new commercial client account with company name & full name.
+ * Register a new customer account with company name & full name.
  */
 export async function signUp({
   email,

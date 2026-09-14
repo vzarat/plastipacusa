@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useCartStore } from "@/lib/store/useCartStore";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatOrderId } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { UserProfile, signOut } from "@/actions/auth";
 import {
@@ -69,6 +69,7 @@ export interface DashboardOrderItem {
 
 export interface DashboardOrder {
   id: string; // e.g. "PO-USA-90412"
+  createdAt?: string;
   date: string;
   status: "paid" | "failed" | "delivered" | "shipped" | "pending";
   paymentStatus?: "paid" | "failed" | "pending";
@@ -185,7 +186,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
 
     openDrawer();
     setReorderNotice(
-      t("dashboard.quickReorderAdded").replace("{orderId}", order.id)
+      t("dashboard.quickReorderAdded").replace("{orderId}", formatOrderId(order))
     );
     setTimeout(() => setReorderNotice(null), 4000);
   };
@@ -788,7 +789,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                             <tr key={order.id} className="hover:bg-slate-50/60 transition-colors">
                               {/* Order ID */}
                               <td className="py-4 px-4 sm:px-6 font-mono font-bold text-slate-900">
-                                {order.id}
+                                {formatOrderId(order)}
                                 {order.trackingNumber && (
                                   <span className="block text-[10px] font-mono text-slate-400 font-normal">
                                     Track: {order.trackingNumber}
@@ -897,7 +898,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                           INV-2026-00{idx + 142}
                         </td>
                         <td className="py-4 px-4 font-mono text-slate-600 font-semibold">
-                          {order.id}
+                          {formatOrderId(order)}
                         </td>
                         <td className="py-4 px-4 text-slate-600 font-medium">
                           {order.date}
@@ -918,7 +919,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                           <button
                             type="button"
                             onClick={() =>
-                              alert(`Downloading verified PDF statement for ${order.id}...`)
+                              alert(`Downloading verified PDF statement for ${formatOrderId(order)}...`)
                             }
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
                           >

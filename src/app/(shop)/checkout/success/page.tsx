@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { createOrderFromCheckout, verifyPaymentIntent } from "@/actions/orders";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/lib/store/useCartStore";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatOrderId } from "@/lib/utils";
 
 export default function CheckoutSuccessPage() {
   const searchParams = useSearchParams();
@@ -121,7 +121,7 @@ export default function CheckoutSuccessPage() {
             <div className="mt-8 rounded-2xl border border-emerald-100 bg-emerald-50 p-5 text-left">
               <div className="flex items-center justify-between gap-4 text-sm">
                 <span className="text-slate-600">Order ID</span>
-                <span className="font-bold text-slate-900">{orderId || "—"}</span>
+                <span className="font-bold text-slate-900">{orderId ? formatOrderId({ id: orderId, createdAt: new Date().toISOString(), items: cartItems }) : "—"}</span>
               </div>
               <div className="mt-3 flex items-center justify-between gap-4 text-sm">
                 <span className="text-slate-600">Total</span>

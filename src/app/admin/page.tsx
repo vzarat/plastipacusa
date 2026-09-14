@@ -6,8 +6,8 @@ import { AdminOrdersClient } from "@/components/admin/AdminOrdersClient";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Admin Orders & Sales Operations | Plastipac USA",
-  description: "Shopify-inspired commercial order fulfillment desk and B2B sales operations.",
+  title: "Admin Orders | Plastipac USA",
+  description: "Customer order management dashboard for Plastipac USA.",
 };
 
 export default async function AdminIndexPage() {

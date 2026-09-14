@@ -24,8 +24,8 @@ export const translations = {
 
     // Roles
     "role.admin": "Admin",
-    "role.client": "Commercial Client",
-    "role.partner": "Industrial Partner",
+    "role.client": "Registered Customer",
+    "role.partner": "Company",
 
     // Auth
     "auth.googleContinue": "Continue with Google",
@@ -47,8 +47,8 @@ export const translations = {
     "common.usd": "USD",
 
     // Dashboard
-    "dashboard.title": "Commercial Portal",
-    "dashboard.portalCommercial": "B2B Commercial Portal",
+    "dashboard.title": "Customer Portal",
+    "dashboard.portalCommercial": "Customer Portal",
     "dashboard.welcome": "Welcome back",
     "dashboard.emptyStateWelcome": "Welcome to Plastipac!",
     "dashboard.emptyStateSubtitle": "You haven’t placed an order yet. Start with our catalog and build your first pallet batch.",
@@ -63,7 +63,7 @@ export const translations = {
     "dashboard.storefrontCatalog": "Storefront Catalog",
     "dashboard.tier": "Factory Direct Tier",
     "dashboard.directDesk": "Direct Desk:",
-    "dashboard.commercialAccount": "Commercial Account",
+    "dashboard.commercialAccount": "Registered Customer",
     "dashboard.factoryDirectPricing": "Factory Direct Pricing",
     "dashboard.browseCatalog": "Browse Catalog",
     "dashboard.customTruckload": "Custom Truckload Quote",
@@ -112,7 +112,7 @@ export const translations = {
     "dashboard.paidCleared": "Paid & Cleared",
     "dashboard.pdfInvoice": "PDF Invoice",
     "dashboard.settingsTitle": "Account Settings & Company Profile",
-    "dashboard.settingsDesc": "Verified B2B organization records, shipping locations, and direct procurement contacts.",
+    "dashboard.settingsDesc": "Registered customer profile details, delivery preferences, and account information.",
     "dashboard.entityReg": "Commercial Entity Registration",
     "dashboard.regEntity": "Registered Entity",
     "dashboard.primaryContact": "Primary Procurement Contact",
@@ -141,7 +141,7 @@ export const translations = {
     "admin.overview": "Overview / Dashboard",
     "admin.ordersQuotes": "Orders & Quotes",
     "admin.catalog": "Product Catalog",
-    "admin.customers": "Customers & B2B Accounts",
+    "admin.customers": "Customers",
     "admin.settings": "Settings / System",
     "admin.activeQuotes": "Active Orders / Quotes",
     "admin.activeQuotesDesc": "Live commercial requests requiring action",
@@ -154,7 +154,7 @@ export const translations = {
     "admin.filterInTransit": "In Transit",
     "admin.filterCompleted": "Completed",
     "admin.manageCatalog": "Film stock inventory, pricing tiers, and master specifications",
-    "admin.manageCustomers": "Commercial client accounts, credit lines, and Net-30 verification",
+    "admin.manageCustomers": "Registered customer accounts and account details",
     "admin.manageSettings": "Logistics dispatch hubs, carrier configs, and system policies",
     "admin.orders": "Orders",
     "admin.commercialOrders": "Commercial Orders",
@@ -235,7 +235,7 @@ export const translations = {
     "admin.bentoCatEdge": "Edge Protectors & V-Board",
     "admin.bentoRecentOrders": "Recent High-Value Orders",
     "admin.bentoRecentOrdersSubtitle": "Direct commercial contract batches ready for dispatch",
-    "admin.bentoActiveAccounts": "Active B2B Accounts",
+    "admin.bentoActiveAccounts": "Active Customers",
     "admin.bentoActiveAccountsDesc": "Approved commercial enterprise clients",
     "admin.viewAll": "View All",
     "admin.truckloads": "Truckloads",
@@ -268,7 +268,7 @@ export const translations = {
     "products.addedToCart": "Added {count}x {product} to your cart!",
     "products.needCustomSpecs": "Need custom specs? Call",
     "products.callSpecialist": "Call Specialist →",
-    "products.portalCommercial": "B2B Commercial Portal",
+    "products.portalCommercial": "Customer Portal",
 
     // Home / Landing
     "home.clientLogosTitle": "Industry leaders that trust our high-performance packaging solutions",
@@ -339,8 +339,8 @@ export const translations = {
 
     // Roles
     "role.admin": "Admin",
-    "role.client": "Cliente Comercial",
-    "role.partner": "Socio Industrial",
+    "role.client": "Cliente Registrado",
+    "role.partner": "Empresa",
 
     // Auth
     "auth.googleContinue": "Continuar con Google",
@@ -363,7 +363,7 @@ export const translations = {
 
     // Dashboard
     "dashboard.title": "Portal Comercial",
-    "dashboard.portalCommercial": "Portal Comercial B2B",
+    "dashboard.portalCommercial": "Portal del Cliente",
     "dashboard.welcome": "Bienvenido de nuevo",
     "dashboard.emptyStateWelcome": "¡Bienvenido a Plastipac!",
     "dashboard.emptyStateSubtitle": "Todavía no has realizado un pedido. Explora nuestro catálogo y crea tu primer lote de palets.",
@@ -378,7 +378,7 @@ export const translations = {
     "dashboard.storefrontCatalog": "Catálogo General",
     "dashboard.tier": "Nivel Directo de Fábrica",
     "dashboard.directDesk": "Atención Directa:",
-    "dashboard.commercialAccount": "Cuenta Comercial",
+    "dashboard.commercialAccount": "Cliente Registrado",
     "dashboard.factoryDirectPricing": "Precios Directos de Fábrica",
     "dashboard.browseCatalog": "Ver Catálogo",
     "dashboard.customTruckload": "Cotizar Camión Completo",
@@ -427,7 +427,7 @@ export const translations = {
     "dashboard.paidCleared": "Pagado y Liquidado",
     "dashboard.pdfInvoice": "Factura PDF",
     "dashboard.settingsTitle": "Ajustes de Cuenta y Perfil de Empresa",
-    "dashboard.settingsDesc": "Registros verificados de organizaciones B2B, ubicaciones de entrega y contactos de adquisiciones.",
+    "dashboard.settingsDesc": "Detalles del perfil del cliente registrado, preferencias de entrega e información de la cuenta.",
     "dashboard.entityReg": "Registro de Entidad Comercial",
     "dashboard.regEntity": "Entidad Registrada",
     "dashboard.primaryContact": "Contacto Principal de Compras",
@@ -456,7 +456,7 @@ export const translations = {
     "admin.overview": "Resumen / Panel",
     "admin.ordersQuotes": "Pedidos y Cotizaciones",
     "admin.catalog": "Catálogo de Productos",
-    "admin.customers": "Clientes y Cuentas B2B",
+    "admin.customers": "Clientes",
     "admin.settings": "Ajustes y Sistema",
     "admin.activeQuotes": "Pedidos y Cotizaciones Activas",
     "admin.activeQuotesDesc": "Solicitudes comerciales que requieren atención",
@@ -469,7 +469,7 @@ export const translations = {
     "admin.filterInTransit": "En Tránsito",
     "admin.filterCompleted": "Completados",
     "admin.manageCatalog": "Inventario de película estirable, niveles de precio y especificaciones",
-    "admin.manageCustomers": "Cuentas comerciales, líneas de crédito y validación Net-30",
+    "admin.manageCustomers": "Cuentas de clientes registrados y detalles de perfil",
     "admin.manageSettings": "Centros de despacho logístico, transportistas y políticas del sistema",
     "admin.orders": "Pedidos",
     "admin.commercialOrders": "Pedidos Comerciales",
@@ -550,7 +550,7 @@ export const translations = {
     "admin.bentoCatEdge": "Protectores de Esquinas y V-Board",
     "admin.bentoRecentOrders": "Pedidos Recientes de Alto Valor",
     "admin.bentoRecentOrdersSubtitle": "Lotes comerciales de contrato directo listos para despacho",
-    "admin.bentoActiveAccounts": "Cuentas B2B Activas",
+    "admin.bentoActiveAccounts": "Clientes Activos",
     "admin.bentoActiveAccountsDesc": "Clientes comerciales empresariales aprobados",
     "admin.viewAll": "Ver Todo",
     "admin.truckloads": "Cargas Completas",
@@ -583,7 +583,7 @@ export const translations = {
     "products.addedToCart": "¡Se agregaron {count}x {product} a tu carrito!",
     "products.needCustomSpecs": "¿Necesitas especificaciones personalizadas? Llama",
     "products.callSpecialist": "Llamar a Especialista →",
-    "products.portalCommercial": "Portal Comercial B2B",
+    "products.portalCommercial": "Portal del Cliente",
 
     // Home / Landing
     "home.clientLogosTitle": "Empresas líderes que confían en nuestros empaques de alto rendimiento",

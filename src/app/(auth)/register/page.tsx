@@ -90,7 +90,7 @@ function RegisterForm() {
         } else {
           setSuccessMsg(
             res.message ||
-              "Commercial client registration initiated! Please check your email inbox to verify your account."
+              "Customer registration initiated! Please check your email inbox to verify your account."
           );
         }
       } else {
@@ -105,7 +105,7 @@ function RegisterForm() {
       <div className="space-y-1.5 text-center sm:text-left">
         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-100 text-[11px] font-bold text-blue-800 uppercase tracking-wider mb-1">
           <Building2 className="w-3.5 h-3.5 text-blue-600" />
-          B2B Commercial Registration
+          Customer Registration
         </div>
         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
           Create Client Account
@@ -271,7 +271,7 @@ function RegisterForm() {
             {isPending ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin text-white" />
-                <span>Creating Commercial Account...</span>
+                <span>Creating Customer Account...</span>
               </>
             ) : (
               <>
