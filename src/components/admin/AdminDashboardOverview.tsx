@@ -332,6 +332,11 @@ export function AdminDashboardOverview({
                         </span>
                         <span className="text-[11px] text-slate-400 block truncate max-w-[180px]">
                           {order.customerName}
+                          {order.isGuest && (
+                            <span className="ml-1 inline-flex rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">
+                              (Guest)
+                            </span>
+                          )}
                         </span>
                       </td>
 

@@ -20,19 +20,24 @@ export default function CheckoutSuccessPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const paymentIntentId = searchParams.get("payment_intent") || "";
-    const paymentIntentClientSecret = searchParams.get("payment_intent_client_secret") || "";
-
-    if (!paymentIntentId) {
-      setStatus("error");
-      setErrorMessage("The payment confirmation is missing. Please contact support.");
-      return;
-    }
-
     let active = true;
 
     const finalizeCheckout = async () => {
       try {
+        const params = await searchParams;
+        const paymentIntentId = params.get("payment_intent") || "";
+        const paymentIntentClientSecret = params.get("payment_intent_client_secret") || "";
+
+        if (!paymentIntentId) {
+          if (!active) {
+            return;
+          }
+
+          setStatus("error");
+          setErrorMessage("The payment confirmation is missing. Please contact support.");
+          return;
+        }
+
         const verification = await verifyPaymentIntent(paymentIntentId);
 
         if (!active) {
@@ -81,7 +86,7 @@ export default function CheckoutSuccessPage() {
     return () => {
       active = false;
     };
-  }, [clearCart, getSubtotal, cartItems, searchParams]);
+  }, [cartItems, clearCart, getSubtotal, searchParams]);
 
   const total = Number(getSubtotal().toFixed(2));
 

@@ -43,11 +43,19 @@ export async function createOrderFromCheckout(
       error: userError,
     } = await supabase.auth.getUser();
 
-    if (userError || !user) {
-      return {
-        success: false,
-        error: "You must be logged in to complete this order.",
-      };
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    let paymentIntentDetails: any = null;
+
+    if (stripeSecretKey) {
+      try {
+        const stripe = new Stripe(stripeSecretKey, {
+          apiVersion: "2026-08-26.dahlia" as any,
+        });
+
+        paymentIntentDetails = await stripe.paymentIntents.retrieve(paymentIntentId);
+      } catch (fallbackError) {
+        console.warn("Unable to load Stripe payment intent fallback details:", fallbackError);
+      }
     }
 
     const total = cartItems.reduce((sum, item) => {
@@ -56,13 +64,50 @@ export async function createOrderFromCheckout(
       return sum + unitPrice * quantity;
     }, 0);
 
+    const paymentFullName =
+      paymentIntentDetails?.shipping?.name ||
+      paymentIntentDetails?.customer_details?.name ||
+      shippingDetails?.full_name ||
+      shippingDetails?.customer_name ||
+      shippingDetails?.name ||
+      null;
+
+    const paymentEmail =
+      paymentIntentDetails?.receipt_email ||
+      paymentIntentDetails?.customer_details?.email ||
+      shippingDetails?.email ||
+      shippingDetails?.customer_email ||
+      null;
+
+    const shippingAddress = {
+      full_name: paymentFullName,
+      email: paymentEmail,
+      line1:
+        paymentIntentDetails?.shipping?.address?.line1 ||
+        shippingDetails?.line1 ||
+        shippingDetails?.street ||
+        null,
+      line2: paymentIntentDetails?.shipping?.address?.line2 || shippingDetails?.line2 || null,
+      city:
+        paymentIntentDetails?.shipping?.address?.city || shippingDetails?.city || null,
+      state:
+        paymentIntentDetails?.shipping?.address?.state || shippingDetails?.state || null,
+      postal_code:
+        paymentIntentDetails?.shipping?.address?.postal_code ||
+        shippingDetails?.postal_code ||
+        shippingDetails?.zip ||
+        null,
+      country:
+        paymentIntentDetails?.shipping?.address?.country || shippingDetails?.country || null,
+    };
+
     const payload = {
-      user_id: user.id,
+      user_id: user?.id || null,
       payment_intent_id: paymentIntentId,
       status: "paid",
       total: Number(total.toFixed(2)),
       items: cartItems,
-      shipping_address: shippingDetails,
+      shipping_address: shippingAddress,
       created_at: new Date().toISOString(),
     };
 

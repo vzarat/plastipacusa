@@ -34,6 +34,7 @@ export interface AdminOrder {
   customerName: string;
   customerEmail: string;
   customerCompany: string;
+  isGuest?: boolean;
   customerPhone?: string;
   shippingAddress: {
     street: string;
@@ -506,14 +507,19 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
     if (!error && dbOrders && dbOrders.length > 0) {
       return dbOrders.map((row: any) => {
         const profile = row.profiles || {};
+        const guestFullName = row.shipping_address?.full_name || row.shipping_address?.customer_name;
+        const isGuest = !profile?.full_name && Boolean(guestFullName);
+
         return {
           id: row.id || row.po_number || `PO-USA-${row.id}`,
           createdAt: row.created_at || new Date().toISOString(),
           customerName:
-            profile.full_name || row.customer_name || "Commercial Customer",
-          customerEmail: profile.email || row.customer_email || "sales@plastipacusa.com",
+            profile.full_name || guestFullName || row.customer_name || "Commercial Customer",
+          customerEmail:
+            profile.email || row.shipping_address?.email || row.customer_email || "sales@plastipacusa.com",
           customerCompany:
             profile.company_name || row.company_name || "Industrial Partner",
+          isGuest,
           customerPhone: row.phone || "(956) 400 36 83",
           shippingAddress: row.shipping_address || {
             street: "1000 Commercial Parkway",
