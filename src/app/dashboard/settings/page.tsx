@@ -10,7 +10,7 @@ async function getDashboardOrders(currentUser: Awaited<ReturnType<typeof getCurr
   }
 
   try {
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
 
     const { data: dbOrders, error } = await supabase
       .from("orders")

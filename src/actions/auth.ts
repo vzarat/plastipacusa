@@ -1,9 +1,8 @@
 "use server";
 
-import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { supabase } from "@/lib/supabase/client";
+import { createServerClient } from "@/lib/supabase/server";
 
 export interface UserProfile {
   id: string;
@@ -42,6 +41,8 @@ export async function signIn({
   password: string;
 }) {
   try {
+    const supabase = await createServerClient();
+
     if (!email || !password) {
       return { success: false, error: "Please enter both work email and password." };
     }
@@ -138,6 +139,8 @@ export async function signUp({
   companyName: string;
 }) {
   try {
+    const supabase = await createServerClient();
+
     if (!email || !password || !fullName || !companyName) {
       return {
         success: false,
@@ -235,6 +238,7 @@ export async function signUp({
  */
 export async function signOut() {
   try {
+    const supabase = await createServerClient();
     const cookieStore = await cookies();
     cookieStore.delete(ACCESS_COOKIE);
     cookieStore.delete(REFRESH_COOKIE);
@@ -252,24 +256,7 @@ export async function signOut() {
  */
 export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
   try {
-    const cookieStore = await cookies();
-
-    const supabaseServer = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          },
-        },
-      }
-    );
+    const supabaseServer = await createServerClient();
 
     const {
       data: { user },

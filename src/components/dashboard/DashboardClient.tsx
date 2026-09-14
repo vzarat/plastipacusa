@@ -22,6 +22,8 @@ import {
   ShieldCheck,
   TrendingUp,
   FileSpreadsheet,
+  Eye,
+  EyeOff,
   LayoutDashboard,
   Receipt,
   Settings,
@@ -127,6 +129,8 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
   );
   const [backupPassword, setBackupPassword] = useState("");
   const [backupPasswordConfirm, setBackupPasswordConfirm] = useState("");
+  const [showBackupPassword, setShowBackupPassword] = useState(false);
+  const [showBackupPasswordConfirm, setShowBackupPasswordConfirm] = useState(false);
   const [isBackupPasswordSubmitting, setIsBackupPasswordSubmitting] = useState(false);
   const [profileForm, setProfileForm] = useState({
     fullName: profile.fullName || "",
@@ -1148,13 +1152,21 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                       {locale === "es" ? "Nueva Contraseña" : "New Password"}
                     </label>
                     <input
-                      type="password"
+                      type={showBackupPassword ? "text" : "password"}
                       value={backupPassword}
                       onChange={(e) => setBackupPassword(e.target.value)}
                       placeholder={locale === "es" ? "Mínimo 6 caracteres" : "Min. 6 characters"}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-600"
                       autoComplete="new-password"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowBackupPassword((prev) => !prev)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-700"
+                      aria-label={showBackupPassword ? "Hide password" : "Show password"}
+                    >
+                      {showBackupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
 
                   <div className="space-y-1.5">
@@ -1162,13 +1174,21 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                       {locale === "es" ? "Confirmar Contraseña" : "Confirm Password"}
                     </label>
                     <input
-                      type="password"
+                      type={showBackupPasswordConfirm ? "text" : "password"}
                       value={backupPasswordConfirm}
                       onChange={(e) => setBackupPasswordConfirm(e.target.value)}
                       placeholder={locale === "es" ? "Repite la contraseña" : "Re-enter password"}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-600"
                       autoComplete="new-password"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowBackupPasswordConfirm((prev) => !prev)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-700"
+                      aria-label={showBackupPasswordConfirm ? "Hide password" : "Show password"}
+                    >
+                      {showBackupPasswordConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
 

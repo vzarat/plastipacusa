@@ -17,10 +17,14 @@ export const isSupabaseConfigured = Boolean(
 );
 
 /**
- * Direct Supabase PostgreSQL client with Next.js server-side caching (revalidate: 3600 seconds)
+ * Browser-only Supabase client for client components.
  */
-export const createClient = () =>
-  createBrowserClient(supabaseUrl, supabaseAnonKey, {
+export function createClient() {
+  if (typeof window === "undefined") {
+    throw new Error("Supabase browser client can only be created in the browser.");
+  }
+
+  return createBrowserClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
@@ -42,5 +46,4 @@ export const createClient = () =>
       },
     },
   });
-
-export const supabase = createClient();
+}

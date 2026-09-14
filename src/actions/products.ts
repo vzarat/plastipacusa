@@ -1,6 +1,6 @@
 "use server";
 
-import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { createServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { ProductWithVariants, ProductVariant } from "@/types";
 import { FALLBACK_PRODUCTS } from "@/data/mock-products";
 import { PRODUCT_CATEGORIES } from "@/data/categories";
@@ -160,6 +160,7 @@ function formatProduct(raw: any): ProductWithVariants {
  */
 export async function getProductSlugs(): Promise<{ slug: string }[]> {
   try {
+    const supabase = await createServerClient();
     const { data: products, error } = await supabase
       .from("products")
       .select("slug");
@@ -189,6 +190,8 @@ export async function getProducts(
   applicationFilter?: "all" | "hand" | "machine",
   categoryFilter?: string
 ): Promise<ProductWithVariants[]> {
+  const supabase = await createServerClient();
+
   const matchesCategory = (p: ProductWithVariants, filter: string) => {
     if (!filter || filter === "all") return true;
     if (filter === "genesis-standard" || filter === "b0000000-0000-0000-0000-000000000003") {
@@ -303,6 +306,8 @@ export async function getProducts(
  */
 export async function getProductBySlug(slug: string): Promise<ProductWithVariants | null> {
   try {
+    const supabase = await createServerClient();
+
     if (isSupabaseConfigured) {
       try {
         // 1. Relational query with categories and product_variants

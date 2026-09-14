@@ -3,7 +3,7 @@
 import React from "react";
 import { Resend } from "resend";
 import { getCurrentUser } from "./auth";
-import { supabase } from "@/lib/supabase/client";
+import { createServerClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { OrderConfirmationEmail } from "@/emails/OrderConfirmationEmail";
 
@@ -412,6 +412,7 @@ export async function verifyAdmin() {
  */
 export async function createOrder(order: AdminOrder) {
   try {
+    const supabase = await createServerClient();
     const orderId = order.id;
     const locale = order.locale || "en";
     const insertPayload = {
@@ -488,6 +489,7 @@ export async function createOrder(order: AdminOrder) {
 
 export async function getAdminOrders(): Promise<AdminOrder[]> {
   try {
+    const supabase = await createServerClient();
     const { data: dbOrders, error } = await supabase
       .from("orders")
       .select(`

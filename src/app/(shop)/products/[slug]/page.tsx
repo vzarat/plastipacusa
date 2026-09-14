@@ -14,13 +14,14 @@ import {
 } from "lucide-react";
 
 import type { Metadata } from "next";
-import { supabase } from "@/lib/supabase/client";
+import { createServerClient } from "@/lib/supabase/server";
 import { PRODUCT_CATEGORIES } from "@/data/categories";
 
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
   try {
+    const supabase = await createServerClient();
     const { data: products, error } = await supabase
       .from("products")
       .select("slug");

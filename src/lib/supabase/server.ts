@@ -1,4 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient as createSupabaseServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -17,30 +18,21 @@ export const isSupabaseConfigured = Boolean(
 );
 
 /**
- * Direct Supabase PostgreSQL server client with Next.js server-side caching (revalidate: 3600 seconds)
+ * Server-side Supabase client using next/headers cookies for SSR, server components, and API routes.
  */
-export function createServerClient() {
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-    global: {
-      fetch: (url, options = {}) => {
-        const urlStr = String(url);
-        if (urlStr.includes("/auth/v1/")) {
-          return fetch(url, {
-            ...options,
-            cache: "no-store",
-          });
-        }
-        return fetch(url, {
-          ...options,
-          next: { revalidate: 3600 },
+export async function createServerClient() {
+  const cookieStore = await cookies();
+
+  return createSupabaseServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          cookieStore.set(name, value, options);
         });
       },
     },
   });
 }
-
-export const supabaseServer = createServerClient();
