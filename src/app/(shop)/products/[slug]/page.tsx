@@ -14,15 +14,20 @@ import {
 } from "lucide-react";
 
 import type { Metadata } from "next";
-import { createServerClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 import { PRODUCT_CATEGORIES } from "@/data/categories";
 
+export const dynamic = "force-dynamic";
 export const dynamicParams = true;
+
+const supabaseStatic = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export async function generateStaticParams() {
   try {
-    const supabase = await createServerClient();
-    const { data: products, error } = await supabase
+    const { data: products, error } = await supabaseStatic
       .from("products")
       .select("slug");
 
