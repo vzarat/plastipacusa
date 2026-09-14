@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { createOrderFromCheckout, verifyPaymentIntent } from "@/actions/orders";
@@ -18,6 +18,14 @@ export default function CheckoutSuccessPage() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [orderId, setOrderId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const hasTriggeredToast = useRef(false);
+
+  useEffect(() => {
+    if (status === "success" && !hasTriggeredToast.current) {
+      hasTriggeredToast.current = true;
+      toast.success("Order confirmed successfully.");
+    }
+  }, [status]);
 
   useEffect(() => {
     let active = true;
@@ -69,7 +77,6 @@ export default function CheckoutSuccessPage() {
         clearCart();
         setOrderId(result.orderId || paymentIntentId);
         setStatus("success");
-        toast.success("Order confirmed successfully.");
       } catch (error: any) {
         if (!active) {
           return;
