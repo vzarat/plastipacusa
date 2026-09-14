@@ -554,6 +554,8 @@ export async function updateOrderStatus(
       return { success: false, error: "Unauthorized. Admin permissions required." };
     }
 
+    const supabase = await createServerClient();
+
     // Try updating Supabase public.orders if present
     try {
       await supabase
