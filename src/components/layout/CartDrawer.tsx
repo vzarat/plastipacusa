@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency, formatRollDimensions } from "@/lib/utils";
 import {
@@ -20,6 +21,8 @@ import { Badge } from "@/components/ui/badge";
 import { submitInquiry } from "@/actions/inquiries";
 
 export function CartDrawer() {
+  const router = useRouter();
+
   const {
     items,
     isDrawerOpen,
@@ -279,7 +282,8 @@ export function CartDrawer() {
                   </Button>
                   <Button
                     onClick={() => {
-                      alert("Connecting to Plastipac Secure Commercial Checkout...");
+                      closeDrawer();
+                      router.push("/checkout");
                     }}
                     variant="outline"
                     className="w-full text-xs font-semibold border-slate-200 hover:bg-slate-100"
