@@ -70,8 +70,8 @@ export interface DashboardOrderItem {
 export interface DashboardOrder {
   id: string; // e.g. "PO-USA-90412"
   date: string;
-  status: "paid" | "failed" | "system_error" | "delivered" | "shipped" | "pending";
-  paymentStatus?: "paid" | "failed" | "system_error" | "pending";
+  status: "paid" | "failed" | "delivered" | "shipped" | "pending";
+  paymentStatus?: "paid" | "failed" | "pending";
   failureReason?: string;
   totalUsd: number;
   itemsSummary: string;
@@ -780,7 +780,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                       <tbody className="divide-y divide-slate-100">
                         {orders.map((order) => {
                           const isPaid = order.status === "paid";
-                          const isFailed = order.status === "failed" || order.status === "system_error";
+                          const isFailed = order.status === "failed";
                           const isDelivered = order.status === "delivered";
                           const isShipped = order.status === "shipped";
 

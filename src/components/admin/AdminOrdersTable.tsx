@@ -544,8 +544,7 @@ export function AdminOrdersTable({
                   const isSelected = selectedOrderIds.includes(order.id);
                   const isPaid = order.paymentStatus === "paid";
                   const isPendingPayment = order.paymentStatus === "pending";
-                  const isFailedPayment =
-                    order.paymentStatus === "failed" || order.paymentStatus === "system_error";
+                  const isFailedPayment = order.paymentStatus === "failed";
 
                   const isFulfilled = order.fulfillmentStatus === "fulfilled";
                   const isInTransit = order.fulfillmentStatus === "in_transit";

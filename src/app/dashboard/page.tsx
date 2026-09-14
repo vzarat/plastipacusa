@@ -44,27 +44,26 @@ async function getDashboardOrders(
       })
       .map((row: any): DashboardOrder => {
         const rawStatus = String(row.status || row.fulfillment_status || "pending").toLowerCase();
+        const hasFailureDetails = Boolean(
+          row.shipping_address?.error_details || row.shipping_address?.error_message
+        );
         const normalizedStatus: DashboardOrder["status"] =
-          rawStatus === "paid"
-            ? "paid"
-            : rawStatus === "failed" || rawStatus === "payment_failed"
-              ? "failed"
-              : rawStatus === "system_error"
-                ? "system_error"
-                : rawStatus === "fulfilled" || rawStatus === "delivered"
-                  ? "delivered"
-                  : rawStatus === "in_transit" || rawStatus === "shipped"
-                    ? "shipped"
-                    : "pending";
+          hasFailureDetails
+            ? "failed"
+            : rawStatus === "paid"
+              ? "paid"
+              : rawStatus === "fulfilled" || rawStatus === "delivered"
+                ? "delivered"
+                : rawStatus === "in_transit" || rawStatus === "shipped"
+                  ? "shipped"
+                  : "pending";
 
         const paymentStatus: DashboardOrder["paymentStatus"] =
-          rawStatus === "paid"
-            ? "paid"
-            : rawStatus === "failed" || rawStatus === "payment_failed"
-              ? "failed"
-              : rawStatus === "system_error"
-                ? "system_error"
-                : "pending";
+          hasFailureDetails
+            ? "failed"
+            : rawStatus === "paid"
+              ? "paid"
+              : "pending";
 
         return {
           id: row.id || row.po_number || `PO-USA-${row.id}`,
