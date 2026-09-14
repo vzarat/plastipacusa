@@ -43,6 +43,13 @@ export async function createOrderFromCheckout(
       error: userError,
     } = await supabase.auth.getUser();
 
+    if (userError || !user?.id) {
+      return {
+        success: false,
+        error: "Unauthenticated. Please log in to complete your purchase.",
+      };
+    }
+
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
     let paymentIntentDetails: any = null;
 

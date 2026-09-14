@@ -48,11 +48,12 @@ function LoginForm() {
       const supabaseClient = createClient();
       const origin =
         typeof window !== "undefined" ? window.location.origin : "https://plastipacusa.vercel.app";
+      const nextTarget = redirectTarget || "/dashboard";
 
       await supabaseClient.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${origin}/auth/callback?next=/auth/setup-password`,
+          redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(nextTarget)}`,
         },
       });
     } catch {

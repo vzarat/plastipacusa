@@ -28,11 +28,12 @@ function RegisterForm() {
 
   const handleGoogleSignIn = async () => {
     const supabaseClient = createClient();
+    const nextTarget = redirectTarget || "/dashboard";
 
     await supabaseClient.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/auth/setup-password`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextTarget)}`,
         skipBrowserRedirect: false,
       },
     });
