@@ -10,9 +10,12 @@ export interface UserProfile {
   email?: string;
   fullName: string;
   companyName: string;
+  phone?: string;
+  avatarUrl?: string;
   role: "client" | "admin" | "specialist";
   hasPassword?: boolean;
   passwordSetupSkipped?: boolean;
+  backupPasswordPending?: boolean;
   createdAt?: string;
 }
 
@@ -283,7 +286,7 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
       const { data: profile, error: profileErr } = await supabaseServer
         .from("profiles")
         .select(
-          "id, email, full_name, role, company_name, has_password, password_setup_skipped"
+          "id, email, full_name, role, company_name, has_password, password_setup_skipped, phone, avatar_url"
         )
         .eq("id", user.id)
         .single();
@@ -310,12 +313,18 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
       user.user_metadata?.companyName ||
       "Industrial Partner";
 
+    const phone = profileData?.phone || user.user_metadata?.phone || "";
+    const avatarUrl = profileData?.avatar_url || user.user_metadata?.avatar_url || "";
+
     const emailLower = user.email?.toLowerCase() || "";
     const hasPassword = Boolean(
       profileData?.has_password ?? user.user_metadata?.has_password ?? false
     );
     const passwordSetupSkipped = Boolean(
       profileData?.password_setup_skipped ?? user.user_metadata?.password_setup_skipped ?? false
+    );
+    const backupPasswordPending = Boolean(
+      user.user_metadata?.backup_password_pending ?? false
     );
 
     const isEmailAdmin =
@@ -339,12 +348,15 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
       },
       profile: {
         id: user.id,
-        email: user.email,
+        email: profileData?.email || user.email,
         fullName,
         companyName,
+        phone,
+        avatarUrl,
         role: resolvedRole,
         hasPassword,
         passwordSetupSkipped,
+        backupPasswordPending,
         createdAt: user.created_at,
       },
     };

@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useTransition, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { signIn } from "@/actions/auth";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { createClient } from "@/lib/supabase/client";
@@ -41,22 +42,25 @@ function LoginForm() {
       : "Authentication Error. Please try again.");
 
   const handleGoogleSignIn = async () => {
-    const supabaseClient = createClient();
-    const origin =
-      typeof window !== "undefined" ? window.location.origin : "https://plastipacusa.vercel.app";
+    try {
+      const supabaseClient = createClient();
+      const origin =
+        typeof window !== "undefined" ? window.location.origin : "https://plastipacusa.vercel.app";
 
-    await supabaseClient.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${origin}/auth/callback?next=/auth/setup-password`,
-      },
-    });
+      await supabaseClient.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${origin}/auth/callback?next=/auth/setup-password`,
+        },
+      });
+    } catch {
+      toast.error("No se pudo iniciar sesión con Google. Por favor intenta de nuevo.");
+    }
   };
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -65,10 +69,9 @@ function LoginForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMsg(null);
 
     if (!email || !password) {
-      setErrorMsg("Please enter your work email and password.");
+      toast.error("Please enter your work email and password.");
       return;
     }
 
@@ -91,7 +94,7 @@ function LoginForm() {
 
         window.location.replace(target);
       } else {
-        setErrorMsg(res.error || "Failed to sign in. Please verify your credentials.");
+        toast.error("No se pudo iniciar sesión. Por favor intenta de nuevo.");
       }
     });
   };
@@ -163,14 +166,6 @@ function LoginForm() {
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Error Alert */}
-      {errorMsg && (
-        <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-xs text-rose-800 animate-fade-in-up">
-          <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-          <span className="font-medium">{errorMsg}</span>
         </div>
       )}
 

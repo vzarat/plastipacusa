@@ -3,8 +3,11 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import { UserProfile, signOut } from "@/actions/auth";
 import {
   Building2,
@@ -19,7 +22,6 @@ import {
   ShieldCheck,
   TrendingUp,
   FileSpreadsheet,
-  Zap,
   LayoutDashboard,
   Receipt,
   Settings,
@@ -35,9 +37,10 @@ import {
   Mail,
   UserCheck,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/context/LanguageContext";
 import { LanguageToggle } from "@/components/common/LanguageToggle";
+import { NotificationBell } from "@/components/dashboard/NotificationBell";
+import { AvatarUpload } from "@/components/dashboard/AvatarUpload";
 
 export interface DashboardOrderItem {
   productId: number;
@@ -74,12 +77,14 @@ export interface DashboardOrder {
 interface DashboardClientProps {
   profile: UserProfile;
   orders: DashboardOrder[];
+  initialTab?: TabKey;
 }
 
 type TabKey = "overview" | "reorders" | "invoices" | "settings" | "help";
 
-export function DashboardClient({ profile, orders }: DashboardClientProps) {
-  const { t } = useLanguage();
+export function DashboardClient({ profile, orders, initialTab }: DashboardClientProps) {
+  const { t, locale } = useLanguage();
+  const router = useRouter();
 
   const NAV_ITEMS: {
     key: TabKey;
@@ -114,9 +119,36 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
     }
   };
 
-  const [activeTab, setActiveTab] = useState<TabKey>("overview");
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? "overview");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [reorderNotice, setReorderNotice] = useState<string | null>(null);
+  const [backupPasswordPending, setBackupPasswordPending] = useState(
+    Boolean(profile.backupPasswordPending)
+  );
+  const [backupPassword, setBackupPassword] = useState("");
+  const [backupPasswordConfirm, setBackupPasswordConfirm] = useState("");
+  const [isBackupPasswordSubmitting, setIsBackupPasswordSubmitting] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    fullName: profile.fullName || "",
+    email: profile.email || "",
+    companyName: profile.companyName || "",
+    phone: profile.phone || "",
+    avatarUrl: profile.avatarUrl || "",
+  });
+  const [profileFormError, setProfileFormError] = useState<string | null>(null);
+  const [profileFormSuccess, setProfileFormSuccess] = useState<string | null>(null);
+  const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
+
+  React.useEffect(() => {
+    setBackupPasswordPending(Boolean(profile.backupPasswordPending));
+    setProfileForm({
+      fullName: profile.fullName || "",
+      email: profile.email || "",
+      companyName: profile.companyName || "",
+      phone: profile.phone || "",
+      avatarUrl: profile.avatarUrl || "",
+    });
+  }, [profile]);
 
   // Trigger quick reorder of an entire past purchase order
   const handleQuickReorder = (order: DashboardOrder) => {
@@ -151,52 +183,174 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
     setTimeout(() => setReorderNotice(null), 4000);
   };
 
-  // Direct 1-Click Fast Order for standard pallets
-  const handleFastOrder = (
-    name: string,
-    slug: string,
-    sku: string,
-    width: string,
-    gauge: number,
-    length: number,
-    rolls: number,
-    boxes: number,
-    weight: string,
-    unitPrice: number,
-    image: string,
-    application: "hand" | "machine"
-  ) => {
-    addItem({
-      productId: 1,
-      productSlug: slug,
-      productName: name,
-      productImage: image,
-      packageSize: `${boxes} Boxes (${rolls} Rolls)`,
-      totalRolls: rolls,
-      totalBoxes: boxes,
-      application,
-      variantId: sku,
-      sku,
-      widthInches: width,
-      gauge,
-      lengthFeet: length,
-      rollsPerBox: Math.round(rolls / boxes),
-      rollsPerPallet: rolls,
-      weightLbs: weight,
-      pricingTier: "Full Pallet Batch",
-      unitPrice,
-      quantity: 1,
-    });
-
-    openDrawer();
-    setReorderNotice(
-      t("dashboard.fastPalletAdded").replace("{productName}", name)
-    );
-    setTimeout(() => setReorderNotice(null), 4000);
-  };
-
   const totalSpend = orders.reduce((sum, o) => sum + o.totalUsd, 0);
   const lastOrder = orders[0];
+
+  const handleProfileSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setProfileFormError(null);
+    setProfileFormSuccess(null);
+
+    if (!profileForm.fullName.trim()) {
+      setProfileFormError(
+        locale === "es"
+          ? "El nombre completo es obligatorio."
+          : "Full name is required."
+      );
+      return;
+    }
+
+    if (!profileForm.email.trim()) {
+      setProfileFormError(
+        locale === "es"
+          ? "El correo electrónico es obligatorio."
+          : "Email is required."
+      );
+      return;
+    }
+
+    setIsProfileSubmitting(true);
+
+    try {
+      const supabaseClient = createClient();
+      const normalizedEmail = profileForm.email.trim();
+
+      if (normalizedEmail.toLowerCase() !== (profile.email || "").toLowerCase()) {
+        const { error: emailError } = await supabaseClient.auth.updateUser({
+          email: normalizedEmail,
+        });
+
+        if (emailError) {
+          throw emailError;
+        }
+      }
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabaseClient.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error(
+          locale === "es"
+            ? "No se pudo identificar el usuario actual."
+            : "Unable to identify the current user."
+        );
+      }
+
+      const { error: profileError } = await supabaseClient.from("profiles").upsert(
+        {
+          id: user.id,
+          email: normalizedEmail,
+          full_name: profileForm.fullName.trim(),
+          company_name: profileForm.companyName.trim(),
+          phone: profileForm.phone.trim() || null,
+          avatar_url: profileForm.avatarUrl || null,
+        },
+        { onConflict: "id" }
+      );
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      setProfileFormSuccess(
+        locale === "es"
+          ? "Perfil actualizado correctamente."
+          : "Profile updated successfully."
+      );
+      router.refresh();
+      toast.success(
+        locale === "es"
+          ? "Perfil actualizado correctamente"
+          : "Profile updated successfully"
+      );
+    } catch (err: any) {
+      const message =
+        err?.message ||
+        (locale === "es"
+          ? "No se pudo actualizar el perfil. Inténtalo de nuevo."
+          : "Unable to update profile. Please try again.");
+
+      setProfileFormError(message);
+      toast.error(message);
+    } finally {
+      setIsProfileSubmitting(false);
+    }
+  };
+
+  const handleBackupPasswordSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (backupPassword.length < 6) {
+      toast.error(
+        locale === "es"
+          ? "La contraseña debe tener al menos 6 caracteres."
+          : "Password must be at least 6 characters long."
+      );
+      return;
+    }
+
+    if (backupPassword !== backupPasswordConfirm) {
+      toast.error(
+        locale === "es"
+          ? "Las contraseñas no coinciden."
+          : "Passwords do not match."
+      );
+      return;
+    }
+
+    setIsBackupPasswordSubmitting(true);
+
+    try {
+      const supabaseClient = createClient();
+
+      const { error } = await supabaseClient.auth.updateUser({
+        password: backupPassword,
+        data: { backup_password_pending: false },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      try {
+        const user = (await supabaseClient.auth.getUser()).data.user;
+        if (user) {
+          await supabaseClient.from("profiles").upsert(
+            {
+              id: user.id,
+              email: user.email,
+              has_password: true,
+              password_setup_skipped: false,
+            },
+            { onConflict: "id" }
+          );
+        }
+      } catch {
+        // Ignore profile write errors so the user can still continue within the dashboard.
+      }
+
+      setBackupPasswordPending(false);
+      setBackupPassword("");
+      setBackupPasswordConfirm("");
+      router.refresh();
+      toast.success(
+        locale === "es"
+          ? "Contraseña de respaldo configurada correctamente"
+          : "Backup password configured successfully"
+      );
+    } catch (err: any) {
+      toast.error(
+        err?.message ||
+          (locale === "es"
+            ? "No se pudo guardar la contraseña de respaldo. Inténtalo de nuevo."
+            : "Unable to save the backup password. Please try again.")
+      );
+    } finally {
+      setIsBackupPasswordSubmitting(false);
+    }
+  };
 
   const handleTabClick = (tab: TabKey) => {
     setActiveTab(tab);
@@ -292,7 +446,12 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                       isActive ? "text-blue-600" : "text-slate-400"
                     }`}
                   />
-                  <span>{getTabLabel(item.key)}</span>
+                  <span className="flex-1">{getTabLabel(item.key)}</span>
+                  {item.key === "settings" && backupPasswordPending && (
+                    <span className="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
+                      1
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -404,6 +563,8 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                 (956) 400 36 83
               </a>
             </div>
+
+            <NotificationBell pending={backupPasswordPending} />
 
             {/* Language Switcher */}
             <LanguageToggle />
@@ -536,21 +697,6 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                       </p>
                     </div>
 
-                    {/* Quick Reorder Status */}
-                    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xs space-y-2">
-                      <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
-                        <span>{t("dashboard.reorderStatus")}</span>
-                        <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-                          <Zap className="w-4 h-4" />
-                        </div>
-                      </div>
-                      <div className="text-2xl sm:text-3xl font-black text-slate-900 flex items-center gap-2">
-                        <span>{t("dashboard.oneClickActive")}</span>
-                      </div>
-                      <p className="text-[11px] text-slate-500">
-                        {t("dashboard.pricingLocked")}
-                      </p>
-                    </div>
                   </div>
                 </>
               ) : (
@@ -576,164 +722,6 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                   </div>
                 </div>
               )}
-
-            {/* Fast-Order Standard Batches Shortcut Section */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
-                    <Zap className="w-5 h-5 text-amber-500" />
-                    {t("dashboard.fastOrderPallet")}
-                  </h2>
-                  <p className="text-xs text-slate-500">
-                    {t("dashboard.fastOrderDesc")}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {/* Card 1: FORCE Standard 18" */}
-                <div className="rounded-3xl border border-slate-200 bg-white p-5 space-y-4 shadow-sm hover:border-sky-300 transition-all flex flex-col justify-between group">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-mono text-[10px] font-bold uppercase tracking-wider">
-                        FORCE STANDARD • 18"
-                      </span>
-                      <span className="text-xs font-black text-slate-900">
-                        {formatCurrency(1325.44)} USD
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-black text-slate-900 group-hover:text-sky-700 transition-colors">
-                        FORCE Standard 18" x 80 Ga x 1,500 ft
-                      </h3>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Full Pallet Batch: 64 Boxes (256 Rolls) • High puncture resistance
-                      </p>
-                    </div>
-                  </div>
-
-                    <Button
-                    type="button"
-                    onClick={() =>
-                      handleFastOrder(
-                        'FORCE Standard 18" Hand Stretch Film',
-                        "stretch-film-18-x-80-ga-x-1500ft",
-                        "PL-ST-18-80-1500-PAL",
-                        "18",
-                        80,
-                        1500,
-                        256,
-                        64,
-                        "2,240",
-                        1325.44,
-                        "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/FORCE_STANDARD.png",
-                        "hand"
-                      )
-                    }
-                    variant="outline"
-                    className="w-full text-xs font-bold py-2.5 rounded-xl border-blue-200 bg-blue-50/50 hover:bg-blue-600 hover:text-white hover:border-blue-600 text-blue-800 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <ShoppingCart className="w-3.5 h-3.5" />
-                    <span>{t("dashboard.orderPallet64")}</span>
-                  </Button>
-                </div>
-
-                {/* Card 2: FORCE Elite 15" */}
-                <div className="rounded-3xl border border-slate-200 bg-white p-5 space-y-4 shadow-sm hover:border-sky-300 transition-all flex flex-col justify-between group">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 font-mono text-[10px] font-bold uppercase tracking-wider">
-                        FORCE ELITE • 15"
-                      </span>
-                      <span className="text-xs font-black text-slate-900">
-                        {formatCurrency(1180.0)} USD
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-black text-slate-900 group-hover:text-sky-700 transition-colors">
-                        FORCE Elite 15" Ultra-Yield Hand Film
-                      </h3>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Full Pallet Batch: 64 Boxes (256 Rolls) • Maximum stretch & low worker fatigue
-                      </p>
-                    </div>
-                  </div>
-
-                  <Button
-                    type="button"
-                    onClick={() =>
-                      handleFastOrder(
-                        'FORCE Elite 15" Hand Stretch Film',
-                        "stretch-film-15-x-ultra-yield-1500ft",
-                        "PL-EL-15-UY-1500-PAL",
-                        "15",
-                        45,
-                        1500,
-                        256,
-                        64,
-                        "1,850",
-                        1180.0,
-                        "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/FORCE_ELITE.png",
-                        "hand"
-                      )
-                    }
-                    variant="outline"
-                    className="w-full text-xs font-bold py-2.5 rounded-xl border-amber-200 bg-amber-50/50 hover:bg-amber-600 hover:text-white hover:border-amber-600 text-amber-900 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <ShoppingCart className="w-3.5 h-3.5" />
-                    <span>{t("dashboard.orderPallet64")}</span>
-                  </Button>
-                </div>
-
-                {/* Card 3: GENESIS Standard 20" */}
-                <div className="rounded-3xl border border-slate-200 bg-white p-5 space-y-4 shadow-sm hover:border-sky-300 transition-all flex flex-col justify-between group">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 font-mono text-[10px] font-bold uppercase tracking-wider">
-                        GENESIS MACHINE • 20"
-                      </span>
-                      <span className="text-xs font-black text-slate-900">
-                        {formatCurrency(1924.4)} USD
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-black text-slate-900 group-hover:text-sky-700 transition-colors">
-                        GENESIS Standard 20" x 80 Ga x 5,000 ft
-                      </h3>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Full Pallet Batch: 50 Rolls Machine Film • High-speed automated turntables
-                      </p>
-                    </div>
-                  </div>
-
-                  <Button
-                    type="button"
-                    onClick={() =>
-                      handleFastOrder(
-                        'GENESIS Standard 20" Machine Film',
-                        "stretch-film-20-x-80-ga-x-5000ft-1",
-                        "PL-GN-20-80-5000-PAL",
-                        "20",
-                        80,
-                        5000,
-                        50,
-                        50,
-                        "1,720",
-                        1924.4,
-                        "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/AUTOMATIC_STRETCH_FILM.png",
-                        "machine"
-                      )
-                    }
-                    variant="outline"
-                    className="w-full text-xs font-bold py-2.5 rounded-xl border-rose-200 bg-rose-50/50 hover:bg-rose-600 hover:text-white hover:border-rose-600 text-rose-900 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <ShoppingCart className="w-3.5 h-3.5" />
-                    <span>{t("dashboard.orderPallet50")}</span>
-                  </Button>
-                </div>
-              </div>
-            </div>
 
             {/* Order History & Quick Reorder Section */}
             <div className="space-y-4">
@@ -944,6 +932,120 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
               </p>
             </div>
 
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 shadow-sm">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">
+                    {locale === "es" ? "Información general" : "General Profile"}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {locale === "es"
+                      ? "Actualiza tus datos de contacto, empresa y avatar de perfil."
+                      : "Update your contact details, company information, and profile avatar."}
+                  </p>
+                </div>
+
+                <AvatarUpload
+                  currentAvatarUrl={profileForm.avatarUrl}
+                  fullName={profileForm.fullName}
+                  email={profileForm.email}
+                  onAvatarChange={(avatarUrl) =>
+                    setProfileForm((prev) => ({ ...prev, avatarUrl }))
+                  }
+                />
+              </div>
+
+              {profileFormError && (
+                <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+                  {profileFormError}
+                </div>
+              )}
+
+              {profileFormSuccess && (
+                <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
+                  {profileFormSuccess}
+                </div>
+              )}
+
+              <form onSubmit={handleProfileSubmit} className="mt-6 space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                      {locale === "es" ? "Nombre completo" : "Full Name"}
+                    </label>
+                    <input
+                      type="text"
+                      value={profileForm.fullName}
+                      onChange={(e) =>
+                        setProfileForm((prev) => ({ ...prev, fullName: e.target.value }))
+                      }
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      placeholder={locale === "es" ? "Tu nombre completo" : "Your full name"}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                      {locale === "es" ? "Correo electrónico" : "Email"}
+                    </label>
+                    <input
+                      type="email"
+                      value={profileForm.email}
+                      onChange={(e) =>
+                        setProfileForm((prev) => ({ ...prev, email: e.target.value }))
+                      }
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      placeholder={locale === "es" ? "correo@empresa.com" : "name@company.com"}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                      {locale === "es" ? "Empresa" : "Company"}
+                    </label>
+                    <input
+                      type="text"
+                      value={profileForm.companyName}
+                      onChange={(e) =>
+                        setProfileForm((prev) => ({ ...prev, companyName: e.target.value }))
+                      }
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      placeholder={locale === "es" ? "Empresa o cliente" : "Company or organization"}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                      {locale === "es" ? "Teléfono" : "Phone"}
+                    </label>
+                    <input
+                      type="tel"
+                      value={profileForm.phone}
+                      onChange={(e) =>
+                        setProfileForm((prev) => ({ ...prev, phone: e.target.value }))
+                      }
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      placeholder={locale === "es" ? "+1 (956) 000-0000" : "+1 (956) 000-0000"}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isProfileSubmitting}
+                  className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-950 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isProfileSubmitting
+                    ? locale === "es"
+                      ? "Guardando..."
+                      : "Saving..."
+                    : locale === "es"
+                      ? "Guardar cambios"
+                      : "Save Changes"}
+                </button>
+              </form>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Entity Data */}
               <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 space-y-4 shadow-sm">
@@ -1007,6 +1109,83 @@ export function DashboardClient({ profile, orders }: DashboardClientProps) {
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">
+                    {locale === "es" ? "Contraseña de Respaldo" : "Backup Password"}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {locale === "es"
+                      ? "Configura una contraseña para ingresar directamente con tu correo y eliminar este aviso pendiente."
+                      : "Set a password for direct email sign-in and clear this pending notice."}
+                  </p>
+                </div>
+
+                <span
+                  className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold ${
+                    backupPasswordPending
+                      ? "border-amber-200 bg-amber-50 text-amber-800"
+                      : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  }`}
+                >
+                  {backupPasswordPending
+                    ? locale === "es"
+                      ? "Pendiente"
+                      : "Pending"
+                    : locale === "es"
+                      ? "Activa"
+                      : "Active"}
+                </span>
+              </div>
+
+              <form onSubmit={handleBackupPasswordSubmit} className="mt-5 space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                      {locale === "es" ? "Nueva Contraseña" : "New Password"}
+                    </label>
+                    <input
+                      type="password"
+                      value={backupPassword}
+                      onChange={(e) => setBackupPassword(e.target.value)}
+                      placeholder={locale === "es" ? "Mínimo 6 caracteres" : "Min. 6 characters"}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      autoComplete="new-password"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                      {locale === "es" ? "Confirmar Contraseña" : "Confirm Password"}
+                    </label>
+                    <input
+                      type="password"
+                      value={backupPasswordConfirm}
+                      onChange={(e) => setBackupPasswordConfirm(e.target.value)}
+                      placeholder={locale === "es" ? "Repite la contraseña" : "Re-enter password"}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isBackupPasswordSubmitting}
+                  className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-950 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isBackupPasswordSubmitting
+                    ? locale === "es"
+                      ? "Guardando..."
+                      : "Saving..."
+                    : locale === "es"
+                      ? "Guardar Contraseña"
+                      : "Save Password"}
+                </button>
+              </form>
             </div>
           </div>
         )}

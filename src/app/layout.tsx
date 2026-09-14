@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { Toaster } from "sonner";
 import { CartDrawer } from "@/components/layout/CartDrawer";
 import { LanguageProvider } from "@/context/LanguageContext";
 
@@ -29,6 +30,7 @@ export default function RootLayout({
         <LanguageProvider>
           {children}
           <CartDrawer />
+          <Toaster closeButton position="top-right" richColors />
         </LanguageProvider>
       </body>
     </html>

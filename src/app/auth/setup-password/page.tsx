@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, AlertCircle, Loader2, ShieldCheck } from "lucide-react";
+import { toast } from "sonner";
+import { Lock, Loader2, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -29,15 +30,13 @@ export default function SetupPasswordPage() {
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMsg(null);
 
     if (password.length < 6) {
-      setErrorMsg(
+      toast.error(
         locale === "es"
           ? "La contraseña debe tener al menos 6 caracteres."
           : "Password must be at least 6 characters long."
@@ -46,7 +45,7 @@ export default function SetupPasswordPage() {
     }
 
     if (password !== confirmPassword) {
-      setErrorMsg(
+      toast.error(
         locale === "es"
           ? "Las contraseñas no coinciden."
           : "Passwords do not match."
@@ -70,11 +69,18 @@ export default function SetupPasswordPage() {
 
       const { error } = await supabaseClient.auth.updateUser({
         password,
+        data: { backup_password_pending: false },
       });
 
       if (error) {
         throw error;
       }
+
+      toast.success(
+        locale === "es"
+          ? "Contraseña de respaldo configurada correctamente"
+          : "Backup password configured successfully"
+      );
 
       try {
         const {
@@ -99,7 +105,7 @@ export default function SetupPasswordPage() {
 
       router.replace(authenticatedHomeRoute);
     } catch (err: any) {
-      setErrorMsg(
+      toast.error(
         err?.message ||
           (locale === "es"
             ? "No se pudo guardar la contraseña. Inténtalo de nuevo."
@@ -124,13 +130,6 @@ export default function SetupPasswordPage() {
           </h1>
           <p className="text-sm text-slate-600">{t("auth.setupPasswordSubtitle")}</p>
         </div>
-
-        {errorMsg && (
-          <div className="mt-5 flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
-            <span>{errorMsg}</span>
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div className="space-y-1.5">
@@ -195,6 +194,10 @@ export default function SetupPasswordPage() {
                 } = await supabaseClient.auth.getUser();
 
                 if (!userError && user) {
+                  await supabaseClient.auth.updateUser({
+                    data: { backup_password_pending: true },
+                  });
+
                   await supabaseClient.from("profiles").upsert(
                     {
                       id: user.id,

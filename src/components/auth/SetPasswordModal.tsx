@@ -52,6 +52,7 @@ export function SetPasswordModal({ isOpen }: SetPasswordModalProps) {
     try {
       const { error } = await supabase.auth.updateUser({
         password: newPassword,
+        data: { backup_password_pending: false },
       });
 
       if (error) {
