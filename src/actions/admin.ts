@@ -58,6 +58,22 @@ export interface AdminOrder {
   locale?: "en" | "es";
 }
 
+export interface AdminCustomer {
+  id: string;
+  companyName: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  city: string;
+  state: string;
+  creditTerms: "Registered" | "Customer";
+  creditLimit: number;
+  creditUsed: number;
+  taxExempt: boolean;
+  status: "approved" | "under_review" | "suspended";
+  createdAt?: string;
+}
+
 /**
  * Verifies that the current active session belongs to an administrator.
  */
@@ -152,6 +168,41 @@ export async function createOrder(order: AdminOrder) {
       success: false,
       error: err?.message || "Failed to create order.",
     };
+  }
+}
+
+export async function getAdminCustomers(): Promise<AdminCustomer[]> {
+  try {
+    const supabase = await createServerClient();
+
+    const { data: profiles, error } = await supabase
+      .from("profiles")
+      .select("id, full_name, company_name, email, phone, role, created_at")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("getAdminCustomers query failed:", error);
+      return [];
+    }
+
+    return (profiles || []).map((profile: any) => ({
+      id: profile.id,
+      companyName: profile.company_name || "Individual Customer",
+      contactName: profile.full_name || "Customer",
+      email: profile.email || "",
+      phone: profile.phone || "",
+      city: "",
+      state: "",
+      creditTerms: "Registered",
+      creditLimit: 0,
+      creditUsed: 0,
+      taxExempt: true,
+      status: profile.role === "admin" ? "approved" : "approved",
+      createdAt: profile.created_at,
+    }));
+  } catch (err) {
+    console.warn("Notice: profiles query failed:", err);
+    return [];
   }
 }
 

@@ -26,7 +26,7 @@ export interface B2BCustomer {
   phone: string;
   city: string;
   state: string;
-  creditTerms: "Net 30" | "Net 60" | "Prepaid";
+  creditTerms: string;
   creditLimit: number;
   creditUsed: number;
   taxExempt: boolean;

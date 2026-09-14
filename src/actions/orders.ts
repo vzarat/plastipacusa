@@ -57,7 +57,7 @@ export async function createOrderFromCheckout(
     if (userError || !user?.id) {
       return {
         success: false,
-        error: "Unauthenticated. Please log in to complete your purchase.",
+        error: "User must be logged in to place an order.",
       };
     }
 

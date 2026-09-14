@@ -15,25 +15,14 @@ async function getDashboardOrders(currentUser: Awaited<ReturnType<typeof getCurr
     const { data: dbOrders, error } = await supabase
       .from("orders")
       .select("*")
+      .eq("user_id", currentUser.user.id)
       .order("created_at", { ascending: false });
 
     if (error || !dbOrders) {
       return [] as DashboardOrder[];
     }
 
-    const userEmail = currentUser.user.email?.toLowerCase();
-    const companyName = currentUser.profile.companyName?.toLowerCase();
-
-    return dbOrders
-      .filter((row: any) => {
-        const matchesUserId = row.user_id && row.user_id === currentUser.user.id;
-        const matchesEmail = row.customer_email && userEmail && row.customer_email.toLowerCase() === userEmail;
-        const matchesCompanyName =
-          row.company_name && companyName && row.company_name.toLowerCase() === companyName;
-
-        return matchesUserId || matchesEmail || matchesCompanyName;
-      })
-      .map((row: any) => {
+    return dbOrders.map((row: any) => {
         const rawStatus = row.fulfillment_status || row.status || "pending";
         const normalizedStatus: DashboardOrder["status"] =
           rawStatus === "fulfilled" || rawStatus === "delivered"
