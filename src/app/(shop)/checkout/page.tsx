@@ -94,7 +94,7 @@ export default function CheckoutPage() {
               Preparing Stripe checkout...
             </div>
           ) : clientSecret ? (
-            <Elements stripe={getStripe()} options={{ clientSecret, layout: "tabs" }}>
+            <Elements stripe={getStripe()} options={{ clientSecret }}>
               <CheckoutForm />
             </Elements>
           ) : (
