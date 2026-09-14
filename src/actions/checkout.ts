@@ -13,7 +13,7 @@ export async function createPaymentIntent(
   }
 
   const stripe = new Stripe(stripeSecretKey, {
-    apiVersion: "2024-06-20",
+    apiVersion: "2026-08-26.dahlia" as any,
   });
 
   const normalizedAmount = Math.round(amount * 100);
