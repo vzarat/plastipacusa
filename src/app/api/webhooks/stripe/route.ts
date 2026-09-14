@@ -43,13 +43,26 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerClient();
 
-    await supabase
+    const { data: matchingOrders, error: matchingError } = await supabase
       .from("orders")
-      .update({
-        status: "paid",
-        payment_intent_id: paymentIntent.id,
-      })
-      .eq("payment_intent_id", paymentIntent.id);
+      .select("id, shipping_address");
+
+    if (matchingError) {
+      throw matchingError;
+    }
+
+    const orderToUpdate = matchingOrders?.find(
+      (order: any) => order.shipping_address?.stripe_payment_intent_id === paymentIntent.id
+    );
+
+    if (orderToUpdate) {
+      await supabase
+        .from("orders")
+        .update({
+          status: "paid",
+        })
+        .eq("id", orderToUpdate.id);
+    }
   } catch (error: any) {
     console.error("Stripe webhook order update failed:", error?.message || error);
     return NextResponse.json({ error: "Order update failed." }, { status: 500 });

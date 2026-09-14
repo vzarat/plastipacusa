@@ -123,7 +123,7 @@ export function AdminOrdersTable({
         const matchesCompany = order.customerCompany.toLowerCase().includes(query);
         const matchesEmail = order.customerEmail.toLowerCase().includes(query);
         const matchesSummary = order.itemsSummary.toLowerCase().includes(query);
-        const matchesCity = order.shippingAddress.city.toLowerCase().includes(query);
+        const matchesCity = (order.shippingAddress?.city || "").toLowerCase().includes(query);
         return (
           matchesId ||
           matchesCustomer ||
@@ -544,6 +544,8 @@ export function AdminOrdersTable({
                   const isSelected = selectedOrderIds.includes(order.id);
                   const isPaid = order.paymentStatus === "paid";
                   const isPendingPayment = order.paymentStatus === "pending";
+                  const isFailedPayment =
+                    order.paymentStatus === "failed" || order.paymentStatus === "system_error";
 
                   const isFulfilled = order.fulfillmentStatus === "fulfilled";
                   const isInTransit = order.fulfillmentStatus === "in_transit";
@@ -624,7 +626,12 @@ export function AdminOrdersTable({
                         {isPaid ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                            Paid Net-30
+                            Completado
+                          </span>
+                        ) : isFailedPayment ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-800 text-[10px] font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                            Intento fallido / Error de pago
                           </span>
                         ) : isPendingPayment ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold">
@@ -744,6 +751,17 @@ export function AdminOrdersTable({
                       Corporate Partner
                     </span>
                   </div>
+
+                  {(inspectOrder.paymentStatus !== "paid" || inspectOrder.failureReason) && (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+                      <div className="font-bold uppercase tracking-wide text-rose-700">
+                        Failure details
+                      </div>
+                      <p className="mt-1 leading-relaxed">
+                        {inspectOrder.failureReason || inspectOrder.shippingAddress.error_details || "Checkout attempt failed."}
+                      </p>
+                    </div>
+                  )}
                   <div className="text-xs text-slate-600 space-y-1">
                     <p className="flex items-center gap-1.5">
                       <User className="w-3.5 h-3.5 text-slate-400" />
@@ -756,8 +774,8 @@ export function AdminOrdersTable({
                     <p className="flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5 text-slate-400" />
                       <span>
-                        {inspectOrder.shippingAddress.street},{" "}
-                        {inspectOrder.shippingAddress.city}, {inspectOrder.shippingAddress.state}
+                        {inspectOrder.shippingAddress?.street || "—"},{" "}
+                        {inspectOrder.shippingAddress?.city || "—"}, {inspectOrder.shippingAddress?.state || "—"}
                       </span>
                     </p>
                   </div>

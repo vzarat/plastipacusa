@@ -11,7 +11,9 @@ export const metadata: Metadata = {
   description: "Manage recurring stretch film orders, review dispatch statuses, and trigger 1-click batch reorders.",
 };
 
-async function getDashboardOrders(currentUser: Awaited<ReturnType<typeof getCurrentUser>>) {
+async function getDashboardOrders(
+  currentUser: Awaited<ReturnType<typeof getCurrentUser>>
+): Promise<DashboardOrder[]> {
   if (!currentUser) {
     return [] as DashboardOrder[];
   }
@@ -40,14 +42,29 @@ async function getDashboardOrders(currentUser: Awaited<ReturnType<typeof getCurr
 
         return matchesUserId || matchesEmail || matchesCompanyName;
       })
-      .map((row: any) => {
-        const rawStatus = row.fulfillment_status || row.status || "pending";
+      .map((row: any): DashboardOrder => {
+        const rawStatus = String(row.status || row.fulfillment_status || "pending").toLowerCase();
         const normalizedStatus: DashboardOrder["status"] =
-          rawStatus === "fulfilled" || rawStatus === "delivered"
-            ? "delivered"
-            : rawStatus === "in_transit" || rawStatus === "shipped"
-              ? "shipped"
-              : "pending";
+          rawStatus === "paid"
+            ? "paid"
+            : rawStatus === "failed" || rawStatus === "payment_failed"
+              ? "failed"
+              : rawStatus === "system_error"
+                ? "system_error"
+                : rawStatus === "fulfilled" || rawStatus === "delivered"
+                  ? "delivered"
+                  : rawStatus === "in_transit" || rawStatus === "shipped"
+                    ? "shipped"
+                    : "pending";
+
+        const paymentStatus: DashboardOrder["paymentStatus"] =
+          rawStatus === "paid"
+            ? "paid"
+            : rawStatus === "failed" || rawStatus === "payment_failed"
+              ? "failed"
+              : rawStatus === "system_error"
+                ? "system_error"
+                : "pending";
 
         return {
           id: row.id || row.po_number || `PO-USA-${row.id}`,
@@ -59,7 +76,9 @@ async function getDashboardOrders(currentUser: Awaited<ReturnType<typeof getCurr
               })
             : "—",
           status: normalizedStatus,
-          totalUsd: Number(row.total_usd || row.total_amount || 0),
+          paymentStatus,
+          failureReason: row.shipping_address?.error_details || undefined,
+          totalUsd: Number(row.total_usd || row.total_amount || row.total || 0),
           itemsSummary:
             row.items_summary ||
             (Array.isArray(row.items) && row.items.length > 0

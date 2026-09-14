@@ -21,6 +21,7 @@ import {
   Layers,
   ShieldCheck,
   TrendingUp,
+  AlertCircle,
   FileSpreadsheet,
   Eye,
   EyeOff,
@@ -69,7 +70,9 @@ export interface DashboardOrderItem {
 export interface DashboardOrder {
   id: string; // e.g. "PO-USA-90412"
   date: string;
-  status: "delivered" | "shipped" | "pending";
+  status: "paid" | "failed" | "system_error" | "delivered" | "shipped" | "pending";
+  paymentStatus?: "paid" | "failed" | "system_error" | "pending";
+  failureReason?: string;
   totalUsd: number;
   itemsSummary: string;
   trackingNumber?: string;
@@ -776,6 +779,8 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {orders.map((order) => {
+                          const isPaid = order.status === "paid";
+                          const isFailed = order.status === "failed" || order.status === "system_error";
                           const isDelivered = order.status === "delivered";
                           const isShipped = order.status === "shipped";
 
@@ -808,7 +813,17 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
 
                               {/* Status Badge */}
                               <td className="py-4 px-4">
-                                {isDelivered ? (
+                                {isPaid ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold text-[11px]">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                    Completado
+                                  </span>
+                                ) : isFailed ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-800 font-semibold text-[11px]">
+                                    <AlertCircle className="w-3 h-3 text-rose-600" />
+                                    Intento fallido / Error de pago
+                                  </span>
+                                ) : isDelivered ? (
                                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold text-[11px]">
                                     <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                                     {t("dashboard.statusDelivered")}

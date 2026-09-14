@@ -37,19 +37,23 @@ export interface AdminOrder {
   isGuest?: boolean;
   customerPhone?: string;
   shippingAddress: {
-    street: string;
-    city: string;
-    state: string;
-    zip: string;
-    country: string;
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    country?: string;
+    error_details?: string;
+    attempted_at?: string;
+    stripe_payment_intent_id?: string;
   };
   totalUsd: number;
-  paymentStatus: "paid" | "pending" | "refunded";
+  paymentStatus: "paid" | "pending" | "refunded" | "failed" | "system_error";
   fulfillmentStatus: "fulfilled" | "unfulfilled" | "in_transit" | "cancelled";
   itemsSummary: string;
   trackingNumber?: string;
   carrier?: string;
   notes?: string;
+  failureReason?: string;
   items: AdminOrderItem[];
   locale?: "en" | "es";
 }
@@ -509,6 +513,22 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
         const profile = row.profiles || {};
         const guestFullName = row.shipping_address?.full_name || row.shipping_address?.customer_name;
         const isGuest = !profile?.full_name && Boolean(guestFullName);
+        const rawStatus = String(row.status || row.fulfillment_status || "pending").toLowerCase();
+        const paymentStatus =
+          rawStatus === "failed" || rawStatus === "payment_failed"
+            ? "failed"
+            : rawStatus === "system_error"
+              ? "system_error"
+              : (row.payment_status || (rawStatus === "paid" ? "paid" : "pending")) as any;
+        const fulfillmentStatus =
+          rawStatus === "failed" || rawStatus === "system_error" || rawStatus === "payment_failed"
+            ? "unfulfilled"
+            : (row.fulfillment_status ||
+                (rawStatus === "paid" || rawStatus === "fulfilled" || rawStatus === "delivered"
+                  ? "fulfilled"
+                  : rawStatus === "in_transit" || rawStatus === "shipped"
+                    ? "in_transit"
+                    : "unfulfilled")) as any;
 
         return {
           id: row.id || row.po_number || `PO-USA-${row.id}`,
@@ -528,13 +548,18 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
             zip: "75201",
             country: "United States",
           },
-          totalUsd: Number(row.total_usd || row.total_amount || 0),
-          paymentStatus: (row.payment_status || "paid") as any,
-          fulfillmentStatus: (row.fulfillment_status || row.status || "unfulfilled") as any,
+          totalUsd: Number(row.total_usd || row.total_amount || row.total || 0),
+          paymentStatus,
+          fulfillmentStatus,
           itemsSummary: row.items_summary || "Industrial Stretch Packaging Order",
           trackingNumber: row.tracking_number,
           carrier: row.carrier,
           notes: row.notes,
+          failureReason:
+            row.shipping_address?.error_details ||
+            row.shipping_address?.error_message ||
+            row.notes ||
+            undefined,
           items: Array.isArray(row.items) ? row.items : [],
         };
       });

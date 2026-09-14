@@ -35,13 +35,20 @@ export async function createOrderFromCheckout(
   cartItems: any[] = [],
   shippingDetails: any = {}
 ) {
+  let supabase: any = null;
+  let user: any = null;
+  let total = 0;
+  let shippingAddress: any = {};
+
   try {
-    const supabase = await createServerClient();
+    supabase = await createServerClient();
 
     const {
-      data: { user },
+      data: { user: currentUser },
       error: userError,
     } = await supabase.auth.getUser();
+
+    user = currentUser;
 
     if (userError || !user?.id) {
       return {
@@ -65,7 +72,7 @@ export async function createOrderFromCheckout(
       }
     }
 
-    const total = cartItems.reduce((sum, item) => {
+    total = cartItems.reduce((sum, item) => {
       const quantity = Number(item.quantity || 1);
       const unitPrice = Number(item.totalPrice ?? item.unitPrice ?? 0);
       return sum + unitPrice * quantity;
@@ -86,7 +93,7 @@ export async function createOrderFromCheckout(
       shippingDetails?.customer_email ||
       null;
 
-    const shippingAddress = {
+    shippingAddress = {
       full_name: paymentFullName,
       email: paymentEmail,
       line1:
@@ -106,11 +113,11 @@ export async function createOrderFromCheckout(
         null,
       country:
         paymentIntentDetails?.shipping?.address?.country || shippingDetails?.country || null,
+      stripe_payment_intent_id: paymentIntentId,
     };
 
     const payload = {
-      user_id: user?.id || null,
-      payment_intent_id: paymentIntentId,
+      user_id: user.id,
       status: "paid",
       total: Number(total.toFixed(2)),
       items: cartItems,
@@ -120,28 +127,27 @@ export async function createOrderFromCheckout(
 
     const { data: existingOrders, error: existingError } = await supabase
       .from("orders")
-      .select("id")
-      .eq("payment_intent_id", paymentIntentId)
-      .limit(1);
+      .select("id, shipping_address");
 
     if (existingError) {
       console.warn("Unable to check existing checkout order record:", existingError.message);
     }
 
-    if (existingOrders && existingOrders.length > 0) {
+    const existingOrder = existingOrders?.find(
+      (order: any) => order.shipping_address?.stripe_payment_intent_id === paymentIntentId
+    );
+
+    if (existingOrder) {
       return {
         success: true,
-        orderId: existingOrders[0].id,
+        orderId: existingOrder.id,
       };
     }
 
     const { data, error } = await supabase.from("orders").insert(payload).select("id");
 
     if (error) {
-      return {
-        success: false,
-        error: error.message || "Failed to save the order.",
-      };
+      throw new Error(error.message || "Failed to save the order.");
     }
 
     const insertedOrder = Array.isArray(data) ? data[0] : data;
@@ -151,10 +157,32 @@ export async function createOrderFromCheckout(
       orderId: insertedOrder?.id || paymentIntentId,
     };
   } catch (error: any) {
-    console.error("createOrderFromCheckout error:", error);
+    const errorMessage = error?.message || "Unexpected error while creating the order.";
+
+    console.error("createOrderFromCheckout error:", errorMessage);
+
+    if (supabase && user?.id) {
+      try {
+        await supabase.from("orders").insert({
+          user_id: user.id,
+          status: "failed",
+          total: Number(total.toFixed(2)),
+          items: cartItems,
+          shipping_address: {
+            ...shippingAddress,
+            error_details: errorMessage,
+            attempted_at: new Date().toISOString(),
+          },
+          created_at: new Date().toISOString(),
+        });
+      } catch (loggingError: any) {
+        console.error("Failed to persist checkout failure record:", loggingError?.message || loggingError);
+      }
+    }
+
     return {
       success: false,
-      error: error?.message || "Unexpected error while creating the order.",
+      error: errorMessage,
     };
   }
 }
