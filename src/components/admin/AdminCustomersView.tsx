@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-interface B2BCustomer {
+export interface B2BCustomer {
   id: string;
   companyName: string;
   contactName: string;
@@ -33,82 +33,12 @@ interface B2BCustomer {
   status: "approved" | "under_review" | "suspended";
 }
 
-const DEFAULT_CUSTOMERS: B2BCustomer[] = [
-  {
-    id: "CUST-GM-901",
-    companyName: "General Motors Reynosa Plant",
-    contactName: "David Vance",
-    email: "procurement@gm.com",
-    phone: "(956) 555-0192",
-    city: "Reynosa / McAllen",
-    state: "TX",
-    creditTerms: "Net 60",
-    creditLimit: 150000,
-    creditUsed: 42650,
-    taxExempt: true,
-    status: "approved",
-  },
-  {
-    id: "CUST-ACM-802",
-    companyName: "Acme Logistics Corp",
-    contactName: "Marcus Vance",
-    email: "m.vance@acmelogistics.com",
-    phone: "(956) 555-0192",
-    city: "Laredo",
-    state: "TX",
-    creditTerms: "Net 30",
-    creditLimit: 75000,
-    creditUsed: 18450,
-    taxExempt: true,
-    status: "approved",
-  },
-  {
-    id: "CUST-LST-744",
-    companyName: "Lone Star Packaging & Freight",
-    contactName: "Sarah Jenkins",
-    email: "sjenkins@lonestarfreight.net",
-    phone: "(210) 844-3200",
-    city: "San Antonio",
-    state: "TX",
-    creditTerms: "Net 30",
-    creditLimit: 50000,
-    creditUsed: 21900,
-    taxExempt: true,
-    status: "approved",
-  },
-  {
-    id: "CUST-APX-620",
-    companyName: "Apex Distribution Center",
-    contactName: "David Rodriguez",
-    email: "procurement@apexdist.com",
-    phone: "(713) 902-1144",
-    city: "Houston",
-    state: "TX",
-    creditTerms: "Net 30",
-    creditLimit: 60000,
-    creditUsed: 3540,
-    taxExempt: true,
-    status: "under_review",
-  },
-  {
-    id: "CUST-PIN-511",
-    companyName: "Pinnacle Warehousing LLC",
-    contactName: "Linda Chen",
-    email: "linda.chen@pinnaclewarehousing.com",
-    phone: "(312) 438-9010",
-    city: "Chicago",
-    state: "IL",
-    creditTerms: "Net 30",
-    creditLimit: 45000,
-    creditUsed: 12800,
-    taxExempt: true,
-    status: "approved",
-  },
-];
+interface AdminCustomersViewProps {
+  customers?: B2BCustomer[];
+}
 
-export function AdminCustomersView() {
+export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) {
   const { t } = useLanguage();
-  const [customers, setCustomers] = useState<B2BCustomer[]>(DEFAULT_CUSTOMERS);
   const [search, setSearch] = useState("");
 
   const filtered = customers.filter((c) => {
@@ -170,93 +100,105 @@ export function AdminCustomersView() {
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-              <tr>
-                <th className="py-3.5 px-4 sm:px-6">Commercial Account</th>
-                <th className="py-3.5 px-3">Primary Contact</th>
-                <th className="py-3.5 px-3">Location</th>
-                <th className="py-3.5 px-3">Credit Terms</th>
-                <th className="py-3.5 px-3">Credit Limit / Used</th>
-                <th className="py-3.5 px-3">Tax Resale Cert</th>
-                <th className="py-3.5 px-4 sm:px-6 text-right">Approval Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium">
-              {filtered.map((client) => (
-                <tr key={client.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-4 px-4 sm:px-6">
-                    <div>
-                      <p className="font-bold text-slate-900 text-xs">{client.companyName}</p>
-                      <p className="font-mono text-[10px] text-purple-700 font-semibold">
-                        {client.id}
-                      </p>
-                    </div>
-                  </td>
-
-                  <td className="py-4 px-3">
-                    <div className="space-y-0.5">
-                      <p className="font-semibold text-slate-800">{client.contactName}</p>
-                      <p className="text-[11px] text-slate-400">{client.email}</p>
-                    </div>
-                  </td>
-
-                  <td className="py-4 px-3 text-slate-600">
-                    {client.city}, {client.state}
-                  </td>
-
-                  <td className="py-4 px-3">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 font-bold text-slate-700 text-[11px]">
-                      {client.creditTerms}
-                    </span>
-                  </td>
-
-                  <td className="py-4 px-3">
-                    <div className="space-y-0.5">
-                      <p className="font-bold text-slate-900 text-xs">
-                        {formatCurrency(client.creditLimit)}
-                      </p>
-                      <p className="text-[11px] text-slate-500">
-                        {formatCurrency(client.creditUsed)} active balance
-                      </p>
-                    </div>
-                  </td>
-
-                  <td className="py-4 px-3">
-                    {client.taxExempt ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                        <FileCheck className="w-3 h-3 text-emerald-600" />
-                        Verified Active
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                        Pending Upload
-                      </span>
-                    )}
-                  </td>
-
-                  <td className="py-4 px-4 sm:px-6 text-right">
-                    {client.status === "approved" ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                        Approved Tier
-                      </span>
-                    ) : client.status === "under_review" ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold">
-                        Credit Review
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-800 text-[10px] font-bold">
-                        Suspended
-                      </span>
-                    )}
-                  </td>
+        {filtered.length === 0 ? (
+          <div className="p-10 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+              <Building2 className="w-7 h-7" />
+            </div>
+            <p className="text-sm font-bold text-slate-700">No real customers found yet.</p>
+            <p className="mt-2 text-xs text-slate-500">
+              Customer accounts will appear here once real orders are placed in the system.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                <tr>
+                  <th className="py-3.5 px-4 sm:px-6">Commercial Account</th>
+                  <th className="py-3.5 px-3">Primary Contact</th>
+                  <th className="py-3.5 px-3">Location</th>
+                  <th className="py-3.5 px-3">Credit Terms</th>
+                  <th className="py-3.5 px-3">Credit Limit / Used</th>
+                  <th className="py-3.5 px-3">Tax Resale Cert</th>
+                  <th className="py-3.5 px-4 sm:px-6 text-right">Approval Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {filtered.map((client) => (
+                  <tr key={client.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-4 px-4 sm:px-6">
+                      <div>
+                        <p className="font-bold text-slate-900 text-xs">{client.companyName}</p>
+                        <p className="font-mono text-[10px] text-purple-700 font-semibold">
+                          {client.id}
+                        </p>
+                      </div>
+                    </td>
+
+                    <td className="py-4 px-3">
+                      <div className="space-y-0.5">
+                        <p className="font-semibold text-slate-800">{client.contactName}</p>
+                        <p className="text-[11px] text-slate-400">{client.email}</p>
+                      </div>
+                    </td>
+
+                    <td className="py-4 px-3 text-slate-600">
+                      {client.city}, {client.state}
+                    </td>
+
+                    <td className="py-4 px-3">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 font-bold text-slate-700 text-[11px]">
+                        {client.creditTerms}
+                      </span>
+                    </td>
+
+                    <td className="py-4 px-3">
+                      <div className="space-y-0.5">
+                        <p className="font-bold text-slate-900 text-xs">
+                          {formatCurrency(client.creditLimit)}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {formatCurrency(client.creditUsed)} active balance
+                        </p>
+                      </div>
+                    </td>
+
+                    <td className="py-4 px-3">
+                      {client.taxExempt ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <FileCheck className="w-3 h-3 text-emerald-600" />
+                          Verified Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                          Pending Upload
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="py-4 px-4 sm:px-6 text-right">
+                      {client.status === "approved" ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          Approved Tier
+                        </span>
+                      ) : client.status === "under_review" ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold">
+                          Credit Review
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-800 text-[10px] font-bold">
+                          Suspended
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

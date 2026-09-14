@@ -11,7 +11,7 @@ import { AdminSidebar, AdminTabKey } from "./AdminSidebar";
 import { AdminDashboardOverview } from "./AdminDashboardOverview";
 import { AdminOrdersTable } from "./AdminOrdersTable";
 import { AdminCatalogView } from "./AdminCatalogView";
-import { AdminCustomersView } from "./AdminCustomersView";
+import { AdminCustomersView, B2BCustomer } from "./AdminCustomersView";
 import { AdminSettingsView } from "./AdminSettingsView";
 import {
   Menu,
@@ -35,6 +35,39 @@ export function AdminOrdersClient({
 }: AdminOrdersClientProps) {
   const { t } = useLanguage();
   const [orders, setOrders] = useState<AdminOrder[]>(initialOrders);
+
+  const customers = React.useMemo<B2BCustomer[]>(() => {
+    const uniqueCustomers = new Map<string, B2BCustomer>();
+
+    orders.forEach((order) => {
+      const customerKey = order.customerEmail || order.customerCompany || order.customerName;
+      if (!customerKey || uniqueCustomers.has(customerKey)) {
+        return;
+      }
+
+      uniqueCustomers.set(customerKey, {
+        id: order.customerEmail || order.id,
+        companyName: order.customerCompany || "Commercial Customer",
+        contactName: order.customerName || "Customer",
+        email: order.customerEmail || "",
+        phone: order.customerPhone || "",
+        city: order.shippingAddress?.city || "",
+        state: order.shippingAddress?.state || "",
+        creditTerms: "Net 30",
+        creditLimit: Number(order.totalUsd || 0),
+        creditUsed: Number(order.totalUsd || 0),
+        taxExempt: true,
+        status:
+          order.paymentStatus === "paid"
+            ? "approved"
+            : order.paymentStatus === "pending"
+              ? "under_review"
+              : "suspended",
+      });
+    });
+
+    return Array.from(uniqueCustomers.values());
+  }, [orders]);
   const [activeTab, setActiveTab] = useState<AdminTabKey>(initialTab);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -182,7 +215,7 @@ export function AdminOrdersClient({
 
           {activeTab === "products" && <AdminCatalogView />}
 
-          {activeTab === "customers" && <AdminCustomersView />}
+          {activeTab === "customers" && <AdminCustomersView customers={customers} />}
 
           {activeTab === "settings" && <AdminSettingsView />}
         </main>
