@@ -264,11 +264,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
           : "Profile updated successfully."
       );
       router.refresh();
-      toast.success(
-        locale === "es"
-          ? "Perfil actualizado correctamente"
-          : "Profile updated successfully"
-      );
+      toast.success("Perfil actualizado correctamente");
     } catch (err: any) {
       const message =
         err?.message ||
