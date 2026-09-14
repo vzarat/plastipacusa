@@ -18,6 +18,7 @@ export default function CheckoutPage() {
   const clearCart = useCartStore((state) => state.clearCart);
 
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [isPreparingCheckout, setIsPreparingCheckout] = useState(false);
 
   const subtotal = getSubtotal();
@@ -33,16 +34,32 @@ export default function CheckoutPage() {
 
     const prepareCheckout = async () => {
       setIsPreparingCheckout(true);
+      setCheckoutError(null);
+      setClientSecret(null);
 
       try {
         const result = await createPaymentIntent(subtotal, "usd");
 
-        if (active) {
-          setClientSecret(result.clientSecret);
+        if (!active) {
+          return;
         }
+
+        if (result.success && result.clientSecret) {
+          setClientSecret(result.clientSecret);
+          return;
+        }
+
+        setCheckoutError(
+          result.error || "Unable to load checkout at this time. Please return to cart."
+        );
+        toast.error(result.error || "Unable to load checkout at this time.");
       } catch (error: any) {
         console.error("Checkout intent error", error);
-        toast.error(error?.message || "Unable to initialize checkout right now.");
+        const fallbackMessage = "Unable to load checkout at this time. Please return to cart.";
+        if (active) {
+          setCheckoutError(fallbackMessage);
+          toast.error(error?.message || fallbackMessage);
+        }
       } finally {
         if (active) {
           setIsPreparingCheckout(false);
@@ -93,13 +110,21 @@ export default function CheckoutPage() {
             <div className="flex min-h-[220px] items-center justify-center text-sm text-slate-500">
               Preparing Stripe checkout...
             </div>
-          ) : clientSecret ? (
+          ) : clientSecret && !checkoutError ? (
             <Elements stripe={getStripe()} options={{ clientSecret }}>
               <CheckoutForm />
             </Elements>
           ) : (
-            <div className="flex min-h-[220px] items-center justify-center text-sm text-red-600">
-              Checkout could not be initialized. Please try again.
+            <div className="flex min-h-[220px] flex-col items-center justify-center gap-4 text-center text-sm text-red-600">
+              <p className="max-w-md text-base font-semibold text-slate-800">
+                Unable to load checkout at this time. Please return to cart.
+              </p>
+              <p className="max-w-md text-slate-600">
+                {checkoutError || "The secure payment service is temporarily unavailable."}
+              </p>
+              <Button asChild variant="outline" className="mt-2">
+                <Link href="/products">Return to products</Link>
+              </Button>
             </div>
           )}
         </div>
