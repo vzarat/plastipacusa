@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/lib/store/useCartStore";
@@ -41,7 +41,22 @@ export function CartDrawer() {
   const [company, setCompany] = useState("");
   const [phone, setPhone] = useState("");
 
-  if (!isDrawerOpen) return null;
+  useEffect(() => {
+    if (!isDrawerOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeDrawer();
+    };
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isDrawerOpen, closeDrawer]);
 
   const subtotal = getSubtotal();
   const totalWeight = getTotalWeight();
@@ -79,229 +94,247 @@ export function CartDrawer() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
+    <div
+      className={`fixed inset-0 z-[80] ${
+        isDrawerOpen ? "pointer-events-auto" : "pointer-events-none"
+      }`}
+      aria-hidden={!isDrawerOpen}
+    >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+        className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-300 ease-in-out ${
+          isDrawerOpen
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
+        }`}
         onClick={closeDrawer}
       />
 
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-md bg-white border-l border-slate-200 text-slate-900 flex flex-col shadow-2xl">
-          {/* Header */}
-          <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-sky-50 text-sky-600 border border-sky-100">
-                <ShoppingCart className="w-4 h-4" />
-              </div>
-              <h2 className="text-lg font-bold text-slate-900">Your Cart</h2>
+      {/* Right slide-over panel */}
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label="Shopping cart"
+        className={`fixed top-0 right-0 bottom-0 z-50 w-[85vw] max-w-md bg-white border-l border-slate-200 text-slate-900 flex flex-col shadow-2xl transition-transform duration-300 ease-in-out ${
+          isDrawerOpen ? "translate-x-0" : "translate-x-full pointer-events-none"
+        }`}
+      >
+        {/* Header */}
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/60 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-sky-50 text-sky-600 border border-sky-100">
+              <ShoppingCart className="w-4 h-4" />
             </div>
-            <button
-              onClick={closeDrawer}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-              aria-label="Close cart"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <h2 className="text-lg font-bold text-slate-900">Your Cart</h2>
           </div>
+          <button
+            type="button"
+            onClick={closeDrawer}
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            aria-label="Close cart"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-          {/* Cart Content */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {items.length === 0 ? (
-              <div className="text-center py-16 space-y-4">
-                <div className="w-16 h-16 bg-sky-50 text-sky-600 rounded-3xl flex items-center justify-center mx-auto">
-                  <Package className="w-8 h-8" />
-                </div>
-                <h3 className="text-base font-bold text-slate-900">Your cart is empty</h3>
-                <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
-                  Explore our high-performance hand and machine stretch films to configure rolls, cases, or bulk pallets.
-                </p>
-                <Button
-                  onClick={closeDrawer}
-                  variant="gradient"
-                  className="mt-4 text-xs font-bold shadow-md shadow-sky-500/20"
-                >
-                  <Link href="/products">Browse Product Catalog</Link>
-                </Button>
+        {/* Cart Content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {items.length === 0 ? (
+            <div className="text-center py-16 space-y-4">
+              <div className="w-16 h-16 bg-sky-50 text-sky-600 rounded-3xl flex items-center justify-center mx-auto">
+                <Package className="w-8 h-8" />
               </div>
-            ) : (
-              items.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3 relative group"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 border border-sky-200 font-bold">
-                        {item.sku}
-                      </span>
-                      <h4 className="text-sm font-bold text-slate-900 mt-1.5">
-                        {item.productName}
-                      </h4>
-                      <p className="text-xs text-slate-500">
-                        {formatRollDimensions(item.widthInches, item.gauge, item.lengthFeet)}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => removeItem(item.id)}
-                      className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
-                      title="Remove item"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  {/* Packaging tier badge */}
-                  <div className="flex items-center gap-2 text-xs text-slate-600">
-                    <Badge variant="default" className="text-[10px] font-bold">
-                      {item.packageSize || item.pricingTier}
-                    </Badge>
-                    <span className="text-slate-500 text-[11px]">
-                      {item.totalRolls ? `${item.totalRolls} rolls / unit` : `${item.rollsPerBox} rolls`}
+              <h3 className="text-base font-bold text-slate-900">Your cart is empty</h3>
+              <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                Explore our high-performance hand and machine stretch films to configure rolls, cases, or bulk pallets.
+              </p>
+              <Button
+                onClick={closeDrawer}
+                variant="gradient"
+                className="mt-4 text-xs font-bold shadow-md shadow-sky-500/20"
+                asChild
+              >
+                <Link href="/products">Browse Product Catalog</Link>
+              </Button>
+            </div>
+          ) : (
+            items.map((item) => (
+              <div
+                key={item.id}
+                className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3 relative group"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 border border-sky-200 font-bold">
+                      {item.sku}
                     </span>
+                    <h4 className="text-sm font-bold text-slate-900 mt-1.5">
+                      {item.productName}
+                    </h4>
+                    <p className="text-xs text-slate-500">
+                      {formatRollDimensions(item.widthInches, item.gauge, item.lengthFeet)}
+                    </p>
                   </div>
-
-                  {/* Quantity and Price */}
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-200/60">
-                    <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors"
-                      >
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <span className="text-xs font-bold text-slate-900 w-6 text-center">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs text-slate-400 font-medium">
-                        {formatCurrency(item.unitPrice)} each
-                      </div>
-                      <div className="text-base font-extrabold text-slate-900">
-                        {formatCurrency(item.totalPrice)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Footer Summary & Actions */}
-          {items.length > 0 && (
-            <div className="p-6 border-t border-slate-100 bg-slate-50/60 space-y-4">
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between text-slate-500">
-                  <span className="flex items-center gap-1.5 font-medium">
-                    <Weight className="w-3.5 h-3.5 text-slate-400" /> Total Weight
-                  </span>
-                  <span className="font-bold text-slate-800">{totalWeight} lbs</span>
-                </div>
-                <div className="flex justify-between text-sm font-bold text-slate-800">
-                  <span>Subtotal</span>
-                  <span className="text-xl font-black text-slate-900">
-                    {formatCurrency(subtotal)}
-                  </span>
-                </div>
-                <p className="text-[10px] text-slate-400">
-                  Shipping & taxes calculated at checkout
-                </p>
-              </div>
-
-              {/* Quote Form or Actions */}
-              {showQuoteForm ? (
-                <form onSubmit={handleQuickQuote} className="space-y-3 pt-2">
-                  <div className="text-xs font-bold text-sky-700">
-                    Instant Commercial Quote Request:
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Company Name"
-                    value={company}
-                    onChange={(e) => setCompany(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  />
-                  <input
-                    type="email"
-                    required
-                    placeholder="Work Email (for official quote PDF)"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  />
-                  <input
-                    type="tel"
-                    placeholder="Phone Number (optional)"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  />
-                  {quoteSuccess ? (
-                    <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2 font-semibold">
-                      <CheckCircle className="w-4 h-4 text-emerald-600" />
-                      Quote request dispatched to Plastipac desk!
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <Button
-                        type="submit"
-                        disabled={isSubmittingQuote}
-                        variant="gradient"
-                        className="flex-1 text-xs font-bold shadow-sm"
-                      >
-                        {isSubmittingQuote ? "Submitting..." : "Send Request"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setShowQuoteForm(false)}
-                        className="text-xs"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  )}
-                </form>
-              ) : (
-                <div className="space-y-2">
-                  <Button
-                    onClick={() => setShowQuoteForm(true)}
-                    variant="gradient"
-                    className="w-full flex items-center justify-center gap-2 text-xs font-bold shadow-md shadow-sky-500/20"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    Request Official Quote
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      closeDrawer();
-                      router.push("/checkout");
-                    }}
-                    variant="outline"
-                    className="w-full text-xs font-semibold border-slate-200 hover:bg-slate-100"
-                  >
-                    Checkout ({formatCurrency(subtotal)})
-                  </Button>
                   <button
-                    onClick={clearCart}
-                    className="w-full text-center text-[11px] text-slate-400 hover:text-slate-600 transition-colors pt-1"
+                    type="button"
+                    onClick={() => removeItem(item.id)}
+                    className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                    title="Remove item"
                   >
-                    Clear Cart
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-              )}
-            </div>
+
+                <div className="flex items-center gap-2 text-xs text-slate-600">
+                  <Badge variant="default" className="text-[10px] font-bold">
+                    {item.packageSize || item.pricingTier}
+                  </Badge>
+                  <span className="text-slate-500 text-[11px]">
+                    {item.totalRolls ? `${item.totalRolls} rolls / unit` : `${item.rollsPerBox} rolls`}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-200/60">
+                  <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+                    <button
+                      type="button"
+                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </button>
+                    <span className="text-xs font-bold text-slate-900 w-6 text-center">
+                      {item.quantity}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-slate-400 font-medium">
+                      {formatCurrency(item.unitPrice)} each
+                    </div>
+                    <div className="text-base font-extrabold text-slate-900">
+                      {formatCurrency(item.totalPrice)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
           )}
         </div>
-      </div>
+
+        {/* Footer Summary & Actions */}
+        {items.length > 0 && (
+          <div className="p-6 border-t border-slate-100 bg-slate-50/60 space-y-4 shrink-0">
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between text-slate-500">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Weight className="w-3.5 h-3.5 text-slate-400" /> Total Weight
+                </span>
+                <span className="font-bold text-slate-800">{totalWeight} lbs</span>
+              </div>
+              <div className="flex justify-between text-sm font-bold text-slate-800">
+                <span>Subtotal</span>
+                <span className="text-xl font-black text-slate-900">
+                  {formatCurrency(subtotal)}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400">
+                Shipping & taxes calculated at checkout
+              </p>
+            </div>
+
+            {showQuoteForm ? (
+              <form onSubmit={handleQuickQuote} className="space-y-3 pt-2">
+                <div className="text-xs font-bold text-sky-700">
+                  Instant Commercial Quote Request:
+                </div>
+                <input
+                  type="text"
+                  required
+                  placeholder="Company Name"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+                <input
+                  type="email"
+                  required
+                  placeholder="Work Email (for official quote PDF)"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+                <input
+                  type="tel"
+                  placeholder="Phone Number (optional)"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+                {quoteSuccess ? (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2 font-semibold">
+                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                    Quote request dispatched to Plastipac desk!
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      type="submit"
+                      disabled={isSubmittingQuote}
+                      variant="gradient"
+                      className="flex-1 text-xs font-bold shadow-sm"
+                    >
+                      {isSubmittingQuote ? "Submitting..." : "Send Request"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowQuoteForm(false)}
+                      className="text-xs"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </form>
+            ) : (
+              <div className="space-y-2">
+                <Button
+                  onClick={() => setShowQuoteForm(true)}
+                  variant="gradient"
+                  className="w-full flex items-center justify-center gap-2 text-xs font-bold shadow-md shadow-sky-500/20"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  Request Official Quote
+                </Button>
+                <Button
+                  onClick={() => {
+                    closeDrawer();
+                    router.push("/checkout");
+                  }}
+                  variant="outline"
+                  className="w-full text-xs font-semibold border-slate-200 hover:bg-slate-100"
+                >
+                  Checkout ({formatCurrency(subtotal)})
+                </Button>
+                <button
+                  type="button"
+                  onClick={clearCart}
+                  className="w-full text-center text-[11px] text-slate-400 hover:text-slate-600 transition-colors pt-1 cursor-pointer"
+                >
+                  Clear Cart
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </aside>
     </div>
   );
 }
