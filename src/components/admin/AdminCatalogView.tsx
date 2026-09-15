@@ -39,6 +39,35 @@ function extractLengthFeet(name: string): number | null {
 const FALLBACK_GAUGES = [50, 60, 70, 80, 90];
 const FALLBACK_LENGTHS = [1000, 1500, 5000, 6000];
 
+// Resolves the best available image source across the various field shapes a product row may have
+function resolveProductImage(item: AdminProduct): string {
+  return item.imageUrl || item.images?.[0] || "";
+}
+
+function ProductThumbnail({ src, alt }: { src: string; alt: string }) {
+  const [hasError, setHasError] = useState(false);
+
+  if (!src || hasError) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-slate-300">
+        <PackageX className="w-10 h-10" />
+        <span className="text-[10px] font-semibold text-slate-400">No image</span>
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      sizes="(max-width: 768px) 100vw, 25vw"
+      className="object-contain p-4"
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
 export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogViewProps) {
   const { t } = useLanguage();
   const [products, setProducts] = useState<AdminProduct[]>(initialProducts);
@@ -367,17 +396,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
               className="flex flex-col rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden hover:shadow-md transition-shadow"
             >
               <div className="relative h-48 bg-slate-50 flex items-center justify-center p-4">
-                {item.imageUrl ? (
-                  <Image
-                    src={item.imageUrl}
-                    alt={item.name}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 25vw"
-                    className="object-contain p-4"
-                  />
-                ) : (
-                  <PackageX className="w-10 h-10 text-slate-300" />
-                )}
+                <ProductThumbnail src={resolveProductImage(item)} alt={item.name} />
 
                 <span className="absolute top-2.5 right-2.5">
                   {item.isActive ? (

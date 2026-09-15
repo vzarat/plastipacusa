@@ -392,7 +392,7 @@ function formatAdminProduct(raw: any): AdminProduct {
         raw.category_id ||
         "force-standard"
     ),
-    imageUrl: String(raw.image_url || ""),
+    imageUrl: String(raw.image_url || raw.imageUrl || (Array.isArray(raw.images) && raw.images[0]) || ""),
     images: Array.isArray(raw.images) ? raw.images : [],
     isActive: raw.is_active === undefined || raw.is_active === null ? true : Boolean(raw.is_active),
     createdAt: raw.created_at || undefined,
@@ -414,7 +414,8 @@ export async function getAdminProducts(): Promise<AdminProduct[]> {
     const { data, error } = await supabase
       .from("products")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(1000);
 
     if (error) {
       console.error("getAdminProducts query error:", error);
