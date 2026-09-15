@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { ProductWithVariants, ProductVariant } from "@/types";
 import { AdminProduct, ProductFormValues } from "@/types/product";
-import { FALLBACK_PRODUCTS } from "@/data/mock-products";
 import { PRODUCT_CATEGORIES } from "@/data/categories";
 import { verifyAdmin } from "./admin";
 
@@ -179,13 +178,10 @@ export async function getProductSlugs(): Promise<{ slug: string }[]> {
         }));
     }
   } catch (err: any) {
-    console.warn("getProductSlugs Supabase query failed, falling back:", err?.message || err);
+    console.error("getProductSlugs Supabase query failed:", err?.message || err);
   }
 
-  const fallback = await getProducts();
-  return fallback.map((product) => ({
-    slug: product.slug,
-  }));
+  return [];
 }
 
 /**
@@ -289,22 +285,14 @@ export async function getProducts(
           }
         }
       } catch (sbErr: any) {
-        console.warn("Supabase query exception, will use fallback data:", sbErr?.message || sbErr);
+        console.error("Supabase getProducts query exception:", sbErr?.message || sbErr);
       }
     }
   } catch (error: any) {
-    console.warn("getProducts encountered error, using fallback products:", error?.message || error);
+    console.error("getProducts encountered error:", error?.message || error);
   }
 
-  // Fallback to local catalog
-  let items = FALLBACK_PRODUCTS;
-  if (applicationFilter && applicationFilter !== "all") {
-    items = items.filter((p) => p.application === applicationFilter);
-  }
-  if (categoryFilter && categoryFilter !== "all") {
-    items = items.filter((p) => matchesCategory(p, categoryFilter));
-  }
-  return items;
+  return [];
 }
 
 /**
@@ -366,18 +354,14 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
           }
         }
       } catch (sbErr: any) {
-        console.warn("Supabase getProductBySlug exception, will use fallback data:", sbErr?.message || sbErr);
+        console.error("Supabase getProductBySlug exception:", sbErr?.message || sbErr);
       }
     }
   } catch (error: any) {
-    console.warn("getProductBySlug encountered error, using fallback:", error?.message || error);
+    console.error("getProductBySlug encountered error:", error?.message || error);
   }
 
-  return (
-    FALLBACK_PRODUCTS.find((p) => p.slug === slug) ||
-    (slug === "force-hand-stretch-film" ? FALLBACK_PRODUCTS[0] : null) ||
-    null
-  );
+  return null;
 }
 
 /**

@@ -11,7 +11,8 @@ export interface ProductVariant extends Omit<DbProductVariant, "id"> {
   boxesCount?: number;
 }
 
-export interface ProductWithVariants extends Omit<DbProduct, "name" | "gauge" | "partNumber" | "priceUsd"> {
+export interface ProductWithVariants
+  extends Omit<DbProduct, "name" | "gauge" | "partNumber" | "priceUsd" | "stockQuantity" | "isActive"> {
   title: string;
   name?: string;
   variants: ProductVariant[];
@@ -26,6 +27,8 @@ export interface ProductWithVariants extends Omit<DbProduct, "name" | "gauge" | 
   core_type?: string;
   partNumber?: string | null;
   priceUsd?: number | null;
+  stockQuantity?: number;
+  isActive?: boolean;
 }
 export type Product = DbProduct;
 export type Inquiry = DbInquiry;
