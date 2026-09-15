@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 
-const FAVICON =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/FAVICON.png";
+const LOADING_ICON =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/CARGA_ICON.svg";
 
 const MIN_VISIBLE_MS = 800;
 const FADE_OUT_MS = 700;
@@ -74,15 +74,16 @@ export function AppSplashScreen() {
         aria-hidden="true"
       />
 
-      {/* Central brand + loader */}
+      {/* Central loading icon + bar */}
       <div className="relative z-10 flex flex-col items-center gap-8">
         <div className="animate-splash-logo">
           <Image
-            src={FAVICON}
-            alt="Plastipac USA"
+            src={LOADING_ICON}
+            alt="Loading Plastipac USA"
             width={112}
             height={112}
             priority
+            unoptimized
             className="h-24 w-24 sm:h-28 sm:w-28 object-contain drop-shadow-sm"
           />
         </div>
