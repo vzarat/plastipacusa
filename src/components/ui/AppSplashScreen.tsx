@@ -10,10 +10,19 @@ const MIN_VISIBLE_MS = 800;
 const FADE_OUT_MS = 700;
 
 export function AppSplashScreen() {
+  const [mounted, setMounted] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [isFading, setIsFading] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted || typeof window === "undefined" || typeof document === "undefined") {
+      return;
+    }
+
     const startedAt = Date.now();
     let fadeTimer: ReturnType<typeof setTimeout> | undefined;
     let unmountTimer: ReturnType<typeof setTimeout> | undefined;
@@ -28,11 +37,11 @@ export function AppSplashScreen() {
       const elapsed = Date.now() - startedAt;
       const wait = Math.max(0, MIN_VISIBLE_MS - elapsed);
 
-      fadeTimer = setTimeout(() => {
+      fadeTimer = window.setTimeout(() => {
         if (cancelled) return;
         setIsFading(true);
 
-        unmountTimer = setTimeout(() => {
+        unmountTimer = window.setTimeout(() => {
           if (!cancelled) setIsVisible(false);
         }, FADE_OUT_MS);
       }, wait);
@@ -42,17 +51,17 @@ export function AppSplashScreen() {
       beginExit();
     } else {
       window.addEventListener("load", beginExit, { once: true });
-      fallbackTimer = setTimeout(beginExit, MIN_VISIBLE_MS + 400);
+      fallbackTimer = window.setTimeout(beginExit, MIN_VISIBLE_MS + 400);
     }
 
     return () => {
       cancelled = true;
       window.removeEventListener("load", beginExit);
-      if (fadeTimer) clearTimeout(fadeTimer);
-      if (unmountTimer) clearTimeout(unmountTimer);
-      if (fallbackTimer) clearTimeout(fallbackTimer);
+      if (fadeTimer) window.clearTimeout(fadeTimer);
+      if (unmountTimer) window.clearTimeout(unmountTimer);
+      if (fallbackTimer) window.clearTimeout(fallbackTimer);
     };
-  }, []);
+  }, [mounted]);
 
   if (!isVisible) return null;
 
@@ -64,7 +73,6 @@ export function AppSplashScreen() {
       aria-hidden="true"
       aria-busy={!isFading}
     >
-      {/* Gradient orbs */}
       <div
         className="absolute -top-20 -right-20 w-80 h-80 rounded-full bg-blue-500/20 blur-3xl animate-splash-orb-a"
         aria-hidden="true"
@@ -74,7 +82,6 @@ export function AppSplashScreen() {
         aria-hidden="true"
       />
 
-      {/* Central loading icon + bar */}
       <div className="relative z-10 flex flex-col items-center gap-8">
         <div className="animate-splash-logo">
           <Image

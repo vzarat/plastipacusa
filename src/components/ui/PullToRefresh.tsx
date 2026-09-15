@@ -13,9 +13,14 @@ export function PullToRefresh() {
   const startYRef = useRef(0);
   const pullingRef = useRef(false);
   const pullDistanceRef = useRef(0);
+  const [mounted, setMounted] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isReleasing, setIsReleasing] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const updatePullDistance = useCallback((value: number) => {
     pullDistanceRef.current = value;
@@ -28,12 +33,14 @@ export function PullToRefresh() {
   const showIndicator = pullDistance > 4 || isRefreshing;
 
   const resetPull = useCallback(() => {
+    if (typeof window === "undefined") return;
     setIsReleasing(true);
     updatePullDistance(0);
     window.setTimeout(() => setIsReleasing(false), 320);
   }, [updatePullDistance]);
 
   const triggerRefresh = useCallback(() => {
+    if (typeof window === "undefined") return;
     setIsRefreshing(true);
     updatePullDistance(PULL_THRESHOLD);
 
@@ -49,6 +56,8 @@ export function PullToRefresh() {
   }, [router, updatePullDistance]);
 
   useEffect(() => {
+    if (!mounted || typeof window === "undefined") return;
+
     const onTouchStart = (event: TouchEvent) => {
       if (isRefreshing) return;
       if (window.scrollY > 0) return;
@@ -105,7 +114,9 @@ export function PullToRefresh() {
       window.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [isRefreshing, resetPull, triggerRefresh, updatePullDistance]);
+  }, [mounted, isRefreshing, resetPull, triggerRefresh, updatePullDistance]);
+
+  if (!mounted) return null;
 
   return (
     <div className="block md:hidden pointer-events-none" aria-hidden="true">

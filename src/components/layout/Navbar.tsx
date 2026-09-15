@@ -67,6 +67,7 @@ export function Navbar() {
       }
     }
 
+    if (typeof document === "undefined") return;
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
@@ -79,7 +80,9 @@ export function Navbar() {
   }, [pathname]);
 
   useEffect(() => {
-    if (!isMobileMenuOpen) return;
+    if (!isMobileMenuOpen || typeof document === "undefined" || typeof window === "undefined") {
+      return;
+    }
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -109,6 +112,8 @@ export function Navbar() {
 
   const mobileDrawer =
     isMounted &&
+    typeof document !== "undefined" &&
+    document.body &&
     createPortal(
       <div className="md:hidden" aria-hidden={!isMobileMenuOpen}>
         {/* Backdrop */}

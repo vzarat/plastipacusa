@@ -18,12 +18,15 @@ interface BeforeInstallPromptEvent extends Event {
 function isStandaloneMode(): boolean {
   if (typeof window === "undefined") return false;
 
-  const displayStandalone = window.matchMedia("(display-mode: standalone)").matches;
-  const iosStandalone =
-    "standalone" in window.navigator &&
-    Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
-
-  return displayStandalone || iosStandalone;
+  try {
+    const displayStandalone = window.matchMedia("(display-mode: standalone)").matches;
+    const iosStandalone =
+      "standalone" in window.navigator &&
+      Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
+    return displayStandalone || iosStandalone;
+  } catch {
+    return false;
+  }
 }
 
 function wasDismissedRecently(): boolean {
@@ -45,22 +48,34 @@ function wasDismissedRecently(): boolean {
 
 function detectIOS(): boolean {
   if (typeof window === "undefined") return false;
-  const ua = window.navigator.userAgent.toLowerCase();
-  const isAppleMobile = /iphone|ipad|ipod/.test(ua);
-  const isIpadOs = window.navigator.platform === "MacIntel" && window.navigator.maxTouchPoints > 1;
-  return isAppleMobile || isIpadOs;
+  try {
+    const ua = window.navigator.userAgent.toLowerCase();
+    const isAppleMobile = /iphone|ipad|ipod/.test(ua);
+    const isIpadOs =
+      window.navigator.platform === "MacIntel" && window.navigator.maxTouchPoints > 1;
+    return isAppleMobile || isIpadOs;
+  } catch {
+    return false;
+  }
 }
 
 export function MobileInstallPrompt() {
   const { locale } = useLanguage();
   const isSpanish = locale === "es";
 
+  const [mounted, setMounted] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted || typeof window === "undefined") return;
+
     if (isStandaloneMode() || wasDismissedRecently()) {
       setIsVisible(false);
       return;
@@ -91,10 +106,11 @@ export function MobileInstallPrompt() {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleAppInstalled);
     };
-  }, []);
+  }, [mounted]);
 
   const dismiss = (permanent = false) => {
     setIsVisible(false);
+    if (typeof window === "undefined") return;
     try {
       window.localStorage.setItem(
         DISMISS_KEY,
@@ -121,7 +137,7 @@ export function MobileInstallPrompt() {
     }
   };
 
-  if (!isVisible) return null;
+  if (!mounted || !isVisible) return null;
 
   const title = isSpanish ? "Instalar Plastipac App" : "Install Plastipac App";
   const installLabel = isSpanish ? "Instalar" : "Install";

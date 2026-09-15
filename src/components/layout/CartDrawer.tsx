@@ -42,7 +42,7 @@ export function CartDrawer() {
   const [phone, setPhone] = useState("");
 
   useEffect(() => {
-    if (!isDrawerOpen) return;
+    if (!isDrawerOpen || typeof document === "undefined") return;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -148,14 +148,14 @@ export function CartDrawer() {
               <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
                 Explore our high-performance hand and machine stretch films to configure rolls, cases, or bulk pallets.
               </p>
-              <Button
-                onClick={closeDrawer}
-                variant="gradient"
-                className="mt-4 text-xs font-bold shadow-md shadow-sky-500/20"
-                asChild
-              >
-                <Link href="/products">Browse Product Catalog</Link>
-              </Button>
+                <Button
+                  onClick={closeDrawer}
+                  variant="gradient"
+                  className="mt-4 text-xs font-bold shadow-md shadow-sky-500/20"
+                  asChild
+                >
+                  <Link href="/products">Browse Product Catalog</Link>
+                </Button>
             </div>
           ) : (
             items.map((item) => (

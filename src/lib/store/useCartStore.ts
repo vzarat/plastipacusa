@@ -107,7 +107,16 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: "plastipac-cart-storage",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => {
+        if (typeof window === "undefined") {
+          return {
+            getItem: () => null,
+            setItem: () => {},
+            removeItem: () => {},
+          };
+        }
+        return localStorage;
+      }),
       partialize: (state) => ({ items: state.items }),
     }
   )
