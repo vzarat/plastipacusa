@@ -33,10 +33,14 @@ const DEFAULT_CATEGORY_SLUG = PRODUCT_CATEGORIES[0]?.slug || "force-standard";
 
 const EMPTY_FORM: ProductFormValues = {
   name: "",
+  storefrontTitle: "",
   partNumber: "",
   description: "",
   gauge: GAUGE_OPTIONS[0],
   priceUsd: null,
+  priceCase: null,
+  priceHalfPallet: null,
+  pricePallet: null,
   stockQuantity: 0,
   application: getApplicationForCategory(DEFAULT_CATEGORY_SLUG),
   categorySlug: DEFAULT_CATEGORY_SLUG,
@@ -68,10 +72,14 @@ export function ProductFormModal({
       setForm({
         id: product.id,
         name: product.name,
+        storefrontTitle: product.storefrontTitle || "",
         partNumber: product.partNumber || "",
         description: product.description || "",
         gauge: product.gauge,
         priceUsd: product.priceUsd,
+        priceCase: product.priceCase,
+        priceHalfPallet: product.priceHalfPallet,
+        pricePallet: product.pricePallet,
         stockQuantity: product.stockQuantity,
         application: getApplicationForCategory(product.categorySlug),
         categorySlug: product.categorySlug,
@@ -224,6 +232,20 @@ export function ProductFormModal({
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Storefront Title / Display Name
+            </label>
+            <Input
+              value={form.storefrontTitle}
+              onChange={(e) => setForm((p) => ({ ...p, storefrontTitle: e.target.value }))}
+              placeholder='e.g. Stretch Film 20" x 60 GA x 5,000 FT'
+            />
+            <p className="text-[10px] text-slate-400 mt-1">
+              Shown on the public catalog card. Falls back to Product Title when left blank.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
               Description
             </label>
             <textarea
@@ -257,7 +279,7 @@ export function ProductFormModal({
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Price (USD)
+                Base Unit Price (USD)
               </label>
               <Input
                 type="number"
@@ -333,6 +355,62 @@ export function ProductFormModal({
                 />
                 <span className="text-xs font-bold text-slate-700">Active / Visible in store</span>
               </label>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+            <h3 className="text-sm font-black text-slate-900">Pricing & Volume Tiers</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Case / Box Price (USD)
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={form.priceCase ?? ""}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, priceCase: e.target.value ? Number(e.target.value) : null }))
+                  }
+                  placeholder="0.00"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">e.g. 4-6 Rolls per Case/Box</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Half Pallet Price (USD)
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={form.priceHalfPallet ?? ""}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, priceHalfPallet: e.target.value ? Number(e.target.value) : null }))
+                  }
+                  placeholder="0.00"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">e.g. 24 Rolls / Half Pallet</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Full Pallet Price (USD)
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={form.pricePallet ?? ""}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, pricePallet: e.target.value ? Number(e.target.value) : null }))
+                  }
+                  placeholder="0.00"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">e.g. 48+ Rolls / Full Pallet</p>
+              </div>
             </div>
           </div>
 

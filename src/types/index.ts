@@ -12,7 +12,19 @@ export interface ProductVariant extends Omit<DbProductVariant, "id"> {
 }
 
 export interface ProductWithVariants
-  extends Omit<DbProduct, "name" | "gauge" | "partNumber" | "priceUsd" | "stockQuantity" | "isActive"> {
+  extends Omit<
+    DbProduct,
+    | "name"
+    | "gauge"
+    | "partNumber"
+    | "priceUsd"
+    | "stockQuantity"
+    | "isActive"
+    | "storefrontTitle"
+    | "priceCase"
+    | "priceHalfPallet"
+    | "pricePallet"
+  > {
   title: string;
   name?: string;
   variants: ProductVariant[];
@@ -29,6 +41,10 @@ export interface ProductWithVariants
   priceUsd?: number | null;
   stockQuantity?: number;
   isActive?: boolean;
+  storefrontTitle?: string | null;
+  priceCase?: number | null;
+  priceHalfPallet?: number | null;
+  pricePallet?: number | null;
 }
 export type Product = DbProduct;
 export type Inquiry = DbInquiry;

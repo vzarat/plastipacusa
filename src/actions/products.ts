@@ -157,6 +157,11 @@ function formatProduct(raw: any): ProductWithVariants {
     partNumber: raw.part_number || raw.partNumber || null,
     stockQuantity: Number(raw.stock_quantity ?? raw.stockQuantity ?? 0),
     isActive: raw.is_active === undefined && raw.isActive === undefined ? true : Boolean(raw.is_active ?? raw.isActive),
+    storefrontTitle: raw.storefront_title || raw.storefrontTitle || null,
+    priceCase: raw.price_case === null || raw.price_case === undefined ? null : Number(raw.price_case),
+    priceHalfPallet:
+      raw.price_half_pallet === null || raw.price_half_pallet === undefined ? null : Number(raw.price_half_pallet),
+    pricePallet: raw.price_pallet === null || raw.price_pallet === undefined ? null : Number(raw.price_pallet),
   };
 }
 
@@ -387,10 +392,15 @@ function formatAdminProduct(raw: any): AdminProduct {
     id: Number(raw.id),
     slug: String(raw.slug),
     name: String(raw.name || ""),
+    storefrontTitle: String(raw.storefront_title || raw.storefrontTitle || ""),
     partNumber: String(raw.part_number || ""),
     description: String(raw.description || ""),
     gauge: raw.gauge === null || raw.gauge === undefined ? null : Number(raw.gauge),
     priceUsd: raw.price_usd === null || raw.price_usd === undefined ? null : Number(raw.price_usd),
+    priceCase: raw.price_case === null || raw.price_case === undefined ? null : Number(raw.price_case),
+    priceHalfPallet:
+      raw.price_half_pallet === null || raw.price_half_pallet === undefined ? null : Number(raw.price_half_pallet),
+    pricePallet: raw.price_pallet === null || raw.price_pallet === undefined ? null : Number(raw.price_pallet),
     stockQuantity: Number(raw.stock_quantity ?? 0),
     // GENESIS categories are always machine-application; every other category is hand-application
     application: getApplicationForCategory(categorySlug),
@@ -466,12 +476,16 @@ export async function createProduct(values: ProductFormValues) {
     const insertPayload = {
       slug,
       name: values.name.trim(),
+      storefront_title: values.storefrontTitle?.trim() || null,
       part_number: values.partNumber?.trim() || null,
       description: values.description?.trim() || "",
       short_description: (values.description || "").slice(0, 500),
       application: getApplicationForCategory(values.categorySlug),
       gauge: values.gauge ?? null,
       price_usd: values.priceUsd ?? null,
+      price_case: values.priceCase ?? null,
+      price_half_pallet: values.priceHalfPallet ?? null,
+      price_pallet: values.pricePallet ?? null,
       stock_quantity: values.stockQuantity ?? 0,
       is_active: values.isActive ?? true,
       image_url: values.imageUrl || values.images?.[0] || "",
@@ -514,6 +528,7 @@ export async function updateProduct(id: number, values: Partial<ProductFormValue
 
     const updatePayload: Record<string, any> = { updated_at: new Date().toISOString() };
     if (values.name !== undefined) updatePayload.name = values.name.trim();
+    if (values.storefrontTitle !== undefined) updatePayload.storefront_title = values.storefrontTitle?.trim() || null;
     if (values.partNumber !== undefined) updatePayload.part_number = values.partNumber?.trim() || null;
     if (values.description !== undefined) {
       updatePayload.description = values.description?.trim() || "";
@@ -522,6 +537,9 @@ export async function updateProduct(id: number, values: Partial<ProductFormValue
     if (values.application !== undefined) updatePayload.application = values.application;
     if (values.gauge !== undefined) updatePayload.gauge = values.gauge;
     if (values.priceUsd !== undefined) updatePayload.price_usd = values.priceUsd;
+    if (values.priceCase !== undefined) updatePayload.price_case = values.priceCase;
+    if (values.priceHalfPallet !== undefined) updatePayload.price_half_pallet = values.priceHalfPallet;
+    if (values.pricePallet !== undefined) updatePayload.price_pallet = values.pricePallet;
     if (values.stockQuantity !== undefined) updatePayload.stock_quantity = values.stockQuantity;
     if (values.isActive !== undefined) updatePayload.is_active = values.isActive;
     if (values.categorySlug !== undefined) {

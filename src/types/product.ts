@@ -10,10 +10,14 @@ export interface AdminProduct {
   id: number;
   slug: string;
   name: string;
+  storefrontTitle: string;
   partNumber: string;
   description: string;
   gauge: number | null;
   priceUsd: number | null;
+  priceCase: number | null;
+  priceHalfPallet: number | null;
+  pricePallet: number | null;
   stockQuantity: number;
   application: "hand" | "machine";
   categorySlug: string;
@@ -27,10 +31,14 @@ export interface AdminProduct {
 export interface ProductFormValues {
   id?: number;
   name: string;
+  storefrontTitle: string;
   partNumber: string;
   description: string;
   gauge: number | null;
   priceUsd: number | null;
+  priceCase: number | null;
+  priceHalfPallet: number | null;
+  pricePallet: number | null;
   stockQuantity: number;
   application: "hand" | "machine";
   categorySlug: string;

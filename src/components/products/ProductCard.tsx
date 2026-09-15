@@ -153,6 +153,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
       : null;
 
   const title =
+    product.storefrontTitle ||
     product.title ||
     product.name ||
     (isGenesis
@@ -160,6 +161,24 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
       : isElite
       ? 'FORCE ELITE™ 15" Hand Stretch Film'
       : 'FORCE™ 18" Hand Stretch Film');
+
+  // Build the volume tier pill from whichever tier prices the admin has configured
+  const availableTiers: string[] = [];
+  if (product.priceCase !== null && product.priceCase !== undefined) {
+    availableTiers.push(isGenesis ? "Rolls" : "Boxes");
+  }
+  if (product.priceHalfPallet !== null && product.priceHalfPallet !== undefined) {
+    availableTiers.push("Half Pallet");
+  }
+  if (product.pricePallet !== null && product.pricePallet !== undefined) {
+    availableTiers.push("Pallet");
+  }
+  const volumeTierLabel =
+    availableTiers.length > 0
+      ? `Volume tiers: ${availableTiers.join(" & ")}`
+      : isGenesis
+      ? "Volume tiers: Rolls & Pallets"
+      : "Volume tiers: Boxes & Pallets";
 
   return (
     <div className="group rounded-3xl border border-slate-200/90 bg-white overflow-hidden flex flex-col justify-between transition-all duration-300 hover:border-sky-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-500/10 card-hover-effect">
@@ -232,7 +251,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           <div className="space-y-2.5 pt-1">
             <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${catStyles.badgeBg} border ${catStyles.badgeBorder} ${catStyles.badgeText} text-[11px] font-semibold`}>
               <Layers className={`w-3.5 h-3.5 ${catStyles.iconColor}`} />
-              <span>{isGenesis ? "Volume tiers: Rolls & Pallets" : "Volume tiers: Boxes & Pallets"}</span>
+              <span>{volumeTierLabel}</span>
             </div>
 
             <div className="flex items-center gap-3 text-[11px] text-slate-600">
