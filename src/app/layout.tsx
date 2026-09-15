@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import { CartDrawer } from "@/components/layout/CartDrawer";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { MobileInstallPrompt } from "@/components/ui/MobileInstallPrompt";
+import { AppSplashScreen } from "@/components/ui/AppSplashScreen";
 
 const APP_ICON =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/ICON_APP.png";
@@ -60,6 +61,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className="min-h-screen bg-slate-50/50 text-slate-900 antialiased selection:bg-sky-500 selection:text-white">
+        <AppSplashScreen />
         <LanguageProvider>
           {children}
           <CartDrawer />

@@ -63,6 +63,49 @@
   }
 }
 
+@keyframes splashOrbFloatA {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate3d(-18px, 22px, 0) scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes splashOrbFloatB {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translate3d(22px, -16px, 0) scale(1.1);
+    opacity: 1;
+  }
+}
+
+@keyframes splashLogoBreathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes splashBarSlide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
 @layer utilities {
   .bg-blue-gradient {
     background: linear-gradient(135deg, #38bdf8 0%, #0284c7 50%, #1d4ed8 100%);
@@ -94,6 +137,22 @@
 
   .animate-fade-in-up {
     animation: fadeInSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-splash-orb-a {
+    animation: splashOrbFloatA 5.5s ease-in-out infinite;
+  }
+
+  .animate-splash-orb-b {
+    animation: splashOrbFloatB 7s ease-in-out infinite;
+  }
+
+  .animate-splash-logo {
+    animation: splashLogoBreathe 2.4s ease-in-out infinite;
+  }
+
+  .animate-splash-bar {
+    animation: splashBarSlide 1.35s ease-in-out infinite;
   }
 
   /* Smooth Tab Transition Utilities */
