@@ -44,7 +44,7 @@ export function AdminSettingsView() {
           <Button
             size="sm"
             onClick={handleSave}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-purple-700 hover:bg-purple-800 text-white shadow-xs cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xs cursor-pointer"
           >
             <Save className="w-3.5 h-3.5" />
             <span>Save Configuration</span>
@@ -64,7 +64,7 @@ export function AdminSettingsView() {
         {/* Logistics & Dispatch Hubs */}
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-6 space-y-4">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-            <Truck className="w-4 h-4 text-purple-600" />
+            <Truck className="w-4 h-4 text-blue-600" />
             <span>Facility Dispatch Hubs</span>
           </div>
 
@@ -74,7 +74,7 @@ export function AdminSettingsView() {
               <input
                 type="text"
                 defaultValue="Laredo Commercial Distribution Center, Texas 78045"
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-600/10 focus:border-purple-500"
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/10 focus:border-blue-500"
               />
             </div>
 
@@ -83,7 +83,7 @@ export function AdminSettingsView() {
               <input
                 type="text"
                 defaultValue="16:00 CST (Mon - Fri)"
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-600/10 focus:border-purple-500"
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/10 focus:border-blue-500"
               />
             </div>
 
@@ -99,7 +99,7 @@ export function AdminSettingsView() {
         {/* Commercial Credit & Verification */}
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-6 space-y-4">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-            <ShieldCheck className="w-4 h-4 text-purple-600" />
+            <ShieldCheck className="w-4 h-4 text-blue-600" />
             <span>Commercial Credit & Tax Exemption</span>
           </div>
 
@@ -108,7 +108,7 @@ export function AdminSettingsView() {
               <label className="font-bold text-slate-700">Default Credit Terms for New Accounts</label>
               <select
                 defaultValue="net30"
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:border-purple-500 cursor-pointer"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:border-blue-500 cursor-pointer"
               >
                 <option value="prepaid">Prepaid / Credit Card</option>
                 <option value="net30">Net 30 (Upon Credit Application Approval)</option>
@@ -120,7 +120,7 @@ export function AdminSettingsView() {
               <label className="font-bold text-slate-700">Resale Tax Certificate Validation</label>
               <select
                 defaultValue="manual"
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:border-purple-500 cursor-pointer"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:border-blue-500 cursor-pointer"
               >
                 <option value="manual">Manual Admin Audit Before Exemption</option>
                 <option value="auto">Automated Tax ID Verification</option>

@@ -21,6 +21,11 @@ export const products = pgTable("products", {
   priceCase: numeric("price_case", { precision: 10, scale: 2 }),
   priceHalfPallet: numeric("price_half_pallet", { precision: 10, scale: 2 }),
   pricePallet: numeric("price_pallet", { precision: 10, scale: 2 }),
+  // Fixed package-option tier pricing (6/12/20/40 rolls), shown as PACKAGE OPTIONS on the public product page
+  price6Rolls: numeric("price_6_rolls", { precision: 10, scale: 2 }).notNull().default("192.44"),
+  price12Rolls: numeric("price_12_rolls", { precision: 10, scale: 2 }).notNull().default("366.55"),
+  price20Rolls: numeric("price_20_rolls", { precision: 10, scale: 2 }).notNull().default("580.36"),
+  price40Rolls: numeric("price_40_rolls", { precision: 10, scale: 2 }).notNull().default("1099.64"),
   stockQuantity: integer("stock_quantity").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
   features: jsonb("features").$type<string[]>().notNull().default([]),

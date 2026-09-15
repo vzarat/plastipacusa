@@ -33,7 +33,32 @@ export function VariantSelector({
   ...props
 }: VariantSelectorProps) {
   const { t } = useLanguage();
-  const variants = product?.variants || [];
+
+  // Prefer the fixed Package Options tier pricing (6/12/20/40 rolls) synced from Supabase;
+  // fall back to the legacy product_variants list when no tiers are configured.
+  const variants = useMemo(() => {
+    if (product?.packageOptions?.length) {
+      return product.packageOptions.map((opt: any) => ({
+        id: opt.sku,
+        sku: opt.sku,
+        packageSize: opt.label,
+        title: opt.label,
+        priceUsd: String(opt.price),
+        rollsPerBox: opt.rolls,
+        rollsPerPallet: 256,
+        widthInches: product?.width_inches || product?.widthInches || "18.00",
+        gauge: product?.gauge || 50,
+        lengthFeet: product?.length_feet || product?.lengthFeet || 1000,
+        weightLbs: "0.00",
+        stockStatus: "in_stock",
+        createdAt: new Date(),
+        rolls_count: opt.rolls,
+        boxes_count: 1,
+      }));
+    }
+    return product?.variants || [];
+  }, [product]);
+
   const addItem = useCartStore((state) => state.addItem);
 
   // Default to first variant

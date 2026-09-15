@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { ProductWithVariants, ProductVariant } from "@/types";
-import { AdminProduct, ProductFormValues } from "@/types/product";
+import { ProductWithVariants, ProductVariant, PackageOption } from "@/types";
+import { AdminProduct, ProductFormValues, PACKAGE_TIER_DEFAULTS } from "@/types/product";
 import { PRODUCT_CATEGORIES, getApplicationForCategory } from "@/data/categories";
 import { verifyAdmin } from "./admin";
 
@@ -126,6 +126,18 @@ function formatProduct(raw: any): ProductWithVariants {
     ? [defaultImage]
     : rawImages;
 
+  const price6Rolls = raw.price_6_rolls !== undefined && raw.price_6_rolls !== null ? Number(raw.price_6_rolls) : 192.44;
+  const price12Rolls = raw.price_12_rolls !== undefined && raw.price_12_rolls !== null ? Number(raw.price_12_rolls) : 366.55;
+  const price20Rolls = raw.price_20_rolls !== undefined && raw.price_20_rolls !== null ? Number(raw.price_20_rolls) : 580.36;
+  const price40Rolls = raw.price_40_rolls !== undefined && raw.price_40_rolls !== null ? Number(raw.price_40_rolls) : 1099.64;
+  const baseSku = String(raw.part_number || raw.partNumber || raw.slug || "SKU").toUpperCase();
+  const packageOptions: PackageOption[] = [
+    { rolls: 6, label: "6 ROLLS", sku: `${baseSku}-6R`, price: price6Rolls },
+    { rolls: 12, label: "12 ROLLS", sku: `${baseSku}-12R`, price: price12Rolls },
+    { rolls: 20, label: "20 ROLLS (HALF PALLET)", sku: `${baseSku}-20R`, price: price20Rolls },
+    { rolls: 40, label: "40 ROLLS (FULL PALLET)", sku: `${baseSku}-40R`, price: price40Rolls },
+  ];
+
   return {
     id: Number(raw.id),
     slug: String(raw.slug),
@@ -162,6 +174,11 @@ function formatProduct(raw: any): ProductWithVariants {
     priceHalfPallet:
       raw.price_half_pallet === null || raw.price_half_pallet === undefined ? null : Number(raw.price_half_pallet),
     pricePallet: raw.price_pallet === null || raw.price_pallet === undefined ? null : Number(raw.price_pallet),
+    price6Rolls,
+    price12Rolls,
+    price20Rolls,
+    price40Rolls,
+    packageOptions,
   };
 }
 
@@ -401,6 +418,22 @@ function formatAdminProduct(raw: any): AdminProduct {
     priceHalfPallet:
       raw.price_half_pallet === null || raw.price_half_pallet === undefined ? null : Number(raw.price_half_pallet),
     pricePallet: raw.price_pallet === null || raw.price_pallet === undefined ? null : Number(raw.price_pallet),
+    price6Rolls:
+      raw.price_6_rolls === null || raw.price_6_rolls === undefined
+        ? PACKAGE_TIER_DEFAULTS.price6Rolls
+        : Number(raw.price_6_rolls),
+    price12Rolls:
+      raw.price_12_rolls === null || raw.price_12_rolls === undefined
+        ? PACKAGE_TIER_DEFAULTS.price12Rolls
+        : Number(raw.price_12_rolls),
+    price20Rolls:
+      raw.price_20_rolls === null || raw.price_20_rolls === undefined
+        ? PACKAGE_TIER_DEFAULTS.price20Rolls
+        : Number(raw.price_20_rolls),
+    price40Rolls:
+      raw.price_40_rolls === null || raw.price_40_rolls === undefined
+        ? PACKAGE_TIER_DEFAULTS.price40Rolls
+        : Number(raw.price_40_rolls),
     stockQuantity: Number(raw.stock_quantity ?? 0),
     // GENESIS categories are always machine-application; every other category is hand-application
     application: getApplicationForCategory(categorySlug),
@@ -486,6 +519,10 @@ export async function createProduct(values: ProductFormValues) {
       price_case: values.priceCase ?? null,
       price_half_pallet: values.priceHalfPallet ?? null,
       price_pallet: values.pricePallet ?? null,
+      price_6_rolls: values.price6Rolls ?? PACKAGE_TIER_DEFAULTS.price6Rolls,
+      price_12_rolls: values.price12Rolls ?? PACKAGE_TIER_DEFAULTS.price12Rolls,
+      price_20_rolls: values.price20Rolls ?? PACKAGE_TIER_DEFAULTS.price20Rolls,
+      price_40_rolls: values.price40Rolls ?? PACKAGE_TIER_DEFAULTS.price40Rolls,
       stock_quantity: values.stockQuantity ?? 0,
       is_active: values.isActive ?? true,
       image_url: values.imageUrl || values.images?.[0] || "",
@@ -540,6 +577,10 @@ export async function updateProduct(id: number, values: Partial<ProductFormValue
     if (values.priceCase !== undefined) updatePayload.price_case = values.priceCase;
     if (values.priceHalfPallet !== undefined) updatePayload.price_half_pallet = values.priceHalfPallet;
     if (values.pricePallet !== undefined) updatePayload.price_pallet = values.pricePallet;
+    if (values.price6Rolls !== undefined) updatePayload.price_6_rolls = values.price6Rolls;
+    if (values.price12Rolls !== undefined) updatePayload.price_12_rolls = values.price12Rolls;
+    if (values.price20Rolls !== undefined) updatePayload.price_20_rolls = values.price20Rolls;
+    if (values.price40Rolls !== undefined) updatePayload.price_40_rolls = values.price40Rolls;
     if (values.stockQuantity !== undefined) updatePayload.stock_quantity = values.stockQuantity;
     if (values.isActive !== undefined) updatePayload.is_active = values.isActive;
     if (values.categorySlug !== undefined) {

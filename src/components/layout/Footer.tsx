@@ -45,9 +45,9 @@ export function Footer() {
 
       {/* Main Footer Links */}
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
           {/* Company Info */}
-          <div className="space-y-4">
+          <div className="space-y-4 sm:col-span-2 lg:col-span-1">
             <Link href="/" className="inline-block">
               <Image
                 src="https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PLASTIPAC_USA_LOGO%202.svg"
@@ -143,6 +143,35 @@ export function Footer() {
             </ul>
           </div>
 
+          {/* Legal & Policies */}
+          <div>
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4">
+              Legal & Policies
+            </h3>
+            <ul className="space-y-2.5 text-xs">
+              <li>
+                <Link href="/privacy-policy" className="hover:text-sky-600 transition-colors">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms-of-service" className="hover:text-sky-600 transition-colors">
+                  Terms of Service
+                </Link>
+              </li>
+              <li>
+                <Link href="/refund-policy" className="hover:text-sky-600 transition-colors">
+                  Refund Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/shipping-policy" className="hover:text-sky-600 transition-colors">
+                  Shipping Policy
+                </Link>
+              </li>
+            </ul>
+          </div>
+
           {/* Contact / Quick Info */}
           <div>
             <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4">
@@ -165,10 +194,11 @@ export function Footer() {
         {/* Bottom Copyright */}
         <div className="mt-12 pt-8 border-t border-slate-200 flex flex-col md:flex-row items-center justify-between text-xs text-slate-400">
           <p>© {new Date().getFullYear()} Plastipac USA. All rights reserved. Industrial packaging engineered for excellence.</p>
-          <div className="flex space-x-6 mt-4 md:mt-0">
-            <Link href="/our-mission" className="hover:text-slate-600">Our Mission</Link>
-            <Link href="/products" className="hover:text-slate-600">Product Matrix</Link>
-            <Link href="/about" className="hover:text-slate-600">About Us</Link>
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mt-4 md:mt-0">
+            <Link href="/privacy-policy" className="hover:text-slate-600">Privacy</Link>
+            <Link href="/terms-of-service" className="hover:text-slate-600">Terms</Link>
+            <Link href="/refund-policy" className="hover:text-slate-600">Refunds</Link>
+            <Link href="/shipping-policy" className="hover:text-slate-600">Shipping</Link>
           </div>
         </div>
       </div>

@@ -220,7 +220,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
           <Button
             size="sm"
             onClick={handleAdd}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-purple-700 hover:bg-purple-800 text-white shadow-xs cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xs cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Product</span>
@@ -240,7 +240,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by title, part number, or description..."
-                className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-600/10 focus:border-purple-400"
+                className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/10 focus:border-blue-400"
               />
             </div>
 
@@ -259,7 +259,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                   onClick={() => setFilterApp(tab.key)}
                   className={`px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer ${
                     filterApp === tab.key
-                      ? "bg-purple-700 text-white shadow-xs"
+                      ? "bg-blue-600 text-white shadow-xs"
                       : "text-slate-600 hover:bg-slate-100"
                   }`}
                 >

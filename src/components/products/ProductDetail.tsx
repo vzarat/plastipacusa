@@ -13,9 +13,20 @@ interface ProductDetailProps {
 
 export function ProductDetail({ product }: ProductDetailProps) {
   const { t } = useLanguage();
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant>(
-    product.variants[0]
-  );
+
+  // Prefer the fixed Package Options tiers (6/12/20/40 rolls) synced from Supabase for the initial selection
+  const initialVariant: ProductVariant | any = product.packageOptions?.length
+    ? {
+        id: product.packageOptions[0].sku,
+        sku: product.packageOptions[0].sku,
+        packageSize: product.packageOptions[0].label,
+        title: product.packageOptions[0].label,
+        priceUsd: String(product.packageOptions[0].price),
+        rollsPerBox: product.packageOptions[0].rolls,
+      }
+    : product.variants[0];
+
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant>(initialVariant);
 
   const title = product.title || product.name || "Stretch Film";
   const rawPrice =

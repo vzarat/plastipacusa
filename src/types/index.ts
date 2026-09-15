@@ -11,6 +11,13 @@ export interface ProductVariant extends Omit<DbProductVariant, "id"> {
   boxesCount?: number;
 }
 
+export interface PackageOption {
+  rolls: number;
+  label: string;
+  sku: string;
+  price: number;
+}
+
 export interface ProductWithVariants
   extends Omit<
     DbProduct,
@@ -24,6 +31,10 @@ export interface ProductWithVariants
     | "priceCase"
     | "priceHalfPallet"
     | "pricePallet"
+    | "price6Rolls"
+    | "price12Rolls"
+    | "price20Rolls"
+    | "price40Rolls"
   > {
   title: string;
   name?: string;
@@ -45,6 +56,11 @@ export interface ProductWithVariants
   priceCase?: number | null;
   priceHalfPallet?: number | null;
   pricePallet?: number | null;
+  price6Rolls?: number;
+  price12Rolls?: number;
+  price20Rolls?: number;
+  price40Rolls?: number;
+  packageOptions?: PackageOption[];
 }
 export type Product = DbProduct;
 export type Inquiry = DbInquiry;

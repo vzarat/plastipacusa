@@ -84,7 +84,7 @@ export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, company, or email..."
-              className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-600/10 focus:border-purple-400"
+              className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/10 focus:border-blue-400"
             />
           </div>
         </div>
@@ -120,7 +120,7 @@ export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) 
                     <td className="py-4 px-4 sm:px-6">
                       <div>
                         <p className="font-bold text-slate-900 text-xs">{client.companyName}</p>
-                        <p className="font-mono text-[10px] text-purple-700 font-semibold">
+                        <p className="font-mono text-[10px] text-blue-700 font-semibold">
                           {client.id}
                         </p>
                       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -9,9 +10,15 @@ export function CheckoutForm() {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [agreedToPolicies, setAgreedToPolicies] = useState(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!agreedToPolicies) {
+      toast.error("Please agree to the Terms of Service and Refund Policy to continue.");
+      return;
+    }
 
     if (!stripe || !elements) {
       toast.error("Stripe is not ready yet. Please try again.");
@@ -65,12 +72,46 @@ export function CheckoutForm() {
           <PaymentElement options={{ layout: "tabs" }} />
         </div>
 
+        <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={agreedToPolicies}
+            onChange={(e) => setAgreedToPolicies(e.target.checked)}
+            required
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
+            aria-describedby="checkout-policy-consent"
+          />
+          <span id="checkout-policy-consent" className="text-xs leading-relaxed text-slate-600">
+            I agree to Plastipac USA&apos;s{" "}
+            <Link
+              href="/terms-of-service"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-sky-700 hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link
+              href="/refund-policy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-sky-700 hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Refund Policy
+            </Link>
+            .
+          </span>
+        </label>
+
         <Button
           type="submit"
           variant="gradient"
           size="lg"
           className="w-full"
-          disabled={!stripe || !elements || isProcessing}
+          disabled={!stripe || !elements || isProcessing || !agreedToPolicies}
         >
           {isProcessing ? (
             <span className="inline-flex items-center justify-center gap-2">

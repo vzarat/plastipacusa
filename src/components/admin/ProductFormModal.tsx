@@ -18,7 +18,7 @@ import {
   updateProduct,
   uploadProductImage,
 } from "@/actions/products";
-import { AdminProduct, GAUGE_OPTIONS, ProductFormValues } from "@/types/product";
+import { AdminProduct, GAUGE_OPTIONS, PACKAGE_TIER_DEFAULTS, ProductFormValues } from "@/types/product";
 import { PRODUCT_CATEGORIES, getApplicationForCategory } from "@/data/categories";
 
 interface ProductFormModalProps {
@@ -41,6 +41,10 @@ const EMPTY_FORM: ProductFormValues = {
   priceCase: null,
   priceHalfPallet: null,
   pricePallet: null,
+  price6Rolls: PACKAGE_TIER_DEFAULTS.price6Rolls,
+  price12Rolls: PACKAGE_TIER_DEFAULTS.price12Rolls,
+  price20Rolls: PACKAGE_TIER_DEFAULTS.price20Rolls,
+  price40Rolls: PACKAGE_TIER_DEFAULTS.price40Rolls,
   stockQuantity: 0,
   application: getApplicationForCategory(DEFAULT_CATEGORY_SLUG),
   categorySlug: DEFAULT_CATEGORY_SLUG,
@@ -61,6 +65,7 @@ export function ProductFormModal({
   const [isUploading, setIsUploading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -80,6 +85,10 @@ export function ProductFormModal({
         priceCase: product.priceCase,
         priceHalfPallet: product.priceHalfPallet,
         pricePallet: product.pricePallet,
+        price6Rolls: product.price6Rolls,
+        price12Rolls: product.price12Rolls,
+        price20Rolls: product.price20Rolls,
+        price40Rolls: product.price40Rolls,
         stockQuantity: product.stockQuantity,
         application: getApplicationForCategory(product.categorySlug),
         categorySlug: product.categorySlug,
@@ -95,21 +104,16 @@ export function ProductFormModal({
   useEffect(() => {
     if (!isOpen) return;
 
-    // Lock body scroll without letting the page jump when the modal mounts
-    const scrollY = window.scrollY;
-    const { overflow, position, top, width } = document.body.style;
-
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = "100%";
+
+    // Focus the dialog container without scrolling the parent page
+    requestAnimationFrame(() => {
+      dialogRef.current?.focus({ preventScroll: true });
+    });
 
     return () => {
-      document.body.style.overflow = overflow;
-      document.body.style.position = position;
-      document.body.style.top = top;
-      document.body.style.width = width;
-      window.scrollTo(0, scrollY);
+      document.body.style.overflow = previousOverflow;
     };
   }, [isOpen]);
 
@@ -187,9 +191,21 @@ export function ProductFormModal({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-2xl max-h-[85vh] bg-white rounded-xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between p-6 border-b border-slate-100">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        tabIndex={-1}
+        className="w-full max-w-2xl max-h-[85vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden outline-none"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between shrink-0 p-6 border-b">
           <h2 className="text-lg font-black text-slate-900">
             {product ? "Edit Product" : "Add New Product"}
           </h2>
@@ -203,7 +219,7 @@ export function ProductFormModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -215,6 +231,7 @@ export function ProductFormModal({
                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
                 placeholder='e.g. FORCE Standard 18" Hand Stretch Film'
                 required
+                autoFocus={false}
               />
             </div>
 
@@ -414,6 +431,53 @@ export function ProductFormModal({
             </div>
           </div>
 
+          <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+            <div>
+              <h3 className="text-sm font-black text-slate-900">Package Options & Tier Pricing</h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                Fixed roll-count packages shown on the public product page. SKUs are auto-generated from the
+                Part Number.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {(
+                [
+                  { key: "price6Rolls" as const, label: "6 ROLLS", suffix: "6R" },
+                  { key: "price12Rolls" as const, label: "12 ROLLS", suffix: "12R" },
+                  { key: "price20Rolls" as const, label: "20 ROLLS (HALF PALLET)", suffix: "20R" },
+                  { key: "price40Rolls" as const, label: "40 ROLLS (FULL PALLET)", suffix: "40R" },
+                ]
+              ).map((tier) => (
+                <div key={tier.key} className="rounded-lg bg-slate-50 border border-slate-200 p-3 space-y-2">
+                  <span className="text-xs font-bold text-slate-800">{tier.label}</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Price (USD)</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={form[tier.key]}
+                        onChange={(e) =>
+                          setForm((p) => ({ ...p, [tier.key]: Number(e.target.value) || 0 }))
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">SKU</label>
+                      <Input
+                        value={`${(form.partNumber || "SKU").toUpperCase()}-${tier.suffix}`}
+                        disabled
+                        className="bg-slate-100 text-slate-500 font-mono text-xs cursor-not-allowed"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
               Product Images
@@ -479,7 +543,7 @@ export function ProductFormModal({
           </div>
         </div>
 
-          <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-100">
+          <div className="flex items-center justify-end gap-3 shrink-0 p-6 border-t">
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
               Cancel
             </Button>

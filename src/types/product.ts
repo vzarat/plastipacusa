@@ -6,6 +6,13 @@ export * from "./index";
  */
 export const GAUGE_OPTIONS = [45, 50, 60, 63, 70, 75, 80, 90, 100, 120] as const;
 
+export const PACKAGE_TIER_DEFAULTS = {
+  price6Rolls: 192.44,
+  price12Rolls: 366.55,
+  price20Rolls: 580.36,
+  price40Rolls: 1099.64,
+} as const;
+
 export interface AdminProduct {
   id: number;
   slug: string;
@@ -18,6 +25,10 @@ export interface AdminProduct {
   priceCase: number | null;
   priceHalfPallet: number | null;
   pricePallet: number | null;
+  price6Rolls: number;
+  price12Rolls: number;
+  price20Rolls: number;
+  price40Rolls: number;
   stockQuantity: number;
   application: "hand" | "machine";
   categorySlug: string;
@@ -39,6 +50,10 @@ export interface ProductFormValues {
   priceCase: number | null;
   priceHalfPallet: number | null;
   pricePallet: number | null;
+  price6Rolls: number;
+  price12Rolls: number;
+  price20Rolls: number;
+  price40Rolls: number;
   stockQuantity: number;
   application: "hand" | "machine";
   categorySlug: string;
