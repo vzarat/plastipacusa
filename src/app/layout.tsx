@@ -1,10 +1,19 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
+import dynamic from "next/dynamic";
 import { Toaster } from "sonner";
 import { CartDrawer } from "@/components/layout/CartDrawer";
 import { LanguageProvider } from "@/context/LanguageContext";
-import { MobileInstallPrompt } from "@/components/ui/MobileInstallPrompt";
-import { AppSplashScreen } from "@/components/ui/AppSplashScreen";
+
+const AppSplashScreen = dynamic(
+  () => import("@/components/ui/AppSplashScreen"),
+  { ssr: false }
+);
+
+const MobileInstallPrompt = dynamic(
+  () => import("@/components/ui/MobileInstallPrompt"),
+  { ssr: false }
+);
 
 const APP_ICON =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/ICON_APP.png";

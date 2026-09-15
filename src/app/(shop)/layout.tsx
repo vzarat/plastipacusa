@@ -1,8 +1,13 @@
 import React from "react";
+import dynamic from "next/dynamic";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { PullToRefresh } from "@/components/ui/PullToRefresh";
+
+const PullToRefresh = dynamic(
+  () => import("@/components/ui/PullToRefresh"),
+  { ssr: false }
+);
 
 export default function ShopLayout({
   children,

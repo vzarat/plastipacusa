@@ -209,3 +209,5 @@ export function MobileInstallPrompt() {
     </div>
   );
 }
+
+export default MobileInstallPrompt;
