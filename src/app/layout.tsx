@@ -1,19 +1,9 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
-import dynamic from "next/dynamic";
 import { Toaster } from "sonner";
 import { CartDrawer } from "@/components/layout/CartDrawer";
 import { LanguageProvider } from "@/context/LanguageContext";
-
-const AppSplashScreen = dynamic(
-  () => import("@/components/ui/AppSplashScreen"),
-  { ssr: false }
-);
-
-const MobileInstallPrompt = dynamic(
-  () => import("@/components/ui/MobileInstallPrompt"),
-  { ssr: false }
-);
+import ClientPWAProvider from "@/components/providers/ClientPWAProvider";
 
 const APP_ICON =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/ICON_APP.png";
@@ -70,11 +60,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className="min-h-screen bg-slate-50/50 text-slate-900 antialiased selection:bg-sky-500 selection:text-white">
-        <AppSplashScreen />
         <LanguageProvider>
+          <ClientPWAProvider />
           {children}
           <CartDrawer />
-          <MobileInstallPrompt />
           <Toaster closeButton position="top-right" richColors />
         </LanguageProvider>
       </body>
