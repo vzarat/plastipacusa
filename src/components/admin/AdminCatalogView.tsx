@@ -342,155 +342,127 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
         </div>
       </div>
 
-      {/* Catalog Table Container */}
-      <div className="rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-              <tr>
-                <th className="py-3.5 px-4 sm:px-6">Product & Part Number</th>
-                <th className="py-3.5 px-3">Application</th>
-                <th className="py-3.5 px-3">Gauge</th>
-                <th className="py-3.5 px-3">Price</th>
-                <th className="py-3.5 px-3">Stock</th>
-                <th className="py-3.5 px-3">Status</th>
-                <th className="py-3.5 px-4 sm:px-6 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium">
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
-                    <div className="flex flex-col items-center gap-2">
-                      <PackageX className="w-8 h-8" />
-                      <span className="text-xs font-semibold">No products found.</span>
-                      {hasActiveFilters && (
-                        <button
-                          type="button"
-                          onClick={clearFilters}
-                          className="text-[11px] font-bold text-purple-700 hover:underline cursor-pointer"
-                        >
-                          Clear filters
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )}
-
-              {filtered.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-4 px-4 sm:px-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 p-1 flex-shrink-0 flex items-center justify-center">
-                        {item.imageUrl ? (
-                          <Image
-                            src={item.imageUrl}
-                            alt={item.name}
-                            width={36}
-                            height={36}
-                            className="h-8 w-auto object-contain"
-                          />
-                        ) : (
-                          <PackageX className="w-4 h-4 text-slate-300" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-900 text-xs">{item.name}</p>
-                        {item.partNumber ? (
-                          <span className="inline-flex items-center mt-0.5 px-1.5 py-0.5 rounded-md bg-purple-50 border border-purple-200 font-mono text-[10px] text-purple-700 font-semibold">
-                            #{item.partNumber}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-slate-400 font-semibold">No Part #</span>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-
-                  <td className="py-4 px-3">
-                    <span className="capitalize font-semibold text-slate-700">
-                      {item.application === "hand" ? "Manual Hand" : "Automated Machine"}
-                    </span>
-                  </td>
-
-                  <td className="py-4 px-3">
-                    {item.gauge ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-sky-50 border border-sky-200 text-sky-700 text-[10px] font-bold">
-                        {item.gauge} GA
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-
-                  <td className="py-4 px-3 font-bold text-slate-700">
-                    {item.priceUsd !== null ? formatCurrency(item.priceUsd) : "—"}
-                  </td>
-
-                  <td className="py-4 px-3">
-                    <span
-                      className={`font-bold ${
-                        item.stockQuantity <= 0 ? "text-red-600" : "text-slate-800"
-                      }`}
-                    >
-                      {item.stockQuantity}
-                    </span>
-                  </td>
-
-                  <td className="py-4 px-3">
-                    {item.isActive ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
-                        <Check className="w-3 h-3 text-emerald-600" />
-                        Active
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-500 text-[10px] font-bold">
-                        Inactive
-                      </span>
-                    )}
-                  </td>
-
-                  <td className="py-4 px-4 sm:px-6">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleEdit(item)}
-                        title="Edit product"
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-sky-700 hover:bg-sky-50 cursor-pointer"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleActive(item)}
-                        disabled={busyId === item.id}
-                        title={item.isActive ? "Deactivate" : "Activate"}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-amber-700 hover:bg-amber-50 cursor-pointer disabled:opacity-50"
-                      >
-                        {busyId === item.id ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Power className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(item)}
-                        disabled={busyId === item.id}
-                        title="Delete product"
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-red-700 hover:bg-red-50 cursor-pointer disabled:opacity-50"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Catalog Grid */}
+      {filtered.length === 0 ? (
+        <div className="rounded-2xl border border-slate-200/90 bg-white shadow-xs py-16 text-center text-slate-400">
+          <div className="flex flex-col items-center gap-2">
+            <PackageX className="w-8 h-8" />
+            <span className="text-xs font-semibold">No products found.</span>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="text-[11px] font-bold text-purple-700 hover:underline cursor-pointer"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {filtered.map((item) => (
+            <div
+              key={item.id}
+              className="flex flex-col rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden hover:shadow-md transition-shadow"
+            >
+              <div className="relative h-48 bg-slate-50 flex items-center justify-center p-4">
+                {item.imageUrl ? (
+                  <Image
+                    src={item.imageUrl}
+                    alt={item.name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 25vw"
+                    className="object-contain p-4"
+                  />
+                ) : (
+                  <PackageX className="w-10 h-10 text-slate-300" />
+                )}
+
+                <span className="absolute top-2.5 right-2.5">
+                  {item.isActive ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
+                      <Check className="w-3 h-3 text-emerald-600" />
+                      Active
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-500 text-[10px] font-bold">
+                      Inactive
+                    </span>
+                  )}
+                </span>
+              </div>
+
+              <div className="flex-1 flex flex-col p-4 gap-1.5">
+                <span className="text-xs text-gray-400 uppercase tracking-wide">
+                  {item.partNumber ? `#${item.partNumber}` : "No Part #"}
+                </span>
+                <h3 className="font-semibold text-gray-800 text-lg leading-snug">{item.name}</h3>
+                <p className="line-clamp-2 text-sm text-gray-500">
+                  {item.description || "No description provided."}
+                </p>
+
+                <div className="flex items-center gap-2 mt-1">
+                  {item.gauge && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-sky-50 border border-sky-200 text-sky-700 text-[10px] font-bold">
+                      {item.gauge} GA
+                    </span>
+                  )}
+                  <span className="capitalize text-[10px] font-semibold text-slate-500">
+                    {item.application === "hand" ? "Manual Hand" : "Automated Machine"}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between mt-2">
+                  <span className="font-bold text-slate-900">
+                    {item.priceUsd !== null ? `${formatCurrency(item.priceUsd)} USD` : "—"}
+                  </span>
+                  <span
+                    className={`text-xs font-bold ${
+                      item.stockQuantity <= 0 ? "text-red-600" : "text-slate-600"
+                    }`}
+                  >
+                    {item.stockQuantity <= 0 ? "Out of stock" : `${item.stockQuantity} in stock`}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => handleEdit(item)}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg px-4 py-2 text-sm font-semibold cursor-pointer transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleActive(item)}
+                    disabled={busyId === item.id}
+                    title={item.isActive ? "Deactivate" : "Activate"}
+                    className="p-2 rounded-lg text-slate-500 hover:text-amber-700 hover:bg-amber-50 cursor-pointer disabled:opacity-50"
+                  >
+                    {busyId === item.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Power className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(item)}
+                    disabled={busyId === item.id}
+                    title="Delete product"
+                    className="p-2 rounded-lg text-slate-500 hover:text-red-700 hover:bg-red-50 cursor-pointer disabled:opacity-50"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <ProductFormModal
         isOpen={isModalOpen}

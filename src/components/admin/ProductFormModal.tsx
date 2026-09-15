@@ -398,7 +398,7 @@ export function ProductFormModal({
               ) : (
                 <Save className="w-3.5 h-3.5" />
               )}
-              {isSaving ? "Saving..." : product ? "Update Product" : "Create Product"}
+              {isSaving ? "Saving..." : product ? "Save Changes" : "Create Product"}
             </Button>
           </div>
         </form>
