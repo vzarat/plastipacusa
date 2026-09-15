@@ -13,6 +13,9 @@ import {
   Power,
   PackageX,
   Loader2,
+  X,
+  ChevronDown,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminProduct } from "@/types/product";
@@ -24,11 +27,27 @@ interface AdminCatalogViewProps {
   showToast?: (msg: string) => void;
 }
 
+type ApplicationFilter = "all" | "hand" | "machine";
+type StatusFilter = "all" | "active" | "inactive";
+
+// Extracts a roll length in feet from a product title (e.g. "...X 1000FT" -> 1000)
+function extractLengthFeet(name: string): number | null {
+  const match = name.match(/(\d{3,5})\s*FT/i);
+  return match ? Number(match[1]) : null;
+}
+
+const FALLBACK_GAUGES = [50, 60, 70, 80, 90];
+const FALLBACK_LENGTHS = [1000, 1500, 5000, 6000];
+
 export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogViewProps) {
   const { t } = useLanguage();
   const [products, setProducts] = useState<AdminProduct[]>(initialProducts);
   const [search, setSearch] = useState("");
-  const [filterApp, setFilterApp] = useState<string>("all");
+  const [filterApp, setFilterApp] = useState<ApplicationFilter>("all");
+  const [filterGauges, setFilterGauges] = useState<number[]>([]);
+  const [filterLength, setFilterLength] = useState<number | "all">("all");
+  const [filterStatus, setFilterStatus] = useState<StatusFilter>("all");
+  const [isGaugeMenuOpen, setIsGaugeMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -43,20 +62,59 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
     }
   };
 
+  const availableGauges = useMemo(() => {
+    const fromData = Array.from(new Set(products.map((p) => p.gauge).filter((g): g is number => !!g)));
+    const merged = Array.from(new Set([...fromData, ...FALLBACK_GAUGES]));
+    return merged.sort((a, b) => a - b);
+  }, [products]);
+
+  const availableLengths = useMemo(() => {
+    const fromData = products
+      .map((p) => extractLengthFeet(p.name))
+      .filter((l): l is number => !!l);
+    const merged = Array.from(new Set([...fromData, ...FALLBACK_LENGTHS]));
+    return merged.sort((a, b) => a - b);
+  }, [products]);
+
+  const hasActiveFilters =
+    search.trim() !== "" ||
+    filterApp !== "all" ||
+    filterGauges.length > 0 ||
+    filterLength !== "all" ||
+    filterStatus !== "all";
+
   const filtered = useMemo(() => {
     return products.filter((item) => {
       if (filterApp !== "all" && item.application !== filterApp) return false;
+      if (filterStatus === "active" && !item.isActive) return false;
+      if (filterStatus === "inactive" && item.isActive) return false;
+      if (filterGauges.length > 0 && (!item.gauge || !filterGauges.includes(item.gauge))) return false;
+      if (filterLength !== "all" && extractLengthFeet(item.name) !== filterLength) return false;
       if (search.trim()) {
-        const q = search.toLowerCase();
-        return (
+        const q = search.trim().toLowerCase();
+        const matches =
           item.name.toLowerCase().includes(q) ||
           item.partNumber.toLowerCase().includes(q) ||
-          item.slug.toLowerCase().includes(q)
-        );
+          item.description.toLowerCase().includes(q);
+        if (!matches) return false;
       }
       return true;
     });
-  }, [products, search, filterApp]);
+  }, [products, search, filterApp, filterGauges, filterLength, filterStatus]);
+
+  const toggleGauge = (gauge: number) => {
+    setFilterGauges((prev) =>
+      prev.includes(gauge) ? prev.filter((g) => g !== gauge) : [...prev, gauge]
+    );
+  };
+
+  const clearFilters = () => {
+    setSearch("");
+    setFilterApp("all");
+    setFilterGauges([]);
+    setFilterLength("all");
+    setFilterStatus("all");
+  };
 
   const handleAdd = () => {
     setEditingProduct(null);
@@ -141,35 +199,151 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
         </div>
       </div>
 
-      {/* Catalog Table Container */}
-      <div className="rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
-        {/* Controls */}
-        <div className="p-4 sm:px-6 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, part number, or slug..."
-              className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-600/10 focus:border-purple-400"
-            />
-          </div>
+      {/* Sticky Filter Toolbar */}
+      <div className="sticky top-0 z-20 rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-sm shadow-xs">
+        <div className="p-4 sm:px-6 space-y-3">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by title, part number, or description..."
+                className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-600/10 focus:border-purple-400"
+              />
+            </div>
 
-          <div className="flex items-center gap-2">
+            {/* Application Tabs */}
+            <div className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1 gap-1">
+              {(
+                [
+                  { key: "all", label: "All" },
+                  { key: "hand", label: "Hand Stretch Film" },
+                  { key: "machine", label: "Automatic / Machine" },
+                ] as { key: ApplicationFilter; label: string }[]
+              ).map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setFilterApp(tab.key)}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer ${
+                    filterApp === tab.key
+                      ? "bg-purple-700 text-white shadow-xs"
+                      : "text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Gauge Multi-Select */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsGaugeMenuOpen((v) => !v)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-[11px] font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
+                Gauge{filterGauges.length > 0 ? ` (${filterGauges.length})` : ""}
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+
+              {isGaugeMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-30"
+                    onClick={() => setIsGaugeMenuOpen(false)}
+                  />
+                  <div className="absolute left-0 mt-2 w-48 rounded-xl border border-slate-200 bg-white shadow-xl z-40 p-2 space-y-1 max-h-64 overflow-y-auto">
+                    {availableGauges.map((g) => (
+                      <label
+                        key={g}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-xs font-semibold text-slate-700"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={filterGauges.includes(g)}
+                          onChange={() => toggleGauge(g)}
+                          className="w-3.5 h-3.5 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                        />
+                        {g} GA
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Status Filter */}
             <select
-              value={filterApp}
-              onChange={(e) => setFilterApp(e.target.value)}
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}
               className="text-xs font-semibold py-2 px-3 rounded-xl border border-slate-200 bg-white text-slate-700 focus:outline-none cursor-pointer"
             >
-              <option value="all">Application: All</option>
-              <option value="hand">Manual Hand Wrap</option>
-              <option value="machine">Machine Automated Film</option>
+              <option value="all">Status: All</option>
+              <option value="active">Active</option>
+              <option value="inactive">Draft / Inactive</option>
             </select>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-700 text-[11px] font-bold hover:bg-red-100 cursor-pointer whitespace-nowrap"
+              >
+                <X className="w-3.5 h-3.5" />
+                Clear Filters
+              </button>
+            )}
+          </div>
+
+          {/* Length Quick Filters */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">
+              Length:
+            </span>
+            <button
+              type="button"
+              onClick={() => setFilterLength("all")}
+              className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${
+                filterLength === "all"
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              All
+            </button>
+            {availableLengths.map((len) => (
+              <button
+                key={len}
+                type="button"
+                onClick={() => setFilterLength(filterLength === len ? "all" : len)}
+                className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${
+                  filterLength === len
+                    ? "bg-slate-900 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                {len.toLocaleString()} FT
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Table */}
+        {/* Results Count */}
+        <div className="px-4 sm:px-6 py-2.5 border-t border-slate-100 bg-slate-50/60 rounded-b-2xl">
+          <p className="text-[11px] font-semibold text-slate-500">
+            Showing <span className="text-slate-900 font-bold">{filtered.length}</span> of{" "}
+            <span className="text-slate-900 font-bold">{products.length}</span> products
+          </p>
+        </div>
+      </div>
+
+      {/* Catalog Table Container */}
+      <div className="rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
@@ -190,6 +364,15 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                     <div className="flex flex-col items-center gap-2">
                       <PackageX className="w-8 h-8" />
                       <span className="text-xs font-semibold">No products found.</span>
+                      {hasActiveFilters && (
+                        <button
+                          type="button"
+                          onClick={clearFilters}
+                          className="text-[11px] font-bold text-purple-700 hover:underline cursor-pointer"
+                        >
+                          Clear filters
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -214,9 +397,13 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                       </div>
                       <div>
                         <p className="font-bold text-slate-900 text-xs">{item.name}</p>
-                        <p className="font-mono text-[10px] text-purple-700 font-semibold">
-                          {item.partNumber || "No Part #"}
-                        </p>
+                        {item.partNumber ? (
+                          <span className="inline-flex items-center mt-0.5 px-1.5 py-0.5 rounded-md bg-purple-50 border border-purple-200 font-mono text-[10px] text-purple-700 font-semibold">
+                            #{item.partNumber}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 font-semibold">No Part #</span>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -227,8 +414,14 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                     </span>
                   </td>
 
-                  <td className="py-4 px-3 font-semibold text-slate-800">
-                    {item.gauge ? `${item.gauge} GA` : "—"}
+                  <td className="py-4 px-3">
+                    {item.gauge ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-sky-50 border border-sky-200 text-sky-700 text-[10px] font-bold">
+                        {item.gauge} GA
+                      </span>
+                    ) : (
+                      "—"
+                    )}
                   </td>
 
                   <td className="py-4 px-3 font-bold text-slate-700">
