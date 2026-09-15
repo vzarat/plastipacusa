@@ -1,3 +1,13 @@
+import withPWAInit from "@ducanh2912/next-pwa";
+
+const withPWA = withPWAInit({
+  dest: "public",
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: true,
+  reloadOnOnline: true,
+  disable: process.env.NODE_ENV === "development",
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
@@ -6,17 +16,17 @@ const nextConfig = {
     unoptimized: true,
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        pathname: "/**",
       },
       {
-        protocol: 'https',
-        hostname: 'ahvmjptomjjnqjylofpa.supabase.co',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "ahvmjptomjjnqjylofpa.supabase.co",
+        pathname: "/**",
       },
     ],
   },
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);

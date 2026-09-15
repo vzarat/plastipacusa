@@ -1,8 +1,14 @@
 import "./globals.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Toaster } from "sonner";
 import { CartDrawer } from "@/components/layout/CartDrawer";
 import { LanguageProvider } from "@/context/LanguageContext";
+import { MobileInstallPrompt } from "@/components/ui/MobileInstallPrompt";
+
+const APP_ICON =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/ICON_APP.png";
+const FAVICON =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/FAVICON.png";
 
 export const metadata: Metadata = {
   title: "Plastipac USA | Industrial High-Performance Stretch Film & Packaging",
@@ -17,6 +23,33 @@ export const metadata: Metadata = {
     "industrial packaging",
     "cast film manufacturer",
   ],
+  applicationName: "Plastipac USA Enterprise",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      {
+        url: FAVICON,
+        type: "image/png",
+      },
+    ],
+    shortcut: [FAVICON],
+    apple: [
+      {
+        url: APP_ICON,
+        type: "image/png",
+      },
+    ],
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Plastipac",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0f172a",
+  colorScheme: "light",
 };
 
 export default function RootLayout({
@@ -30,6 +63,7 @@ export default function RootLayout({
         <LanguageProvider>
           {children}
           <CartDrawer />
+          <MobileInstallPrompt />
           <Toaster closeButton position="top-right" richColors />
         </LanguageProvider>
       </body>
