@@ -24,9 +24,9 @@ export function AppSplashScreen() {
     }
 
     const startedAt = Date.now();
-    let fadeTimer: ReturnType<typeof setTimeout> | undefined;
-    let unmountTimer: ReturnType<typeof setTimeout> | undefined;
-    let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
+    let fadeTimer: number | undefined;
+    let unmountTimer: number | undefined;
+    let fallbackTimer: number | undefined;
     let exited = false;
     let cancelled = false;
 
@@ -57,9 +57,9 @@ export function AppSplashScreen() {
     return () => {
       cancelled = true;
       window.removeEventListener("load", beginExit);
-      if (fadeTimer) window.clearTimeout(fadeTimer);
-      if (unmountTimer) window.clearTimeout(unmountTimer);
-      if (fallbackTimer) window.clearTimeout(fallbackTimer);
+      if (fadeTimer !== undefined) window.clearTimeout(fadeTimer);
+      if (unmountTimer !== undefined) window.clearTimeout(unmountTimer);
+      if (fallbackTimer !== undefined) window.clearTimeout(fallbackTimer);
     };
   }, [mounted]);
 
