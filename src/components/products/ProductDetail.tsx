@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { ProductWithVariants, ProductVariant } from "@/types";
 import { VariantSelector } from "@/components/products/VariantSelector";
-import { formatCurrency } from "@/lib/utils";
 import { PhoneCall } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -11,34 +10,64 @@ interface ProductDetailProps {
   product: ProductWithVariants;
 }
 
+function resolveVariantPrice(variant: ProductVariant | any): number | null {
+  const raw = variant?.price ?? variant?.priceUsd;
+  if (raw === null || raw === undefined || raw === "") return null;
+  const value = typeof raw === "number" ? raw : parseFloat(String(raw));
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function buildInitialVariant(product: ProductWithVariants): ProductVariant | any {
+  const packageOptions = product.packageOptions || [];
+  if (packageOptions.length > 0) {
+    const cheapest = [...packageOptions].sort((a, b) => a.price - b.price)[0];
+    return {
+      id: cheapest.sku,
+      sku: cheapest.sku,
+      packageSize: cheapest.label,
+      title: cheapest.label,
+      priceUsd: String(cheapest.price),
+      price: cheapest.price,
+      rollsPerBox: cheapest.rolls,
+    };
+  }
+
+  if (product.variants?.length) {
+    return [...product.variants].sort(
+      (a, b) => (resolveVariantPrice(a) || Infinity) - (resolveVariantPrice(b) || Infinity)
+    )[0];
+  }
+
+  if (product.startingPrice && product.startingPrice > 0) {
+    return {
+      id: `${product.slug}-base`,
+      sku: product.partNumber || product.slug,
+      packageSize: "BASE UNIT",
+      title: "BASE UNIT",
+      priceUsd: String(product.startingPrice),
+      price: product.startingPrice,
+      rollsPerBox: 1,
+    };
+  }
+
+  return product.variants?.[0];
+}
+
 export function ProductDetail({ product }: ProductDetailProps) {
   const { t } = useLanguage();
 
-  // Prefer the fixed Package Options tiers (6/12/20/40 rolls) synced from Supabase for the initial selection
-  const initialVariant: ProductVariant | any = product.packageOptions?.length
-    ? {
-        id: product.packageOptions[0].sku,
-        sku: product.packageOptions[0].sku,
-        packageSize: product.packageOptions[0].label,
-        title: product.packageOptions[0].label,
-        priceUsd: String(product.packageOptions[0].price),
-        rollsPerBox: product.packageOptions[0].rolls,
-      }
-    : product.variants[0];
+  const initialVariant = useMemo(() => buildInitialVariant(product), [product]);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | any>(initialVariant);
 
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant>(initialVariant);
+  useEffect(() => {
+    setSelectedVariant(initialVariant);
+  }, [initialVariant]);
 
   const title = product.title || product.name || "Stretch Film";
-  const rawPrice =
-    (selectedVariant as any)?.price ??
-    (selectedVariant?.priceUsd ? parseFloat(selectedVariant.priceUsd) : null) ??
-    product.startingPrice ??
-    20.71;
-  const mainPrice = typeof rawPrice === "number" ? rawPrice : parseFloat(String(rawPrice || 0));
 
   return (
     <div className="space-y-6">
-      {/* Product Title & Film Type Header */}
+      {/* Product Title & Film Type Header — price lives only in VariantSelector card */}
       <div>
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs font-mono uppercase text-sky-600 font-bold tracking-wider">
@@ -50,27 +79,12 @@ export function ProductDetail({ product }: ProductDetailProps) {
           {title}
         </h1>
 
-        {/* Main Top Price Display reflecting selected variant */}
-        <div className="mt-3 flex items-baseline gap-2">
-          <span className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            {formatCurrency(mainPrice)}
-          </span>
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            {t("products.usdPerUnit")}
-          </span>
-          {selectedVariant && (
-            <span className="ml-2 text-xs font-semibold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">
-              {(selectedVariant as any).title || selectedVariant.packageSize || selectedVariant.sku}
-            </span>
-          )}
-        </div>
-
         <p className="text-sm text-slate-600 mt-3 leading-relaxed">
           {product.description}
         </p>
       </div>
 
-      {/* Interactive Variant & Packaging Selector */}
+      {/* Interactive Variant & Packaging Selector (single official price display) */}
       <VariantSelector
         product={product}
         selectedVariant={selectedVariant}
@@ -95,4 +109,3 @@ export function ProductDetail({ product }: ProductDetailProps) {
     </div>
   );
 }
-

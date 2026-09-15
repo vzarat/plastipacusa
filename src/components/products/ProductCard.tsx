@@ -120,21 +120,30 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   const catStyles =
     CATEGORY_STYLES[resolvedCategorySlug] || CATEGORY_STYLES["force-standard"];
 
-  // Find minimum starting price among all variants
+  // Find minimum starting price among variants / package options / product base
   const variantPrices = (product?.variants || [])
-    .map((v) => parseFloat(v.priceUsd))
-    .filter((p) => !isNaN(p) && p > 0);
+    .map((v) => parseFloat(String(v.priceUsd)))
+    .filter((p) => Number.isFinite(p) && p > 0);
 
-  const minVariantPrice = variantPrices.length > 0 ? Math.min(...variantPrices) : null;
+  const packagePrices = (product?.packageOptions || [])
+    .map((opt) => Number(opt.price))
+    .filter((p) => Number.isFinite(p) && p > 0);
+
+  const startingPrice = Number((product as any)?.startingPrice);
+  const basePrice = Number((product as any)?.priceUsd);
+
+  const priceCandidates = [
+    ...variantPrices,
+    ...packagePrices,
+    ...(Number.isFinite(startingPrice) && startingPrice > 0 ? [startingPrice] : []),
+    ...(Number.isFinite(basePrice) && basePrice > 0 ? [basePrice] : []),
+  ];
+
+  const primaryPrice = priceCandidates.length > 0 ? Math.min(...priceCandidates) : null;
   const primaryVariant = product?.variants?.[0];
-  const primaryPrice =
-    minVariantPrice !== null
-      ? minVariantPrice
-      : (product as any)?.startingPrice
-      ? parseFloat(String((product as any).startingPrice))
-      : isGenesis
-      ? 192.44
-      : 20.71;
+  const cheapestPackage = [...(product?.packageOptions || [])].sort(
+    (a, b) => a.price - b.price
+  )[0];
 
   const AUTOMATIC_IMAGE =
     "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/AUTOMATIC_STRETCH_FILM.png";
@@ -278,17 +287,21 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             </span>
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl font-black text-slate-900 tracking-tight">
-                {formatCurrency(primaryPrice)}
+                {primaryPrice !== null ? formatCurrency(primaryPrice) : "—"}
               </span>
-              <span className="text-xs font-bold text-slate-500">USD</span>
+              {primaryPrice !== null && (
+                <span className="text-xs font-bold text-slate-500">USD</span>
+              )}
             </div>
           </div>
           <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
             {isGenesis
               ? "Machine Roll"
+              : cheapestPackage?.rolls
+              ? `${cheapestPackage.rolls} Rolls`
               : primaryVariant?.rollsPerBox
               ? `${primaryVariant.rollsPerBox} Rolls / Box`
-              : "4 Rolls / Box"}
+              : "Package"}
           </span>
         </div>
 

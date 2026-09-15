@@ -34,34 +34,43 @@ export function VariantSelector({
 }: VariantSelectorProps) {
   const { t } = useLanguage();
 
-  // Prefer the fixed Package Options tier pricing (6/12/20/40 rolls) synced from Supabase;
-  // fall back to the legacy product_variants list when no tiers are configured.
+  // Prefer configured package tiers when they carry real prices; otherwise use SKU variants.
   const variants = useMemo(() => {
     if (product?.packageOptions?.length) {
-      return product.packageOptions.map((opt: any) => ({
-        id: opt.sku,
-        sku: opt.sku,
-        packageSize: opt.label,
-        title: opt.label,
-        priceUsd: String(opt.price),
-        rollsPerBox: opt.rolls,
-        rollsPerPallet: 256,
-        widthInches: product?.width_inches || product?.widthInches || "18.00",
-        gauge: product?.gauge || 50,
-        lengthFeet: product?.length_feet || product?.lengthFeet || 1000,
-        weightLbs: "0.00",
-        stockStatus: "in_stock",
-        createdAt: new Date(),
-        rolls_count: opt.rolls,
-        boxes_count: 1,
-      }));
+      return product.packageOptions
+        .map((opt: any) => {
+          const price = Number(opt.price);
+          if (!Number.isFinite(price) || price <= 0) return null;
+          return {
+            id: opt.sku,
+            sku: opt.sku,
+            packageSize: opt.label,
+            title: opt.label,
+            priceUsd: String(price),
+            price,
+            rollsPerBox: opt.rolls,
+            rollsPerPallet: 256,
+            widthInches: product?.width_inches || product?.widthInches || "18.00",
+            gauge: product?.gauge || 50,
+            lengthFeet: product?.length_feet || product?.lengthFeet || 1000,
+            weightLbs: "0.00",
+            stockStatus: "in_stock",
+            createdAt: new Date(),
+            rolls_count: opt.rolls,
+            boxes_count: 1,
+          };
+        })
+        .filter(Boolean);
     }
-    return product?.variants || [];
+    return (product?.variants || []).filter((v: any) => {
+      const price = parseFloat(String(v.priceUsd ?? v.price ?? ""));
+      return Number.isFinite(price) && price > 0;
+    });
   }, [product]);
 
   const addItem = useCartStore((state) => state.addItem);
 
-  // Default to first variant
+  // Default to first (sorted/cheapest) variant
   const [internalSelectedVariantId, setInternalSelectedVariantId] = useState<string>(
     String(variants[0]?.id || variants[0]?.sku || "0")
   );
@@ -91,11 +100,19 @@ export function VariantSelector({
     selectedVariant?.sku ||
     internalSelectedVariantId;
 
-  const unitPrice = parseFloat(selectedVariant?.priceUsd || (selectedVariant as any)?.price || "20.71");
+  const parsedUnitPrice = parseFloat(
+    String(selectedVariant?.priceUsd ?? (selectedVariant as any)?.price ?? "")
+  );
+  const unitPrice =
+    Number.isFinite(parsedUnitPrice) && parsedUnitPrice > 0
+      ? parsedUnitPrice
+      : Number(product?.startingPrice) > 0
+        ? Number(product.startingPrice)
+        : 0;
   const totalPrice = Number((unitPrice * quantity).toFixed(2));
 
   const handleAddToCart = () => {
-    if (!selectedVariant) return;
+    if (!selectedVariant || unitPrice <= 0) return;
 
     addItem({
       productId: product.id,
@@ -138,9 +155,11 @@ export function VariantSelector({
           </span>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-              {formatCurrency(unitPrice)}
+              {unitPrice > 0 ? formatCurrency(unitPrice) : "—"}
             </span>
-            <span className="text-sm font-bold text-slate-500">USD</span>
+            {unitPrice > 0 && (
+              <span className="text-sm font-bold text-slate-500">USD</span>
+            )}
           </div>
         </div>
 
@@ -345,6 +364,7 @@ export function VariantSelector({
             onClick={handleAddToCart}
             variant="gradient"
             size="lg"
+            disabled={unitPrice <= 0}
             className="w-full flex items-center justify-center gap-2 text-sm font-bold shadow-lg shadow-sky-500/20 py-6 rounded-2xl"
           >
             <ShoppingCart className="w-4 h-4" />

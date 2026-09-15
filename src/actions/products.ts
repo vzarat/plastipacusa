@@ -7,6 +7,29 @@ import { AdminProduct, ProductFormValues, PACKAGE_TIER_DEFAULTS } from "@/types/
 import { PRODUCT_CATEGORIES, getApplicationForCategory } from "@/data/categories";
 import { verifyAdmin } from "./admin";
 
+function parsePositivePrice(...candidates: unknown[]): number | null {
+  for (const candidate of candidates) {
+    if (candidate === null || candidate === undefined || candidate === "") continue;
+    const value = typeof candidate === "number" ? candidate : parseFloat(String(candidate));
+    if (Number.isFinite(value) && value > 0) return value;
+  }
+  return null;
+}
+
+function isDefaultPackageTierSet(
+  price6: number | null,
+  price12: number | null,
+  price20: number | null,
+  price40: number | null
+): boolean {
+  return (
+    price6 === PACKAGE_TIER_DEFAULTS.price6Rolls &&
+    price12 === PACKAGE_TIER_DEFAULTS.price12Rolls &&
+    price20 === PACKAGE_TIER_DEFAULTS.price20Rolls &&
+    price40 === PACKAGE_TIER_DEFAULTS.price40Rolls
+  );
+}
+
 /**
  * Format raw Supabase database records into type-safe ProductWithVariants
  * - Maps product_variants and sorts by price ascending
@@ -27,6 +50,7 @@ function formatProduct(raw: any): ProductWithVariants {
         (rollsCount <= 4 ? 1 : Math.round(rollsCount / 4))
       );
       const variantTitle = String(v.title || v.package_size || v.packageSize || (boxesCount === 1 ? "1 BOX WITH 4 ROLLS" : `${boxesCount} BOXES = ${rollsCount} ROLLS`));
+      const variantPrice = parsePositivePrice(v.price_usd, v.priceUsd, v.price);
 
       return {
         id: String(v.id || v.sku || index),
@@ -44,13 +68,14 @@ function formatProduct(raw: any): ProductWithVariants {
         rollsPerBox: rollsCount,
         rollsPerPallet: Number(v.rolls_per_pallet || v.rollsPerPallet || 256),
         weightLbs: String(v.weight_lbs || v.weightLbs || "12.00"),
-        priceUsd: String(v.price_usd || v.priceUsd || v.price || "20.71"),
+        priceUsd: variantPrice !== null ? String(variantPrice) : "0",
         casePriceUsd: v.case_price_usd ? String(v.case_price_usd) : (v.casePriceUsd ? String(v.casePriceUsd) : null),
         palletPriceUsd: v.pallet_price_usd ? String(v.pallet_price_usd) : (v.palletPriceUsd ? String(v.palletPriceUsd) : null),
         stockStatus: String(v.stock_status || v.stockStatus || "in_stock"),
         createdAt: v.created_at ? new Date(v.created_at) : new Date(),
       };
     })
+    .filter((v) => parsePositivePrice(v.priceUsd) !== null)
     .sort((a, b) => parseFloat(a.priceUsd) - parseFloat(b.priceUsd));
 
   // Resolve category slug and machine film detection
@@ -87,13 +112,68 @@ function formatProduct(raw: any): ProductWithVariants {
       nameStr.includes("elite") ||
       slugStr.includes("elite"));
 
-  // Calculate starting base price dynamically as MIN(product_variants.price)
+  const productBasePrice = parsePositivePrice(raw.price_usd, raw.priceUsd);
+  const price6Rolls = parsePositivePrice(raw.price_6_rolls, raw.price6Rolls);
+  const price12Rolls = parsePositivePrice(raw.price_12_rolls, raw.price12Rolls);
+  const price20Rolls = parsePositivePrice(raw.price_20_rolls, raw.price20Rolls);
+  const price40Rolls = parsePositivePrice(raw.price_40_rolls, raw.price40Rolls);
+
+  // Treat untouched schema defaults as unset when real SKU variants exist
+  const packageTiersAreDefaults = isDefaultPackageTierSet(
+    price6Rolls,
+    price12Rolls,
+    price20Rolls,
+    price40Rolls
+  );
+  const useCustomPackageTiers =
+    !packageTiersAreDefaults &&
+    [price6Rolls, price12Rolls, price20Rolls, price40Rolls].some((p) => p !== null);
+
+  const baseSku = String(raw.part_number || raw.partNumber || raw.slug || "SKU").toUpperCase();
+
+  let packageOptions: PackageOption[] = [];
+  if (useCustomPackageTiers) {
+    const tiers: Array<{ rolls: number; label: string; suffix: string; price: number | null }> = [
+      { rolls: 6, label: "6 ROLLS", suffix: "6R", price: price6Rolls },
+      { rolls: 12, label: "12 ROLLS", suffix: "12R", price: price12Rolls },
+      { rolls: 20, label: "20 ROLLS (HALF PALLET)", suffix: "20R", price: price20Rolls },
+      { rolls: 40, label: "40 ROLLS (FULL PALLET)", suffix: "40R", price: price40Rolls },
+    ];
+    packageOptions = tiers
+      .filter((tier) => tier.price !== null)
+      .map((tier) => ({
+        rolls: tier.rolls,
+        label: tier.label,
+        sku: `${baseSku}-${tier.suffix}`,
+        price: tier.price as number,
+      }));
+  } else if (sortedVariants.length > 0) {
+    // Prefer unique per-SKU variant prices from product_variants
+    packageOptions = sortedVariants.map((v) => ({
+      rolls: Number(v.rollsPerBox || (v as any).rollsCount || 4),
+      label: String((v as any).title || v.packageSize || v.sku),
+      sku: v.sku,
+      price: parseFloat(v.priceUsd),
+    }));
+  } else if (productBasePrice !== null) {
+    packageOptions = [
+      {
+        rolls: 1,
+        label: "BASE UNIT",
+        sku: `${baseSku}-BASE`,
+        price: productBasePrice,
+      },
+    ];
+  }
+
+  const candidatePrices = [
+    ...sortedVariants.map((v) => parsePositivePrice(v.priceUsd)),
+    ...packageOptions.map((opt) => parsePositivePrice(opt.price)),
+    productBasePrice,
+  ].filter((p): p is number => p !== null);
+
   const minPrice =
-    sortedVariants.length > 0
-      ? Math.min(...sortedVariants.map((v) => parseFloat(v.priceUsd)))
-      : isGenesis
-      ? 192.44
-      : 20.71;
+    candidatePrices.length > 0 ? Math.min(...candidatePrices) : undefined;
 
   const categorySlug = isGenesis
     ? nameStr.includes("hp") || slugStr.includes("hp") || nameStr.includes("high-performance") || slugStr.includes("high-performance")
@@ -125,18 +205,6 @@ function formatProduct(raw: any): ProductWithVariants {
   const images = isGenesis && rawImages.every((img: string) => img.includes("manual"))
     ? [defaultImage]
     : rawImages;
-
-  const price6Rolls = raw.price_6_rolls !== undefined && raw.price_6_rolls !== null ? Number(raw.price_6_rolls) : 192.44;
-  const price12Rolls = raw.price_12_rolls !== undefined && raw.price_12_rolls !== null ? Number(raw.price_12_rolls) : 366.55;
-  const price20Rolls = raw.price_20_rolls !== undefined && raw.price_20_rolls !== null ? Number(raw.price_20_rolls) : 580.36;
-  const price40Rolls = raw.price_40_rolls !== undefined && raw.price_40_rolls !== null ? Number(raw.price_40_rolls) : 1099.64;
-  const baseSku = String(raw.part_number || raw.partNumber || raw.slug || "SKU").toUpperCase();
-  const packageOptions: PackageOption[] = [
-    { rolls: 6, label: "6 ROLLS", sku: `${baseSku}-6R`, price: price6Rolls },
-    { rolls: 12, label: "12 ROLLS", sku: `${baseSku}-12R`, price: price12Rolls },
-    { rolls: 20, label: "20 ROLLS (HALF PALLET)", sku: `${baseSku}-20R`, price: price20Rolls },
-    { rolls: 40, label: "40 ROLLS (FULL PALLET)", sku: `${baseSku}-40R`, price: price40Rolls },
-  ];
 
   return {
     id: Number(raw.id),
@@ -174,10 +242,10 @@ function formatProduct(raw: any): ProductWithVariants {
     priceHalfPallet:
       raw.price_half_pallet === null || raw.price_half_pallet === undefined ? null : Number(raw.price_half_pallet),
     pricePallet: raw.price_pallet === null || raw.price_pallet === undefined ? null : Number(raw.price_pallet),
-    price6Rolls,
-    price12Rolls,
-    price20Rolls,
-    price40Rolls,
+    price6Rolls: price6Rolls ?? undefined,
+    price12Rolls: price12Rolls ?? undefined,
+    price20Rolls: price20Rolls ?? undefined,
+    price40Rolls: price40Rolls ?? undefined,
     packageOptions,
   };
 }
