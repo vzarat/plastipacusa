@@ -71,3 +71,16 @@ export const PRODUCT_CATEGORIES: CategoryItem[] = [
     activeShadow: "shadow-[0_0_20px_rgba(22,163,74,0.25)]",
   },
 ];
+
+// Any GENESIS category (Standard or High Performance/Elite) is automated machine film; everything else is manual hand film.
+export function isGenesisCategory(categorySlugOrId: string): boolean {
+  const category = PRODUCT_CATEGORIES.find(
+    (c) => c.slug === categorySlugOrId || c.id === categorySlugOrId
+  );
+  const key = (category?.slug || categorySlugOrId || "").toLowerCase();
+  return key.startsWith("genesis");
+}
+
+export function getApplicationForCategory(categorySlugOrId: string): "hand" | "machine" {
+  return isGenesisCategory(categorySlugOrId) ? "machine" : "hand";
+}

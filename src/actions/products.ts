@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { ProductWithVariants, ProductVariant } from "@/types";
 import { AdminProduct, ProductFormValues } from "@/types/product";
-import { PRODUCT_CATEGORIES } from "@/data/categories";
+import { PRODUCT_CATEGORIES, getApplicationForCategory } from "@/data/categories";
 import { verifyAdmin } from "./admin";
 
 /**
@@ -377,6 +377,12 @@ function slugify(value: string): string {
 }
 
 function formatAdminProduct(raw: any): AdminProduct {
+  const categorySlug = String(
+    PRODUCT_CATEGORIES.find((c) => c.id === raw.category_id || c.slug === raw.category_id)?.slug ||
+      raw.category_id ||
+      "force-standard"
+  );
+
   return {
     id: Number(raw.id),
     slug: String(raw.slug),
@@ -386,12 +392,9 @@ function formatAdminProduct(raw: any): AdminProduct {
     gauge: raw.gauge === null || raw.gauge === undefined ? null : Number(raw.gauge),
     priceUsd: raw.price_usd === null || raw.price_usd === undefined ? null : Number(raw.price_usd),
     stockQuantity: Number(raw.stock_quantity ?? 0),
-    application: (raw.application as "hand" | "machine") || "hand",
-    categorySlug: String(
-      PRODUCT_CATEGORIES.find((c) => c.id === raw.category_id || c.slug === raw.category_id)?.slug ||
-        raw.category_id ||
-        "force-standard"
-    ),
+    // GENESIS categories are always machine-application; every other category is hand-application
+    application: getApplicationForCategory(categorySlug),
+    categorySlug,
     imageUrl: String(raw.image_url || raw.imageUrl || (Array.isArray(raw.images) && raw.images[0]) || ""),
     images: Array.isArray(raw.images) ? raw.images : [],
     isActive: raw.is_active === undefined || raw.is_active === null ? true : Boolean(raw.is_active),
@@ -466,7 +469,7 @@ export async function createProduct(values: ProductFormValues) {
       part_number: values.partNumber?.trim() || null,
       description: values.description?.trim() || "",
       short_description: (values.description || "").slice(0, 500),
-      application: values.application,
+      application: getApplicationForCategory(values.categorySlug),
       gauge: values.gauge ?? null,
       price_usd: values.priceUsd ?? null,
       stock_quantity: values.stockQuantity ?? 0,
@@ -524,6 +527,8 @@ export async function updateProduct(id: number, values: Partial<ProductFormValue
     if (values.categorySlug !== undefined) {
       updatePayload.category_id =
         PRODUCT_CATEGORIES.find((c) => c.slug === values.categorySlug)?.id || values.categorySlug;
+      // GENESIS categories are always machine-application; every other category is hand-application
+      updatePayload.application = getApplicationForCategory(values.categorySlug);
     }
     if (values.images !== undefined) {
       updatePayload.images = values.images;

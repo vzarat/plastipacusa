@@ -19,7 +19,7 @@ import {
   uploadProductImage,
 } from "@/actions/products";
 import { AdminProduct, GAUGE_OPTIONS, ProductFormValues } from "@/types/product";
-import { PRODUCT_CATEGORIES } from "@/data/categories";
+import { PRODUCT_CATEGORIES, getApplicationForCategory } from "@/data/categories";
 
 interface ProductFormModalProps {
   isOpen: boolean;
@@ -29,6 +29,8 @@ interface ProductFormModalProps {
   showToast: (msg: string) => void;
 }
 
+const DEFAULT_CATEGORY_SLUG = PRODUCT_CATEGORIES[0]?.slug || "force-standard";
+
 const EMPTY_FORM: ProductFormValues = {
   name: "",
   partNumber: "",
@@ -36,8 +38,8 @@ const EMPTY_FORM: ProductFormValues = {
   gauge: GAUGE_OPTIONS[0],
   priceUsd: null,
   stockQuantity: 0,
-  application: "hand",
-  categorySlug: PRODUCT_CATEGORIES[0]?.slug || "force-standard",
+  application: getApplicationForCategory(DEFAULT_CATEGORY_SLUG),
+  categorySlug: DEFAULT_CATEGORY_SLUG,
   imageUrl: "",
   images: [],
   isActive: true,
@@ -71,7 +73,7 @@ export function ProductFormModal({
         gauge: product.gauge,
         priceUsd: product.priceUsd,
         stockQuantity: product.stockQuantity,
-        application: product.application,
+        application: getApplicationForCategory(product.categorySlug),
         categorySlug: product.categorySlug,
         imageUrl: product.imageUrl,
         images: product.images?.length ? product.images : product.imageUrl ? [product.imageUrl] : [],
@@ -287,14 +289,13 @@ export function ProductFormModal({
               </label>
               <select
                 value={form.application}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, application: e.target.value as "hand" | "machine" }))
-                }
-                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 cursor-pointer"
+                disabled
+                className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-500 shadow-sm cursor-not-allowed"
               >
                 <option value="hand">Manual Hand</option>
                 <option value="machine">Machine</option>
               </select>
+              <p className="text-[10px] text-slate-400 mt-1">Auto-set from Category (GENESIS = Machine).</p>
             </div>
           </div>
 
@@ -305,7 +306,13 @@ export function ProductFormModal({
               </label>
               <select
                 value={form.categorySlug}
-                onChange={(e) => setForm((p) => ({ ...p, categorySlug: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    categorySlug: e.target.value,
+                    application: getApplicationForCategory(e.target.value),
+                  }))
+                }
                 className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 cursor-pointer"
               >
                 {PRODUCT_CATEGORIES.map((c) => (
