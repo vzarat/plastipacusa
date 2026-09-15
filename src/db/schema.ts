@@ -1,4 +1,4 @@
-import { pgTable, text, varchar, serial, numeric, integer, timestamp, pgEnum, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, serial, numeric, integer, timestamp, pgEnum, jsonb, boolean } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const applicationEnum = pgEnum("application_type", ["hand", "machine"]);
@@ -9,11 +9,16 @@ export const products = pgTable("products", {
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
   brand: varchar("brand", { length: 100 }).notNull().default("Plastipac USA"),
+  partNumber: varchar("part_number", { length: 100 }),
   description: text("description").notNull(),
   shortDescription: varchar("short_description", { length: 500 }).notNull(),
   application: applicationEnum("application").notNull(),
   filmType: varchar("film_type", { length: 100 }).notNull().default("Cast Film"),
   color: varchar("color", { length: 50 }).notNull().default("Clear"),
+  gauge: integer("gauge"),
+  priceUsd: numeric("price_usd", { precision: 10, scale: 2 }),
+  stockQuantity: integer("stock_quantity").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
   features: jsonb("features").$type<string[]>().notNull().default([]),
   techSheetUrl: text("tech_sheet_url"),
   imageUrl: text("image_url").notNull(),

@@ -44,6 +44,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { LanguageToggle } from "@/components/common/LanguageToggle";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { AvatarUpload } from "@/components/dashboard/AvatarUpload";
+import OrderDetailModal, { OrderDetailLike } from "@/components/orders/OrderDetailModal";
 
 export interface DashboardOrderItem {
   productId: number;
@@ -77,6 +78,11 @@ export interface DashboardOrder {
   totalUsd: number;
   itemsSummary: string;
   trackingNumber?: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerCompany?: string;
+  customerPhone?: string;
+  shippingAddress?: any;
   items: DashboardOrderItem[];
 }
 
@@ -146,6 +152,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
   const [profileFormError, setProfileFormError] = useState<string | null>(null);
   const [profileFormSuccess, setProfileFormSuccess] = useState<string | null>(null);
   const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<OrderDetailLike | null>(null);
 
   React.useEffect(() => {
     setBackupPasswordPending(Boolean(profile.backupPasswordPending));
@@ -362,7 +369,13 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+    <>
+      <OrderDetailModal
+        open={Boolean(selectedOrder)}
+        order={selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+      />
+      <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
       {/* Mobile Top Header */}
       <div className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-3">
@@ -786,7 +799,11 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                           const isShipped = order.status === "shipped";
 
                           return (
-                            <tr key={order.id} className="hover:bg-slate-50/60 transition-colors">
+                            <tr
+                              key={order.id}
+                              className="cursor-pointer hover:bg-slate-50/60 transition-colors"
+                              onClick={() => setSelectedOrder(order)}
+                            >
                               {/* Order ID */}
                               <td className="py-4 px-4 sm:px-6 font-mono font-bold text-slate-900">
                                 {formatOrderId(order)}
@@ -844,14 +861,30 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
 
                               {/* Action: Quick Reorder */}
                               <td className="py-4 px-4 sm:px-6 text-right">
-                                <button
-                                  type="button"
-                                  onClick={() => handleQuickReorder(order)}
-                                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-blue-950 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
-                                >
-                                  <RotateCw className="w-3.5 h-3.5 text-sky-400" />
-                                  <span>{t("dashboard.btnQuickReorder")}</span>
-                                </button>
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      setSelectedOrder(order);
+                                    }}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+                                  >
+                                    <Eye className="w-3.5 h-3.5 text-slate-500" />
+                                    <span>{t("dashboard.viewDetails") || "View details"}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      handleQuickReorder(order);
+                                    }}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-blue-950 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+                                  >
+                                    <RotateCw className="w-3.5 h-3.5 text-sky-400" />
+                                    <span>{t("dashboard.btnQuickReorder")}</span>
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -1286,6 +1319,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
         )}
         </div>
       </main>
-    </div>
+      </div>
+    </>
   );
 }

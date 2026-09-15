@@ -2,6 +2,7 @@ import React from "react";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/actions/auth";
 import { getAdminCustomers, getAdminOrders } from "@/actions/admin";
+import { getAdminProducts } from "@/actions/products";
 import { AdminOrdersClient } from "@/components/admin/AdminOrdersClient";
 import type { Metadata } from "next";
 
@@ -24,7 +25,19 @@ export default async function AdminIndexPage() {
   }
 
   // If profile.role === 'admin' -> RENDER the admin dashboard (DO NOT REDIRECT)
-  const [orders, customers] = await Promise.all([getAdminOrders(), getAdminCustomers()]);
+  const [orders, customers, products] = await Promise.all([
+    getAdminOrders(),
+    getAdminCustomers(),
+    getAdminProducts(),
+  ]);
 
-  return <AdminOrdersClient initialOrders={orders} profile={currentUser.profile} customers={customers} />;
+  return (
+    <AdminOrdersClient
+      initialOrders={orders}
+      profile={currentUser.profile}
+      customers={customers}
+      initialProducts={products}
+    />
+  );
 }
+

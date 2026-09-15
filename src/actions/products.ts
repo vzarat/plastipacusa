@@ -1,9 +1,12 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { ProductWithVariants, ProductVariant } from "@/types";
+import { AdminProduct, ProductFormValues } from "@/types/product";
 import { FALLBACK_PRODUCTS } from "@/data/mock-products";
 import { PRODUCT_CATEGORIES } from "@/data/categories";
+import { verifyAdmin } from "./admin";
 
 /**
  * Format raw Supabase database records into type-safe ProductWithVariants
@@ -152,6 +155,9 @@ function formatProduct(raw: any): ProductWithVariants {
     gauge: Number(raw.gauge || sortedVariants[0]?.gauge || 50),
     length_feet: Number(raw.length_feet || raw.lengthFeet || sortedVariants[0]?.lengthFeet || 1000),
     core_type: String(raw.core_type || raw.coreType || 'Standard 3" Core'),
+    partNumber: raw.part_number || raw.partNumber || null,
+    stockQuantity: Number(raw.stock_quantity ?? raw.stockQuantity ?? 0),
+    isActive: raw.is_active === undefined && raw.isActive === undefined ? true : Boolean(raw.is_active ?? raw.isActive),
   };
 }
 
@@ -224,7 +230,7 @@ export async function getProducts(
         const { data, error } = await query;
 
         if (!error && data && data.length > 0) {
-          let items = data.map(formatProduct);
+          let items = data.map(formatProduct).filter((p) => p.isActive !== false);
           if (categoryFilter && categoryFilter !== "all") {
             items = items.filter((p) => matchesCategory(p, categoryFilter));
           }
@@ -247,7 +253,7 @@ export async function getProducts(
 
           const { data: flatData, error: flatError } = await flatQuery;
           if (!flatError && flatData && flatData.length > 0) {
-            let items = flatData.map(formatProduct);
+            let items = flatData.map(formatProduct).filter((p) => p.isActive !== false);
             if (categoryFilter && categoryFilter !== "all") {
               items = items.filter((p) => matchesCategory(p, categoryFilter));
             }
@@ -272,7 +278,7 @@ export async function getProducts(
               ),
             }));
 
-            let items = combined.map(formatProduct);
+            let items = combined.map(formatProduct).filter((p) => p.isActive !== false);
             if (applicationFilter && applicationFilter !== "all") {
               items = items.filter((p) => p.application === applicationFilter);
             }
@@ -372,4 +378,283 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
     (slug === "force-hand-stretch-film" ? FALLBACK_PRODUCTS[0] : null) ||
     null
   );
+}
+
+/**
+ * Generate a unique, URL-safe slug from a product name.
+ */
+function slugify(value: string): string {
+  return value
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
+}
+
+function formatAdminProduct(raw: any): AdminProduct {
+  return {
+    id: Number(raw.id),
+    slug: String(raw.slug),
+    name: String(raw.name || ""),
+    partNumber: String(raw.part_number || ""),
+    description: String(raw.description || ""),
+    gauge: raw.gauge === null || raw.gauge === undefined ? null : Number(raw.gauge),
+    priceUsd: raw.price_usd === null || raw.price_usd === undefined ? null : Number(raw.price_usd),
+    stockQuantity: Number(raw.stock_quantity ?? 0),
+    application: (raw.application as "hand" | "machine") || "hand",
+    categorySlug: String(
+      PRODUCT_CATEGORIES.find((c) => c.id === raw.category_id || c.slug === raw.category_id)?.slug ||
+        raw.category_id ||
+        "force-standard"
+    ),
+    imageUrl: String(raw.image_url || ""),
+    images: Array.isArray(raw.images) ? raw.images : [],
+    isActive: raw.is_active === undefined || raw.is_active === null ? true : Boolean(raw.is_active),
+    createdAt: raw.created_at || undefined,
+    updatedAt: raw.updated_at || undefined,
+  };
+}
+
+/**
+ * Fetch the full flat product list (no variant joins) for the Admin Product Management UI.
+ */
+export async function getAdminProducts(): Promise<AdminProduct[]> {
+  const { isAdmin } = await verifyAdmin();
+  if (!isAdmin) {
+    return [];
+  }
+
+  try {
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("getAdminProducts query error:", error);
+      return [];
+    }
+
+    return (data || []).map(formatAdminProduct);
+  } catch (err: any) {
+    console.error("getAdminProducts error:", err);
+    return [];
+  }
+}
+
+/**
+ * Create a new product record in Supabase `public.products`.
+ */
+export async function createProduct(values: ProductFormValues) {
+  const { isAdmin } = await verifyAdmin();
+  if (!isAdmin) {
+    return { success: false, error: "Unauthorized." };
+  }
+
+  try {
+    if (!values.name?.trim()) {
+      return { success: false, error: "Product name is required." };
+    }
+
+    const supabase = await createServerClient();
+    const baseSlug = slugify(values.name);
+    let slug = baseSlug;
+    let attempt = 1;
+
+    // Ensure slug uniqueness
+    while (true) {
+      const { data: existing } = await supabase
+        .from("products")
+        .select("id")
+        .eq("slug", slug)
+        .maybeSingle();
+      if (!existing) break;
+      attempt += 1;
+      slug = `${baseSlug}-${attempt}`;
+    }
+
+    const insertPayload = {
+      slug,
+      name: values.name.trim(),
+      part_number: values.partNumber?.trim() || null,
+      description: values.description?.trim() || "",
+      short_description: (values.description || "").slice(0, 500),
+      application: values.application,
+      gauge: values.gauge ?? null,
+      price_usd: values.priceUsd ?? null,
+      stock_quantity: values.stockQuantity ?? 0,
+      is_active: values.isActive ?? true,
+      image_url: values.imageUrl || values.images?.[0] || "",
+      images: values.images || [],
+      category_id: PRODUCT_CATEGORIES.find((c) => c.slug === values.categorySlug)?.id || values.categorySlug || null,
+    };
+
+    const { data, error } = await supabase
+      .from("products")
+      .insert(insertPayload)
+      .select("*")
+      .single();
+
+    if (error) {
+      console.error("createProduct insert error:", error);
+      return { success: false, error: error.message || "Failed to create product." };
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/products");
+
+    return { success: true, product: formatAdminProduct(data) };
+  } catch (err: any) {
+    console.error("createProduct error:", err);
+    return { success: false, error: err?.message || "Failed to create product." };
+  }
+}
+
+/**
+ * Update an existing product's details in Supabase `public.products`.
+ */
+export async function updateProduct(id: number, values: Partial<ProductFormValues>) {
+  const { isAdmin } = await verifyAdmin();
+  if (!isAdmin) {
+    return { success: false, error: "Unauthorized." };
+  }
+
+  try {
+    const supabase = await createServerClient();
+
+    const updatePayload: Record<string, any> = { updated_at: new Date().toISOString() };
+    if (values.name !== undefined) updatePayload.name = values.name.trim();
+    if (values.partNumber !== undefined) updatePayload.part_number = values.partNumber?.trim() || null;
+    if (values.description !== undefined) {
+      updatePayload.description = values.description?.trim() || "";
+      updatePayload.short_description = (values.description || "").slice(0, 500);
+    }
+    if (values.application !== undefined) updatePayload.application = values.application;
+    if (values.gauge !== undefined) updatePayload.gauge = values.gauge;
+    if (values.priceUsd !== undefined) updatePayload.price_usd = values.priceUsd;
+    if (values.stockQuantity !== undefined) updatePayload.stock_quantity = values.stockQuantity;
+    if (values.isActive !== undefined) updatePayload.is_active = values.isActive;
+    if (values.categorySlug !== undefined) {
+      updatePayload.category_id =
+        PRODUCT_CATEGORIES.find((c) => c.slug === values.categorySlug)?.id || values.categorySlug;
+    }
+    if (values.images !== undefined) {
+      updatePayload.images = values.images;
+      updatePayload.image_url = values.imageUrl || values.images?.[0] || "";
+    } else if (values.imageUrl !== undefined) {
+      updatePayload.image_url = values.imageUrl;
+    }
+
+    const { data, error } = await supabase
+      .from("products")
+      .update(updatePayload)
+      .eq("id", id)
+      .select("*")
+      .single();
+
+    if (error) {
+      console.error("updateProduct error:", error);
+      return { success: false, error: error.message || "Failed to update product." };
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/products");
+    revalidatePath(`/products/${data.slug}`);
+
+    return { success: true, product: formatAdminProduct(data) };
+  } catch (err: any) {
+    console.error("updateProduct error:", err);
+    return { success: false, error: err?.message || "Failed to update product." };
+  }
+}
+
+/**
+ * Toggle a product's active/inactive visibility status.
+ */
+export async function toggleProductActive(id: number, isActive: boolean) {
+  return updateProduct(id, { isActive });
+}
+
+/**
+ * Permanently delete a product (and its variants, via cascade) from Supabase.
+ */
+export async function deleteProduct(id: number) {
+  const { isAdmin } = await verifyAdmin();
+  if (!isAdmin) {
+    return { success: false, error: "Unauthorized." };
+  }
+
+  try {
+    const supabase = await createServerClient();
+    const { error } = await supabase.from("products").delete().eq("id", id);
+
+    if (error) {
+      console.error("deleteProduct error:", error);
+      return { success: false, error: error.message || "Failed to delete product." };
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/products");
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("deleteProduct error:", err);
+    return { success: false, error: err?.message || "Failed to delete product." };
+  }
+}
+
+/**
+ * Upload a product image file to the Supabase Storage `product-images` bucket
+ * and return its public URL.
+ */
+export async function uploadProductImage(formData: FormData) {
+  const { isAdmin } = await verifyAdmin();
+  if (!isAdmin) {
+    return { success: false, error: "Unauthorized." };
+  }
+
+  try {
+    const file = formData.get("file") as File | null;
+    if (!file || file.size === 0) {
+      return { success: false, error: "No file provided." };
+    }
+
+    const allowedTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+    if (!allowedTypes.includes(file.type)) {
+      return { success: false, error: "Unsupported file type. Please upload a PNG, JPG, WEBP, or GIF image." };
+    }
+
+    const maxSizeBytes = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSizeBytes) {
+      return { success: false, error: "Image is too large. Maximum size is 5MB." };
+    }
+
+    const supabase = await createServerClient();
+    const extension = file.name.split(".").pop()?.toLowerCase() || "png";
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const { error: uploadError } = await supabase.storage
+      .from("product-images")
+      .upload(fileName, arrayBuffer, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error("uploadProductImage error:", uploadError);
+      return { success: false, error: uploadError.message || "Failed to upload image." };
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from("product-images")
+      .getPublicUrl(fileName);
+
+    return { success: true, url: publicUrlData.publicUrl };
+  } catch (err: any) {
+    console.error("uploadProductImage error:", err);
+    return { success: false, error: err?.message || "Failed to upload image." };
+  }
 }

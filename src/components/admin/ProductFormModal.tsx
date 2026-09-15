@@ -1,0 +1,385 @@
+"use client";
+
+import React, { useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import {
+  X,
+  UploadCloud,
+  Loader2,
+  Star,
+  Trash2,
+  Save,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  createProduct,
+  updateProduct,
+  uploadProductImage,
+} from "@/actions/products";
+import { AdminProduct, GAUGE_OPTIONS, ProductFormValues } from "@/types/product";
+import { PRODUCT_CATEGORIES } from "@/data/categories";
+
+interface ProductFormModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  product: AdminProduct | null;
+  onSaved: (product: AdminProduct, isNew: boolean) => void;
+  showToast: (msg: string) => void;
+}
+
+const EMPTY_FORM: ProductFormValues = {
+  name: "",
+  partNumber: "",
+  description: "",
+  gauge: GAUGE_OPTIONS[0],
+  priceUsd: null,
+  stockQuantity: 0,
+  application: "hand",
+  categorySlug: PRODUCT_CATEGORIES[0]?.slug || "force-standard",
+  imageUrl: "",
+  images: [],
+  isActive: true,
+};
+
+export function ProductFormModal({
+  isOpen,
+  onClose,
+  product,
+  onSaved,
+  showToast,
+}: ProductFormModalProps) {
+  const [form, setForm] = useState<ProductFormValues>(EMPTY_FORM);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (product) {
+      setForm({
+        id: product.id,
+        name: product.name,
+        partNumber: product.partNumber || "",
+        description: product.description || "",
+        gauge: product.gauge,
+        priceUsd: product.priceUsd,
+        stockQuantity: product.stockQuantity,
+        application: product.application,
+        categorySlug: product.categorySlug,
+        imageUrl: product.imageUrl,
+        images: product.images?.length ? product.images : product.imageUrl ? [product.imageUrl] : [],
+        isActive: product.isActive,
+      });
+    } else {
+      setForm(EMPTY_FORM);
+    }
+  }, [isOpen, product]);
+
+  if (!isOpen) return null;
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const result = await uploadProductImage(fd);
+
+      if (result.success && result.url) {
+        setForm((prev) => ({
+          ...prev,
+          images: [...prev.images, result.url as string],
+          imageUrl: prev.imageUrl || (result.url as string),
+        }));
+        showToast("Image uploaded successfully.");
+      } else {
+        showToast(result.error || "Failed to upload image.");
+      }
+    } catch (err) {
+      showToast("Unexpected error uploading image.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveImage = (url: string) => {
+    setForm((prev) => {
+      const images = prev.images.filter((img) => img !== url);
+      return {
+        ...prev,
+        images,
+        imageUrl: prev.imageUrl === url ? images[0] || "" : prev.imageUrl,
+      };
+    });
+  };
+
+  const handleSetPrimary = (url: string) => {
+    setForm((prev) => ({ ...prev, imageUrl: url }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!form.name.trim()) {
+      showToast("Product name is required.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const result = product
+        ? await updateProduct(product.id, form)
+        : await createProduct(form);
+
+      if (result.success && result.product) {
+        showToast(product ? "Product updated successfully." : "Product created successfully.");
+        onSaved(result.product, !product);
+        onClose();
+      } else {
+        showToast(result.error || "Failed to save product.");
+      }
+    } catch (err) {
+      showToast("Unexpected error saving product.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in-up">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl border border-slate-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+          <h2 className="text-lg font-black text-slate-900">
+            {product ? "Edit Product" : "Add New Product"}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-900 hover:bg-slate-100 cursor-pointer"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Product Title <span className="text-red-500">*</span>
+              </label>
+              <Input
+                value={form.name}
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                placeholder='e.g. FORCE Standard 18" Hand Stretch Film'
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Part Number / SKU
+              </label>
+              <Input
+                value={form.partNumber}
+                onChange={(e) => setForm((p) => ({ ...p, partNumber: e.target.value }))}
+                placeholder="e.g. FRC-1880-CS"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Description
+            </label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+              rows={4}
+              placeholder="Detailed product description..."
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:border-sky-500 transition-all"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Gauge / Calibre
+              </label>
+              <select
+                value={form.gauge ?? ""}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, gauge: e.target.value ? Number(e.target.value) : null }))
+                }
+                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 cursor-pointer"
+              >
+                {GAUGE_OPTIONS.map((g) => (
+                  <option key={g} value={g}>
+                    {g} GA
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Price (USD)
+              </label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.priceUsd ?? ""}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, priceUsd: e.target.value ? Number(e.target.value) : null }))
+                }
+                placeholder="0.00"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Stock Qty
+              </label>
+              <Input
+                type="number"
+                min="0"
+                value={form.stockQuantity}
+                onChange={(e) => setForm((p) => ({ ...p, stockQuantity: Number(e.target.value) || 0 }))}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Application
+              </label>
+              <select
+                value={form.application}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, application: e.target.value as "hand" | "machine" }))
+                }
+                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 cursor-pointer"
+              >
+                <option value="hand">Manual Hand</option>
+                <option value="machine">Machine</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Category
+              </label>
+              <select
+                value={form.categorySlug}
+                onChange={(e) => setForm((p) => ({ ...p, categorySlug: e.target.value }))}
+                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 cursor-pointer"
+              >
+                {PRODUCT_CATEGORIES.map((c) => (
+                  <option key={c.slug} value={c.slug}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-end pb-1.5">
+              <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={form.isActive}
+                  onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))}
+                  className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                />
+                <span className="text-xs font-bold text-slate-700">Active / Visible in store</span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Product Images
+            </label>
+
+            <div className="flex flex-wrap gap-3 mb-3">
+              {form.images.map((img) => (
+                <div
+                  key={img}
+                  className={`relative w-20 h-20 rounded-xl border-2 overflow-hidden flex-shrink-0 group ${
+                    form.imageUrl === img ? "border-sky-500" : "border-slate-200"
+                  }`}
+                >
+                  <Image src={img} alt="Product" fill sizes="80px" className="object-contain bg-white p-1" />
+                  <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/60 transition-colors flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+                    <button
+                      type="button"
+                      onClick={() => handleSetPrimary(img)}
+                      title="Set as primary"
+                      className="p-1 rounded-lg bg-white/90 text-sky-700 hover:bg-white cursor-pointer"
+                    >
+                      <Star className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(img)}
+                      title="Remove image"
+                      className="p-1 rounded-lg bg-white/90 text-red-600 hover:bg-white cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-sky-600 hover:border-sky-400 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {isUploading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <UploadCloud className="w-5 h-5" />
+                    <span className="text-[9px] font-bold">Upload</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <p className="text-[10px] text-slate-400">
+              Uploads go directly to the Supabase <code>product-images</code> storage bucket. Click a thumbnail to set it as the primary image.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+            <Button type="button" variant="outline" size="sm" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" disabled={isSaving || isUploading} className="gap-1.5">
+              {isSaving ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Save className="w-3.5 h-3.5" />
+              )}
+              {isSaving ? "Saving..." : product ? "Update Product" : "Create Product"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

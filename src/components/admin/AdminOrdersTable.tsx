@@ -32,6 +32,7 @@ import {
   FileSpreadsheet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import OrderDetailModal from "@/components/orders/OrderDetailModal";
 
 interface AdminOrdersTableProps {
   orders: AdminOrder[];
@@ -67,6 +68,7 @@ export function AdminOrdersTable({
   const [fulfillmentFilter, setFulfillmentFilter] = useState<string>("all");
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [inspectOrder, setInspectOrder] = useState<AdminOrder | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   // New Draft Order state
@@ -338,13 +340,22 @@ export function AdminOrdersTable({
       if (inspectOrder && inspectOrder.id === orderId) {
         setInspectOrder((prev) => (prev ? { ...prev, fulfillmentStatus: newStatus } : null));
       }
+      if (selectedOrder && selectedOrder.id === orderId) {
+        setSelectedOrder((prev) => (prev ? { ...prev, fulfillmentStatus: newStatus } : null));
+      }
     } finally {
       setIsUpdatingStatus(false);
     }
   };
 
   return (
-    <div className="space-y-6">
+    <>
+      <OrderDetailModal
+        open={Boolean(selectedOrder)}
+        order={selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+      />
+      <div className="space-y-6">
       {/* Top Header & Quick Action Buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs">
         <div>
@@ -573,7 +584,7 @@ export function AdminOrdersTable({
                       <td className="py-4 px-3 font-mono font-bold text-slate-900">
                         <button
                           type="button"
-                          onClick={() => setInspectOrder(order)}
+                          onClick={() => setSelectedOrder(order)}
                           className="hover:text-purple-700 transition-colors underline decoration-slate-300 underline-offset-2 cursor-pointer text-left"
                         >
                           {formatOrderId(order)}
@@ -670,7 +681,7 @@ export function AdminOrdersTable({
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
-                            onClick={() => setInspectOrder(order)}
+                            onClick={() => setSelectedOrder(order)}
                             className="p-1.5 rounded-lg text-slate-500 hover:text-purple-700 hover:bg-purple-50 transition-colors cursor-pointer"
                             title="Inspect Order & Specs"
                           >
@@ -984,7 +995,8 @@ export function AdminOrdersTable({
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

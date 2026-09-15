@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { AdminOrder, updateOrderStatus } from "@/actions/admin";
+import { AdminProduct } from "@/types/product";
 import { UserProfile } from "@/actions/auth";
 import { useLanguage } from "@/context/LanguageContext";
 import { LanguageToggle } from "@/components/common/LanguageToggle";
@@ -26,6 +27,7 @@ interface AdminOrdersClientProps {
   initialOrders: AdminOrder[];
   profile: UserProfile;
   customers?: CustomerRecord[];
+  initialProducts?: AdminProduct[];
   initialTab?: AdminTabKey;
 }
 
@@ -33,6 +35,7 @@ export function AdminOrdersClient({
   initialOrders,
   profile,
   customers = [],
+  initialProducts = [],
   initialTab = "overview",
 }: AdminOrdersClientProps) {
   const { t } = useLanguage();
@@ -182,7 +185,9 @@ export function AdminOrdersClient({
             />
           )}
 
-          {activeTab === "products" && <AdminCatalogView />}
+          {activeTab === "products" && (
+            <AdminCatalogView initialProducts={initialProducts} showToast={showToast} />
+          )}
 
           {activeTab === "customers" && <AdminCustomersView customers={customers} />}
 

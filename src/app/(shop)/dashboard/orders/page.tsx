@@ -66,6 +66,11 @@ async function getDashboardOrders(currentUser: Awaited<ReturnType<typeof getCurr
                 .join(", ")
             : "Industrial Stretch Packaging Order"),
         trackingNumber: row.tracking_number || undefined,
+        customerName: row.customer_name || row.shipping_address?.full_name || row.shipping_address?.name || undefined,
+        customerEmail: row.customer_email || row.shipping_address?.email || undefined,
+        customerCompany: row.company_name || row.shipping_address?.company_name || undefined,
+        customerPhone: row.phone || row.shipping_address?.phone || undefined,
+        shippingAddress: row.shipping_address || undefined,
         items: Array.isArray(row.items) ? row.items : [],
       };
     });
