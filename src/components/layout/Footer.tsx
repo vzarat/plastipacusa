@@ -73,8 +73,8 @@ export function Footer() {
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-3.5 h-3.5 text-sky-600" />
-                <a href="mailto:contact@plastipacusa.com" className="hover:text-sky-600 transition-colors">
-                  contact@plastipacusa.com
+                <a href="mailto:sales@plastipacusa.com" className="hover:text-sky-600 transition-colors">
+                  sales@plastipacusa.com
                 </a>
               </div>
             </div>
@@ -185,7 +185,7 @@ export function Footer() {
               <div className="text-slate-600 space-y-1">
                 <div>Phone: (956) 400-3683</div>
                 <div>Phone: (956) 400-6563</div>
-                <div>Email: contact@plastipacusa.com</div>
+                <div>Email: sales@plastipacusa.com</div>
               </div>
             </div>
           </div>

@@ -283,7 +283,7 @@ export function AdminDashboardOverview({
           </div>
 
           {/* Quick Table with Explicit Min-Widths and Cell Padding */}
-          <div className="overflow-x-auto -mx-6 px-6">
+          <div className="w-full overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
             <table className="w-full text-left border-collapse min-w-[680px]">
               <thead>
                 <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">

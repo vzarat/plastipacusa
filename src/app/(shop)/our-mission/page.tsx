@@ -231,11 +231,11 @@ export default function OurMissionPage() {
             </a>
 
             <a
-              href="mailto:contact@plastipacusa.com"
+              href="mailto:sales@plastipacusa.com"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors font-semibold text-sm"
             >
               <Mail className="w-4 h-4 text-slate-500" />
-              <span>contact@plastipacusa.com</span>
+              <span>sales@plastipacusa.com</span>
             </a>
           </div>
 

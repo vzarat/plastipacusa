@@ -172,7 +172,7 @@ export default function ShippingPolicyPage() {
         <p>
           For dispatch status, freight quotes, or delivery exceptions:
           <br />
-          Email: <a href="mailto:contact@plastipacusa.com">contact@plastipacusa.com</a>
+          Email: <a href="mailto:sales@plastipacusa.com">sales@plastipacusa.com</a>
           <br />
           Phone: <a href="tel:+19564003683">(956) 400-3683</a> /{" "}
           <a href="tel:+19564006563">(956) 400-6563</a>

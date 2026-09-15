@@ -49,8 +49,8 @@ export function LegalPageShell({ title, effectiveDate, children }: LegalPageShel
         <footer className="mt-12 pt-8 border-t border-slate-200 text-xs text-slate-500 space-y-2">
           <p>
             Questions about this policy? Contact us at{" "}
-            <a href="mailto:contact@plastipacusa.com" className="text-sky-700 font-medium hover:underline">
-              contact@plastipacusa.com
+            <a href="mailto:sales@plastipacusa.com" className="text-sky-700 font-medium hover:underline">
+              sales@plastipacusa.com
             </a>{" "}
             or call{" "}
             <a href="tel:+19564003683" className="text-sky-700 font-medium hover:underline">

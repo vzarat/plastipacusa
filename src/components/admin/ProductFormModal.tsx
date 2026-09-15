@@ -202,7 +202,7 @@ export function ProductFormModal({
         role="dialog"
         aria-modal="true"
         tabIndex={-1}
-        className="w-full max-w-2xl max-h-[85vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden outline-none"
+        className="w-[95vw] max-w-lg md:max-w-2xl max-h-[90vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden outline-none p-0 sm:p-0"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between shrink-0 p-6 border-b">

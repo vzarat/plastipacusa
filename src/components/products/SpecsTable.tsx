@@ -18,7 +18,7 @@ interface SpecsTableProps {
 export function SpecsTable({ variants }: SpecsTableProps) {
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
           <h3 className="text-lg font-bold text-slate-900">
             Package Dimensions & Volume Price Matrix
@@ -27,12 +27,13 @@ export function SpecsTable({ variants }: SpecsTableProps) {
             Official production packaging sizes, roll count, and tier pricing.
           </p>
         </div>
-        <Badge variant="default" className="font-mono text-xs font-bold">
+        <Badge variant="default" className="font-mono text-xs font-bold self-start">
           {variants.length} Package Options
         </Badge>
       </div>
 
-      <Table>
+      <div className="w-full overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
+        <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Package Size Option</TableHead>
@@ -76,6 +77,7 @@ export function SpecsTable({ variants }: SpecsTableProps) {
           ))}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 }

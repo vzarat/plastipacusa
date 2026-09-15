@@ -231,9 +231,9 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
       {/* Sticky Filter Toolbar */}
       <div className="sticky top-0 z-20 rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-sm shadow-xs">
         <div className="p-4 sm:px-6 space-y-3">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
             {/* Search */}
-            <div className="relative flex-1 min-w-[220px]">
+            <div className="relative flex-1 min-w-0 w-full">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -245,7 +245,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
             </div>
 
             {/* Application Tabs */}
-            <div className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1 gap-1">
+            <div className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1 gap-1 overflow-x-auto w-full sm:w-auto">
               {(
                 [
                   { key: "all", label: "All" },
@@ -389,7 +389,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
           {filtered.map((item) => (
             <div
               key={item.id}

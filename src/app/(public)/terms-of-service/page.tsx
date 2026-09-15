@@ -226,7 +226,7 @@ export default function TermsOfServicePage() {
         <h2>18. Contact</h2>
         <p>
           Plastipac USA ·{" "}
-          <a href="mailto:contact@plastipacusa.com">contact@plastipacusa.com</a> ·{" "}
+          <a href="mailto:sales@plastipacusa.com">sales@plastipacusa.com</a> ·{" "}
           <a href="tel:+19564003683">(956) 400-3683</a> /{" "}
           <a href="tel:+19564006563">(956) 400-6563</a>
         </p>

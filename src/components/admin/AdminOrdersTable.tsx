@@ -437,9 +437,9 @@ export function AdminOrdersTable({
         </div>
 
         {/* Search Bar & Secondary Dropdowns */}
-        <div className="p-4 sm:px-6 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="p-4 sm:px-6 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
           {/* Search Input */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative flex-1 w-full sm:max-w-md">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -460,7 +460,7 @@ export function AdminOrdersTable({
           </div>
 
           {/* Secondary Dropdown Filters */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
             <select
               value={paymentFilter}
               onChange={(e) => setPaymentFilter(e.target.value)}
@@ -515,7 +515,7 @@ export function AdminOrdersTable({
         )}
 
         {/* Live Orders Table */}
-        <div className="overflow-x-auto">
+        <div className="w-full overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
               <tr>
@@ -730,8 +730,8 @@ export function AdminOrdersTable({
             onClick={() => setInspectOrder(null)}
           />
 
-          <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-            <div className="w-screen max-w-md bg-white border-l border-slate-200 shadow-2xl flex flex-col justify-between overflow-y-auto p-6 space-y-6 animate-slide-in-right">
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10">
+            <div className="w-[95vw] max-w-lg bg-white border-l border-slate-200 shadow-2xl flex flex-col justify-between overflow-y-auto p-4 sm:p-6 space-y-6 animate-slide-in-right max-h-[90vh] sm:max-h-none sm:h-full">
               <div className="space-y-6">
                 {/* Drawer Header */}
                 <div className="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -883,7 +883,7 @@ export function AdminOrdersTable({
             onClick={() => setIsCreateModalOpen(false)}
           />
 
-          <div className="relative bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 sm:p-8 max-w-lg w-full z-10 space-y-5 animate-fade-in-up">
+          <div className="relative w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto bg-white rounded-3xl border border-slate-200 shadow-2xl p-4 sm:p-8 z-10 space-y-5 animate-fade-in-up">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <span className="text-xs font-bold uppercase text-purple-700">

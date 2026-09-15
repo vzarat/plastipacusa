@@ -28,7 +28,7 @@ export default function RefundPolicyPage() {
         <ul>
           <li>
             <strong>Before dispatch:</strong> You may request cancellation by emailing{" "}
-            <a href="mailto:contact@plastipacusa.com">contact@plastipacusa.com</a> or calling{" "}
+            <a href="mailto:sales@plastipacusa.com">sales@plastipacusa.com</a> or calling{" "}
             <a href="tel:+19564003683">(956) 400-3683</a> as soon as possible. If the order has not entered plant
             picking, packing, or carrier tender, we will typically cancel and refund amounts paid for the cancelled
             items.
@@ -65,7 +65,7 @@ export default function RefundPolicyPage() {
           </li>
           <li>
             Notify Plastipac within <strong>forty-eight (48) hours</strong> of delivery at{" "}
-            <a href="mailto:contact@plastipacusa.com">contact@plastipacusa.com</a> with your order number, photos, and a
+            <a href="mailto:sales@plastipacusa.com">sales@plastipacusa.com</a> with your order number, photos, and a
             copy of the notated delivery receipt.
           </li>
         </ol>
@@ -91,7 +91,7 @@ export default function RefundPolicyPage() {
             Section 6).</li>
         </ul>
         <p>
-          To start a return, email <a href="mailto:contact@plastipacusa.com">contact@plastipacusa.com</a> with your order
+          To start a return, email <a href="mailto:sales@plastipacusa.com">sales@plastipacusa.com</a> with your order
           number, SKU(s), quantity, and reason. Unauthorized returns may be refused and returned to you at your expense.
         </p>
       </section>
@@ -189,7 +189,7 @@ export default function RefundPolicyPage() {
         <p>
           Plastipac USA Returns &amp; Claims
           <br />
-          Email: <a href="mailto:contact@plastipacusa.com">contact@plastipacusa.com</a>
+          Email: <a href="mailto:sales@plastipacusa.com">sales@plastipacusa.com</a>
           <br />
           Phone: <a href="tel:+19564003683">(956) 400-3683</a> /{" "}
           <a href="tel:+19564006563">(956) 400-6563</a>

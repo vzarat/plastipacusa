@@ -40,7 +40,7 @@ export default function PrivacyPolicyPage() {
           </li>
           <li>
             <strong>Contact &amp; quote forms:</strong> information submitted through quote requests, support inquiries,
-            or email to contact@plastipacusa.com.
+            or email to sales@plastipacusa.com.
           </li>
           <li>
             <strong>Payment-related identifiers:</strong> when you check out, payment card details are collected and
@@ -191,7 +191,7 @@ export default function PrivacyPolicyPage() {
         </ul>
         <p>
           To exercise these rights, email{" "}
-          <a href="mailto:contact@plastipacusa.com">contact@plastipacusa.com</a> with the subject line
+          <a href="mailto:sales@plastipacusa.com">sales@plastipacusa.com</a> with the subject line
           &quot;Privacy Request.&quot; We may verify your identity before fulfilling a request. Authorized agents may
           submit requests where permitted by law.
         </p>
@@ -229,7 +229,7 @@ export default function PrivacyPolicyPage() {
         <p>
           Plastipac USA
           <br />
-          Email: <a href="mailto:contact@plastipacusa.com">contact@plastipacusa.com</a>
+          Email: <a href="mailto:sales@plastipacusa.com">sales@plastipacusa.com</a>
           <br />
           Phone: <a href="tel:+19564003683">(956) 400-3683</a> /{" "}
           <a href="tel:+19564006563">(956) 400-6563</a>

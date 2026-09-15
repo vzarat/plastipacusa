@@ -156,7 +156,7 @@ export default function OrderDetailModal({ open, order, onClose }: OrderDetailMo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-5xl rounded-3xl border border-slate-200 bg-white shadow-2xl">
+      <div className="relative w-[95vw] max-w-lg md:max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-0">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white/95 px-5 py-4 backdrop-blur-sm sm:px-6">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
@@ -175,7 +175,7 @@ export default function OrderDetailModal({ open, order, onClose }: OrderDetailMo
           </button>
         </div>
 
-        <div className="max-h-[80vh] overflow-y-auto p-5 sm:p-6">
+        <div className="max-h-none overflow-visible p-5 sm:p-6">
           <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">

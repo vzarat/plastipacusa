@@ -38,8 +38,8 @@ export function ProductFilters() {
   };
 
   return (
-    <div className="rounded-3xl border border-slate-200/90 bg-white p-6 space-y-6 shadow-sm">
-      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+    <div className="rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-6 space-y-4 sm:space-y-6 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
           <Filter className="w-4 h-4 text-sky-600" />
           <span>{t("products.filterProducts")}</span>
@@ -55,71 +55,73 @@ export function ProductFilters() {
         )}
       </div>
 
-      {/* Application Type */}
-      <div className="space-y-2">
-        <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
-          {t("products.applicationType")}
-        </label>
-        <div className="flex flex-col gap-1.5">
-          <button
-            type="button"
-            onClick={() => handleAppChange("all")}
-            className={`text-left text-xs px-3.5 py-2.5 rounded-xl font-semibold transition-all ${
-              currentApp === "all"
-                ? "bg-gradient-to-r from-sky-400 via-sky-600 to-blue-700 text-white shadow-sm shadow-sky-500/20"
-                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-            }`}
-          >
-            {t("products.allPackagingFilms")}
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAppChange("hand")}
-            className={`text-left text-xs px-3.5 py-2.5 rounded-xl font-semibold transition-all ${
-              currentApp === "hand"
-                ? "bg-gradient-to-r from-sky-400 via-sky-600 to-blue-700 text-white shadow-sm shadow-sky-500/20"
-                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-            }`}
-          >
-            {t("products.handStretchFilmSeries")}
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAppChange("machine")}
-            className={`text-left text-xs px-3.5 py-2.5 rounded-xl font-semibold transition-all ${
-              currentApp === "machine"
-                ? "bg-gradient-to-r from-sky-400 via-sky-600 to-blue-700 text-white shadow-sm shadow-sky-500/20"
-                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-            }`}
-          >
-            {t("products.machineHighYieldFilm")}
-          </button>
+      <div className="flex flex-col sm:flex-row gap-3">
+        {/* Application Type */}
+        <div className="space-y-2 flex-1">
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
+            {t("products.applicationType")}
+          </label>
+          <div className="flex flex-col gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleAppChange("all")}
+              className={`text-left text-xs px-3.5 py-2.5 rounded-xl font-semibold transition-all ${
+                currentApp === "all"
+                  ? "bg-gradient-to-r from-sky-400 via-sky-600 to-blue-700 text-white shadow-sm shadow-sky-500/20"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              {t("products.allPackagingFilms")}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleAppChange("hand")}
+              className={`text-left text-xs px-3.5 py-2.5 rounded-xl font-semibold transition-all ${
+                currentApp === "hand"
+                  ? "bg-gradient-to-r from-sky-400 via-sky-600 to-blue-700 text-white shadow-sm shadow-sky-500/20"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              {t("products.handStretchFilmSeries")}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleAppChange("machine")}
+              className={`text-left text-xs px-3.5 py-2.5 rounded-xl font-semibold transition-all ${
+                currentApp === "machine"
+                  ? "bg-gradient-to-r from-sky-400 via-sky-600 to-blue-700 text-white shadow-sm shadow-sky-500/20"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              {t("products.machineHighYieldFilm")}
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Thickness / Gauge Range */}
-      <div className="space-y-2 pt-3 border-t border-slate-100">
-        <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
-          {t("products.targetGauge")}
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          {["all", "50", "60", "70", "80"].map((g) => {
-            const isSelected = currentGauge === g;
-            return (
-              <button
-                key={g}
-                type="button"
-                onClick={() => handleGaugeChange(g)}
-                className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all text-center ${
-                  isSelected
-                    ? "border-sky-500 bg-sky-50 text-sky-800 shadow-sm ring-2 ring-sky-500/20"
-                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-                }`}
-              >
-                {g === "all" ? t("products.allGauges") : `${g} Ga`}
-              </button>
-            );
-          })}
+        {/* Thickness / Gauge Range */}
+        <div className="space-y-2 flex-1 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
+            {t("products.targetGauge")}
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {["all", "50", "60", "70", "80"].map((g) => {
+              const isSelected = currentGauge === g;
+              return (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => handleGaugeChange(g)}
+                  className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all text-center ${
+                    isSelected
+                      ? "border-sky-500 bg-sky-50 text-sky-800 shadow-sm ring-2 ring-sky-500/20"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                  }`}
+                >
+                  {g === "all" ? t("products.allGauges") : `${g} Ga`}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
