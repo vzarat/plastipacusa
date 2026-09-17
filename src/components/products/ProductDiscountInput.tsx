@@ -5,7 +5,9 @@ import { CheckCircle2, Loader2, Tag, X } from "lucide-react";
 import { toast } from "sonner";
 import { applyDiscountCode } from "@/actions/discounts";
 import type { AppliedDiscount } from "@/types/discount";
-import { formatDiscountLabel } from "@/lib/discounts";
+import {
+  formatDiscountAppliedBadge,
+} from "@/lib/discounts";
 import { BRAND_GRADIENT_CTA } from "@/lib/brand-styles";
 
 interface ProductDiscountInputProps {
@@ -43,9 +45,7 @@ export function ProductDiscountInput({
 
       onApplied(result.discount);
       setCode("");
-      toast.success(
-        `Coupon applied: ${formatDiscountLabel(result.discount)}`
-      );
+      toast.success(formatDiscountAppliedBadge(result.discount));
     } catch {
       setError("Unable to apply discount code.");
       toast.error("Unable to apply discount code.");
@@ -63,7 +63,7 @@ export function ProductDiscountInput({
   return (
     <div className="space-y-2.5 rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5">
       <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-        Have a Discount Code?
+        Have a discount code?
       </label>
 
       <form onSubmit={handleApply} className="flex gap-2">
@@ -73,10 +73,10 @@ export function ProductDiscountInput({
             type="text"
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
-            placeholder="Apply Coupon"
+            placeholder="Enter promo code"
             disabled={isApplying}
             className="w-full pl-9 pr-3 py-2.5 text-xs font-semibold tracking-wide uppercase rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 disabled:opacity-60"
-            aria-label="Discount code"
+            aria-label="Enter promo code"
           />
         </div>
         <button
@@ -100,7 +100,11 @@ export function ProductDiscountInput({
           <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
             <CheckCircle2 className="h-3.5 w-3.5" />
             <span>
-              Coupon applied: {formatDiscountLabel(appliedDiscount)} ({appliedDiscount.code})
+              {formatDiscountAppliedBadge(appliedDiscount)}
+              <span className="font-semibold text-emerald-700/80">
+                {" "}
+                · {appliedDiscount.code}
+              </span>
             </span>
           </div>
           <button

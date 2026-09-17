@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { DirectCheckoutButton } from "@/components/checkout/DirectCheckoutButton";
 import { ProductDiscountInput } from "@/components/products/ProductDiscountInput";
 import type { AppliedDiscount } from "@/types/discount";
-import { applyDiscountToPrice } from "@/lib/discounts";
+import { applyDiscountToPrice, formatDiscountAppliedBadge } from "@/lib/discounts";
 import {
   HAND_FULL_PALLET,
   isMachineFilm as detectMachineFilm,
@@ -519,6 +519,11 @@ export function VariantSelector({
             </span>
             {unitPrice > 0 && (
               <span className="text-sm font-bold text-slate-500">USD</span>
+            )}
+            {appliedDiscount && (
+              <span className="inline-flex items-center rounded-full bg-emerald-100 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
+                {formatDiscountAppliedBadge(appliedDiscount)}
+              </span>
             )}
           </div>
         </div>

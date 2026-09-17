@@ -16,10 +16,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { DiscountCode, DiscountFormValues, DiscountType } from "@/types/discount";
-import {
-  readMockDiscountCodes,
-  writeMockDiscountCodes,
-} from "@/lib/discounts";
+import { normalizeDiscountType } from "@/lib/discounts";
 
 const EMPTY_FORM: DiscountFormValues = {
   code: "",
@@ -38,13 +35,26 @@ function isExpired(expiresAt: string | null): boolean {
   return new Date(expiresAt).getTime() < Date.now();
 }
 
+function normalizeDiscountRow(row: Record<string, unknown>): DiscountCode {
+  return {
+    id: String(row.id),
+    code: String(row.code || "").toUpperCase(),
+    name: (row.name as string | null) ?? null,
+    discount_type: normalizeDiscountType(row.discount_type),
+    discount_value: Number(row.discount_value) || 0,
+    expires_at: (row.expires_at as string | null) ?? null,
+    is_active: Boolean(row.is_active),
+    created_at: row.created_at as string | undefined,
+    updated_at: row.updated_at as string | undefined,
+  };
+}
+
 export function AdminDiscountsView() {
   const [codes, setCodes] = useState<DiscountCode[]>([]);
   const [form, setForm] = useState<DiscountFormValues>(EMPTY_FORM);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [usingMock, setUsingMock] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const supabase = useMemo(() => createClient(), []);
@@ -58,19 +68,16 @@ export function AdminDiscountsView() {
         .order("created_at", { ascending: false });
 
       if (error) {
-        const mock = readMockDiscountCodes();
-        setCodes(mock);
-        setUsingMock(true);
-        toast.message("Using local mock discount codes (Supabase offline).");
+        setCodes([]);
+        toast.error(error.message || "Could not load discount codes from Supabase.");
         return;
       }
 
-      setUsingMock(false);
-      setCodes((data || []) as DiscountCode[]);
-    } catch {
-      const mock = readMockDiscountCodes();
-      setCodes(mock);
-      setUsingMock(true);
+      setCodes((data || []).map((row) => normalizeDiscountRow(row as Record<string, unknown>)));
+    } catch (err: unknown) {
+      setCodes([]);
+      const message = err instanceof Error ? err.message : "Could not load discount codes.";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -88,11 +95,6 @@ export function AdminDiscountsView() {
   const resetForm = () => {
     setForm(EMPTY_FORM);
     setEditingId(null);
-  };
-
-  const persistMock = (next: DiscountCode[]) => {
-    setCodes(next);
-    writeMockDiscountCodes(next);
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -125,27 +127,6 @@ export function AdminDiscountsView() {
     };
 
     try {
-      if (usingMock) {
-        if (editingId) {
-          persistMock(
-            codes.map((c) =>
-              c.id === editingId ? ({ ...c, ...payload, id: editingId } as DiscountCode) : c
-            )
-          );
-          toast.success(`Discount ${code} updated.`);
-        } else {
-          const row: DiscountCode = {
-            id: `mock-${Date.now()}`,
-            ...payload,
-            created_at: new Date().toISOString(),
-          } as DiscountCode;
-          persistMock([row, ...codes]);
-          toast.success(`Discount ${code} created.`);
-        }
-        resetForm();
-        return;
-      }
-
       if (editingId) {
         const { error } = await supabase
           .from("discount_codes")
@@ -167,8 +148,9 @@ export function AdminDiscountsView() {
 
       resetForm();
       await loadCodes();
-    } catch (err: any) {
-      toast.error(err?.message || "Could not save discount.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Could not save discount.";
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -191,16 +173,6 @@ export function AdminDiscountsView() {
   const toggleActive = async (row: DiscountCode) => {
     setBusyId(row.id);
     try {
-      if (usingMock) {
-        persistMock(
-          codes.map((c) =>
-            c.id === row.id ? { ...c, is_active: !c.is_active } : c
-          )
-        );
-        toast.success(`${row.code} ${row.is_active ? "disabled" : "enabled"}.`);
-        return;
-      }
-
       const { error } = await supabase
         .from("discount_codes")
         .update({
@@ -228,11 +200,6 @@ export function AdminDiscountsView() {
     if (!window.confirm(`Delete discount ${row.code}?`)) return;
     setBusyId(row.id);
     try {
-      if (usingMock) {
-        persistMock(codes.filter((c) => c.id !== row.id));
-        toast.success(`${row.code} deleted.`);
-        return;
-      }
       const { error } = await supabase
         .from("discount_codes")
         .delete()
@@ -242,6 +209,7 @@ export function AdminDiscountsView() {
         return;
       }
       setCodes((prev) => prev.filter((c) => c.id !== row.id));
+      if (editingId === row.id) resetForm();
       toast.success(`${row.code} deleted.`);
     } finally {
       setBusyId(null);
@@ -259,14 +227,11 @@ export function AdminDiscountsView() {
             Discount Codes
           </h1>
           <p className="mt-1 text-sm text-slate-500 max-w-xl">
-            Create percent or fixed-amount promo codes for product and checkout
-            pricing.
-            {usingMock ? (
-              <span className="block mt-1 text-amber-700 font-semibold">
-                Offline mock mode — syncs to browser storage until Supabase
-                `discount_codes` is available.
-              </span>
-            ) : null}
+            Create percent or fixed-amount promo codes synced to Supabase{" "}
+            <code className="text-[11px] bg-slate-100 px-1.5 py-0.5 rounded">
+              public.discount_codes
+            </code>
+            .
           </p>
         </div>
         <button
@@ -412,7 +377,7 @@ export function AdminDiscountsView() {
       <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div className="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide">
-            Active Discounts
+            All Discounts
           </h2>
           <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
             {codes.length} total
