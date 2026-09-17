@@ -209,7 +209,7 @@ export default function PrivacyPolicyPage() {
       <section className="space-y-3">
         <h2>11. International &amp; Cross-Border Customers</h2>
         <p>
-          Plastipac primarily serves customers in the United States and Northern Mexico. If you access the Site from
+          Plastipac primarily serves customers in the United States. If you access the Site from
           outside the United States, you understand that your information may be processed in the United States, where
           privacy laws may differ from those in your jurisdiction.
         </p>

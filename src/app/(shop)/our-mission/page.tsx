@@ -19,7 +19,7 @@ import {
 export const metadata = {
   title: "Our Mission & Vision | Plastipac USA",
   description:
-    "Discover the mission, vision, and core values that drive Plastipac USA to be the premier stretch film manufacturer in South Texas and Northern Mexico.",
+    "Discover the mission, vision, and core values that drive Plastipac USA to be the premier stretch film manufacturer in South Texas and the United States.",
 };
 
 export default function OurMissionPage() {
@@ -49,7 +49,7 @@ export default function OurMissionPage() {
       icon: Award,
       title: "Operational Excellence",
       description:
-        "Delivering punctuality, rigorous quality control, and zero-defect packaging products across South Texas and Northern Mexico.",
+        "Delivering punctuality, rigorous quality control, and zero-defect packaging products across South Texas and the United States.",
       accent: "bg-emerald-50 text-emerald-600 border-emerald-100",
     },
   ];
@@ -117,14 +117,14 @@ export default function OurMissionPage() {
                 Our Vision
               </h2>
               <blockquote className="text-base sm:text-lg text-slate-700 leading-relaxed italic border-l-4 border-blue-600 pl-4">
-                "To be recognized as the premier stretch film manufacturer and packaging partner in South Texas and Northern Mexico, delivering reliability, punctuality, and maximum load protection."
+                "To be recognized as the premier stretch film manufacturer and packaging partner in South Texas and the United States, delivering reliability, punctuality, and maximum load protection."
               </blockquote>
             </div>
 
             <div className="pt-6 border-t border-slate-200/80 space-y-2 text-xs text-slate-600">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                <span>Unrivaled cross-border distribution and fast dispatch</span>
+                <span>Unrivaled U.S. distribution and fast dispatch</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-blue-600 flex-shrink-0" />
@@ -167,17 +167,17 @@ export default function OurMissionPage() {
           </div>
         </div>
 
-        {/* Regional Reach & Cross-Border Commitment */}
+        {/* Regional Reach — USA Focus */}
         <div className="rounded-3xl border border-slate-200 bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 text-white p-8 sm:p-12 space-y-6 shadow-xl">
           <div className="max-w-3xl space-y-4">
             <Badge variant="gradient" className="font-bold uppercase text-xs">
-              South Texas & Northern Mexico Hub
+              South Texas & USA Hub
             </Badge>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
               Strategic Proximity for Fast Freight Dispatch
             </h2>
             <p className="text-sm text-slate-300 leading-relaxed font-normal">
-              Headquartered with rapid access to key trade corridors in the Rio Grande Valley, Laredo, San Antonio, and major manufacturing clusters in Northern Mexico, Plastipac USA eliminates long lead times and ensures continuous inventory supply for our clients.
+              Headquartered with rapid access to key trade corridors in the Rio Grande Valley, Laredo, San Antonio, and major manufacturing clusters across the United States, Plastipac USA eliminates long lead times and ensures continuous inventory supply for our clients.
             </p>
           </div>
 

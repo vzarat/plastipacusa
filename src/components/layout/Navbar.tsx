@@ -21,6 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/context/LanguageContext";
 import { LanguageToggle } from "@/components/common/LanguageToggle";
+import { RegionCurrencyBadge } from "@/components/common/RegionCurrencyBadge";
 
 const LOGO_SRC =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PLASTIPAC_USA_LOGO%202.svg";
@@ -227,6 +228,10 @@ export function Navbar() {
 
           <div className="space-y-4 pt-6 border-t border-slate-100 mt-6">
             <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+              <span className="text-xs font-bold text-slate-600">Region</span>
+              <RegionCurrencyBadge />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
               <span className="text-xs font-bold text-slate-600">
                 {t("nav.language")}
               </span>
@@ -381,6 +386,7 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-2.5">
+            <RegionCurrencyBadge className="hidden sm:inline-flex" />
             <LanguageToggle />
 
             {currentUser ? (

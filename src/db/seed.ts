@@ -43,7 +43,7 @@ async function seed() {
           "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/CAJA_MANUAL_PLASTIPAC.png",
         ],
         recommendedUsage:
-          "Manual wrapping of heavy industrial loads, irregular crate edges, beverage distribution, and cross-border transport.",
+          "Manual wrapping of heavy industrial loads, irregular crate edges, beverage distribution, and U.S. freight transport.",
       })
       .returning();
 
@@ -337,7 +337,7 @@ async function seed() {
           "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/CAJA_MANUAL_PLASTIPAC.png",
         ],
         recommendedUsage:
-          "Manual wrapping of heavy industrial loads, irregular crate edges, beverage distribution, and cross-border transport.",
+          "Manual wrapping of heavy industrial loads, irregular crate edges, beverage distribution, and U.S. freight transport.",
       })
       .returning();
 

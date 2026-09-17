@@ -16,7 +16,7 @@ export function TrustBadges() {
     {
       icon: Truck,
       title: "Cross-Border Dispatch",
-      description: "Rapid regional truckload and pallet delivery across South Texas and Northern Mexico manufacturing hubs.",
+      description: "Rapid regional truckload and pallet delivery across South Texas and United States manufacturing hubs.",
     },
     {
       icon: Award,

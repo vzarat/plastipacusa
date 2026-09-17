@@ -7,7 +7,7 @@ import { ShieldCheck, Factory, Globe2, ArrowRight, Truck, PhoneCall, Target } fr
 export const metadata = {
   title: "About Plastipac USA | Industrial Stretch Packaging",
   description:
-    "Learn about Plastipac USA, your premier partner for high-performance cast stretch films across South Texas and Northern Mexico.",
+    "Learn about Plastipac USA, your premier partner for high-performance cast stretch films across South Texas and the United States.",
 };
 
 export default function AboutPage() {
@@ -23,7 +23,7 @@ export default function AboutPage() {
             Engineering High-Performance Polymer Stretch Films
           </h1>
           <p className="text-base text-slate-600 leading-relaxed font-normal">
-            Plastipac USA delivers advanced stretch wrap and pallet containment solutions tailored for logistics centers, distribution hubs, and industrial manufacturers across South Texas and Northern Mexico.
+            Plastipac USA delivers advanced stretch wrap and pallet containment solutions tailored for logistics centers, distribution hubs, and industrial manufacturers across South Texas and the United States.
           </p>
         </div>
 

@@ -33,9 +33,9 @@ export function Footer() {
               <Truck className="w-5 h-5 md:w-6 md:h-6" />
             </div>
             <div>
-              <h4 className="text-slate-900 font-semibold text-sm">Cross-Border Delivery</h4>
+              <h4 className="text-slate-900 font-semibold text-sm">USA Nationwide Delivery</h4>
               <p className="text-[11px] md:text-xs text-slate-500 leading-snug">
-                Rapid dispatch throughout South Texas & Northern Mexico
+                Rapid dispatch throughout South Texas and the United States
               </p>
             </div>
           </div>
@@ -68,7 +68,7 @@ export function Footer() {
             />
           </Link>
           <p className="text-[11px] md:text-xs leading-relaxed text-slate-500 line-clamp-2 md:line-clamp-none">
-            High-performance cast stretch films for South Texas & Northern Mexico logistics.
+            High-performance cast stretch films for South Texas and USA logistics.
           </p>
         </div>
 
@@ -85,7 +85,7 @@ export function Footer() {
               />
             </Link>
             <p className="text-xs leading-relaxed text-slate-500">
-              Plastipac USA is a leading industrial manufacturer of high-performance cast stretch films and automated packaging containment solutions for regional logistics and cross-border manufacturing.
+              Plastipac USA is a leading industrial manufacturer of high-performance cast stretch films and automated packaging containment solutions for U.S. logistics and manufacturing.
             </p>
             <div className="pt-2 text-xs space-y-1.5 text-slate-700 font-medium">
               <div className="flex items-center gap-2">
@@ -192,7 +192,7 @@ export function Footer() {
           <div className="col-span-2 sm:col-span-1">
             <h3 className={sectionTitleClass}>Commercial Desk</h3>
             <p className="hidden md:block text-xs text-slate-500 mb-3 leading-relaxed">
-              Serving industrial facilities, warehouses, and freight distributors throughout South Texas and Northern Mexico.
+              Serving industrial facilities, warehouses, and freight distributors throughout South Texas and the United States.
             </p>
             <div className="p-3 md:p-4 rounded-xl md:rounded-2xl bg-white border border-slate-200/80 space-y-1 md:space-y-2 text-xs">
               <span className="font-semibold text-slate-900 block text-sm md:text-xs md:font-bold">
@@ -220,6 +220,10 @@ export function Footer() {
         <div className="mt-6 pt-4 md:mt-12 md:pt-8 border-t border-slate-200 flex flex-col gap-3 md:gap-0 md:flex-row md:items-center md:justify-between text-xs text-slate-400">
           <p className="text-[11px] md:text-xs text-center md:text-left">
             © {new Date().getFullYear()} Plastipac USA. All rights reserved.
+            <span className="hidden sm:inline text-slate-300 mx-1.5">·</span>
+            <span className="block sm:inline mt-1 sm:mt-0 font-semibold text-slate-500">
+              USA | USD $
+            </span>
           </p>
 
           <div className="flex flex-wrap items-center justify-center md:justify-end gap-x-3 gap-y-1 text-[11px] md:text-xs">

@@ -25,7 +25,7 @@ export default function ShippingPolicyPage() {
       <section className="space-y-3">
         <h2>2. Service Area</h2>
         <p>
-          Plastipac primarily serves industrial customers throughout <strong>South Texas and Northern Mexico</strong>,
+          Plastipac primarily serves industrial customers throughout <strong>South Texas and the United States</strong>,
           and may ship to additional U.S. destinations where logistics and product availability allow. Cross-border
           shipments may require additional documentation, customs brokerage, duties, taxes, or importer-of-record
           arrangements. You are responsible for providing accurate consignee and customs information when applicable.

@@ -13,7 +13,7 @@ export function AnnouncementBar() {
           <span className="hidden md:inline text-sky-300">|</span>
           <span className="hidden md:flex items-center gap-1.5 text-sky-100">
             <Sparkles className="w-3.5 h-3.5 text-sky-200" />
-            South Texas & Northern Mexico Delivery
+            South Texas & USA Delivery
           </span>
         </div>
         <div className="flex items-center gap-3 text-xs">

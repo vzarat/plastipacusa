@@ -104,8 +104,8 @@ export function InquiryForm() {
                   <MapPin className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900">South Texas & Northern Mexico Delivery</h4>
-                  <p className="text-xs text-slate-500">Fast regional cross-border dispatch and truckload rates.</p>
+                  <h4 className="text-sm font-bold text-slate-900">South Texas & USA Delivery</h4>
+                  <p className="text-xs text-slate-500">Fast regional dispatch and truckload rates across the United States.</p>
                 </div>
               </div>
             </div>

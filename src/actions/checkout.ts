@@ -3,8 +3,7 @@
 import Stripe from "stripe";
 
 export async function createPaymentIntent(
-  amount: number,
-  currency: "usd" | "mxn" = "usd"
+  amount: number
 ): Promise<{ success: boolean; clientSecret?: string; error?: string }> {
   try {
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -24,7 +23,7 @@ export async function createPaymentIntent(
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: normalizedAmount,
-      currency,
+      currency: "usd",
       automatic_payment_methods: {
         enabled: true,
       },

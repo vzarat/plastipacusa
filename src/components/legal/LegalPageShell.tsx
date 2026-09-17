@@ -59,7 +59,7 @@ export function LegalPageShell({ title, effectiveDate, children }: LegalPageShel
             .
           </p>
           <p>
-            Plastipac USA · Industrial stretch film & packaging · South Texas & Northern Mexico
+            Plastipac USA · Industrial stretch film & packaging · South Texas & United States
           </p>
         </footer>
       </div>
