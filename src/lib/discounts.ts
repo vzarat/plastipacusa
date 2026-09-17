@@ -121,7 +121,7 @@ export function stripOptionalDiscountColumns(
   for (const key of columns) {
     delete next[key];
   }
-  return sanitizeDiscountWritePayload(next as DiscountCodeDbPayload);
+  return sanitizeDiscountWritePayload(next as unknown as DiscountCodeDbPayload);
 }
 
 /**

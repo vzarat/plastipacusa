@@ -17,15 +17,19 @@ export interface DiscountCode {
   updated_at?: string;
 }
 
-/** Columns written to Supabase `public.discount_codes` (excludes app-only aliases). */
+/**
+ * Columns written to Supabase `public.discount_codes`.
+ * Required fields are always sent; optional fields are stripped when absent from schema.
+ */
 export interface DiscountCodeDbPayload {
   code: string;
-  name?: string;
   discount_type: DiscountType;
   discount_value: number;
   expires_at: string | null;
   is_active: boolean;
-  /** Only sent when the live table exposes this column. */
+  /** Omitted when the live table has no `name` column. */
+  name?: string;
+  /** Omitted — not sent on mutate unless the table exposes this column. */
   updated_at?: string;
   created_at?: string;
 }
