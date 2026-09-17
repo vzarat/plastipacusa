@@ -9,6 +9,9 @@ import { ShoppingCart, CheckCircle2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DirectCheckoutButton } from "@/components/checkout/DirectCheckoutButton";
+import { ProductDiscountInput } from "@/components/products/ProductDiscountInput";
+import type { AppliedDiscount } from "@/types/discount";
+import { applyDiscountToPrice } from "@/lib/discounts";
 import {
   HAND_FULL_PALLET,
   isMachineFilm as detectMachineFilm,
@@ -287,6 +290,8 @@ export function VariantSelector({
   }, [product, isMachineFilm]);
 
   const addItem = useCartStore((state) => state.addItem);
+  const setAppliedCoupon = useCartStore((state) => state.setAppliedCoupon);
+  const clearCoupon = useCartStore((state) => state.clearCoupon);
 
   const [internalSelectedVariantId, setInternalSelectedVariantId] = useState<string>(
     String(variants[0]?.id || variants[0]?.sku || "0")
@@ -294,6 +299,25 @@ export function VariantSelector({
   const [quantity, setQuantity] = useState<number>(1);
   const [addedNotice, setAddedNotice] = useState(false);
   const [tierHint, setTierHint] = useState<string | null>(null);
+  const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null);
+
+  const handleDiscountApplied = useCallback(
+    (discount: AppliedDiscount | null) => {
+      setAppliedDiscount(discount);
+      if (discount && discount.discountType === "percent") {
+        setAppliedCoupon({
+          id: discount.id,
+          code: discount.code,
+          discountPercent: discount.discountValue,
+          targetType: "global",
+          targetValue: null,
+        });
+      } else if (!discount) {
+        clearCoupon();
+      }
+    },
+    [setAppliedCoupon, clearCoupon]
+  );
 
   const selectedVariant: ProductVariant = useMemo(() => {
     if (propSelectedVariant) return propSelectedVariant;
@@ -361,14 +385,16 @@ export function VariantSelector({
   const parsedUnitPrice = parseFloat(
     String(selectedVariant?.priceUsd ?? (selectedVariant as any)?.price ?? "")
   );
-  const unitPrice =
+  const baseUnitPriceRaw =
     Number.isFinite(parsedUnitPrice) && parsedUnitPrice > 0
       ? parsedUnitPrice
       : Number(product?.startingPrice) > 0
         ? Number(product.startingPrice)
         : 0;
+  const unitPrice = applyDiscountToPrice(baseUnitPriceRaw, appliedDiscount);
   const effectiveQuantity = isFixedTier ? 1 : quantity;
   const totalPrice = Number((unitPrice * effectiveQuantity).toFixed(2));
+  const hasActiveDiscount = Boolean(appliedDiscount && baseUnitPriceRaw > 0);
 
   const handleQuantityDecrease = () => {
     if (!quantityEditable) return;
@@ -434,8 +460,15 @@ export function VariantSelector({
   };
 
   const handleAddToCart = () => {
-    if (!selectedVariant || unitPrice <= 0) return;
+    if (!selectedVariant || baseUnitPriceRaw <= 0) return;
     const rolls = getRollsCount(selectedVariant);
+
+    // Percent codes sync to cart coupon — store list price to avoid double discount.
+    // Fixed codes are applied at line level only (cart coupon is percent-based).
+    const cartUnitPrice =
+      appliedDiscount?.discountType === "fixed"
+        ? unitPrice
+        : baseUnitPriceRaw;
 
     addItem({
       productId: product.id,
@@ -455,7 +488,7 @@ export function VariantSelector({
       rollsPerPallet: selectedVariant.rollsPerPallet,
       weightLbs: selectedVariant.weightLbs,
       pricingTier: displayPackageTitle(selectedVariant, isMachineFilm),
-      unitPrice,
+      unitPrice: cartUnitPrice,
       quantity: effectiveQuantity,
     });
 
@@ -471,8 +504,17 @@ export function VariantSelector({
           <span className="text-[11px] uppercase tracking-widest text-slate-400 font-bold block mb-1">
             {t("products.officialFactoryDirectPrice")}
           </span>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            {hasActiveDiscount && baseUnitPriceRaw !== unitPrice && (
+              <span className="text-lg sm:text-xl font-bold text-slate-400 line-through tracking-tight">
+                {formatCurrency(baseUnitPriceRaw)}
+              </span>
+            )}
+            <span
+              className={`text-3xl sm:text-4xl font-black tracking-tight ${
+                hasActiveDiscount ? "text-emerald-700" : "text-slate-900"
+              }`}
+            >
               {unitPrice > 0 ? formatCurrency(unitPrice) : "—"}
             </span>
             {unitPrice > 0 && (
@@ -516,7 +558,8 @@ export function VariantSelector({
                 String(selectedVariantId) === String(variant.sku)) ||
               (index === 0 && !selectedVariant);
 
-            const price = getVariantPrice(variant);
+            const originalPrice = getVariantPrice(variant);
+            const price = applyDiscountToPrice(originalPrice, appliedDiscount);
             const variantTitle = displayPackageTitle(variant, isMachineFilm);
             const rollsCount = getRollsCount(variant);
             const boxesCount = getBoxesCount(variant, isMachineFilm);
@@ -527,7 +570,11 @@ export function VariantSelector({
               baseUnitPrice,
               isMachineFilm
             );
+            const discountedPerUnit =
+              unitCount > 0 ? (price / unitCount).toFixed(2) : perUnitPrice;
             const showSavings = savingsPercent > 0 && unitCount > 1;
+            const showDiscountStrike =
+              Boolean(appliedDiscount) && originalPrice > 0 && price < originalPrice;
 
             return (
               <button
@@ -601,13 +648,20 @@ export function VariantSelector({
                   </div>
 
                   <div className="text-right shrink-0">
+                    {showDiscountStrike && (
+                      <span className="text-xs font-semibold text-slate-400 line-through block">
+                        {formatCurrency(originalPrice)}
+                      </span>
+                    )}
                     <span
                       className={`text-sm sm:text-base font-extrabold ${
-                        isSelected
-                          ? isBestValue
-                            ? "text-emerald-800"
-                            : "text-blue-800"
-                          : "text-slate-900"
+                        showDiscountStrike
+                          ? "text-emerald-700"
+                          : isSelected
+                            ? isBestValue
+                              ? "text-emerald-800"
+                              : "text-blue-800"
+                            : "text-slate-900"
                       }`}
                     >
                       {formatCurrency(price)}
@@ -615,7 +669,7 @@ export function VariantSelector({
                     <span className="text-[10px] text-slate-400 block font-semibold">USD</span>
                     {unitCount > 1 && (
                       <p className="text-xs text-slate-500 mt-0.5">
-                        ${perUnitPrice} USD / {unitLabel.toLowerCase()}
+                        ${discountedPerUnit} USD / {unitLabel.toLowerCase()}
                       </p>
                     )}
                   </div>
@@ -625,6 +679,11 @@ export function VariantSelector({
           })}
         </div>
       </div>
+
+      <ProductDiscountInput
+        appliedDiscount={appliedDiscount}
+        onApplied={handleDiscountApplied}
+      />
 
       {/* Specifications Highlight Box */}
       {(() => {
@@ -757,7 +816,18 @@ export function VariantSelector({
             <span className="text-[10px] text-slate-400 uppercase block font-semibold">
               {t("products.subtotal")}
             </span>
-            <span className="text-xl sm:text-2xl font-black text-slate-900">
+            {hasActiveDiscount && (
+              <span className="text-sm font-semibold text-slate-400 line-through block">
+                {formatCurrency(
+                  Number((baseUnitPriceRaw * effectiveQuantity).toFixed(2))
+                )}
+              </span>
+            )}
+            <span
+              className={`text-xl sm:text-2xl font-black ${
+                hasActiveDiscount ? "text-emerald-700" : "text-slate-900"
+              }`}
+            >
               {formatCurrency(totalPrice)}{" "}
               <span className="text-xs font-semibold text-slate-500">USD</span>
             </span>
@@ -798,7 +868,7 @@ export function VariantSelector({
             onClick={handleAddToCart}
             variant="gradient"
             size="lg"
-            disabled={unitPrice <= 0}
+            disabled={baseUnitPriceRaw <= 0}
             className="w-full flex items-center justify-center gap-2 text-sm font-bold shadow-lg shadow-sky-500/20 py-6 rounded-2xl"
           >
             <ShoppingCart className="w-4 h-4" />

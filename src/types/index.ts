@@ -68,6 +68,8 @@ export interface ProductWithVariants
   price20Rolls?: number;
   price40Rolls?: number;
   packageOptions?: PackageOption[];
+  /** Exact featured-series label used for tab filtering (no partial matches). */
+  series?: string;
 }
 export type Product = DbProduct;
 export type Inquiry = DbInquiry;

@@ -5,6 +5,7 @@ import { ProductWithVariants } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, ArrowRight, CheckCircle2, Box, Layers } from "lucide-react";
+import { GENESIS_HP_SLUGS, SERIES_GENESIS_HP, SERIES_GENESIS_STANDARD } from "@/lib/products";
 
 interface ProductCardProps {
   product: ProductWithVariants;
@@ -88,8 +89,13 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   const pBrand = String(product?.brand || "").toLowerCase();
   const pTitle = String(product?.title || product?.name || "").toLowerCase();
 
-  // 20" -> GENESIS (High Performance for machine high-yield / 6k films)
+  // Exact series field first — never partial GENESIS matching
+  const isGenesisHp =
+    product.series === SERIES_GENESIS_HP ||
+    (product.series !== SERIES_GENESIS_STANDARD && GENESIS_HP_SLUGS.has(pSlug));
   const isGenesis =
+    isGenesisHp ||
+    product.series === SERIES_GENESIS_STANDARD ||
     width === 20 ||
     categorySlug === "genesis-standard" ||
     categorySlug === "genesis-high-performance" ||
@@ -101,15 +107,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
     pBrand.includes("genesis") ||
     product?.application === "machine";
 
-  const isGenesisHighPerformance =
-    isGenesis &&
-    (categorySlug === "genesis-high-performance" ||
-      categorySlug === "machine-high-yield-film" ||
-      catId === "genesis-high-performance" ||
-      pSlug.includes("6000ft") ||
-      pSlug.includes("5000ft") ||
-      pSlug.includes("high-performance") ||
-      pTitle.includes("high performance"));
+  const isGenesisHighPerformance = isGenesisHp;
 
   // 15" -> FORCE Elite (amber badge)
   const isElite =

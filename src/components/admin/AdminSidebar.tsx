@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Tag,
+  Percent,
 } from "lucide-react";
 
 export type AdminTabKey = "overview" | "orders" | "products" | "customers" | "settings";
@@ -35,6 +36,8 @@ interface AdminSidebarProps {
   onToggleCollapse?: () => void;
   /** When true (or path is /admin/coupons), highlight Coupons nav link */
   couponsActive?: boolean;
+  /** When true (or path is /admin/discounts), highlight Discounts nav link */
+  discountsActive?: boolean;
 }
 
 export function AdminSidebar({
@@ -48,10 +51,13 @@ export function AdminSidebar({
   isCollapsed: controlledIsCollapsed,
   onToggleCollapse,
   couponsActive: couponsActiveProp,
+  discountsActive: discountsActiveProp,
 }: AdminSidebarProps) {
   const pathname = usePathname();
   const couponsActive =
     couponsActiveProp === true || pathname?.startsWith("/admin/coupons");
+  const discountsActive =
+    discountsActiveProp === true || pathname?.startsWith("/admin/discounts");
   const { t } = useLanguage();
   const [internalIsCollapsed, setInternalIsCollapsed] = useState(false);
 
@@ -232,7 +238,8 @@ export function AdminSidebar({
           <nav className="space-y-1.5">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
-              const isActive = !couponsActive && activeTab === item.key;
+              const isActive =
+                !couponsActive && !discountsActive && activeTab === item.key;
 
               return (
                 <button
@@ -289,6 +296,36 @@ export function AdminSidebar({
                 </button>
               );
             })}
+
+            {/* Discounts — dedicated route */}
+            <Link
+              href="/admin/discounts"
+              onClick={onCloseMobile}
+              className={`w-full flex items-center ${
+                isCollapsed ? "justify-center p-3" : "justify-between px-3.5 py-2.5 border-l-4"
+              } rounded-xl text-xs transition-all duration-200 relative group ${
+                discountsActive
+                  ? isCollapsed
+                    ? "bg-blue-50 text-blue-900 ring-1 ring-blue-300 shadow-xs font-bold"
+                    : "border-blue-600 bg-blue-50/70 font-bold text-blue-950 shadow-xs"
+                  : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-medium"
+              }`}
+              aria-label="Discounts"
+            >
+              <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
+                <Percent
+                  className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${
+                    discountsActive ? "text-blue-600" : "text-slate-400 group-hover:text-slate-700"
+                  }`}
+                />
+                {!isCollapsed && <span>Discounts</span>}
+              </div>
+              {isCollapsed && (
+                <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap hidden md:flex items-center gap-2">
+                  Discounts
+                </div>
+              )}
+            </Link>
 
             {/* Coupons — dedicated route */}
             <Link

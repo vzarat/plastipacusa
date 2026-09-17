@@ -13,12 +13,17 @@ import {
 import {
   HAND_FULL_PALLET,
   MACHINE_FILM_IMAGE_URL,
+  GENESIS_HP_SLUGS,
+  GENESIS_STANDARD_SLUGS,
   GENESIS_MACHINE_FALLBACK_PRODUCTS,
+  SERIES_FORCE_ELITE,
+  SERIES_FORCE_STANDARD,
   buildMachinePackageOptions,
   ensureGenesisMachineProducts,
   getGenesisMachineFallbackBySlug,
   isMachineFilm as detectMachineFilm,
   normalizeMachinePackageLabel,
+  seriesLabelFromCategorySlug,
 } from "@/lib/products";
 
 function parsePositivePrice(...candidates: unknown[]): number | null {
@@ -324,22 +329,22 @@ function formatProduct(raw: any): ProductWithVariants {
 
   const baseSku = String(raw.part_number || raw.partNumber || raw.slug || "SKU").toUpperCase();
 
+  const isHpOnly =
+    GENESIS_HP_SLUGS.has(slugStr) && !GENESIS_STANDARD_SLUGS.has(slugStr);
+  const isOverlapSku =
+    GENESIS_HP_SLUGS.has(slugStr) && GENESIS_STANDARD_SLUGS.has(slugStr);
+
   const earlyCategorySlug = isGenesis
-    ? (() => {
-        const isHpSku =
-          slugStr.includes("6000ft") ||
-          slugStr === "stretch-film-20-x-80-ga-x-5000ft" ||
-          nameStr.includes("high-performance") ||
-          slugStr.includes("high-performance") ||
-          nameStr.includes(" hp") ||
-          slugStr.includes("-hp-") ||
-          joinedCategorySlug === "machine-high-yield-film" ||
-          joinedCategorySlug === "genesis-high-performance";
-        return isHpSku ? "genesis-high-performance" : "genesis-standard";
-      })()
+    ? isHpOnly || isOverlapSku
+      ? "genesis-high-performance"
+      : "genesis-standard"
     : isElite
       ? "force-elite"
       : "force-standard";
+
+  const seriesLabel =
+    seriesLabelFromCategorySlug(earlyCategorySlug) ||
+    (isElite ? SERIES_FORCE_ELITE : SERIES_FORCE_STANDARD);
 
   const isMachineProduct =
     isGenesis ||
@@ -471,6 +476,7 @@ function formatProduct(raw: any): ProductWithVariants {
     title,
     name: title,
     brand: String(raw.brand || (isGenesis ? "GENESIS" : "FORCE")),
+    series: seriesLabel,
     description: String(raw.description || ""),
     shortDescription: String(raw.short_description || raw.shortDescription || ""),
     application:

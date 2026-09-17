@@ -10,8 +10,10 @@ import { ArrowRight } from "lucide-react";
 import { useCategoryStore, type CategorySlug } from "@/lib/store/useCategoryStore";
 import { PRODUCT_CATEGORIES } from "@/data/categories";
 import {
-  isGenesisHighPerformanceProduct,
-  isGenesisStandardProduct,
+  SERIES_FORCE_ELITE,
+  SERIES_FORCE_STANDARD,
+  SERIES_GENESIS_HP,
+  SERIES_GENESIS_STANDARD,
 } from "@/lib/products";
 
 interface FeaturedProductSectionProps {
@@ -19,7 +21,10 @@ interface FeaturedProductSectionProps {
 }
 
 interface CategoryPill {
+  /** Category store / URL key */
   slug: string;
+  /** Exact `product.series` value to match (null = all) */
+  series: string | null;
   label: string;
   color: string;
 }
@@ -27,88 +32,46 @@ interface CategoryPill {
 const CATEGORY_PILLS: CategoryPill[] = [
   {
     slug: "force-standard",
+    series: SERIES_FORCE_STANDARD,
     label: "FORCE Standard",
     color: "#2563eb",
   },
   {
     slug: "force-elite",
+    series: SERIES_FORCE_ELITE,
     label: "FORCE Elite",
     color: "#f59e0b",
   },
   {
     slug: "genesis-standard",
+    series: SERIES_GENESIS_STANDARD,
     label: "GENESIS Standard",
     color: "#dc2626",
   },
   {
     slug: "genesis-high-performance",
-    label: "GENESIS Automatic",
+    series: SERIES_GENESIS_HP,
+    label: "GENESIS High Performance",
     color: "#16a34a",
   },
   {
     slug: "all",
+    series: null,
     label: "All Products",
     color: "#64748b",
   },
 ];
 
-function matchesFeaturedCategory(
-  product: ProductWithVariants,
-  selectedCategory: string
-): boolean {
-  const rawWidth = product?.widthInches ?? product?.width_inches ?? 0;
-  const width =
-    typeof rawWidth === "number" ? rawWidth : parseFloat(String(rawWidth)) || 0;
-  const slug = String(product?.slug || "").toLowerCase();
-  const title = String(product?.title || product?.name || "").toLowerCase();
-  const catSlug = String(product?.categorySlug || "").toLowerCase();
-
-  if (
-    selectedCategory === "genesis-high-performance" ||
-    selectedCategory === "machine-high-yield-film"
-  ) {
-    return isGenesisHighPerformanceProduct(product);
+function dedupeBySlug(products: ProductWithVariants[]): ProductWithVariants[] {
+  const seen = new Set<string>();
+  const out: ProductWithVariants[] = [];
+  for (const product of products) {
+    const key = String(product.slug || product.id || "").toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(product);
   }
-
-  if (
-    selectedCategory === "genesis-standard" ||
-    selectedCategory === "b0000000-0000-0000-0000-000000000003"
-  ) {
-    return isGenesisStandardProduct({
-      ...product,
-      brand: product.brand,
-      type: (product as { type?: string }).type,
-    });
-  }
-
-  if (selectedCategory === "force-elite") {
-    if (isGenesisHighPerformanceProduct(product) || isGenesisStandardProduct(product)) {
-      return false;
-    }
-    return (
-      width === 15 ||
-      catSlug === "force-elite" ||
-      slug.includes("15-x") ||
-      title.includes('15"') ||
-      slug.includes("elite") ||
-      title.includes("elite")
-    );
-  }
-
-  if (selectedCategory === "force-standard") {
-    if (isGenesisHighPerformanceProduct(product) || isGenesisStandardProduct(product)) {
-      return false;
-    }
-    const isElite =
-      width === 15 ||
-      slug.includes("15-x") ||
-      title.includes('15"') ||
-      slug.includes("elite") ||
-      catSlug === "force-elite";
-    return !isElite;
-  }
-
-  return false;
+  return out;
 }
 
 export function FeaturedProductSection({ products }: FeaturedProductSectionProps) {
@@ -130,21 +93,24 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
     setGlobalCategory(slug === "all" ? null : (slug as CategorySlug));
   };
 
+  const activePill = useMemo(
+    () => CATEGORY_PILLS.find((p) => p.slug === selectedCategory) || CATEGORY_PILLS[0],
+    [selectedCategory]
+  );
+
   const activeCategoryMeta = useMemo(() => {
     if (selectedCategory === "all") return null;
     return PRODUCT_CATEGORIES.find((c) => c.slug === selectedCategory) || null;
   }, [selectedCategory]);
 
+  // Exact series equality — never partial "GENESIS" string matching
   const filteredProducts = useMemo(() => {
     if (!products || products.length === 0) return [];
-    if (selectedCategory === "all") return products;
-    return products.filter((p) => matchesFeaturedCategory(p, selectedCategory));
-  }, [products, selectedCategory]);
-
-  const activePill = useMemo(
-    () => CATEGORY_PILLS.find((p) => p.slug === selectedCategory) || CATEGORY_PILLS[0],
-    [selectedCategory]
-  );
+    if (!activePill.series) {
+      return dedupeBySlug(products);
+    }
+    return products.filter((p) => p.series === activePill.series);
+  }, [products, activePill.series]);
 
   return (
     <section
@@ -235,7 +201,7 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
                 {filteredProducts.map((product, idx) => (
                   <ProductCard
-                    key={product?.slug || product?.id || idx}
+                    key={`${product.series || "x"}-${product.slug || product.id || idx}`}
                     product={product}
                     priority={idx < 4}
                   />
