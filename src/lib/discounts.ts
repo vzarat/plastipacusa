@@ -55,6 +55,8 @@ export function mapDiscountCodeRow(
 /**
  * Build the write payload for create/update.
  * Sets both `code` and `name` to the coupon identifier (e.g. PLASTI10).
+ * Does not include `updated_at` / `created_at` — those are optional DB columns
+ * and must not be sent unless confirmed present in the schema cache.
  */
 export function buildDiscountWritePayload(
   form: Pick<
@@ -67,7 +69,7 @@ export function buildDiscountWritePayload(
     .toUpperCase();
   const name = resolveDiscountName(code, form.name || code);
 
-  return {
+  return sanitizeDiscountWritePayload({
     code,
     name,
     discount_type: form.discount_type,
@@ -76,19 +78,70 @@ export function buildDiscountWritePayload(
       ? new Date(form.expires_at).toISOString()
       : null,
     is_active: form.is_active,
-    updated_at: new Date().toISOString(),
-  };
+  });
+}
+
+const OPTIONAL_TIMESTAMP_KEYS = ["updated_at", "created_at"] as const;
+const OPTIONAL_COLUMN_KEYS = ["name", ...OPTIONAL_TIMESTAMP_KEYS] as const;
+
+/**
+ * Strip undefined / null / empty optional fields before Supabase mutate calls.
+ * Timestamp columns are omitted entirely so PostgREST won't reject missing schema.
+ */
+export function sanitizeDiscountWritePayload(
+  payload: DiscountCodeDbPayload
+): DiscountCodeDbPayload {
+  const next: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(payload)) {
+    if (value === undefined || value === null) continue;
+    if (
+      OPTIONAL_TIMESTAMP_KEYS.includes(
+        key as (typeof OPTIONAL_TIMESTAMP_KEYS)[number]
+      )
+    ) {
+      // Never send client-generated timestamps unless explicitly required later.
+      continue;
+    }
+    if (typeof value === "string" && value.trim() === "" && key !== "code") {
+      continue;
+    }
+    next[key] = value;
+  }
+
+  return next as unknown as DiscountCodeDbPayload;
+}
+
+/** Remove known optional columns that may be absent from the live schema. */
+export function stripOptionalDiscountColumns(
+  payload: DiscountCodeDbPayload,
+  columns: readonly string[] = OPTIONAL_COLUMN_KEYS
+): DiscountCodeDbPayload {
+  const next: Record<string, unknown> = { ...payload };
+  for (const key of columns) {
+    delete next[key];
+  }
+  return sanitizeDiscountWritePayload(next as DiscountCodeDbPayload);
 }
 
 /**
- * Strip `name` when the live table lacks that column
- * (PostgREST: "Could not find the 'name' column of 'discount_codes'").
+ * @deprecated Prefer stripOptionalDiscountColumns — kept for call-site compatibility.
  */
 export function withoutOptionalNameColumn(
   payload: DiscountCodeDbPayload
-): Omit<DiscountCodeDbPayload, "name"> {
-  const { name: _name, ...rest } = payload;
-  return rest;
+): DiscountCodeDbPayload {
+  return stripOptionalDiscountColumns(payload, ["name"]);
+}
+
+export function isPostgrestSchemaCacheError(message?: string | null): boolean {
+  if (!message) return false;
+  const lower = message.toLowerCase();
+  return (
+    (lower.includes("could not find") || lower.includes("does not exist")) &&
+    (lower.includes("schema cache") ||
+      lower.includes("column") ||
+      lower.includes("discount_codes"))
+  );
 }
 
 export function isMissingNameColumnError(message?: string | null): boolean {
@@ -96,9 +149,29 @@ export function isMissingNameColumnError(message?: string | null): boolean {
   const lower = message.toLowerCase();
   return (
     lower.includes("name") &&
-    (lower.includes("discount_codes") || lower.includes("schema cache")) &&
-    (lower.includes("could not find") || lower.includes("does not exist"))
+    isPostgrestSchemaCacheError(message)
   );
+}
+
+export function isMissingUpdatedAtColumnError(message?: string | null): boolean {
+  if (!message) return false;
+  const lower = message.toLowerCase();
+  return lower.includes("updated_at") && isPostgrestSchemaCacheError(message);
+}
+
+/** Friendly toast copy for PostgREST schema-cache mismatches. */
+export function formatDiscountSchemaError(message?: string | null): string {
+  if (!message) return "Could not save discount.";
+  if (isMissingUpdatedAtColumnError(message)) {
+    return "discount_codes is missing updated_at — retrying without timestamps.";
+  }
+  if (isMissingNameColumnError(message)) {
+    return "discount_codes is missing name — retrying without that column.";
+  }
+  if (isPostgrestSchemaCacheError(message)) {
+    return `Supabase schema mismatch: ${message}`;
+  }
+  return message;
 }
 
 export function mapDiscountToApplied(

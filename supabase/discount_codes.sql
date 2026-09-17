@@ -22,6 +22,13 @@ create table if not exists public.discount_codes (
 alter table public.discount_codes
   add column if not exists name text;
 
+-- Optional timestamps — app mutates do not require these columns.
+alter table public.discount_codes
+  add column if not exists created_at timestamptz default now();
+
+alter table public.discount_codes
+  add column if not exists updated_at timestamptz default now();
+
 -- Backfill name from code where missing
 update public.discount_codes
 set name = code

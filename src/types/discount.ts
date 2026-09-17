@@ -25,7 +25,9 @@ export interface DiscountCodeDbPayload {
   discount_value: number;
   expires_at: string | null;
   is_active: boolean;
-  updated_at: string;
+  /** Only sent when the live table exposes this column. */
+  updated_at?: string;
+  created_at?: string;
 }
 
 export interface AppliedDiscount {

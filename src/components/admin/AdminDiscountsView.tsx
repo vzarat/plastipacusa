@@ -23,9 +23,13 @@ import type {
 } from "@/types/discount";
 import {
   buildDiscountWritePayload,
+  formatDiscountSchemaError,
   isMissingNameColumnError,
+  isMissingUpdatedAtColumnError,
+  isPostgrestSchemaCacheError,
   mapDiscountCodeRow,
-  withoutOptionalNameColumn,
+  sanitizeDiscountWritePayload,
+  stripOptionalDiscountColumns,
 } from "@/lib/discounts";
 
 const EMPTY_FORM: DiscountFormValues = {
@@ -50,19 +54,32 @@ async function persistDiscountPayload(
   payload: DiscountCodeDbPayload,
   editingId: string | null
 ) {
-  const write = async (body: DiscountCodeDbPayload | Omit<DiscountCodeDbPayload, "name">) => {
+  const write = async (body: DiscountCodeDbPayload) => {
+    const sanitized = sanitizeDiscountWritePayload(body);
     if (editingId) {
-      return supabase.from("discount_codes").update(body).eq("id", editingId);
+      return supabase.from("discount_codes").update(sanitized).eq("id", editingId);
     }
-    return supabase.from("discount_codes").insert(body);
+    return supabase.from("discount_codes").insert(sanitized);
   };
 
-  // Prefer writing both `code` and `name` (same coupon identifier).
+  // Timestamps are already stripped by sanitize; try with `name` first.
   let result = await write(payload);
 
-  // Live tables created without `name` reject the column — retry without it.
   if (result.error && isMissingNameColumnError(result.error.message)) {
-    result = await write(withoutOptionalNameColumn(payload));
+    result = await write(stripOptionalDiscountColumns(payload, ["name"]));
+  }
+
+  if (result.error && isMissingUpdatedAtColumnError(result.error.message)) {
+    result = await write(
+      stripOptionalDiscountColumns(payload, ["updated_at", "created_at"])
+    );
+  }
+
+  // Final fallback: drop all optional columns that may be absent from schema cache.
+  if (result.error && isPostgrestSchemaCacheError(result.error.message)) {
+    result = await write(
+      stripOptionalDiscountColumns(payload, ["name", "updated_at", "created_at"])
+    );
   }
 
   return result;
@@ -88,7 +105,22 @@ export function AdminDiscountsView() {
 
       if (error) {
         setCodes([]);
-        toast.error(error.message || "Could not load discount codes from Supabase.");
+        // created_at may also be missing — retry unordered select
+        if (isPostgrestSchemaCacheError(error.message)) {
+          const fallback = await supabase.from("discount_codes").select("*");
+          if (!fallback.error) {
+            setCodes(
+              (fallback.data || []).map((row) =>
+                mapDiscountCodeRow(row as Record<string, unknown>)
+              )
+            );
+            toast.message(formatDiscountSchemaError(error.message));
+            return;
+          }
+          toast.error(formatDiscountSchemaError(fallback.error.message));
+          return;
+        }
+        toast.error(formatDiscountSchemaError(error.message));
         return;
       }
 
@@ -99,8 +131,9 @@ export function AdminDiscountsView() {
       );
     } catch (err: unknown) {
       setCodes([]);
-      const message = err instanceof Error ? err.message : "Could not load discount codes.";
-      toast.error(message);
+      const message =
+        err instanceof Error ? err.message : "Could not load discount codes.";
+      toast.error(formatDiscountSchemaError(message));
     } finally {
       setLoading(false);
     }
@@ -140,7 +173,6 @@ export function AdminDiscountsView() {
 
     setSaving(true);
 
-    // App payload: both `code` and `name` set to the coupon identifier.
     const payload = buildDiscountWritePayload({
       ...form,
       code,
@@ -150,7 +182,7 @@ export function AdminDiscountsView() {
     try {
       const { error } = await persistDiscountPayload(supabase, payload, editingId);
       if (error) {
-        toast.error(error.message || "Could not save discount.");
+        toast.error(formatDiscountSchemaError(error.message));
         return;
       }
 
@@ -160,8 +192,9 @@ export function AdminDiscountsView() {
       resetForm();
       await loadCodes();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Could not save discount.";
-      toast.error(message);
+      const message =
+        err instanceof Error ? err.message : "Could not save discount.";
+      toast.error(formatDiscountSchemaError(message));
     } finally {
       setSaving(false);
     }
@@ -184,16 +217,14 @@ export function AdminDiscountsView() {
   const toggleActive = async (row: DiscountCode) => {
     setBusyId(row.id);
     try {
+      // Do not send updated_at — column may be absent from schema cache.
       const { error } = await supabase
         .from("discount_codes")
-        .update({
-          is_active: !row.is_active,
-          updated_at: new Date().toISOString(),
-        })
+        .update({ is_active: !row.is_active })
         .eq("id", row.id);
 
       if (error) {
-        toast.error(error.message || "Could not update discount.");
+        toast.error(formatDiscountSchemaError(error.message));
         return;
       }
       setCodes((prev) =>
@@ -202,6 +233,10 @@ export function AdminDiscountsView() {
         )
       );
       toast.success(`${row.code} ${row.is_active ? "disabled" : "enabled"}.`);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Could not update discount.";
+      toast.error(formatDiscountSchemaError(message));
     } finally {
       setBusyId(null);
     }
@@ -216,12 +251,16 @@ export function AdminDiscountsView() {
         .delete()
         .eq("id", row.id);
       if (error) {
-        toast.error(error.message || "Could not delete discount.");
+        toast.error(formatDiscountSchemaError(error.message));
         return;
       }
       setCodes((prev) => prev.filter((c) => c.id !== row.id));
       if (editingId === row.id) resetForm();
       toast.success(`${row.code} deleted.`);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Could not delete discount.";
+      toast.error(formatDiscountSchemaError(message));
     } finally {
       setBusyId(null);
     }
