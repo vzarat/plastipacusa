@@ -36,6 +36,11 @@ const CATEGORY_PILLS: CategoryPill[] = [
     color: "#f59e0b",
   },
   {
+    slug: "genesis-standard",
+    label: "GENESIS Standard",
+    color: "#dc2626",
+  },
+  {
     slug: "genesis-high-performance",
     label: "GENESIS Automatic",
     color: "#16a34a",

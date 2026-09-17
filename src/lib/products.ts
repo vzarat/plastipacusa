@@ -347,7 +347,7 @@ const GENESIS_HP_SLUGS = new Set(
   GENESIS_MACHINE_FALLBACK_PRODUCTS.map((p) => p.slug.toLowerCase())
 );
 
-/** GENESIS High Performance / Automatic machine films (20" high-yield). */
+/** True only for the GENESIS Automatic / High Performance high-yield SKUs. */
 export function isGenesisHighPerformanceProduct(product: {
   slug?: string | null;
   categorySlug?: string | null;
@@ -363,10 +363,13 @@ export function isGenesisHighPerformanceProduct(product: {
   const slug = String(product.slug || "").toLowerCase();
   const catSlug = String(product.categorySlug || "").toLowerCase();
   const catId = String(product.categoryId || "").toLowerCase();
-  const type = String(product.type || "").toLowerCase();
-  const length = Number(product.length_feet);
+  const title = String(product.title || product.name || "").toLowerCase();
 
+  // Explicit Automatic / High Performance catalog SKUs
   if (GENESIS_HP_SLUGS.has(slug)) return true;
+  if (slug.includes("6000ft")) return true;
+  if (slug === "stretch-film-20-x-80-ga-x-5000ft") return true;
+
   if (
     catSlug === "genesis-high-performance" ||
     catSlug === "machine-high-yield-film" ||
@@ -374,24 +377,28 @@ export function isGenesisHighPerformanceProduct(product: {
   ) {
     return true;
   }
-  if (slug.includes("6000ft") || slug.includes("5000ft")) return true;
+
   if (
-    (type === "machine" || String(product.application || "").toLowerCase() === "machine") &&
-    (length === 5000 || length === 6000)
+    title.includes("high performance") ||
+    title.includes("high-performance") ||
+    slug.includes("high-performance")
   ) {
     return true;
   }
+
   return false;
 }
 
-/** Classic GENESIS Standard machine film (excludes High Performance / Automatic SKUs). */
+/** Classic GENESIS Standard machine film (excludes Automatic / High Performance SKUs). */
 export function isGenesisStandardProduct(product: {
   slug?: string | null;
   categorySlug?: string | null;
   categoryId?: string | null;
   title?: string | null;
   name?: string | null;
+  brand?: string | null;
   application?: string | null;
+  type?: string | null;
   widthInches?: number | string | null;
   width_inches?: number | string | null;
 }): boolean {
@@ -401,16 +408,45 @@ export function isGenesisStandardProduct(product: {
   const catSlug = String(product.categorySlug || "").toLowerCase();
   const catId = String(product.categoryId || "");
   const title = String(product.title || product.name || "").toLowerCase();
+  const brand = String(product.brand || "").toLowerCase();
+  const type = String(product.type || "").toLowerCase();
   const width = Math.round(
     Number(product.widthInches ?? product.width_inches ?? 0)
   );
 
-  return (
-    width === 20 ||
+  if (
     catSlug === "genesis-standard" ||
     catId === "b0000000-0000-0000-0000-000000000003" ||
-    slug.includes("20-x") ||
-    title.includes('20"') ||
-    String(product.application || "").toLowerCase() === "machine"
+    catId === "genesis-standard"
+  ) {
+    return true;
+  }
+
+  // 20" machine / GENESIS cast films that are not High Performance
+  if (width === 20 || slug.includes("20-x") || title.includes('20"')) {
+    return (
+      brand.includes("genesis") ||
+      type === "machine" ||
+      String(product.application || "").toLowerCase() === "machine" ||
+      catSlug.includes("genesis") ||
+      slug.startsWith("stretch-film-20")
+    );
+  }
+
+  return (
+    brand.includes("genesis") ||
+    (String(product.application || "").toLowerCase() === "machine" &&
+      !catSlug.includes("force"))
   );
+}
+
+/** Series key used by featured / catalog filters. */
+export function getGenesisSeriesKey(
+  product: Parameters<typeof isGenesisHighPerformanceProduct>[0] & {
+    brand?: string | null;
+  }
+): "genesis-high-performance" | "genesis-standard" | null {
+  if (isGenesisHighPerformanceProduct(product)) return "genesis-high-performance";
+  if (isGenesisStandardProduct(product)) return "genesis-standard";
+  return null;
 }

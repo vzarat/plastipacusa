@@ -325,16 +325,18 @@ function formatProduct(raw: any): ProductWithVariants {
   const baseSku = String(raw.part_number || raw.partNumber || raw.slug || "SKU").toUpperCase();
 
   const earlyCategorySlug = isGenesis
-    ? nameStr.includes("hp") ||
-      slugStr.includes("hp") ||
-      nameStr.includes("high-performance") ||
-      slugStr.includes("high-performance") ||
-      joinedCategorySlug === "machine-high-yield-film" ||
-      joinedCategorySlug === "genesis-high-performance" ||
-      slugStr.includes("6000ft") ||
-      slugStr.includes("5000ft")
-      ? "genesis-high-performance"
-      : "genesis-standard"
+    ? (() => {
+        const isHpSku =
+          slugStr.includes("6000ft") ||
+          slugStr === "stretch-film-20-x-80-ga-x-5000ft" ||
+          nameStr.includes("high-performance") ||
+          slugStr.includes("high-performance") ||
+          nameStr.includes(" hp") ||
+          slugStr.includes("-hp-") ||
+          joinedCategorySlug === "machine-high-yield-film" ||
+          joinedCategorySlug === "genesis-high-performance";
+        return isHpSku ? "genesis-high-performance" : "genesis-standard";
+      })()
     : isElite
       ? "force-elite"
       : "force-standard";
