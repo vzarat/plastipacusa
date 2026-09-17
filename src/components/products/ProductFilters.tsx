@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Filter, RotateCcw } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
-const GAUGE_OPTIONS = ["all", "50", "60", "70", "80"] as const;
+const GAUGE_OPTIONS = ["all", "60", "70", "80"] as const;
 const LENGTH_OPTIONS = ["all", "1000", "1500", "5000"] as const;
 const WIDTH_OPTIONS = ["all", "18", "20", "30"] as const;
 

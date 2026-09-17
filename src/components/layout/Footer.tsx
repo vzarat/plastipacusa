@@ -112,7 +112,7 @@ export function Footer() {
             <h3 className={sectionTitleClass}>Packaging Solutions</h3>
             <ul className="space-y-0 md:space-y-2.5">
               <li>
-                <Link href="/products/stretch-film-18-x-50-ga-x-1000ft" className={`${linkItemClass} font-medium text-slate-800`}>
+                <Link href="/products/stretch-film-18-x-60-ga-x-1000ft" className={`${linkItemClass} font-medium text-slate-800`}>
                   18&quot; × 50 GA FORCE
                 </Link>
               </li>

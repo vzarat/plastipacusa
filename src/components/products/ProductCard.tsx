@@ -244,7 +244,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
                 : "FORCE • Industrial Cast Series"}
             </span>
             <h3 className={`text-sm sm:text-base font-extrabold text-slate-900 ${catStyles.hoverTitleColor} transition-colors mt-1 line-clamp-2 min-h-[2.75rem] sm:min-h-[3rem] leading-snug`}>
-              <Link href={`/products/${product?.slug || "stretch-film-18-x-50-ga-x-1000ft"}`}>
+              <Link href={`/products/${product?.slug || "stretch-film-18-x-60-ga-x-1000ft"}`}>
                 {title}
               </Link>
             </h3>
@@ -307,7 +307,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
 
         {/* High-Conversion "BUY NOW" Button */}
         <Link
-          href={`/products/${product?.slug || "stretch-film-18-x-50-ga-x-1000ft"}`}
+          href={`/products/${product?.slug || "stretch-film-18-x-60-ga-x-1000ft"}`}
           className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 text-white font-extrabold text-sm shadow-md shadow-sky-500/20 hover:opacity-95 hover:shadow-lg hover:shadow-sky-500/30 transition-all duration-200 active:scale-[0.99] group/btn"
         >
           <ShoppingCart className="w-4 h-4 text-white group-hover/btn:scale-110 transition-transform" />

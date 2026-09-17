@@ -120,9 +120,20 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   }
 
   // Always sort cheapest → most expensive before rendering the grid
-  products = [...(products || [])].sort(
-    (a, b) => getStartingPrice(a) - getStartingPrice(b)
-  );
+  products = [...(products || [])]
+    .filter((p) => {
+      if (p?.gauge === 50) return false;
+      const slug = String(p?.slug || "").toLowerCase();
+      if (slug.includes("50-ga") || slug.includes("-50ga")) return false;
+      const label = `${p?.title || ""} ${p?.name || ""}`.toLowerCase();
+      if (/\b50\s*ga(uge)?\b/.test(label)) return false;
+      return true;
+    })
+    .map((p) => ({
+      ...p,
+      variants: (p.variants || []).filter((v) => Number(v.gauge) !== 50),
+    }))
+    .sort((a, b) => getStartingPrice(a) - getStartingPrice(b));
 
   return (
     <div className="py-12 bg-slate-50/40 min-h-[calc(100vh-200px)]">

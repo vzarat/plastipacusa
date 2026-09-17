@@ -150,7 +150,7 @@ export function Hero() {
               <div className="mt-6 flex items-center justify-between">
                 <span className="text-xs text-slate-500 font-medium">{t("hero.readyToShip")}</span>
                 <Button asChild variant="gradient" size="sm" className="gap-1.5 shadow-sm">
-                  <Link href="/products/stretch-film-18-x-50-ga-x-1000ft">
+                  <Link href="/products/stretch-film-18-x-60-ga-x-1000ft">
                     <span>{t("hero.viewMatrix")}</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </Link>

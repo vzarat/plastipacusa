@@ -36,7 +36,7 @@ function extractLengthFeet(name: string): number | null {
   return match ? Number(match[1]) : null;
 }
 
-const FALLBACK_GAUGES = [50, 60, 70, 80, 90];
+const FALLBACK_GAUGES = [60, 70, 80, 90];
 const FALLBACK_LENGTHS = [1000, 1500, 5000, 6000];
 
 // Resolves the best available image source across the various field shapes a product row may have

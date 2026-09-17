@@ -30,6 +30,49 @@ function isDefaultPackageTierSet(
   );
 }
 
+function isFiftyGaugeValue(value: unknown): boolean {
+  if (value === null || value === undefined || value === "") return false;
+  if (typeof value === "number") return value === 50;
+  const normalized = String(value).trim().toLowerCase().replace(/\s+/g, " ");
+  return (
+    normalized === "50" ||
+    normalized === "50ga" ||
+    normalized === "50 ga" ||
+    normalized === "50 gauge"
+  );
+}
+
+function isFiftyGaugeStorefrontProduct(product: ProductWithVariants): boolean {
+  if (isFiftyGaugeValue(product.gauge)) return true;
+
+  const slug = String(product.slug || "").toLowerCase();
+  if (slug.includes("50-ga") || slug.includes("-50ga") || slug.includes("x-50-ga")) {
+    return true;
+  }
+
+  const label = `${product.title || ""} ${product.name || ""}`.toLowerCase();
+  if (/\b50\s*ga(uge)?\b/.test(label)) return true;
+
+  const variants = product.variants || [];
+  if (variants.length > 0 && variants.every((v) => isFiftyGaugeValue(v.gauge))) {
+    return true;
+  }
+
+  return false;
+}
+
+/** Strip 50 GA products/variants from all storefront catalog listings. */
+function excludeFiftyGaugeFromStorefront(
+  products: ProductWithVariants[]
+): ProductWithVariants[] {
+  return products
+    .filter((product) => !isFiftyGaugeStorefrontProduct(product))
+    .map((product) => ({
+      ...product,
+      variants: (product.variants || []).filter((v) => !isFiftyGaugeValue(v.gauge)),
+    }));
+}
+
 /**
  * Format raw Supabase database records into type-safe ProductWithVariants
  * - Maps product_variants and sorts by price ascending
@@ -39,7 +82,7 @@ function isDefaultPackageTierSet(
 function formatProduct(raw: any): ProductWithVariants {
   const rawVariants = (raw.product_variants || raw.variants || []) as any[];
 
-  // Sort variants by price ascending
+  // Sort variants by price ascending (exclude 50 GA variants from storefront payloads)
   const sortedVariants: ProductVariant[] = rawVariants
     .map((v: any, index: number) => {
       const rollsCount = Number(v.rolls_count || v.rollsCount || v.rolls_per_box || v.rollsPerBox || 4);
@@ -63,7 +106,7 @@ function formatProduct(raw: any): ProductWithVariants {
         rolls_count: rollsCount,
         boxes_count: boxesCount,
         widthInches: String(v.width_inches || v.widthInches || raw.width_inches || "18.00"),
-        gauge: Number(v.gauge || raw.gauge || 50),
+        gauge: Number(v.gauge || raw.gauge || 60),
         lengthFeet: Number(v.length_feet || v.lengthFeet || raw.length_feet || 1000),
         rollsPerBox: rollsCount,
         rollsPerPallet: Number(v.rolls_per_pallet || v.rollsPerPallet || 256),
@@ -76,6 +119,7 @@ function formatProduct(raw: any): ProductWithVariants {
       };
     })
     .filter((v) => parsePositivePrice(v.priceUsd) !== null)
+    .filter((v) => !isFiftyGaugeValue(v.gauge))
     .sort((a, b) => parseFloat(a.priceUsd) - parseFloat(b.priceUsd));
 
   // Resolve category slug and machine film detection
@@ -231,7 +275,7 @@ function formatProduct(raw: any): ProductWithVariants {
     categoryId: rawCategoryId || (categorySlug === "genesis-standard" ? "b0000000-0000-0000-0000-000000000003" : categorySlug === "force-elite" ? "b0000000-0000-0000-0000-000000000002" : "b0000000-0000-0000-0000-000000000001"),
     widthInches: Number(raw.width_inches || raw.widthInches || 0),
     width_inches: String(raw.width_inches || raw.widthInches || sortedVariants[0]?.widthInches || (isGenesis ? "20.00" : "18.00")),
-    gauge: Number(raw.gauge || sortedVariants[0]?.gauge || 50),
+    gauge: Number(raw.gauge || sortedVariants[0]?.gauge || 60),
     length_feet: Number(raw.length_feet || raw.lengthFeet || sortedVariants[0]?.lengthFeet || 1000),
     core_type: String(raw.core_type || raw.coreType || 'Standard 3" Core'),
     partNumber: raw.part_number || raw.partNumber || null,
@@ -263,6 +307,10 @@ export async function getProductSlugs(): Promise<{ slug: string }[]> {
     if (!error && products && products.length > 0) {
       return products
         .filter((product) => Boolean(product.slug))
+        .filter((product) => {
+          const slug = String(product.slug || "").toLowerCase();
+          return !slug.includes("50-ga") && !slug.includes("-50ga");
+        })
         .map((product) => ({
           slug: product.slug,
         }));
@@ -320,7 +368,7 @@ export async function getProducts(
           if (categoryFilter && categoryFilter !== "all") {
             items = items.filter((p) => matchesCategory(p, categoryFilter));
           }
-          return items;
+          return excludeFiftyGaugeFromStorefront(items);
         }
 
         // 2. If categories table is not related, fallback to product_variants
@@ -343,7 +391,7 @@ export async function getProducts(
             if (categoryFilter && categoryFilter !== "all") {
               items = items.filter((p) => matchesCategory(p, categoryFilter));
             }
-            return items;
+            return excludeFiftyGaugeFromStorefront(items);
           }
 
           // 3. Flat query without joins (handles schema cache without FKs)
@@ -371,7 +419,7 @@ export async function getProducts(
             if (categoryFilter && categoryFilter !== "all") {
               items = items.filter((p) => matchesCategory(p, categoryFilter));
             }
-            return items;
+            return excludeFiftyGaugeFromStorefront(items);
           }
         }
       } catch (sbErr: any) {
@@ -389,6 +437,11 @@ export async function getProducts(
  * Fetch a single product by slug joined with its parent category and product_variants
  */
 export async function getProductBySlug(slug: string): Promise<ProductWithVariants | null> {
+  const normalizedSlug = String(slug || "").toLowerCase();
+  if (normalizedSlug.includes("50-ga") || normalizedSlug.includes("-50ga")) {
+    return null;
+  }
+
   try {
     const supabase = await createServerClient();
 
@@ -406,7 +459,8 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
           .maybeSingle();
 
         if (!error && data) {
-          return formatProduct(data);
+          const product = formatProduct(data);
+          return isFiftyGaugeStorefrontProduct(product) ? null : product;
         }
 
         // 2. Fallback to product_variants query if categories relation is omitted
@@ -421,7 +475,8 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
             .maybeSingle();
 
           if (!flatError && flatData) {
-            return formatProduct(flatData);
+            const product = formatProduct(flatData);
+            return isFiftyGaugeStorefrontProduct(product) ? null : product;
           }
 
           // 3. Flat query without joins
@@ -437,10 +492,11 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
               .select("*")
               .eq("product_id", rawProd.id);
 
-            return formatProduct({
+            const product = formatProduct({
               ...rawProd,
               product_variants: rawVariants || [],
             });
+            return isFiftyGaugeStorefrontProduct(product) ? null : product;
           }
         }
       } catch (sbErr: any) {
