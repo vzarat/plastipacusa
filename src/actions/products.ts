@@ -12,7 +12,11 @@ import {
 } from "@/lib/palletizing";
 import {
   HAND_FULL_PALLET,
+  MACHINE_FILM_IMAGE_URL,
+  GENESIS_MACHINE_FALLBACK_PRODUCTS,
   buildMachinePackageOptions,
+  ensureGenesisMachineProducts,
+  getGenesisMachineFallbackBySlug,
   isMachineFilm as detectMachineFilm,
   normalizeMachinePackageLabel,
 } from "@/lib/products";
@@ -24,6 +28,39 @@ function parsePositivePrice(...candidates: unknown[]): number | null {
     if (Number.isFinite(value) && value > 0) return value;
   }
   return null;
+}
+
+function toNumericProductId(rawId: unknown, slug: string): number {
+  const asNumber = Number(rawId);
+  if (Number.isFinite(asNumber) && asNumber > 0) return asNumber;
+
+  let hash = 0;
+  const source = String(slug || rawId || "product");
+  for (let i = 0; i < source.length; i += 1) {
+    hash = (hash * 31 + source.charCodeAt(i)) >>> 0;
+  }
+  return hash || 1;
+}
+
+function resolveRollsCount(v: any): number {
+  const candidates = [
+    v.rolls_count,
+    v.rollsCount,
+    v.rolls,
+    v.rolls_per_box,
+    v.rollsPerBox,
+  ];
+  for (const candidate of candidates) {
+    if (candidate === null || candidate === undefined || candidate === "") continue;
+    const n = Number(candidate);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+
+  const label = String(v.title || v.package_size || v.packageSize || "").toUpperCase();
+  if (label.includes("40 ROLL") || label.includes("FULL PALLET")) return 40;
+  if (label.includes("20 ROLL") || label.includes("HALF PALLET")) return 20;
+  if (label.includes("1 ROLL")) return 1;
+  return 4;
 }
 
 function isDefaultPackageTierSet(
@@ -106,19 +143,24 @@ function formatProduct(raw: any): ProductWithVariants {
   // Sort variants by price ascending (exclude 50 GA variants from storefront payloads)
   const sortedVariants: ProductVariant[] = rawVariants
     .map((v: any, index: number) => {
-      const rollsCount = Number(v.rolls_count || v.rollsCount || v.rolls_per_box || v.rollsPerBox || 4);
+      const rollsCount = resolveRollsCount(v);
       const boxesCount = Number(
-        v.boxes_count ||
-        v.boxesCount ||
-        (v.title || v.package_size || v.packageSize || "").match(/(\d+)\s*BOX/i)?.[1] ||
+        v.boxes_count ??
+        v.boxesCount ??
+        (v.title || v.package_size || v.packageSize || "").match(/(\d+)\s*BOX/i)?.[1] ??
         (rollsCount <= 4 ? 1 : Math.round(rollsCount / 4))
       );
-      const variantTitle = String(v.title || v.package_size || v.packageSize || (boxesCount === 1 ? "1 BOX WITH 4 ROLLS" : `${boxesCount} BOXES = ${rollsCount} ROLLS`));
+      const variantTitle = String(
+        v.title ||
+          v.package_size ||
+          v.packageSize ||
+          (boxesCount === 1 ? "1 BOX WITH 4 ROLLS" : `${boxesCount} BOXES = ${rollsCount} ROLLS`)
+      );
       const variantPrice = parsePositivePrice(v.price_usd, v.priceUsd, v.price);
 
       return {
         id: String(v.id || v.sku || index),
-        productId: Number(v.product_id || v.productId || raw.id),
+        productId: toNumericProductId(v.product_id || v.productId || raw.id, String(raw.slug || "")),
         sku: String(v.sku || ""),
         title: variantTitle,
         packageSize: variantTitle,
@@ -147,22 +189,35 @@ function formatProduct(raw: any): ProductWithVariants {
   const brandStr = String(raw.brand || "").toLowerCase();
   const nameStr = String(raw.name || raw.title || "").toLowerCase();
   const slugStr = String(raw.slug || "").toLowerCase();
+  const typeStr = String(raw.type || "").toLowerCase();
   const rawCategoryId = String(raw.category_id || raw.categoryId || "");
+  const joinedCategorySlug = String(
+    raw.categories?.slug || raw.category_slug || raw.categorySlug || ""
+  ).toLowerCase();
   const widthNum = Number(raw.width_inches || raw.widthInches || sortedVariants[0]?.widthInches || 0);
+
+  const isMachineType =
+    typeStr === "machine" ||
+    String(raw.application || "").toLowerCase() === "machine" ||
+    joinedCategorySlug.includes("machine") ||
+    joinedCategorySlug.includes("high-yield") ||
+    joinedCategorySlug.includes("genesis");
 
   const isGenesis =
     widthNum === 20 ||
+    isMachineType ||
     slugStr.includes("20-x") ||
     nameStr.includes('20"') ||
     rawCategoryId === "b0000000-0000-0000-0000-000000000003" ||
     rawCategoryId === "genesis-standard" ||
-    raw.category_slug === "genesis-standard" ||
-    raw.categorySlug === "genesis-standard" ||
-    raw.categories?.slug === "genesis-standard" ||
+    joinedCategorySlug === "genesis-standard" ||
+    joinedCategorySlug === "machine-high-yield-film" ||
+    joinedCategorySlug === "genesis-high-performance" ||
     brandStr.includes("genesis") ||
     nameStr.includes("genesis") ||
     slugStr.includes("genesis") ||
-    raw.application === "machine";
+    slugStr.includes("6000ft") ||
+    slugStr.startsWith("stretch-film-20");
 
   const isElite =
     !isGenesis &&
@@ -233,6 +288,20 @@ function formatProduct(raw: any): ProductWithVariants {
       return {
         ...v,
         rollsPerPallet: palletizing.fullPalletRolls,
+        ...(isGenesis
+          ? {
+              boxes_count: 0,
+              boxesCount: 0,
+              packageSize: normalizeMachinePackageLabel(
+                Number(v.rollsPerBox || (v as any).rolls_count || 1),
+                String((v as any).title || v.packageSize || "")
+              ),
+              title: normalizeMachinePackageLabel(
+                Number(v.rollsPerBox || (v as any).rolls_count || 1),
+                String((v as any).title || v.packageSize || "")
+              ),
+            }
+          : {}),
       };
     });
 
@@ -259,7 +328,11 @@ function formatProduct(raw: any): ProductWithVariants {
     ? nameStr.includes("hp") ||
       slugStr.includes("hp") ||
       nameStr.includes("high-performance") ||
-      slugStr.includes("high-performance")
+      slugStr.includes("high-performance") ||
+      joinedCategorySlug === "machine-high-yield-film" ||
+      joinedCategorySlug === "genesis-high-performance" ||
+      slugStr.includes("6000ft") ||
+      slugStr.includes("5000ft")
       ? "genesis-high-performance"
       : "genesis-standard"
     : isElite
@@ -268,13 +341,15 @@ function formatProduct(raw: any): ProductWithVariants {
 
   const isMachineProduct =
     isGenesis ||
+    isMachineType ||
     detectMachineFilm({
-      application: isGenesis ? "machine" : raw.application,
+      application: isGenesis || isMachineType ? "machine" : raw.application,
+      type: raw.type,
       slug: slugStr,
       name: nameStr,
       brand: brandStr,
       widthInches: resolvedWidth,
-      categorySlug: earlyCategorySlug,
+      categorySlug: earlyCategorySlug || joinedCategorySlug,
     });
 
   let packageOptions: PackageOption[] = [];
@@ -287,18 +362,20 @@ function formatProduct(raw: any): ProductWithVariants {
         price40: price40Rolls,
       });
     } else if (warehouseVariants.length > 0) {
-      packageOptions = warehouseVariants.map((v) => {
-        const rolls = Number(v.rollsPerBox || (v as any).rollsCount || 1);
-        return {
-          rolls,
-          label: normalizeMachinePackageLabel(
+      packageOptions = warehouseVariants
+        .map((v) => {
+          const rolls = Number(v.rollsPerBox || (v as any).rollsCount || 1);
+          return {
             rolls,
-            String((v as any).title || v.packageSize || v.sku)
-          ),
-          sku: v.sku,
-          price: parseFloat(v.priceUsd),
-        };
-      });
+            label: normalizeMachinePackageLabel(
+              rolls,
+              String((v as any).title || v.packageSize || v.sku)
+            ),
+            sku: v.sku,
+            price: parseFloat(v.priceUsd),
+          };
+        })
+        .sort((a, b) => a.rolls - b.rolls);
     } else if (productBasePrice !== null) {
       packageOptions = buildMachinePackageOptions({
         baseSku,
@@ -372,7 +449,7 @@ function formatProduct(raw: any): ProductWithVariants {
   const title = String(raw.title || raw.name || "STRETCH FILM");
 
   const defaultImage = isGenesis
-    ? "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/AUTOMATIC_STRETCH_FILM.png"
+    ? MACHINE_FILM_IMAGE_URL
     : "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png";
 
   const rawImg = String(raw.image_url || raw.imageUrl || "");
@@ -387,14 +464,17 @@ function formatProduct(raw: any): ProductWithVariants {
     : rawImages;
 
   return {
-    id: Number(raw.id),
+    id: toNumericProductId(raw.id, slugStr),
     slug: String(raw.slug),
     title,
     name: title,
     brand: String(raw.brand || (isGenesis ? "GENESIS" : "FORCE")),
     description: String(raw.description || ""),
     shortDescription: String(raw.short_description || raw.shortDescription || ""),
-    application: isGenesis ? "machine" : (raw.application as "hand" | "machine") || "hand",
+    application:
+      isGenesis || isMachineProduct || isMachineType
+        ? "machine"
+        : (raw.application as "hand" | "machine") || "hand",
     categorySlug,
     category,
     filmType: String(raw.film_type || raw.filmType || (isGenesis ? "Cast Machine Stretch Film" : "Cast Co-Extruded Multi-Layer")),
@@ -455,7 +535,7 @@ export async function getProductSlugs(): Promise<{ slug: string }[]> {
       .select("slug");
 
     if (!error && products && products.length > 0) {
-      return products
+      const slugs = products
         .filter((product) => Boolean(product.slug))
         .filter((product) => {
           const slug = String(product.slug || "").toLowerCase();
@@ -464,12 +544,20 @@ export async function getProductSlugs(): Promise<{ slug: string }[]> {
         .map((product) => ({
           slug: product.slug,
         }));
+
+      const existing = new Set(slugs.map((s) => s.slug.toLowerCase()));
+      for (const fallback of GENESIS_MACHINE_FALLBACK_PRODUCTS) {
+        if (!existing.has(fallback.slug.toLowerCase())) {
+          slugs.push({ slug: fallback.slug });
+        }
+      }
+      return slugs;
     }
   } catch (err: any) {
     console.error("getProductSlugs Supabase query failed:", err?.message || err);
   }
 
-  return [];
+  return GENESIS_MACHINE_FALLBACK_PRODUCTS.map((p) => ({ slug: p.slug }));
 }
 
 /**
@@ -484,21 +572,44 @@ export async function getProducts(
 
   const matchesCategory = (p: ProductWithVariants, filter: string) => {
     if (!filter || filter === "all") return true;
-    if (filter === "genesis-standard" || filter === "b0000000-0000-0000-0000-000000000003") {
+    if (
+      filter === "genesis-standard" ||
+      filter === "genesis-high-performance" ||
+      filter === "machine-high-yield-film" ||
+      filter === "b0000000-0000-0000-0000-000000000003"
+    ) {
       return (
         p.categorySlug === "genesis-standard" ||
+        p.categorySlug === "genesis-high-performance" ||
         p.categoryId === "b0000000-0000-0000-0000-000000000003" ||
+        p.categoryId === "genesis-high-performance" ||
+        p.application === "machine" ||
         String(p.slug || "").startsWith("stretch-film-20")
       );
     }
     return p.categorySlug === filter || p.categoryId === filter;
   };
 
+  const finalizeCatalog = (items: ProductWithVariants[]) => {
+    let next = ensureGenesisMachineProducts(
+      items.filter((p) => p.isActive !== false)
+    );
+    if (applicationFilter && applicationFilter !== "all") {
+      next = next.filter((p) => p.application === applicationFilter);
+    }
+    if (categoryFilter && categoryFilter !== "all") {
+      next = next.filter((p) => matchesCategory(p, categoryFilter));
+    }
+    return excludeFiftyGaugeFromStorefront(next);
+  };
+
   try {
     if (isSupabaseConfigured) {
       // 1. Try relational query with categories and product_variants
       try {
-        let query = supabase
+        // Fetch broadly, then filter by formatted application so `type = Machine`
+        // rows without an `application` column still appear in machine catalogs.
+        const query = supabase
           .from("products")
           .select(`
             *,
@@ -507,23 +618,15 @@ export async function getProducts(
           `)
           .order("created_at", { ascending: false });
 
-        if (applicationFilter && applicationFilter !== "all") {
-          query = query.eq("application", applicationFilter);
-        }
-
         const { data, error } = await query;
 
         if (!error && data && data.length > 0) {
-          let items = data.map(formatProduct).filter((p) => p.isActive !== false);
-          if (categoryFilter && categoryFilter !== "all") {
-            items = items.filter((p) => matchesCategory(p, categoryFilter));
-          }
-          return excludeFiftyGaugeFromStorefront(items);
+          return finalizeCatalog(data.map(formatProduct));
         }
 
         // 2. If categories table is not related, fallback to product_variants
         if (error) {
-          let flatQuery = supabase
+          const flatQuery = supabase
             .from("products")
             .select(`
               *,
@@ -531,17 +634,9 @@ export async function getProducts(
             `)
             .order("created_at", { ascending: false });
 
-          if (applicationFilter && applicationFilter !== "all") {
-            flatQuery = flatQuery.eq("application", applicationFilter);
-          }
-
           const { data: flatData, error: flatError } = await flatQuery;
           if (!flatError && flatData && flatData.length > 0) {
-            let items = flatData.map(formatProduct).filter((p) => p.isActive !== false);
-            if (categoryFilter && categoryFilter !== "all") {
-              items = items.filter((p) => matchesCategory(p, categoryFilter));
-            }
-            return excludeFiftyGaugeFromStorefront(items);
+            return finalizeCatalog(flatData.map(formatProduct));
           }
 
           // 3. Flat query without joins (handles schema cache without FKs)
@@ -562,14 +657,7 @@ export async function getProducts(
               ),
             }));
 
-            let items = combined.map(formatProduct).filter((p) => p.isActive !== false);
-            if (applicationFilter && applicationFilter !== "all") {
-              items = items.filter((p) => p.application === applicationFilter);
-            }
-            if (categoryFilter && categoryFilter !== "all") {
-              items = items.filter((p) => matchesCategory(p, categoryFilter));
-            }
-            return excludeFiftyGaugeFromStorefront(items);
+            return finalizeCatalog(combined.map(formatProduct));
           }
         }
       } catch (sbErr: any) {
@@ -580,7 +668,7 @@ export async function getProducts(
     console.error("getProducts encountered error:", error?.message || error);
   }
 
-  return [];
+  return finalizeCatalog([]);
 }
 
 /**
@@ -657,7 +745,7 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
     console.error("getProductBySlug encountered error:", error?.message || error);
   }
 
-  return null;
+  return getGenesisMachineFallbackBySlug(slug);
 }
 
 /**

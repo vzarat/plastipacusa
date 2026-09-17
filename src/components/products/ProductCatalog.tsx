@@ -94,10 +94,18 @@ function matchesLength(
     return true;
   }
 
-  return (product.variants || []).some((v) => {
-    const variantLength = parseLengthFeet(v.lengthFeet);
-    return variantLength !== null && variantLength === targetLength;
-  });
+  if (
+    (product.variants || []).some((v) => {
+      const variantLength = parseLengthFeet(v.lengthFeet);
+      return variantLength !== null && variantLength === targetLength;
+    })
+  ) {
+    return true;
+  }
+
+  // Slug fallback e.g. stretch-film-20-x-60-ga-x-6000ft
+  const slug = String(product.slug || "").toLowerCase();
+  return slug.includes(`x-${targetLength}ft`) || slug.endsWith(`-${targetLength}ft`);
 }
 
 function matchesGauge(product: ProductWithVariants, targetGauge: number): boolean {

@@ -88,14 +88,28 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   const pBrand = String(product?.brand || "").toLowerCase();
   const pTitle = String(product?.title || product?.name || "").toLowerCase();
 
-  // 20" -> GENESIS Standard (red badge)
+  // 20" -> GENESIS (High Performance for machine high-yield / 6k films)
   const isGenesis =
     width === 20 ||
     categorySlug === "genesis-standard" ||
+    categorySlug === "genesis-high-performance" ||
+    categorySlug === "machine-high-yield-film" ||
     catId === "b0000000-0000-0000-0000-000000000003" ||
+    catId === "genesis-high-performance" ||
     pSlug.includes("20-x") ||
     pTitle.includes('20"') ||
+    pBrand.includes("genesis") ||
     product?.application === "machine";
+
+  const isGenesisHighPerformance =
+    isGenesis &&
+    (categorySlug === "genesis-high-performance" ||
+      categorySlug === "machine-high-yield-film" ||
+      catId === "genesis-high-performance" ||
+      pSlug.includes("6000ft") ||
+      pSlug.includes("5000ft") ||
+      pSlug.includes("high-performance") ||
+      pTitle.includes("high performance"));
 
   // 15" -> FORCE Elite (amber badge)
   const isElite =
@@ -110,7 +124,9 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
 
   // 18" -> FORCE Standard (blue badge)
   const resolvedCategorySlug = isGenesis
-    ? "genesis-standard"
+    ? isGenesisHighPerformance
+      ? "genesis-high-performance"
+      : "genesis-standard"
     : isElite
     ? "force-elite"
     : "force-standard";
@@ -238,7 +254,9 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           <div>
             <span className={`text-[10px] font-mono uppercase ${catStyles.seriesColor} font-bold tracking-wider block`}>
               {isGenesis
-                ? "GENESIS • Machine Cast Series"
+                ? isGenesisHighPerformance
+                  ? "GENESIS • Automatic High Performance"
+                  : "GENESIS • Machine Cast Series"
                 : isElite
                 ? "FORCE ELITE • Nano Multi-Layer Series"
                 : "FORCE • Industrial Cast Series"}

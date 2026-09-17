@@ -189,96 +189,101 @@ export function VariantSelector({
 
   // Prefer configured package tiers when they carry real prices; otherwise use SKU variants.
   const variants = useMemo(() => {
-    if (product?.packageOptions?.length) {
-      return product.packageOptions
-        .map((opt: any) => {
-          const price = Number(opt.price);
-          if (!Number.isFinite(price) || price <= 0) return null;
-          const rolls = Number(opt.rolls) || 1;
-          const label = isMachineFilm
-            ? normalizeMachinePackageLabel(rolls, opt.label)
-            : rolls === HAND_FULL_PALLET.rolls ||
-                String(opt.label || "").toUpperCase().includes("FULL PALLET")
-              ? HAND_FULL_PALLET.label
-              : opt.label;
+    const mapped = (() => {
+      if (product?.packageOptions?.length) {
+        return product.packageOptions
+          .map((opt: any) => {
+            const price = Number(opt.price);
+            if (!Number.isFinite(price) || price <= 0) return null;
+            const rolls = Number(opt.rolls) || 1;
+            const label = isMachineFilm
+              ? normalizeMachinePackageLabel(rolls, opt.label)
+              : rolls === HAND_FULL_PALLET.rolls ||
+                  String(opt.label || "").toUpperCase().includes("FULL PALLET")
+                ? HAND_FULL_PALLET.label
+                : opt.label;
+            return {
+              id: opt.sku,
+              sku: opt.sku,
+              packageSize: label,
+              title: label,
+              priceUsd: String(price),
+              price,
+              rollsPerBox: rolls,
+              rollsPerPallet: product?.fullPalletRolls || (isMachineFilm ? 40 : 192),
+              widthInches: product?.width_inches || product?.widthInches || (isMachineFilm ? "20.00" : "18.00"),
+              gauge: product?.gauge || 60,
+              lengthFeet: product?.length_feet || product?.lengthFeet || 1000,
+              weightLbs: "0.00",
+              stockStatus: "in_stock",
+              createdAt: new Date(),
+              rolls_count: rolls,
+              boxes_count: isMachineFilm
+                ? 0
+                : rolls <= 4
+                  ? 1
+                  : rolls === HAND_FULL_PALLET.rolls
+                    ? HAND_FULL_PALLET.boxes
+                    : Math.round(rolls / 4),
+            };
+          })
+          .filter(Boolean);
+      }
+      return (product?.variants || [])
+        .filter((v: any) => {
+          const price = parseFloat(String(v.priceUsd ?? v.price ?? ""));
+          return Number.isFinite(price) && price > 0;
+        })
+        .map((v: any) => {
+          if (!isMachineFilm) {
+            const rolls = getRollsCount(v);
+            if (
+              String(v.packageSize || v.title || "").toUpperCase().includes("FULL PALLET") ||
+              rolls === 256
+            ) {
+              return {
+                ...v,
+                packageSize: HAND_FULL_PALLET.label,
+                title: HAND_FULL_PALLET.label,
+                rollsPerBox: HAND_FULL_PALLET.rolls,
+                rolls_count: HAND_FULL_PALLET.rolls,
+                boxes_count: HAND_FULL_PALLET.boxes,
+              };
+            }
+            return v;
+          }
+          const rolls = getRollsCount(v);
+          const label = normalizeMachinePackageLabel(rolls, v.title || v.packageSize);
+          const normalizedRolls = label.startsWith("1 ROLL")
+            ? 1
+            : label.includes("20 ROLLS")
+              ? 20
+              : label.includes("40 ROLLS")
+                ? 40
+                : rolls;
           return {
-            id: opt.sku,
-            sku: opt.sku,
+            ...v,
             packageSize: label,
             title: label,
-            priceUsd: String(price),
-            price,
-            rollsPerBox: rolls,
-            rollsPerPallet: product?.fullPalletRolls || (isMachineFilm ? 40 : 192),
-            widthInches: product?.width_inches || product?.widthInches || (isMachineFilm ? "20.00" : "18.00"),
-            gauge: product?.gauge || 60,
-            lengthFeet: product?.length_feet || product?.lengthFeet || 1000,
-            weightLbs: "0.00",
-            stockStatus: "in_stock",
-            createdAt: new Date(),
-            rolls_count: rolls,
-            boxes_count: isMachineFilm
-              ? 0
-              : rolls <= 4
-                ? 1
-                : rolls === HAND_FULL_PALLET.rolls
-                  ? HAND_FULL_PALLET.boxes
-                  : Math.round(rolls / 4),
+            rollsPerBox: normalizedRolls,
+            rolls_count: normalizedRolls,
+            boxes_count: 0,
+            boxesCount: 0,
           };
         })
-        .filter(Boolean);
-    }
-    return (product?.variants || [])
-      .filter((v: any) => {
-        const price = parseFloat(String(v.priceUsd ?? v.price ?? ""));
-        return Number.isFinite(price) && price > 0;
-      })
-      .map((v: any) => {
-        if (!isMachineFilm) {
+        .filter((v: any, index: number, arr: any[]) => {
+          if (!isMachineFilm) return true;
+          // Prefer canonical machine tiers; drop non 1/20/40 when those exist
           const rolls = getRollsCount(v);
-          if (
-            String(v.packageSize || v.title || "").toUpperCase().includes("FULL PALLET") ||
-            rolls === 256
-          ) {
-            return {
-              ...v,
-              packageSize: HAND_FULL_PALLET.label,
-              title: HAND_FULL_PALLET.label,
-              rollsPerBox: HAND_FULL_PALLET.rolls,
-              rolls_count: HAND_FULL_PALLET.rolls,
-              boxes_count: HAND_FULL_PALLET.boxes,
-            };
-          }
-          return v;
-        }
-        const rolls = getRollsCount(v);
-        const label = normalizeMachinePackageLabel(rolls, v.title || v.packageSize);
-        const normalizedRolls = label.startsWith("1 ROLL")
-          ? 1
-          : label.includes("20 ROLLS")
-            ? 20
-            : label.includes("40 ROLLS")
-              ? 40
-              : rolls;
-        return {
-          ...v,
-          packageSize: label,
-          title: label,
-          rollsPerBox: normalizedRolls,
-          rolls_count: normalizedRolls,
-          boxes_count: 0,
-          boxesCount: 0,
-        };
-      })
-      .filter((v: any, index: number, arr: any[]) => {
-        if (!isMachineFilm) return true;
-        // Prefer canonical machine tiers; drop non 1/20/40 when those exist
-        const rolls = getRollsCount(v);
-        const hasCanonical = arr.some((x) => [1, 20, 40].includes(getRollsCount(x)));
-        if (hasCanonical && ![1, 20, 40].includes(rolls)) return false;
-        // Dedupe by roll count (keep first/cheapest already sorted upstream)
-        return arr.findIndex((x) => getRollsCount(x) === rolls) === index;
-      });
+          const hasCanonical = arr.some((x) => [1, 20, 40].includes(getRollsCount(x)));
+          if (hasCanonical && ![1, 20, 40].includes(rolls)) return false;
+          // Dedupe by roll count (keep first/cheapest already sorted upstream)
+          return arr.findIndex((x) => getRollsCount(x) === rolls) === index;
+        });
+    })();
+
+    if (!isMachineFilm) return mapped;
+    return [...mapped].sort((a: any, b: any) => getRollsCount(a) - getRollsCount(b));
   }, [product, isMachineFilm]);
 
   const addItem = useCartStore((state) => state.addItem);
