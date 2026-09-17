@@ -1,10 +1,13 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { CartItem } from "@/types";
+import type { AppliedCoupon } from "@/types/coupon";
+import { getCartDiscountAmount } from "@/lib/coupons";
 
 interface CartState {
   items: CartItem[];
   isDrawerOpen: boolean;
+  appliedCoupon: AppliedCoupon | null;
   addItem: (item: Omit<CartItem, "id" | "totalPrice">) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
@@ -12,8 +15,12 @@ interface CartState {
   openDrawer: () => void;
   closeDrawer: () => void;
   toggleDrawer: () => void;
+  setAppliedCoupon: (coupon: AppliedCoupon | null) => void;
+  clearCoupon: () => void;
   getTotalItems: () => number;
   getSubtotal: () => number;
+  getDiscountAmount: () => number;
+  getDiscountedTotal: () => number;
   getTotalWeight: () => number;
 }
 
@@ -22,6 +29,7 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       isDrawerOpen: false,
+      appliedCoupon: null,
 
       addItem: (itemData) => {
         const id = `${itemData.productId}-${itemData.variantId}-${itemData.pricingTier}`;
@@ -75,12 +83,15 @@ export const useCartStore = create<CartState>()(
       },
 
       clearCart: () => {
-        set({ items: [] });
+        set({ items: [], appliedCoupon: null });
       },
 
       openDrawer: () => set({ isDrawerOpen: true }),
       closeDrawer: () => set({ isDrawerOpen: false }),
       toggleDrawer: () => set((state) => ({ isDrawerOpen: !state.isDrawerOpen })),
+
+      setAppliedCoupon: (coupon) => set({ appliedCoupon: coupon }),
+      clearCoupon: () => set({ appliedCoupon: null }),
 
       getTotalItems: () => {
         return get().items.reduce((total, item) => total + item.quantity, 0);
@@ -92,6 +103,16 @@ export const useCartStore = create<CartState>()(
             .items.reduce((total, item) => total + item.totalPrice, 0)
             .toFixed(2)
         );
+      },
+
+      getDiscountAmount: () => {
+        return getCartDiscountAmount(get().items, get().appliedCoupon);
+      },
+
+      getDiscountedTotal: () => {
+        const subtotal = get().getSubtotal();
+        const discount = get().getDiscountAmount();
+        return Number(Math.max(0, subtotal - discount).toFixed(2));
       },
 
       getTotalWeight: () => {
@@ -117,7 +138,10 @@ export const useCartStore = create<CartState>()(
         }
         return localStorage;
       }),
-      partialize: (state) => ({ items: state.items }),
+      partialize: (state) => ({
+        items: state.items,
+        appliedCoupon: state.appliedCoupon,
+      }),
     }
   )
 );
