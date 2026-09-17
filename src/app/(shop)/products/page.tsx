@@ -5,14 +5,69 @@ import { ProductFilters } from "@/components/products/ProductFilters";
 import { ProductCatalogToolbar } from "@/components/products/ProductCatalogToolbar";
 import { Badge } from "@/components/ui/badge";
 import { PackageOpen } from "lucide-react";
+import type { ProductWithVariants } from "@/types";
 
 interface ProductsPageProps {
   searchParams: Promise<{
     app?: string;
     type?: string;
     gauge?: string;
+    length?: string;
+    width?: string;
     q?: string;
   }>;
+}
+
+function parseVariantPrice(variant: ProductWithVariants["variants"][number]): number | null {
+  const raw = Number(
+    (variant as { price?: number | string }).price ?? variant.priceUsd
+  );
+  return Number.isFinite(raw) && raw > 0 ? raw : null;
+}
+
+function getStartingPrice(product: ProductWithVariants): number {
+  const variantPrices = (product.variants || [])
+    .map(parseVariantPrice)
+    .filter((p): p is number => p !== null);
+
+  if (variantPrices.length > 0) {
+    return Math.min(...variantPrices);
+  }
+
+  if (Number.isFinite(product.startingPrice) && (product.startingPrice as number) > 0) {
+    return product.startingPrice as number;
+  }
+
+  const packagePrices = (product.packageOptions || [])
+    .map((opt) => Number(opt.price))
+    .filter((p) => Number.isFinite(p) && p > 0);
+
+  if (packagePrices.length > 0) {
+    return Math.min(...packagePrices);
+  }
+
+  return Number.POSITIVE_INFINITY;
+}
+
+function matchesWidth(product: ProductWithVariants, targetWidth: number): boolean {
+  const productWidth = Number(product.widthInches ?? product.width_inches);
+  if (Number.isFinite(productWidth) && Math.round(productWidth) === targetWidth) {
+    return true;
+  }
+
+  return (product.variants || []).some((v) => {
+    const w = Number(v.widthInches);
+    return Number.isFinite(w) && Math.round(w) === targetWidth;
+  });
+}
+
+function matchesLength(product: ProductWithVariants, targetLength: number): boolean {
+  const productLength = Number(product.length_feet);
+  if (Number.isFinite(productLength) && productLength === targetLength) {
+    return true;
+  }
+
+  return (product.variants || []).some((v) => Number(v.lengthFeet) === targetLength);
 }
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
@@ -20,6 +75,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const rawType = resolvedParams.type || resolvedParams.app || "all";
   const appFilter = rawType as "all" | "hand" | "machine";
   const gaugeFilter = resolvedParams.gauge;
+  const lengthFilter = resolvedParams.length;
+  const widthFilter = resolvedParams.width;
   const searchQuery = (resolvedParams.q || "").trim().toLowerCase();
 
   let products = await getProducts(appFilter);
@@ -27,8 +84,22 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   if (gaugeFilter && gaugeFilter !== "all") {
     const targetGauge = parseInt(gaugeFilter, 10);
     products = (products || []).filter((p) =>
-      p?.variants?.some((v) => v?.gauge === targetGauge)
+      p?.variants?.some((v) => v?.gauge === targetGauge) || p?.gauge === targetGauge
     );
+  }
+
+  if (lengthFilter && lengthFilter !== "all") {
+    const targetLength = parseInt(lengthFilter, 10);
+    if (Number.isFinite(targetLength)) {
+      products = (products || []).filter((p) => matchesLength(p, targetLength));
+    }
+  }
+
+  if (widthFilter && widthFilter !== "all") {
+    const targetWidth = parseInt(widthFilter, 10);
+    if (Number.isFinite(targetWidth)) {
+      products = (products || []).filter((p) => matchesWidth(p, targetWidth));
+    }
   }
 
   if (searchQuery) {
@@ -47,6 +118,11 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       return haystack.includes(searchQuery);
     });
   }
+
+  // Always sort cheapest → most expensive before rendering the grid
+  products = [...(products || [])].sort(
+    (a, b) => getStartingPrice(a) - getStartingPrice(b)
+  );
 
   return (
     <div className="py-12 bg-slate-50/40 min-h-[calc(100vh-200px)]">
@@ -82,17 +158,15 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                 <PackageOpen className="w-12 h-12 text-slate-400 mx-auto" />
                 <h3 className="text-lg font-bold text-slate-900">No products found</h3>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  No stretch film matched the selected application and gauge criteria. Try resetting your filters.
+                  No stretch film matched the selected application, gauge, length, or width criteria. Try resetting your filters.
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-                {(products || []).map((product, idx) => (
-                  <ProductCard
-                    key={product?.id || idx}
-                    product={product}
-                    priority={idx < 3}
-                  />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {products.map((product, idx) => (
+                  <div key={product?.id || idx} className="h-full">
+                    <ProductCard product={product} priority={idx < 3} />
+                  </div>
                 ))}
               </div>
             )}

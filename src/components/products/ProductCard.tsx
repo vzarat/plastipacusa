@@ -190,7 +190,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
       : "Volume tiers: Boxes & Pallets";
 
   return (
-    <div className="group rounded-3xl border border-slate-200/90 bg-white overflow-hidden flex flex-col justify-between transition-all duration-300 hover:border-sky-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-500/10 card-hover-effect">
+    <div className="group h-full flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-white overflow-hidden transition-all duration-300 hover:border-sky-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-500/10 card-hover-effect">
       <div>
         {/* 1. Clean Product Image Area (Completely free of floating dark pills and text overlays) */}
         <div className="relative aspect-[4/3] w-full bg-slate-50/50 overflow-hidden border-b border-slate-100 flex items-center justify-center">
