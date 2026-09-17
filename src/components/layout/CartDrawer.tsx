@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { submitInquiry } from "@/actions/inquiries";
+import { DirectCheckoutButton } from "@/components/checkout/DirectCheckoutButton";
 
 export function CartDrawer() {
   const router = useRouter();
@@ -305,10 +306,16 @@ export function CartDrawer() {
               </form>
             ) : (
               <div className="space-y-2">
+                <DirectCheckoutButton
+                  label="Proceed to Direct Checkout"
+                  onBeforeNavigate={() => {
+                    closeDrawer();
+                  }}
+                />
                 <Button
                   onClick={() => setShowQuoteForm(true)}
-                  variant="gradient"
-                  className="w-full flex items-center justify-center gap-2 text-xs font-bold shadow-md shadow-sky-500/20"
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-2 text-xs font-semibold border-slate-200 hover:bg-slate-100"
                 >
                   <Send className="w-3.5 h-3.5" />
                   Request Official Quote
@@ -321,7 +328,7 @@ export function CartDrawer() {
                   variant="outline"
                   className="w-full text-xs font-semibold border-slate-200 hover:bg-slate-100"
                 >
-                  Checkout ({formatCurrency(subtotal)})
+                  Review Order ({formatCurrency(subtotal)})
                 </Button>
                 <button
                   type="button"

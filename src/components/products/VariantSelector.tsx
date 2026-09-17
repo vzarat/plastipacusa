@@ -5,9 +5,10 @@ import { ProductVariant } from "@/types";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
-import { ShoppingCart, CheckCircle2 } from "lucide-react";
+import { ShoppingCart, CheckCircle2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { DirectCheckoutButton } from "@/components/checkout/DirectCheckoutButton";
 
 type PackageTierKind = "single_box" | "fixed_16" | "fixed_half" | "full_pallet" | "other";
 
@@ -73,6 +74,52 @@ function getPackageTierKind(variant: any): PackageTierKind {
 
 function findTierVariant(variants: any[], kind: PackageTierKind): any | undefined {
   return variants.find((v) => getPackageTierKind(v) === kind);
+}
+
+function getVariantPrice(variant: any): number {
+  const price = parseFloat(String(variant?.priceUsd ?? variant?.price ?? "0"));
+  return Number.isFinite(price) && price > 0 ? price : 0;
+}
+
+/** Resolve the 1-box base unit price used for savings comparisons. */
+function getBaseBoxPrice(variants: any[]): number {
+  const singleBox = findTierVariant(variants, "single_box");
+  if (singleBox) {
+    const price = getVariantPrice(singleBox);
+    if (price > 0) return price;
+  }
+
+  // Fallback: cheapest per-box among options with known box counts
+  let best = 0;
+  for (const variant of variants) {
+    const boxes = getBoxesCount(variant);
+    const price = getVariantPrice(variant);
+    if (boxes > 0 && price > 0) {
+      const perBox = price / boxes;
+      if (best === 0 || perBox < best) best = perBox;
+    }
+  }
+  return best;
+}
+
+function getPackageSavings(variant: any, baseBoxPrice: number) {
+  const boxCount = Math.max(1, getBoxesCount(variant));
+  const variantPrice = getVariantPrice(variant);
+  const undiscountedTotal = baseBoxPrice * boxCount;
+
+  if (!baseBoxPrice || !variantPrice || undiscountedTotal <= 0) {
+    return {
+      boxCount,
+      savingsPercent: 0,
+      perBoxPrice: variantPrice > 0 ? (variantPrice / boxCount).toFixed(2) : "0.00",
+    };
+  }
+
+  const rawSavings = ((undiscountedTotal - variantPrice) / undiscountedTotal) * 100;
+  const savingsPercent = rawSavings > 0 ? Math.round(rawSavings) : 0;
+  const perBoxPrice = (variantPrice / boxCount).toFixed(2);
+
+  return { boxCount, savingsPercent, perBoxPrice };
 }
 
 interface VariantSelectorProps {
@@ -161,7 +208,14 @@ export function VariantSelector({
   const isSingleBoxTier = packageTier === "single_box";
   const isFullPalletTier = packageTier === "full_pallet";
   const quantityEditable = !isFixedTier;
-  const hasSixteenBoxUpgrade = Boolean(findTierVariant(variants, "fixed_16"));
+  const sixteenBoxVariant = findTierVariant(variants, "fixed_16");
+  const hasSixteenBoxUpgrade = Boolean(sixteenBoxVariant);
+  const baseBoxPrice = useMemo(() => getBaseBoxPrice(variants), [variants]);
+  const showSmartUpsell =
+    isSingleBoxTier &&
+    hasSixteenBoxUpgrade &&
+    quantity >= 10 &&
+    quantity <= 15;
 
   const selectVariant = useCallback(
     (variant: any, nextQty = 1) => {
@@ -172,6 +226,12 @@ export function VariantSelector({
     },
     [onVariantChange]
   );
+
+  const handleSwitchToSixteenBoxes = () => {
+    if (!sixteenBoxVariant) return;
+    selectVariant(sixteenBoxVariant, 1);
+    setTierHint("Switched to 16 Boxes package for better bulk pricing.");
+  };
 
   // Lock fixed tiers to qty 1 whenever they become active
   useEffect(() => {
@@ -287,11 +347,6 @@ export function VariantSelector({
     setTimeout(() => setAddedNotice(false), 2500);
   };
 
-  const handlePayPalCheckout = () => {
-    handleAddToCart();
-    alert(`Connecting to PayPal Express Checkout for ${formatCurrency(totalPrice)} USD...`);
-  };
-
   return (
     <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 space-y-7 shadow-xl shadow-slate-200/40">
       {/* Dynamic Price Header */}
@@ -345,10 +400,14 @@ export function VariantSelector({
                 String(selectedVariantId) === String(variant.sku)) ||
               (index === 0 && !selectedVariant);
 
-            const price = parseFloat(variant.priceUsd || (variant as any).price || "0");
+            const price = getVariantPrice(variant);
             const variantTitle = (variant as any).title || variant.packageSize || variant.sku;
             const rollsCount = getRollsCount(variant);
             const boxesCount = getBoxesCount(variant);
+            const tierKind = getPackageTierKind(variant);
+            const isBestValue = tierKind === "full_pallet";
+            const { savingsPercent, perBoxPrice } = getPackageSavings(variant, baseBoxPrice);
+            const showSavings = savingsPercent > 0 && boxesCount > 1;
 
             return (
               <button
@@ -359,46 +418,76 @@ export function VariantSelector({
                 }
                 type="button"
                 onClick={() => handlePackageSelect(variant)}
-                className={`p-3.5 sm:p-4 rounded-2xl border text-left transition-all flex items-center justify-between group cursor-pointer ${
-                  isSelected
-                    ? "border-blue-600 bg-blue-50/20 ring-2 ring-blue-600/20 shadow-sm"
-                    : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60"
+                className={`relative p-3.5 sm:p-4 rounded-2xl border text-left transition-all flex flex-col gap-2.5 group cursor-pointer ${
+                  isBestValue
+                    ? isSelected
+                      ? "border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-500/25 shadow-sm"
+                      : "border-emerald-300 bg-emerald-50/20 hover:border-emerald-400 hover:bg-emerald-50/40"
+                    : isSelected
+                      ? "border-blue-600 bg-blue-50/20 ring-2 ring-blue-600/20 shadow-sm"
+                      : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60"
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                      isSelected
-                        ? "border-blue-600 bg-blue-600 ring-2 ring-blue-600/30"
-                        : "border-slate-300 bg-white group-hover:border-slate-400"
-                    }`}
-                  >
-                    {isSelected && <div className="w-2 h-2 rounded-full bg-white shadow-sm" />}
+                {isBestValue && (
+                  <div className="absolute -top-2.5 left-3 inline-flex items-center rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+                    Best Value · Max Savings (~{savingsPercent > 0 ? savingsPercent : 13}% OFF)
                   </div>
-                  <div>
-                    <span
-                      className={`text-xs sm:text-sm font-bold block ${
-                        isSelected ? "text-slate-900" : "text-slate-700"
+                )}
+
+                <div className={`flex items-center justify-between gap-3 ${isBestValue ? "pt-1" : ""}`}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+                        isSelected
+                          ? isBestValue
+                            ? "border-emerald-600 bg-emerald-600 ring-2 ring-emerald-600/30"
+                            : "border-blue-600 bg-blue-600 ring-2 ring-blue-600/30"
+                          : "border-slate-300 bg-white group-hover:border-slate-400"
                       }`}
                     >
-                      {variantTitle}
-                    </span>
-                    <span className="text-[11px] text-slate-500">
-                      SKU: {variant.sku} · {rollsCount} Rolls included ({boxesCount}{" "}
-                      {boxesCount === 1 ? "Box" : "Boxes"})
-                    </span>
+                      {isSelected && <div className="w-2 h-2 rounded-full bg-white shadow-sm" />}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`text-xs sm:text-sm font-bold ${
+                            isSelected ? "text-slate-900" : "text-slate-700"
+                          }`}
+                        >
+                          {variantTitle}
+                        </span>
+                        {showSavings && (
+                          <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-full">
+                            Save {savingsPercent}% OFF
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-slate-500 block mt-0.5">
+                        SKU: {variant.sku} · {rollsCount} Rolls included ({boxesCount}{" "}
+                        {boxesCount === 1 ? "Box" : "Boxes"})
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                <div className="text-right">
-                  <span
-                    className={`text-sm sm:text-base font-extrabold ${
-                      isSelected ? "text-blue-800" : "text-slate-900"
-                    }`}
-                  >
-                    {formatCurrency(price)}
-                  </span>
-                  <span className="text-[10px] text-slate-400 block font-semibold">USD</span>
+                  <div className="text-right shrink-0">
+                    <span
+                      className={`text-sm sm:text-base font-extrabold ${
+                        isSelected
+                          ? isBestValue
+                            ? "text-emerald-800"
+                            : "text-blue-800"
+                          : "text-slate-900"
+                      }`}
+                    >
+                      {formatCurrency(price)}
+                    </span>
+                    <span className="text-[10px] text-slate-400 block font-semibold">USD</span>
+                    {boxesCount > 1 && (
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        ${perBoxPrice} USD / box
+                      </p>
+                    )}
+                  </div>
                 </div>
               </button>
             );
@@ -535,6 +624,34 @@ export function VariantSelector({
           </div>
         </div>
 
+        {showSmartUpsell && (
+          <div
+            key={`upsell-${quantity}`}
+            className="bg-blue-50/80 border border-blue-200 rounded-xl p-3.5 my-3 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-200"
+            role="status"
+          >
+            <Sparkles className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <p className="text-xs leading-relaxed text-slate-700">
+                <span aria-hidden="true">💡 </span>
+                <span className="font-bold text-slate-900">Smart Suggestion:</span>{" "}
+                You have selected{" "}
+                <span className="font-bold text-slate-900">{quantity}</span> boxes. Upgrading
+                to the{" "}
+                <span className="font-bold text-slate-900">16 BOXES (64 ROLLS)</span> package
+                offers better bulk pricing and lower unit cost.
+              </p>
+              <button
+                type="button"
+                onClick={handleSwitchToSixteenBoxes}
+                className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 hover:text-blue-800 underline underline-offset-2 decoration-blue-300 hover:decoration-blue-500 transition-colors cursor-pointer"
+              >
+                Switch to 16 Boxes →
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-2.5 pt-1">
           <Button
             type="button"
@@ -548,17 +665,12 @@ export function VariantSelector({
             <span>{t("products.addToCart")}</span>
           </Button>
 
-          <button
-            type="button"
-            onClick={handlePayPalCheckout}
-            className="w-full py-3.5 px-4 rounded-2xl bg-[#FFC439] hover:bg-[#F4B924] transition-all text-slate-900 font-extrabold text-sm shadow-md flex items-center justify-center gap-2"
-          >
-            <span className="italic font-black text-blue-900 text-base">Pay</span>
-            <span className="italic font-black text-sky-600 text-base -ml-1">Pal</span>
-            <span className="text-slate-800 text-xs font-bold ml-1">
-              {t("products.paypalExpressCheckout")}
-            </span>
-          </button>
+          <DirectCheckoutButton
+            label={t("products.directCheckout")}
+            onBeforeNavigate={() => {
+              handleAddToCart();
+            }}
+          />
         </div>
       </div>
 

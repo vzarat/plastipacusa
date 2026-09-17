@@ -1,128 +1,78 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { DirectCheckoutButton } from "@/components/checkout/DirectCheckoutButton";
 
 export function CheckoutForm() {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [isProcessing, setIsProcessing] = useState(false);
   const [agreedToPolicies, setAgreedToPolicies] = useState(false);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!agreedToPolicies) {
-      toast.error("Please agree to the Terms of Service and Refund Policy to continue.");
-      return;
-    }
-
-    if (!stripe || !elements) {
-      toast.error("Stripe is not ready yet. Please try again.");
-      return;
-    }
-
-    setIsProcessing(true);
-    const loadingToast = toast.loading("Processing your payment...");
-
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/checkout/success`,
-      },
-    });
-
-    toast.dismiss(loadingToast);
-    setIsProcessing(false);
-
-    if (error) {
-      toast.error(error.message || "Something went wrong while processing your payment.");
-    }
-  };
-
   return (
-    <>
-      {isProcessing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-4">
-          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white/95 p-8 shadow-2xl">
-            <div className="flex flex-col items-center text-center">
-              <div className="relative mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-sky-100">
-                <div className="h-10 w-10 animate-spin rounded-full border-4 border-sky-200 border-t-sky-600" />
-              </div>
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 space-y-2">
+        <p className="text-xs font-bold uppercase tracking-wider text-sky-700">
+          Direct checkout
+        </p>
+        <h2 className="text-lg font-black text-slate-900">
+          Complete your order via our secure payment link
+        </h2>
+        <p className="text-sm leading-relaxed text-slate-600">
+          You will be redirected to Plastipac&apos;s direct checkout / quote desk to finalize
+          payment and shipping details for your cart.
+        </p>
+      </div>
 
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-sky-700">
-                Payment processing
-              </p>
-              <h3 className="mt-3 text-2xl font-black text-slate-900">
-                Processing your payment...
-              </h3>
-              <p className="mt-3 text-sm leading-6 text-slate-600">
-                Please do not close or refresh this page. We are securing your order now.
-              </p>
-            </div>
-          </div>
-        </div>
+      <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={agreedToPolicies}
+          onChange={(e) => setAgreedToPolicies(e.target.checked)}
+          required
+          className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
+          aria-describedby="checkout-policy-consent"
+        />
+        <span id="checkout-policy-consent" className="text-xs leading-relaxed text-slate-600">
+          I agree to Plastipac USA&apos;s{" "}
+          <Link
+            href="/terms-of-service"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-sky-700 hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link
+            href="/refund-policy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-sky-700 hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Refund Policy
+          </Link>
+          .
+        </span>
+      </label>
+
+      <DirectCheckoutButton
+        label="Complete Order via Direct Link"
+        disabled={!agreedToPolicies}
+        onBeforeNavigate={() => {
+          if (!agreedToPolicies) {
+            toast.error("Please agree to the Terms of Service and Refund Policy to continue.");
+            return false;
+          }
+        }}
+      />
+
+      {!agreedToPolicies && (
+        <p className="text-[11px] text-center text-slate-500">
+          Agree to the policies above to enable direct checkout.
+        </p>
       )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <PaymentElement options={{ layout: "tabs" }} />
-        </div>
-
-        <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={agreedToPolicies}
-            onChange={(e) => setAgreedToPolicies(e.target.checked)}
-            required
-            className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
-            aria-describedby="checkout-policy-consent"
-          />
-          <span id="checkout-policy-consent" className="text-xs leading-relaxed text-slate-600">
-            I agree to Plastipac USA&apos;s{" "}
-            <Link
-              href="/terms-of-service"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-semibold text-sky-700 hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link
-              href="/refund-policy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-semibold text-sky-700 hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
-              Refund Policy
-            </Link>
-            .
-          </span>
-        </label>
-
-        <Button
-          type="submit"
-          variant="gradient"
-          size="lg"
-          className="w-full"
-          disabled={!stripe || !elements || isProcessing || !agreedToPolicies}
-        >
-          {isProcessing ? (
-            <span className="inline-flex items-center justify-center gap-2">
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/70 border-t-white" />
-              Processing...
-            </span>
-          ) : (
-            "Pay now"
-          )}
-        </Button>
-      </form>
-    </>
+    </div>
   );
 }
