@@ -1,24 +1,30 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import React, { useState, useEffect } from "react";
 import { Search } from "lucide-react";
 
-export function ProductCatalogToolbar() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [query, setQuery] = useState(searchParams.get("q") || "");
+interface ProductCatalogToolbarProps {
+  query: string;
+  onQueryChange: (value: string) => void;
+  onSubmitSearch: (value: string) => void;
+}
+
+export function ProductCatalogToolbar({
+  query,
+  onQueryChange,
+  onSubmitSearch,
+}: ProductCatalogToolbarProps) {
+  const [localQuery, setLocalQuery] = useState(query);
+
+  useEffect(() => {
+    setLocalQuery(query);
+  }, [query]);
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    const params = new URLSearchParams(searchParams.toString());
-    const trimmed = query.trim();
-    if (trimmed) {
-      params.set("q", trimmed);
-    } else {
-      params.delete("q");
-    }
-    router.push(`/products?${params.toString()}`);
+    const trimmed = localQuery.trim();
+    onQueryChange(trimmed);
+    onSubmitSearch(trimmed);
   };
 
   return (
@@ -30,15 +36,19 @@ export function ProductCatalogToolbar() {
         <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
         <input
           type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          value={localQuery}
+          onChange={(e) => {
+            const next = e.target.value;
+            setLocalQuery(next);
+            onQueryChange(next);
+          }}
           placeholder="Search by product title, brand, or description..."
           className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400"
         />
       </div>
       <button
         type="submit"
-        className="inline-flex items-center justify-center rounded-xl bg-sky-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-sky-700 transition-colors cursor-pointer"
+        className="inline-flex items-center justify-center rounded-xl bg-sky-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-sky-700 transition-colors duration-150 cursor-pointer"
       >
         Search Catalog
       </button>

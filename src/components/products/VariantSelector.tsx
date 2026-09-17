@@ -46,8 +46,12 @@ function getPackageTierKind(variant: any): PackageTierKind {
   if (
     label.includes("FULL PALLET") ||
     label.includes("64 BOXES") ||
+    label.includes("48 BOXES") ||
     rolls === 256 ||
-    boxes === 64
+    rolls === 192 ||
+    rolls === 40 ||
+    boxes === 64 ||
+    boxes === 48
   ) {
     return "full_pallet";
   }
@@ -153,7 +157,7 @@ export function VariantSelector({
             priceUsd: String(price),
             price,
             rollsPerBox: opt.rolls,
-            rollsPerPallet: 256,
+            rollsPerPallet: product?.fullPalletRolls || 192,
             widthInches: product?.width_inches || product?.widthInches || "18.00",
             gauge: product?.gauge || 60,
             lengthFeet: product?.length_feet || product?.lengthFeet || 1000,

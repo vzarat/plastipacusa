@@ -48,6 +48,13 @@ export interface ProductWithVariants
   gauge?: number | null;
   length_feet?: number;
   core_type?: string;
+  fullPalletRolls?: number;
+  palletLayers?: number;
+  rollsPerLayer?: number;
+  rollsPerBoxSpec?: number;
+  boxesPerFullPallet?: number;
+  palletizingSummary?: string;
+  palletizingFamily?: string;
   partNumber?: string | null;
   priceUsd?: number | null;
   stockQuantity?: number;

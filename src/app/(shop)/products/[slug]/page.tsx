@@ -5,6 +5,7 @@ import { getProducts, getProductBySlug } from "@/actions/products";
 import { ProductGallery } from "@/components/products/ProductGallery";
 import { ProductDetail } from "@/components/products/ProductDetail";
 import { SpecsTable } from "@/components/products/SpecsTable";
+import { PalletizingSpecsPanel } from "@/components/products/PalletizingSpecsPanel";
 import { Badge } from "@/components/ui/badge";
 import {
   ChevronRight,
@@ -16,6 +17,7 @@ import {
 import type { Metadata } from "next";
 import { createClient } from "@supabase/supabase-js";
 import { PRODUCT_CATEGORIES } from "@/data/categories";
+import { resolvePalletizingSpecs } from "@/lib/palletizing";
 
 export const dynamic = "force-dynamic";
 export const dynamicParams = true;
@@ -101,6 +103,38 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const categoryMeta =
     PRODUCT_CATEGORIES.find((c) => c.slug === categorySlug) || null;
 
+  const palletizing =
+    product.fullPalletRolls && product.palletLayers && product.rollsPerLayer
+      ? {
+          fullPalletRolls: product.fullPalletRolls,
+          palletLayers: product.palletLayers,
+          rollsPerLayer: product.rollsPerLayer,
+          rollsPerBox: product.rollsPerBoxSpec || 4,
+          boxesPerFullPallet:
+            product.boxesPerFullPallet ||
+            Math.round((product.fullPalletRolls || 192) / (product.rollsPerBoxSpec || 4)),
+          packOutSummary:
+            product.palletizingSummary ||
+            `${product.fullPalletRolls} rolls / full pallet`,
+          familyLabel: product.palletizingFamily || "Stretch Film",
+        }
+      : resolvePalletizingSpecs({
+          widthInches: product.widthInches ?? product.width_inches,
+          gauge: product.gauge,
+          lengthFeet: product.length_feet,
+          application: product.application,
+          slug: product.slug,
+          name: product.title || product.name,
+        });
+
+  const widthDisplay = Math.round(
+    Number(product.widthInches ?? product.width_inches ?? 0)
+  );
+  const gaugeDisplay = product.gauge ? `${product.gauge} GA` : undefined;
+  const lengthDisplay = product.length_feet
+    ? `${Number(product.length_feet).toLocaleString()} FT`
+    : undefined;
+
   return (
     <div className="py-10 bg-slate-50/40 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
@@ -166,7 +200,13 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         </div>
 
         {/* Bottom Section: Full Engineering Dimension & Pack-Out Matrix */}
-        <section className="pt-8 border-t border-slate-200">
+        <section className="pt-8 border-t border-slate-200 space-y-8">
+          <PalletizingSpecsPanel
+            specs={palletizing}
+            widthLabel={widthDisplay ? `${widthDisplay}"` : undefined}
+            gaugeLabel={gaugeDisplay}
+            lengthLabel={lengthDisplay}
+          />
           <SpecsTable variants={product.variants} />
         </section>
       </div>

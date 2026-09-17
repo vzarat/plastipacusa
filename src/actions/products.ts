@@ -6,6 +6,10 @@ import { ProductWithVariants, ProductVariant, PackageOption } from "@/types";
 import { AdminProduct, ProductFormValues, PACKAGE_TIER_DEFAULTS } from "@/types/product";
 import { PRODUCT_CATEGORIES, getApplicationForCategory } from "@/data/categories";
 import { verifyAdmin } from "./admin";
+import {
+  isExcludedFifteenInchEightyGauge,
+  resolvePalletizingSpecs,
+} from "@/lib/palletizing";
 
 function parsePositivePrice(...candidates: unknown[]): number | null {
   for (const candidate of candidates) {
@@ -44,6 +48,17 @@ function isFiftyGaugeValue(value: unknown): boolean {
 
 function isFiftyGaugeStorefrontProduct(product: ProductWithVariants): boolean {
   if (isFiftyGaugeValue(product.gauge)) return true;
+
+  if (
+    isExcludedFifteenInchEightyGauge({
+      widthInches: product.widthInches ?? product.width_inches,
+      gauge: product.gauge,
+      slug: product.slug,
+      name: product.title || product.name,
+    })
+  ) {
+    return true;
+  }
 
   const slug = String(product.slug || "").toLowerCase();
   if (slug.includes("50-ga") || slug.includes("-50ga") || slug.includes("x-50-ga")) {
@@ -156,6 +171,64 @@ function formatProduct(raw: any): ProductWithVariants {
       nameStr.includes("elite") ||
       slugStr.includes("elite"));
 
+  const resolvedWidth = isGenesis ? 20 : isElite ? 15 : Math.round(widthNum) || 18;
+  const gaugeNum = Number(raw.gauge || sortedVariants[0]?.gauge || 60);
+  const lengthNum = Number(
+    raw.length_feet || raw.lengthFeet || sortedVariants[0]?.lengthFeet || 1000
+  );
+  const palletizing = resolvePalletizingSpecs({
+    widthInches: resolvedWidth,
+    gauge: gaugeNum,
+    lengthFeet: lengthNum,
+    application: isGenesis ? "machine" : raw.application,
+    slug: slugStr,
+    name: nameStr,
+  });
+
+  const warehouseVariants: ProductVariant[] = sortedVariants
+    .filter(
+      (v) =>
+        !isExcludedFifteenInchEightyGauge({
+          widthInches: Number(v.widthInches) || resolvedWidth,
+          gauge: v.gauge,
+          slug: slugStr,
+          name: nameStr,
+        })
+    )
+    .map((v) => {
+      const label = String((v as any).title || v.packageSize || "").toUpperCase();
+      const rolls = Number(v.rollsPerBox || (v as any).rolls_count || 0);
+      const boxes = Number((v as any).boxes_count || (v as any).boxesCount || 0);
+      const isFullPalletLabel =
+        label.includes("FULL PALLET") ||
+        rolls === 256 ||
+        boxes === 64 ||
+        (palletizing.fullPalletRolls === 40 && (rolls === 40 || label.includes("40 ROLLS")));
+
+      if (isFullPalletLabel) {
+        const fullLabel =
+          palletizing.fullPalletRolls === 40
+            ? `40 ROLLS (FULL PALLET)`
+            : `${palletizing.boxesPerFullPallet} BOXES = ${palletizing.fullPalletRolls} ROLLS (FULL PALLET)`;
+        return {
+          ...v,
+          rollsPerBox: palletizing.fullPalletRolls,
+          rolls_count: palletizing.fullPalletRolls,
+          rollsCount: palletizing.fullPalletRolls,
+          boxes_count: palletizing.boxesPerFullPallet,
+          boxesCount: palletizing.boxesPerFullPallet,
+          rollsPerPallet: palletizing.fullPalletRolls,
+          packageSize: fullLabel,
+          title: fullLabel,
+        };
+      }
+
+      return {
+        ...v,
+        rollsPerPallet: palletizing.fullPalletRolls,
+      };
+    });
+
   const productBasePrice = parsePositivePrice(raw.price_usd, raw.priceUsd);
   const price6Rolls = parsePositivePrice(raw.price_6_rolls, raw.price6Rolls);
   const price12Rolls = parsePositivePrice(raw.price_12_rolls, raw.price12Rolls);
@@ -191,9 +264,9 @@ function formatProduct(raw: any): ProductWithVariants {
         sku: `${baseSku}-${tier.suffix}`,
         price: tier.price as number,
       }));
-  } else if (sortedVariants.length > 0) {
+  } else if (warehouseVariants.length > 0) {
     // Prefer unique per-SKU variant prices from product_variants
-    packageOptions = sortedVariants.map((v) => ({
+    packageOptions = warehouseVariants.map((v) => ({
       rolls: Number(v.rollsPerBox || (v as any).rollsCount || 4),
       label: String((v as any).title || v.packageSize || v.sku),
       sku: v.sku,
@@ -211,7 +284,7 @@ function formatProduct(raw: any): ProductWithVariants {
   }
 
   const candidatePrices = [
-    ...sortedVariants.map((v) => parsePositivePrice(v.priceUsd)),
+    ...warehouseVariants.map((v) => parsePositivePrice(v.priceUsd)),
     ...packageOptions.map((opt) => parsePositivePrice(opt.price)),
     productBasePrice,
   ].filter((p): p is number => p !== null);
@@ -270,14 +343,28 @@ function formatProduct(raw: any): ProductWithVariants {
     recommendedUsage: raw.recommended_usage || raw.recommendedUsage || null,
     createdAt: raw.created_at ? new Date(raw.created_at) : new Date(),
     updatedAt: raw.updated_at ? new Date(raw.updated_at) : new Date(),
-    variants: sortedVariants,
+    variants: warehouseVariants,
     startingPrice: minPrice,
     categoryId: rawCategoryId || (categorySlug === "genesis-standard" ? "b0000000-0000-0000-0000-000000000003" : categorySlug === "force-elite" ? "b0000000-0000-0000-0000-000000000002" : "b0000000-0000-0000-0000-000000000001"),
-    widthInches: Number(raw.width_inches || raw.widthInches || 0),
-    width_inches: String(raw.width_inches || raw.widthInches || sortedVariants[0]?.widthInches || (isGenesis ? "20.00" : "18.00")),
-    gauge: Number(raw.gauge || sortedVariants[0]?.gauge || 60),
-    length_feet: Number(raw.length_feet || raw.lengthFeet || sortedVariants[0]?.lengthFeet || 1000),
+    widthInches: Number(raw.width_inches || raw.widthInches || resolvedWidth || 0),
+    width_inches: String(
+      raw.width_inches ||
+        raw.widthInches ||
+        warehouseVariants[0]?.widthInches ||
+        (isGenesis ? "20.00" : isElite ? "15.00" : "18.00")
+    ),
+    gauge: Number(raw.gauge || warehouseVariants[0]?.gauge || 60),
+    length_feet: Number(
+      raw.length_feet || raw.lengthFeet || warehouseVariants[0]?.lengthFeet || 1000
+    ),
     core_type: String(raw.core_type || raw.coreType || 'Standard 3" Core'),
+    fullPalletRolls: palletizing.fullPalletRolls,
+    palletLayers: palletizing.palletLayers,
+    rollsPerLayer: palletizing.rollsPerLayer,
+    rollsPerBoxSpec: palletizing.rollsPerBox,
+    boxesPerFullPallet: palletizing.boxesPerFullPallet,
+    palletizingSummary: palletizing.packOutSummary,
+    palletizingFamily: palletizing.familyLabel,
     partNumber: raw.part_number || raw.partNumber || null,
     stockQuantity: Number(raw.stock_quantity ?? raw.stockQuantity ?? 0),
     isActive: raw.is_active === undefined && raw.isActive === undefined ? true : Boolean(raw.is_active ?? raw.isActive),

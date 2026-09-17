@@ -43,6 +43,7 @@ export function SpecsTable({ variants }: SpecsTableProps) {
             <TableHead>Length</TableHead>
             <TableHead>Total Weight</TableHead>
             <TableHead>Total Rolls</TableHead>
+            <TableHead>Full Pallet</TableHead>
             <TableHead className="text-right">Price (USD)</TableHead>
           </TableRow>
         </TableHeader>
@@ -69,6 +70,9 @@ export function SpecsTable({ variants }: SpecsTableProps) {
               </TableCell>
               <TableCell className="text-slate-600 font-sans font-medium">
                 {(v as any).rolls_count || (v as any).rollsCount || v.rollsPerBox} rolls
+              </TableCell>
+              <TableCell className="text-slate-600 font-sans font-medium">
+                {v.rollsPerPallet} rolls
               </TableCell>
               <TableCell className="text-right font-sans font-black text-slate-900 text-sm">
                 {formatCurrency(v.priceUsd)}
