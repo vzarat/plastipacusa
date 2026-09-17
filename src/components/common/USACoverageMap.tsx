@@ -161,21 +161,14 @@ const STATE_NAMES: Record<string, string> = {
 
 function getCoverage(abbr: string): StateCoverage {
   if (STATE_COVERAGE[abbr]) return STATE_COVERAGE[abbr];
-  const tier: CoverageTier =
-    abbr === "AK" || abbr === "HI" ? "extended" : "standard";
+  const isExtended = abbr === "AK" || abbr === "HI";
   return {
     name: STATE_NAMES[abbr] || abbr,
-    tier,
-    leadTime:
-      tier === "extended"
-        ? "Quote-based"
-        : tier === "priority"
-          ? "24–48 hours"
-          : "3–5 business days",
-    detail:
-      tier === "extended"
-        ? "Extended coverage — contact our commercial desk for freight options."
-        : "Nationwide USA shipping available for full-pallet and truckload orders.",
+    tier: isExtended ? "extended" : "standard",
+    leadTime: isExtended ? "Quote-based" : "3–5 business days",
+    detail: isExtended
+      ? "Extended coverage — contact our commercial desk for freight options."
+      : "Nationwide USA shipping available for full-pallet and truckload orders.",
   };
 }
 
