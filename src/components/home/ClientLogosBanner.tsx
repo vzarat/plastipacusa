@@ -55,16 +55,23 @@ export const CLIENT_LOGOS: ClientLogoItem[] = [
 export function ClientLogoSlot({ client }: { client: ClientLogoItem }) {
   if (!client) return null;
 
+  const sizeClass =
+    client.id === "horizon-global"
+      ? "h-auto max-h-20 w-auto max-w-full md:max-h-28 object-contain scale-150 md:scale-175"
+      : client.id === "regal-rexnord"
+        ? "h-auto max-h-12 w-auto max-w-full md:max-h-16 object-contain mix-blend-multiply"
+        : "h-auto max-h-12 w-auto max-w-full md:max-h-16 object-contain";
+
   const content = (
-    <div className="h-16 w-44 md:h-20 md:w-56 flex items-center justify-center p-2 transition-all duration-300">
+    <div className="h-16 w-44 md:h-20 md:w-56 flex items-center justify-center p-2 transition-transform duration-200 hover:scale-105">
       {client.logoSvg ? (
-        <div className="h-8 max-w-[160px] flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
+        <div className="h-8 max-w-[160px] flex items-center justify-center text-slate-700">
           {client.logoSvg}
         </div>
       ) : client.logoUrl ? (
         <div
           className={`relative flex h-full w-full items-center justify-center rounded-lg ${
-            client.id === "regal-rexnord" ? "bg-white/70" : "bg-transparent"
+            client.id === "regal-rexnord" ? "bg-white" : "bg-transparent"
           }`}
         >
           <Image
@@ -72,17 +79,11 @@ export function ClientLogoSlot({ client }: { client: ClientLogoItem }) {
             alt={`${client.name} logo`}
             width={160}
             height={60}
-            className={
-              client.id === "horizon-global"
-                ? "h-auto max-h-20 w-auto max-w-full md:max-h-28 object-contain scale-150 md:scale-175 grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
-                : client.id === "regal-rexnord"
-                ? "h-auto max-h-12 w-auto max-w-full md:max-h-16 object-contain mix-blend-multiply grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
-                : "h-auto max-h-12 w-auto max-w-full md:max-h-16 object-contain grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
-            }
+            className={`${sizeClass} opacity-100`}
           />
         </div>
       ) : (
-        <span className="text-xl font-bold tracking-widest text-slate-400 uppercase hover:text-slate-600 transition-colors whitespace-nowrap select-none cursor-default">
+        <span className="text-xl font-bold tracking-widest text-slate-700 uppercase whitespace-nowrap select-none cursor-default">
           {client.name}
         </span>
       )}
