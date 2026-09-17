@@ -376,13 +376,16 @@ export const GENESIS_STANDARD_OFFICIAL_SPECS = GENESIS_STANDARD_FALLBACK_PRODUCT
 const OBSOLETE_GENESIS_STANDARD_PATTERN =
   /63\s*GA|70\s*GA\s*X\s*6000\s*FT\s*\(STANDARD\)|7[,.]?000\s*FT|80\s*GA\s*X\s*6000\s*FT\s*\(STANDARD\)|60\s*GA\s*X\s*6000\s*FT\s*\(STANDARD\)/i;
 
-function genesisStandardSpecKey(gauge: number, lengthFeet: number) {
-  return `${gauge}::${lengthFeet}`;
+function genesisStandardSpecKey(
+  gauge?: number | null,
+  lengthFeet?: number | null
+): string {
+  return `${Number(gauge ?? 0)}::${Number(lengthFeet ?? 0)}`;
 }
 
 const GENESIS_STANDARD_SPEC_KEYS = new Set(
   GENESIS_STANDARD_OFFICIAL_SPECS.map((s) =>
-    genesisStandardSpecKey(s.gauge, s.lengthFeet)
+    genesisStandardSpecKey(Number(s.gauge ?? 0), Number(s.lengthFeet ?? 0))
   )
 );
 
