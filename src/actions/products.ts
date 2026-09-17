@@ -331,13 +331,22 @@ function formatProduct(raw: any): ProductWithVariants {
 
   const isHpOnly =
     GENESIS_HP_SLUGS.has(slugStr) && !GENESIS_STANDARD_SLUGS.has(slugStr);
+  const isStdOnly =
+    GENESIS_STANDARD_SLUGS.has(slugStr) && !GENESIS_HP_SLUGS.has(slugStr);
   const isOverlapSku =
     GENESIS_HP_SLUGS.has(slugStr) && GENESIS_STANDARD_SLUGS.has(slugStr);
 
+  // Only official Standard allowlist SKUs get genesis-standard; never dump
+  // legacy 20" / Machine rows into that series.
   const earlyCategorySlug = isGenesis
     ? isHpOnly || isOverlapSku
       ? "genesis-high-performance"
-      : "genesis-standard"
+      : isStdOnly
+        ? "genesis-standard"
+        : joinedCategorySlug === "genesis-high-performance" ||
+            joinedCategorySlug === "machine-high-yield-film"
+          ? "genesis-high-performance"
+          : "genesis-high-performance"
     : isElite
       ? "force-elite"
       : "force-standard";

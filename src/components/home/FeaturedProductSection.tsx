@@ -14,6 +14,7 @@ import {
   SERIES_FORCE_STANDARD,
   SERIES_GENESIS_HP,
   SERIES_GENESIS_STANDARD,
+  isOfficialGenesisStandardProduct,
 } from "@/lib/products";
 
 interface FeaturedProductSectionProps {
@@ -109,7 +110,13 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
     if (!activePill.series) {
       return dedupeBySlug(products);
     }
-    return products.filter((p) => p.series === activePill.series);
+    return products.filter((p) => {
+      if (p.series !== activePill.series) return false;
+      if (activePill.series === SERIES_GENESIS_STANDARD) {
+        return isOfficialGenesisStandardProduct(p);
+      }
+      return true;
+    });
   }, [products, activePill.series]);
 
   return (

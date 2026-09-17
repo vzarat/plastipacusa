@@ -362,6 +362,58 @@ export const GENESIS_STANDARD_SLUGS = new Set(
   GENESIS_STANDARD_FALLBACK_PRODUCTS.map((p) => p.slug.toLowerCase())
 );
 
+/** Official GENESIS Standard catalog: exactly 4 gauge × length fingerprints. */
+export const GENESIS_STANDARD_OFFICIAL_SPECS = GENESIS_STANDARD_FALLBACK_PRODUCTS.map(
+  (p) => ({
+    slug: p.slug.toLowerCase(),
+    gauge: p.gauge,
+    lengthFeet: Number(p.length_feet),
+    title: p.title,
+  })
+);
+
+/** Titles / patterns that must never appear under GENESIS Standard. */
+const OBSOLETE_GENESIS_STANDARD_PATTERN =
+  /63\s*GA|70\s*GA\s*X\s*6000\s*FT\s*\(STANDARD\)|7[,.]?000\s*FT|80\s*GA\s*X\s*6000\s*FT\s*\(STANDARD\)|60\s*GA\s*X\s*6000\s*FT\s*\(STANDARD\)/i;
+
+function genesisStandardSpecKey(gauge: number, lengthFeet: number) {
+  return `${gauge}::${lengthFeet}`;
+}
+
+const GENESIS_STANDARD_SPEC_KEYS = new Set(
+  GENESIS_STANDARD_OFFICIAL_SPECS.map((s) =>
+    genesisStandardSpecKey(s.gauge, s.lengthFeet)
+  )
+);
+
+/** True only for the 4 official GENESIS Standard SKUs (slug + gauge + length). */
+export function isOfficialGenesisStandardProduct(product: {
+  slug?: string | null;
+  title?: string | null;
+  name?: string | null;
+  gauge?: number | string | null;
+  length_feet?: number | string | null;
+  lengthFeet?: number | string | null;
+  series?: string | null;
+}): boolean {
+  const title = String(product.title || product.name || "");
+  if (OBSOLETE_GENESIS_STANDARD_PATTERN.test(title)) return false;
+
+  const slug = String(product.slug || "").toLowerCase();
+  if (!GENESIS_STANDARD_SLUGS.has(slug)) return false;
+
+  const gauge = Number(product.gauge);
+  const lengthFeet = Number(product.length_feet ?? product.lengthFeet);
+
+  // Prefer exact gauge×length match against the official 4
+  if (Number.isFinite(gauge) && Number.isFinite(lengthFeet) && lengthFeet > 0) {
+    return GENESIS_STANDARD_SPEC_KEYS.has(genesisStandardSpecKey(gauge, lengthFeet));
+  }
+
+  // Slug-only fallback when specs missing: must still be one of the 4 official slugs
+  return GENESIS_STANDARD_OFFICIAL_SPECS.some((s) => s.slug === slug);
+}
+
 function seriesCatalogKey(product: { slug?: string | null; series?: string | null }) {
   return `${String(product.slug || "").toLowerCase()}::${String(product.series || "")}`;
 }
@@ -390,33 +442,56 @@ export function ensureGenesisMachineProducts(
   const byKey = new Map<string, ProductWithVariants>();
 
   for (const product of products) {
-    const withSeries: ProductWithVariants = {
-      ...product,
-      series:
-        product.series ||
-        seriesLabelFromCategorySlug(product.categorySlug) ||
-        (product.application === "machine" || Math.round(Number(product.widthInches ?? product.width_inches)) === 20
-          ? undefined
-          : undefined),
-    };
+    const title = String(product.title || product.name || "");
+    const slug = String(product.slug || "").toLowerCase();
+
+    // Drop obsolete / duplicate GENESIS Standard candidates before series assignment
+    if (OBSOLETE_GENESIS_STANDARD_PATTERN.test(title)) {
+      continue;
+    }
+
+    let series =
+      product.series ||
+      seriesLabelFromCategorySlug(product.categorySlug) ||
+      undefined;
 
     // Never keep loose GENESIS rows without an exact series — assign by slug allowlist
-    const slug = String(withSeries.slug || "").toLowerCase();
-    if (!withSeries.series) {
+    if (!series) {
       if (GENESIS_STANDARD_SLUGS.has(slug) && !GENESIS_HP_SLUGS.has(slug)) {
-        withSeries.series = SERIES_GENESIS_STANDARD;
-        withSeries.categorySlug = "genesis-standard";
+        series = SERIES_GENESIS_STANDARD;
       } else if (GENESIS_HP_SLUGS.has(slug) && !GENESIS_STANDARD_SLUGS.has(slug)) {
-        withSeries.series = SERIES_GENESIS_HP;
-        withSeries.categorySlug = "genesis-high-performance";
+        series = SERIES_GENESIS_HP;
       } else if (GENESIS_STANDARD_SLUGS.has(slug) && GENESIS_HP_SLUGS.has(slug)) {
         // Overlap SKU from DB: keep one entry; dedicated fallbacks inject both series copies
-        withSeries.series = SERIES_GENESIS_HP;
-        withSeries.categorySlug = "genesis-high-performance";
-      } else if (seriesLabelFromCategorySlug(withSeries.categorySlug)) {
-        withSeries.series = seriesLabelFromCategorySlug(withSeries.categorySlug);
+        series = SERIES_GENESIS_HP;
+      } else if (seriesLabelFromCategorySlug(product.categorySlug)) {
+        series = seriesLabelFromCategorySlug(product.categorySlug);
       }
     }
+
+    // Strip unauthorized GENESIS Standard tagging (legacy DB rows, wrong category, etc.)
+    if (
+      series === SERIES_GENESIS_STANDARD &&
+      !isOfficialGenesisStandardProduct({ ...product, series })
+    ) {
+      // Do not surface as GENESIS Standard — keep only if it belongs to HP allowlist
+      if (GENESIS_HP_SLUGS.has(slug)) {
+        series = SERIES_GENESIS_HP;
+      } else {
+        continue;
+      }
+    }
+
+    const withSeries: ProductWithVariants = {
+      ...product,
+      series,
+      categorySlug:
+        series === SERIES_GENESIS_STANDARD
+          ? "genesis-standard"
+          : series === SERIES_GENESIS_HP
+            ? "genesis-high-performance"
+            : product.categorySlug,
+    };
 
     if (withSeries.series) {
       byKey.set(seriesCatalogKey(withSeries), withSeries);
@@ -439,7 +514,13 @@ export function ensureGenesisMachineProducts(
       );
     byKey.set(key, {
       ...existing,
-      ...pickPricing(fallback, existing, fallback.series === SERIES_GENESIS_HP ? "genesis-high-performance" : "genesis-standard"),
+      ...pickPricing(
+        fallback,
+        existing,
+        fallback.series === SERIES_GENESIS_HP
+          ? "genesis-high-performance"
+          : "genesis-standard"
+      ),
       series: fallback.series,
       packageOptions: fallback.packageOptions,
       variants: fallback.variants,
@@ -457,7 +538,18 @@ export function ensureGenesisMachineProducts(
     mergeFallback(fallback);
   }
 
-  return Array.from(byKey.values());
+  // Final purge: GENESIS Standard grid must be exactly the 4 official SKUs
+  const officialStandardKeys = new Set(
+    GENESIS_STANDARD_FALLBACK_PRODUCTS.map((p) => seriesCatalogKey(p))
+  );
+
+  return Array.from(byKey.values()).filter((product) => {
+    if (product.series !== SERIES_GENESIS_STANDARD) return true;
+    return (
+      officialStandardKeys.has(seriesCatalogKey(product)) &&
+      isOfficialGenesisStandardProduct(product)
+    );
+  });
 }
 
 function pickPricing(
@@ -519,11 +611,18 @@ export function isGenesisHighPerformanceProduct(product: {
 
 export function isGenesisStandardProduct(product: {
   slug?: string | null;
+  title?: string | null;
+  name?: string | null;
+  gauge?: number | string | null;
+  length_feet?: number | string | null;
+  lengthFeet?: number | string | null;
   series?: string | null;
 }): boolean {
-  if (product.series === SERIES_GENESIS_STANDARD) return true;
   if (product.series === SERIES_GENESIS_HP) return false;
-  return GENESIS_STANDARD_SLUGS.has(String(product.slug || "").toLowerCase());
+  if (product.series === SERIES_GENESIS_STANDARD) {
+    return isOfficialGenesisStandardProduct(product);
+  }
+  return isOfficialGenesisStandardProduct(product);
 }
 
 export function getGenesisSeriesKey(product: {
