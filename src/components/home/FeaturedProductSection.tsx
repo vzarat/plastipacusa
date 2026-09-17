@@ -7,8 +7,12 @@ import { ProductWithVariants } from "@/types";
 import { ProductCard } from "@/components/products/ProductCard";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, PhoneCall, Layers } from "lucide-react";
-import { useCategoryStore } from "@/lib/store/useCategoryStore";
+import { useCategoryStore, type CategorySlug } from "@/lib/store/useCategoryStore";
 import { PRODUCT_CATEGORIES } from "@/data/categories";
+import {
+  isGenesisHighPerformanceProduct,
+  isGenesisStandardProduct,
+} from "@/lib/products";
 
 interface FeaturedProductSectionProps {
   products: ProductWithVariants[];
@@ -24,35 +28,93 @@ const CATEGORY_PILLS: CategoryPill[] = [
   {
     slug: "force-standard",
     label: "FORCE Standard",
-    color: "#2563eb", // Blue
+    color: "#2563eb",
   },
   {
     slug: "force-elite",
     label: "FORCE Elite",
-    color: "#f59e0b", // Amber / Yellow
+    color: "#f59e0b",
   },
   {
     slug: "genesis-standard",
     label: "GENESIS Standard",
-    color: "#dc2626", // Red
+    color: "#dc2626",
+  },
+  {
+    slug: "genesis-high-performance",
+    label: "GENESIS Automatic",
+    color: "#16a34a",
   },
   {
     slug: "all",
     label: "All Products",
-    color: "#64748b", // Slate
+    color: "#64748b",
   },
 ];
+
+function matchesFeaturedCategory(
+  product: ProductWithVariants,
+  selectedCategory: string
+): boolean {
+  const rawWidth = product?.widthInches ?? product?.width_inches ?? 0;
+  const width =
+    typeof rawWidth === "number" ? rawWidth : parseFloat(String(rawWidth)) || 0;
+  const slug = String(product?.slug || "").toLowerCase();
+  const title = String(product?.title || product?.name || "").toLowerCase();
+  const catSlug = String(product?.categorySlug || "").toLowerCase();
+
+  if (
+    selectedCategory === "genesis-high-performance" ||
+    selectedCategory === "machine-high-yield-film"
+  ) {
+    return isGenesisHighPerformanceProduct(product);
+  }
+
+  if (
+    selectedCategory === "genesis-standard" ||
+    selectedCategory === "b0000000-0000-0000-0000-000000000003"
+  ) {
+    return isGenesisStandardProduct(product);
+  }
+
+  if (selectedCategory === "force-elite") {
+    if (isGenesisHighPerformanceProduct(product) || isGenesisStandardProduct(product)) {
+      return false;
+    }
+    return (
+      width === 15 ||
+      catSlug === "force-elite" ||
+      slug.includes("15-x") ||
+      title.includes('15"') ||
+      slug.includes("elite") ||
+      title.includes("elite")
+    );
+  }
+
+  if (selectedCategory === "force-standard") {
+    if (isGenesisHighPerformanceProduct(product) || isGenesisStandardProduct(product)) {
+      return false;
+    }
+    const isElite =
+      width === 15 ||
+      slug.includes("15-x") ||
+      title.includes('15"') ||
+      slug.includes("elite") ||
+      catSlug === "force-elite";
+    return !isElite;
+  }
+
+  return false;
+}
 
 export function FeaturedProductSection({ products }: FeaturedProductSectionProps) {
   const globalCategory = useCategoryStore((s) => s.selectedCategory);
   const setGlobalCategory = useCategoryStore((s) => s.setSelectedCategory);
 
-  // Active category state managed via useState
   const [selectedCategory, setSelectedCategory] = useState<string>(
     globalCategory || "force-standard"
   );
 
-  // Synchronize if global store updates
   useEffect(() => {
     if (globalCategory) {
       setSelectedCategory(globalCategory);
@@ -61,7 +123,7 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
 
   const handleCategorySelect = (slug: string) => {
     setSelectedCategory(slug);
-    setGlobalCategory(slug === "all" ? null : (slug as any));
+    setGlobalCategory(slug === "all" ? null : (slug as CategorySlug));
   };
 
   const activeCategoryMeta = useMemo(() => {
@@ -69,52 +131,10 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
     return PRODUCT_CATEGORIES.find((c) => c.slug === selectedCategory) || null;
   }, [selectedCategory]);
 
-  // Filter the displayed products based on active category slug
   const filteredProducts = useMemo(() => {
     if (!products || products.length === 0) return [];
     if (selectedCategory === "all") return products;
-
-    return products.filter((p: any) => {
-      const rawWidth = p?.width_inches ?? p?.widthInches ?? 0;
-      const width = typeof rawWidth === "number" ? rawWidth : parseFloat(String(rawWidth)) || 0;
-      const slug = String(p?.slug || "").toLowerCase();
-      const title = String(p?.title || p?.name || "").toLowerCase();
-      const catSlug = String(p?.categorySlug || "").toLowerCase();
-      const catId = String(p?.categoryId || p?.category_id || "");
-
-      // GENESIS STANDARD: 20", machine film, or genesis slug/id
-      if (selectedCategory === "genesis-standard" || selectedCategory === "b0000000-0000-0000-0000-000000000003") {
-        return (
-          width === 20 ||
-          catSlug === "genesis-standard" ||
-          catId === "b0000000-0000-0000-0000-000000000003" ||
-          slug.includes("20-x") ||
-          title.includes('20"')
-        );
-      }
-
-      // FORCE ELITE: 15", nano series, or elite slug
-      if (selectedCategory === "force-elite") {
-        return (
-          width === 15 ||
-          catSlug === "force-elite" ||
-          slug.includes("15-x") ||
-          title.includes('15"') ||
-          slug.includes("elite") ||
-          title.includes("elite")
-        );
-      }
-
-      // FORCE STANDARD: 18" or default hand film
-      if (selectedCategory === "force-standard") {
-        const isGenesis = width === 20 || slug.includes("20-x") || title.includes('20"') || catSlug === "genesis-standard";
-        const isElite = width === 15 || slug.includes("15-x") || title.includes('15"') || slug.includes("elite") || catSlug === "force-elite";
-        if (isGenesis || isElite) return false;
-        return true;
-      }
-
-      return false;
-    });
+    return products.filter((p) => matchesFeaturedCategory(p, selectedCategory));
   }, [products, selectedCategory]);
 
   const activePill = useMemo(
@@ -122,13 +142,16 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
     [selectedCategory]
   );
 
+  const showCustomSpecsBanner =
+    selectedCategory === "genesis-high-performance" ||
+    filteredProducts.length === 0;
+
   return (
     <section
       id="product-catalog-section"
       className="py-16 sm:py-20 bg-white border-b border-slate-100 transition-colors duration-300"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-10 gap-6">
           <div className="space-y-2.5">
             <div className="flex items-center gap-2">
@@ -173,7 +196,6 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
           </div>
         </div>
 
-        {/* Dynamic Category Pills Navigation */}
         <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 mb-8 sm:mb-10">
           {CATEGORY_PILLS.map((pill) => {
             const isActive = selectedCategory === pill.slug;
@@ -188,7 +210,6 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
                     : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 hover:text-slate-900"
                 }`}
               >
-                {/* Small circular colored dot */}
                 <span
                   className="w-2.5 h-2.5 rounded-full shrink-0 transition-transform duration-200"
                   style={{
@@ -202,7 +223,6 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
           })}
         </div>
 
-        {/* Animated Product Grid with Framer Motion */}
         <AnimatePresence mode="wait">
           <motion.div
             key={selectedCategory}
@@ -210,8 +230,9 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -14 }}
             transition={{ duration: 0.28, ease: "easeInOut" }}
+            className="space-y-8"
           >
-            {filteredProducts.length > 0 ? (
+            {filteredProducts.length > 0 && (
               <div
                 className={`grid gap-4 sm:gap-6 ${
                   filteredProducts.length <= 2
@@ -221,15 +242,16 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
               >
                 {filteredProducts.map((product, idx) => (
                   <ProductCard
-                    key={product?.id || idx}
+                    key={product?.slug || product?.id || idx}
                     product={product}
                     priority={idx < 4}
                   />
                 ))}
               </div>
-            ) : (
-              /* Custom Mill Specs Inquire Card when active category has no retail items yet */
-              <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 p-8 sm:p-12 flex flex-col items-center justify-center text-center max-w-xl mx-auto space-y-4 mt-8 sm:mt-10">
+            )}
+
+            {showCustomSpecsBanner && (
+              <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 p-8 sm:p-12 flex flex-col items-center justify-center text-center max-w-xl mx-auto space-y-4">
                 <div
                   className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm"
                   style={{
@@ -241,10 +263,17 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
                 </div>
                 <div className="space-y-2">
                   <h3 className="font-extrabold text-slate-900 text-lg sm:text-xl">
-                    Need Custom {activeCategoryMeta?.name || "Extrusion"} Specs?
+                    Need Custom{" "}
+                    {activeCategoryMeta?.name ||
+                      (selectedCategory === "genesis-high-performance"
+                        ? "GENESIS HIGH PERFORMANCE"
+                        : "Extrusion")}{" "}
+                    Specs?
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
-                    We manufacture custom machine film roll widths, gauges, and pre-stretch formulations directly from our extrusion mills for high-volume enterprise operations.
+                    We manufacture custom machine film roll widths, gauges, and pre-stretch
+                    formulations directly from our extrusion mills for high-volume enterprise
+                    operations.
                   </p>
                 </div>
                 <Link

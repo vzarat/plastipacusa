@@ -64,7 +64,7 @@ export const PRODUCT_CATEGORIES: CategoryItem[] = [
     accentHex: "#16A34A",
     slug: "genesis-high-performance",
     badge: "Power Pre-Stretch",
-    description: "Engineered for high-throughput rotary arm systems with up to 300% pre-stretch capability and extreme tear stop memory.",
+    description: "GENESIS Automatic machine film for high-throughput wrappers — 20\" cast rolls in 5,000 FT and 6,000 FT yields with 1 / 20 / 40 roll pallet tiers.",
     hoverBorder: "hover:border-emerald-500",
     hoverShadow: "hover:shadow-[0_0_20px_rgba(22,163,74,0.25)]",
     activeBorder: "border-emerald-500",

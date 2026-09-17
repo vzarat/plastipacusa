@@ -317,7 +317,7 @@ function pickPricing(
     variants: fallback.variants,
     startingPrice: fallback.startingPrice ?? existing.startingPrice,
     application: "machine",
-    categorySlug: existing.categorySlug || fallback.categorySlug,
+    categorySlug: "genesis-high-performance",
     imageUrl: existing.imageUrl?.includes("manual")
       ? fallback.imageUrl
       : existing.imageUrl || fallback.imageUrl,
@@ -340,5 +340,77 @@ export function getGenesisMachineFallbackBySlug(
   return (
     GENESIS_MACHINE_FALLBACK_PRODUCTS.find((p) => p.slug.toLowerCase() === key) ||
     null
+  );
+}
+
+const GENESIS_HP_SLUGS = new Set(
+  GENESIS_MACHINE_FALLBACK_PRODUCTS.map((p) => p.slug.toLowerCase())
+);
+
+/** GENESIS High Performance / Automatic machine films (20" high-yield). */
+export function isGenesisHighPerformanceProduct(product: {
+  slug?: string | null;
+  categorySlug?: string | null;
+  categoryId?: string | null;
+  title?: string | null;
+  name?: string | null;
+  application?: string | null;
+  type?: string | null;
+  widthInches?: number | string | null;
+  width_inches?: number | string | null;
+  length_feet?: number | string | null;
+}): boolean {
+  const slug = String(product.slug || "").toLowerCase();
+  const catSlug = String(product.categorySlug || "").toLowerCase();
+  const catId = String(product.categoryId || "").toLowerCase();
+  const type = String(product.type || "").toLowerCase();
+  const length = Number(product.length_feet);
+
+  if (GENESIS_HP_SLUGS.has(slug)) return true;
+  if (
+    catSlug === "genesis-high-performance" ||
+    catSlug === "machine-high-yield-film" ||
+    catId === "genesis-high-performance"
+  ) {
+    return true;
+  }
+  if (slug.includes("6000ft") || slug.includes("5000ft")) return true;
+  if (
+    (type === "machine" || String(product.application || "").toLowerCase() === "machine") &&
+    (length === 5000 || length === 6000)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** Classic GENESIS Standard machine film (excludes High Performance / Automatic SKUs). */
+export function isGenesisStandardProduct(product: {
+  slug?: string | null;
+  categorySlug?: string | null;
+  categoryId?: string | null;
+  title?: string | null;
+  name?: string | null;
+  application?: string | null;
+  widthInches?: number | string | null;
+  width_inches?: number | string | null;
+}): boolean {
+  if (isGenesisHighPerformanceProduct(product)) return false;
+
+  const slug = String(product.slug || "").toLowerCase();
+  const catSlug = String(product.categorySlug || "").toLowerCase();
+  const catId = String(product.categoryId || "");
+  const title = String(product.title || product.name || "").toLowerCase();
+  const width = Math.round(
+    Number(product.widthInches ?? product.width_inches ?? 0)
+  );
+
+  return (
+    width === 20 ||
+    catSlug === "genesis-standard" ||
+    catId === "b0000000-0000-0000-0000-000000000003" ||
+    slug.includes("20-x") ||
+    title.includes('20"') ||
+    String(product.application || "").toLowerCase() === "machine"
   );
 }
