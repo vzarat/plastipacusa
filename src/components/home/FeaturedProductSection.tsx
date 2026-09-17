@@ -74,7 +74,11 @@ function matchesFeaturedCategory(
     selectedCategory === "genesis-standard" ||
     selectedCategory === "b0000000-0000-0000-0000-000000000003"
   ) {
-    return isGenesisStandardProduct(product);
+    return isGenesisStandardProduct({
+      ...product,
+      brand: product.brand,
+      type: (product as { type?: string }).type,
+    });
   }
 
   if (selectedCategory === "force-elite") {

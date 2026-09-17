@@ -154,7 +154,10 @@ function buildGenesisMachineProduct(input: {
   price1: number;
   price20: number;
   price40: number;
+  series?: "genesis-standard" | "genesis-high-performance";
 }): ProductWithVariants {
+  const series = input.series || "genesis-high-performance";
+  const isHp = series === "genesis-high-performance";
   const packageOptions: PackageOption[] = buildMachinePackageOptions({
     baseSku: input.baseSku,
     price1: input.price1,
@@ -191,19 +194,23 @@ function buildGenesisMachineProduct(input: {
     title: input.title,
     name: input.title,
     brand: "GENESIS",
-    description:
-      "GENESIS Automatic Stretch Film engineered for high-performance machine wrappers with consistent stretch and load containment.",
-    shortDescription:
-      '20" GENESIS machine cast film — roll / half pallet / full pallet pricing.',
+    description: isHp
+      ? "GENESIS Automatic Stretch Film engineered for high-performance machine wrappers with consistent stretch and load containment."
+      : "GENESIS Standard Automatic Stretch Film for high-speed turntable pallet wrappers with consistent stretch performance.",
+    shortDescription: isHp
+      ? '20" GENESIS High Performance machine cast film — roll / half pallet / full pallet pricing.'
+      : '20" GENESIS Standard machine cast film — roll / half pallet / full pallet pricing.',
     application: "machine",
-    categorySlug: "genesis-high-performance",
-    categoryId: "genesis-high-performance",
+    categorySlug: series,
+    categoryId: isHp
+      ? "genesis-high-performance"
+      : "b0000000-0000-0000-0000-000000000003",
     filmType: "Cast Machine Stretch Film",
     color: "Ultra Clear",
     features: [
       "Machine / automatic cast film",
       "1 / 20 / 40 roll packaging tiers",
-      "GENESIS High Performance series",
+      isHp ? "GENESIS High Performance series" : "GENESIS Standard series",
     ],
     techSheetUrl: "/docs/plastipac-force-hand-film-specs.pdf",
     imageUrl: MACHINE_FILM_IMAGE_URL,
@@ -247,6 +254,7 @@ export const GENESIS_MACHINE_FALLBACK_PRODUCTS: ProductWithVariants[] = [
     price1: 230.92,
     price20: 696.44,
     price40: 1319.56,
+    series: "genesis-high-performance",
   }),
   buildGenesisMachineProduct({
     id: 20706001,
@@ -258,6 +266,7 @@ export const GENESIS_MACHINE_FALLBACK_PRODUCTS: ProductWithVariants[] = [
     price1: 307.9,
     price20: 928.58,
     price40: 1759.42,
+    series: "genesis-high-performance",
   }),
   buildGenesisMachineProduct({
     id: 20806001,
@@ -269,6 +278,7 @@ export const GENESIS_MACHINE_FALLBACK_PRODUCTS: ProductWithVariants[] = [
     price1: 351.88,
     price20: 1061.24,
     price40: 2010.76,
+    series: "genesis-high-performance",
   }),
   buildGenesisMachineProduct({
     id: 20805001,
@@ -280,10 +290,65 @@ export const GENESIS_MACHINE_FALLBACK_PRODUCTS: ProductWithVariants[] = [
     price1: 256.58,
     price20: 773.82,
     price40: 1466.18,
+    series: "genesis-high-performance",
   }),
 ];
 
-/** Ensure catalog always includes the 4 GENESIS machine films (DB or static fallback). */
+/**
+ * Classic GENESIS Standard (turntable) machine films — distinct from High Performance / 6,000 FT SKUs.
+ */
+export const GENESIS_STANDARD_FALLBACK_PRODUCTS: ProductWithVariants[] = [
+  buildGenesisMachineProduct({
+    id: 20517001,
+    slug: "stretch-film-20-x-51-ga-x-7000ft",
+    title: 'STRETCH FILM 20" X 51 GA X 7000FT',
+    gauge: 51,
+    lengthFeet: 7000,
+    baseSku: "GEN-205170",
+    price1: 198.5,
+    price20: 598.4,
+    price40: 1134.2,
+    series: "genesis-standard",
+  }),
+  buildGenesisMachineProduct({
+    id: 20519001,
+    slug: "stretch-film-20-x-51-ga-x-9000ft",
+    title: 'STRETCH FILM 20" X 51 GA X 9000FT',
+    gauge: 51,
+    lengthFeet: 9000,
+    baseSku: "GEN-205190",
+    price1: 224.75,
+    price20: 678.2,
+    price40: 1285.6,
+    series: "genesis-standard",
+  }),
+  buildGenesisMachineProduct({
+    id: 20705001,
+    slug: "stretch-film-20-x-70-ga-x-5000ft",
+    title: 'STRETCH FILM 20" X 70 GA X 5000FT',
+    gauge: 70,
+    lengthFeet: 5000,
+    baseSku: "GEN-207050",
+    price1: 242.15,
+    price20: 730.4,
+    price40: 1384.9,
+    series: "genesis-standard",
+  }),
+  buildGenesisMachineProduct({
+    id: 20605001,
+    slug: "stretch-film-20-x-60-ga-x-5000ft",
+    title: 'STRETCH FILM 20" X 60 GA X 5000FT',
+    gauge: 60,
+    lengthFeet: 5000,
+    baseSku: "GEN-206050",
+    price1: 212.4,
+    price20: 640.8,
+    price40: 1214.5,
+    series: "genesis-standard",
+  }),
+];
+
+/** Ensure catalog always includes GENESIS Automatic + Standard series (DB or static fallback). */
 export function ensureGenesisMachineProducts(
   products: ProductWithVariants[]
 ): ProductWithVariants[] {
@@ -291,7 +356,10 @@ export function ensureGenesisMachineProducts(
     products.map((p) => [String(p.slug || "").toLowerCase(), p])
   );
 
-  for (const fallback of GENESIS_MACHINE_FALLBACK_PRODUCTS) {
+  const mergeFallback = (
+    fallback: ProductWithVariants,
+    forceSeries: "genesis-standard" | "genesis-high-performance"
+  ) => {
     const key = fallback.slug.toLowerCase();
     const existing = bySlug.get(key);
     const existingHasPricing =
@@ -301,28 +369,70 @@ export function ensureGenesisMachineProducts(
       );
 
     if (!existing || !existingHasPricing) {
-      bySlug.set(key, existing ? { ...fallback, ...existing, ...pickPricing(fallback, existing) } : fallback);
+      bySlug.set(
+        key,
+        existing
+          ? {
+              ...fallback,
+              ...existing,
+              ...pickPricing(fallback, existing, forceSeries),
+            }
+          : fallback
+      );
+    } else {
+      // Re-assert series mapping so featured filters stay accurate
+      bySlug.set(key, {
+        ...existing,
+        categorySlug: forceSeries,
+        application: "machine",
+        brand: existing.brand || "GENESIS",
+      });
     }
+  };
+
+  for (const fallback of GENESIS_MACHINE_FALLBACK_PRODUCTS) {
+    mergeFallback(fallback, "genesis-high-performance");
   }
 
-  return Array.from(bySlug.values());
+  for (const fallback of GENESIS_STANDARD_FALLBACK_PRODUCTS) {
+    mergeFallback(fallback, "genesis-standard");
+  }
+
+  // Normalize series for any other GENESIS / 20" machine rows already in the catalog
+  return Array.from(bySlug.values()).map((product) => {
+    const series = getGenesisSeriesKey(product);
+    if (!series) return product;
+    if (product.categorySlug === series) return product;
+    return {
+      ...product,
+      categorySlug: series,
+      application: "machine" as const,
+      brand: product.brand || "GENESIS",
+    };
+  });
 }
 
 function pickPricing(
   fallback: ProductWithVariants,
-  existing: ProductWithVariants
+  existing: ProductWithVariants,
+  forceSeries: "genesis-standard" | "genesis-high-performance"
 ): Partial<ProductWithVariants> {
   return {
     packageOptions: fallback.packageOptions,
     variants: fallback.variants,
     startingPrice: fallback.startingPrice ?? existing.startingPrice,
     application: "machine",
-    categorySlug: "genesis-high-performance",
+    categorySlug: forceSeries,
+    categoryId:
+      forceSeries === "genesis-high-performance"
+        ? "genesis-high-performance"
+        : "b0000000-0000-0000-0000-000000000003",
     imageUrl: existing.imageUrl?.includes("manual")
       ? fallback.imageUrl
       : existing.imageUrl || fallback.imageUrl,
     images:
-      existing.images?.length && !existing.images.every((img) => img.includes("manual"))
+      existing.images?.length &&
+      !existing.images.every((img) => img.includes("manual"))
         ? existing.images
         : fallback.images,
     widthInches: existing.widthInches || fallback.widthInches,
@@ -339,6 +449,7 @@ export function getGenesisMachineFallbackBySlug(
   const key = String(slug || "").toLowerCase();
   return (
     GENESIS_MACHINE_FALLBACK_PRODUCTS.find((p) => p.slug.toLowerCase() === key) ||
+    GENESIS_STANDARD_FALLBACK_PRODUCTS.find((p) => p.slug.toLowerCase() === key) ||
     null
   );
 }
@@ -370,11 +481,17 @@ export function isGenesisHighPerformanceProduct(product: {
   if (slug.includes("6000ft")) return true;
   if (slug === "stretch-film-20-x-80-ga-x-5000ft") return true;
 
+  if (catSlug === "machine-high-yield-film") return true;
+
   if (
-    catSlug === "genesis-high-performance" ||
-    catSlug === "machine-high-yield-film" ||
-    catId === "genesis-high-performance"
+    (catSlug === "genesis-high-performance" ||
+      catId === "genesis-high-performance") &&
+    !catSlug.includes("standard")
   ) {
+    // Keep HP category rows here unless slug clearly belongs to Standard fallbacks
+    if (slug.includes("7000ft") || slug.includes("9000ft")) return false;
+    if (slug === "stretch-film-20-x-60-ga-x-5000ft") return false;
+    if (slug === "stretch-film-20-x-70-ga-x-5000ft") return false;
     return true;
   }
 
@@ -422,7 +539,7 @@ export function isGenesisStandardProduct(product: {
     return true;
   }
 
-  // 20" machine / GENESIS cast films that are not High Performance
+  // 20" GENESIS / machine cast films that are not High Performance
   if (width === 20 || slug.includes("20-x") || title.includes('20"')) {
     return (
       brand.includes("genesis") ||
@@ -433,11 +550,7 @@ export function isGenesisStandardProduct(product: {
     );
   }
 
-  return (
-    brand.includes("genesis") ||
-    (String(product.application || "").toLowerCase() === "machine" &&
-      !catSlug.includes("force"))
-  );
+  return brand.includes("genesis");
 }
 
 /** Series key used by featured / catalog filters. */
