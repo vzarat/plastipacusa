@@ -2,7 +2,8 @@ import React from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, Factory, Globe2, ArrowRight, Truck, PhoneCall, Target } from "lucide-react";
+import { ShieldCheck, Factory, ArrowRight, Truck, PhoneCall, Target } from "lucide-react";
+import { USACoverageMap } from "@/components/common/USACoverageMap";
 
 export const metadata = {
   title: "About Plastipac USA | Industrial Stretch Packaging",
@@ -43,9 +44,9 @@ export default function AboutPage() {
             <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center">
               <Truck className="w-6 h-6" />
             </div>
-            <h3 className="text-xl font-bold text-slate-900">Cross-Border Logistics</h3>
+            <h3 className="text-xl font-bold text-slate-900">USA Logistics Coverage</h3>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Strategically positioned to service the Texas border corridor and northern industrial centers with rapid order fulfillment and dedicated freight dispatch.
+              Strategically positioned in South Texas to service industrial centers nationwide with rapid order fulfillment and dedicated freight dispatch.
             </p>
           </div>
 
@@ -59,6 +60,9 @@ export default function AboutPage() {
             </p>
           </div>
         </div>
+
+        {/* Interactive USA Coverage Map */}
+        <USACoverageMap />
 
         {/* Mission & Values Callout Box */}
         <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 via-sky-50/40 to-blue-50/30 p-8 sm:p-12 space-y-6">

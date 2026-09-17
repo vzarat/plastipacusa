@@ -7,6 +7,7 @@ import { CategoryShowcase } from "@/components/home/CategoryShowcase";
 import { FeaturedProductSection } from "@/components/home/FeaturedProductSection";
 import { TrustBadges } from "@/components/home/TrustBadges";
 import { InquiryForm } from "@/components/home/InquiryForm";
+import { USACoverageSection } from "@/components/home/USACoverageSection";
 
 export default async function HomePage() {
   const products = await getProducts();
@@ -25,11 +26,14 @@ export default async function HomePage() {
       {/* 4. Filterable Featured Product Catalog Grid */}
       <FeaturedProductSection products={products} />
 
-      {/* 4. Trust Badges & Certifications */}
+      {/* 5. Trust Badges & Certifications */}
       <TrustBadges />
 
-      {/* 5. B2B Inquiry & Pallet Quote Form */}
+      {/* 6. B2B Inquiry & Pallet Quote Form */}
       <InquiryForm />
+
+      {/* 7. Nationwide USA Coverage Map — above Footer */}
+      <USACoverageSection />
     </div>
   );
 }
