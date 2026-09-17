@@ -4,7 +4,6 @@
 create table if not exists public.discount_codes (
   id uuid primary key default gen_random_uuid(),
   code text not null,
-  name text,
   discount_type text not null default 'percent'
     check (discount_type in ('percent', 'fixed')),
   discount_value numeric(10,2) not null check (discount_value > 0),
@@ -17,6 +16,17 @@ create table if not exists public.discount_codes (
     discount_type <> 'percent' or (discount_value > 0 and discount_value <= 100)
   )
 );
+
+-- Optional display label (aliases to `code` in the app when absent).
+-- Safe on existing deployments that were created without this column.
+alter table public.discount_codes
+  add column if not exists name text;
+
+-- Backfill name from code where missing
+update public.discount_codes
+set name = code
+where name is null or btrim(name) = '';
+
 
 create index if not exists discount_codes_code_idx on public.discount_codes (code);
 create index if not exists discount_codes_active_idx on public.discount_codes (is_active);
@@ -82,7 +92,7 @@ begin
     'discount', json_build_object(
       'id', v_row.id,
       'code', v_row.code,
-      'name', v_row.name,
+      'name', coalesce(nullif(btrim(v_row.name), ''), v_row.code),
       'discount_type', v_row.discount_type,
       'discount_value', v_row.discount_value,
       'expires_at', v_row.expires_at,

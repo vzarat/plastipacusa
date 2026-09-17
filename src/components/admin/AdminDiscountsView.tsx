@@ -15,8 +15,18 @@ import {
   ToggleRight,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import type { DiscountCode, DiscountFormValues, DiscountType } from "@/types/discount";
-import { normalizeDiscountType } from "@/lib/discounts";
+import type {
+  DiscountCode,
+  DiscountCodeDbPayload,
+  DiscountFormValues,
+  DiscountType,
+} from "@/types/discount";
+import {
+  buildDiscountWritePayload,
+  isMissingNameColumnError,
+  mapDiscountCodeRow,
+  withoutOptionalNameColumn,
+} from "@/lib/discounts";
 
 const EMPTY_FORM: DiscountFormValues = {
   code: "",
@@ -35,18 +45,27 @@ function isExpired(expiresAt: string | null): boolean {
   return new Date(expiresAt).getTime() < Date.now();
 }
 
-function normalizeDiscountRow(row: Record<string, unknown>): DiscountCode {
-  return {
-    id: String(row.id),
-    code: String(row.code || "").toUpperCase(),
-    name: (row.name as string | null) ?? null,
-    discount_type: normalizeDiscountType(row.discount_type),
-    discount_value: Number(row.discount_value) || 0,
-    expires_at: (row.expires_at as string | null) ?? null,
-    is_active: Boolean(row.is_active),
-    created_at: row.created_at as string | undefined,
-    updated_at: row.updated_at as string | undefined,
+async function persistDiscountPayload(
+  supabase: ReturnType<typeof createClient>,
+  payload: DiscountCodeDbPayload,
+  editingId: string | null
+) {
+  const write = async (body: DiscountCodeDbPayload | Omit<DiscountCodeDbPayload, "name">) => {
+    if (editingId) {
+      return supabase.from("discount_codes").update(body).eq("id", editingId);
+    }
+    return supabase.from("discount_codes").insert(body);
   };
+
+  // Prefer writing both `code` and `name` (same coupon identifier).
+  let result = await write(payload);
+
+  // Live tables created without `name` reject the column — retry without it.
+  if (result.error && isMissingNameColumnError(result.error.message)) {
+    result = await write(withoutOptionalNameColumn(payload));
+  }
+
+  return result;
 }
 
 export function AdminDiscountsView() {
@@ -73,7 +92,11 @@ export function AdminDiscountsView() {
         return;
       }
 
-      setCodes((data || []).map((row) => normalizeDiscountRow(row as Record<string, unknown>)));
+      setCodes(
+        (data || []).map((row) =>
+          mapDiscountCodeRow(row as Record<string, unknown>)
+        )
+      );
     } catch (err: unknown) {
       setCodes([]);
       const message = err instanceof Error ? err.message : "Could not load discount codes.";
@@ -116,36 +139,24 @@ export function AdminDiscountsView() {
     }
 
     setSaving(true);
-    const payload = {
+
+    // App payload: both `code` and `name` set to the coupon identifier.
+    const payload = buildDiscountWritePayload({
+      ...form,
       code,
-      name: form.name.trim() || null,
-      discount_type: form.discount_type,
-      discount_value: value,
-      expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
-      is_active: form.is_active,
-      updated_at: new Date().toISOString(),
-    };
+      name: form.name.trim() || code,
+    });
 
     try {
-      if (editingId) {
-        const { error } = await supabase
-          .from("discount_codes")
-          .update(payload)
-          .eq("id", editingId);
-        if (error) {
-          toast.error(error.message || "Could not update discount.");
-          return;
-        }
-        toast.success(`Discount ${code} updated.`);
-      } else {
-        const { error } = await supabase.from("discount_codes").insert(payload);
-        if (error) {
-          toast.error(error.message || "Could not create discount.");
-          return;
-        }
-        toast.success(`Discount ${code} created.`);
+      const { error } = await persistDiscountPayload(supabase, payload, editingId);
+      if (error) {
+        toast.error(error.message || "Could not save discount.");
+        return;
       }
 
+      toast.success(
+        editingId ? `Discount ${code} updated.` : `Discount ${code} created.`
+      );
       resetForm();
       await loadCodes();
     } catch (err: unknown) {
@@ -160,7 +171,7 @@ export function AdminDiscountsView() {
     setEditingId(row.id);
     setForm({
       code: row.code,
-      name: row.name || "",
+      name: row.name || row.code,
       discount_type: row.discount_type,
       discount_value: Number(row.discount_value),
       expires_at: row.expires_at
@@ -265,7 +276,15 @@ export function AdminDiscountsView() {
             <input
               type="text"
               value={form.code}
-              onChange={(e) => updateForm("code", e.target.value.toUpperCase())}
+              onChange={(e) => {
+                const next = e.target.value.toUpperCase();
+                setForm((prev) => ({
+                  ...prev,
+                  code: next,
+                  // Keep `name` aliased to the coupon identifier
+                  name: next,
+                }));
+              }}
               placeholder="PLASTI10"
               required
               className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-sm font-bold tracking-wide uppercase text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
@@ -274,14 +293,14 @@ export function AdminDiscountsView() {
 
           <label className="space-y-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              Display Label (optional)
+              Display Label (aliases to code)
             </span>
             <input
               type="text"
-              value={form.name}
-              onChange={(e) => updateForm("name", e.target.value)}
-              placeholder="Spring Sale 10%"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+              value={form.name || form.code}
+              onChange={(e) => updateForm("name", e.target.value.toUpperCase())}
+              placeholder="PLASTI10"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-sm font-bold tracking-wide uppercase text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
             />
           </label>
 
@@ -423,7 +442,7 @@ export function AdminDiscountsView() {
                         </span>
                       )}
                     </div>
-                    {row.name ? (
+                    {row.name && row.name !== row.code ? (
                       <p className="text-xs text-slate-600">{row.name}</p>
                     ) : null}
                     <p className="text-[11px] text-slate-500">

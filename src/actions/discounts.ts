@@ -1,8 +1,9 @@
 "use server";
 
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import type { ApplyDiscountResult, DiscountCode } from "@/types/discount";
+import type { ApplyDiscountResult } from "@/types/discount";
 import {
+  mapDiscountCodeRow,
   normalizeDiscountRpcPayload,
   validateDiscountRow,
 } from "@/lib/discounts";
@@ -52,14 +53,17 @@ export async function applyDiscountCode(code: string): Promise<ApplyDiscountResu
     }
 
     const match = (rows || []).find(
-      (row) => String(row.code || "").toUpperCase() === trimmed
-    ) as DiscountCode | undefined;
+      (row) => String((row as { code?: string }).code || "").toUpperCase() === trimmed
+    );
 
     if (!match) {
       return { success: false, error: "Discount code not found." };
     }
 
-    return validateDiscountRow(match, trimmed);
+    return validateDiscountRow(
+      mapDiscountCodeRow(match as Record<string, unknown>),
+      trimmed
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("applyDiscountCode failed:", message);
