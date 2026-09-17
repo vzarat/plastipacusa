@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ProductWithVariants } from "@/types";
 import { ProductCard } from "@/components/products/ProductCard";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, PhoneCall, Layers } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useCategoryStore, type CategorySlug } from "@/lib/store/useCategoryStore";
 import { PRODUCT_CATEGORIES } from "@/data/categories";
 import {
@@ -142,10 +142,6 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
     [selectedCategory]
   );
 
-  const showCustomSpecsBanner =
-    selectedCategory === "genesis-high-performance" ||
-    filteredProducts.length === 0;
-
   return (
     <section
       id="product-catalog-section"
@@ -230,16 +226,9 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -14 }}
             transition={{ duration: 0.28, ease: "easeInOut" }}
-            className="space-y-8"
           >
-            {filteredProducts.length > 0 && (
-              <div
-                className={`grid gap-4 sm:gap-6 ${
-                  filteredProducts.length <= 2
-                    ? "grid-cols-1 sm:grid-cols-2 max-w-4xl mx-auto"
-                    : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                }`}
-              >
+            {filteredProducts.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
                 {filteredProducts.map((product, idx) => (
                   <ProductCard
                     key={product?.slug || product?.id || idx}
@@ -248,42 +237,10 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
                   />
                 ))}
               </div>
-            )}
-
-            {showCustomSpecsBanner && (
-              <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 p-8 sm:p-12 flex flex-col items-center justify-center text-center max-w-xl mx-auto space-y-4">
-                <div
-                  className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm"
-                  style={{
-                    backgroundColor: `${activePill.color}15`,
-                    color: activePill.color,
-                  }}
-                >
-                  <Layers className="w-7 h-7" />
-                </div>
-                <div className="space-y-2">
-                  <h3 className="font-extrabold text-slate-900 text-lg sm:text-xl">
-                    Need Custom{" "}
-                    {activeCategoryMeta?.name ||
-                      (selectedCategory === "genesis-high-performance"
-                        ? "GENESIS HIGH PERFORMANCE"
-                        : "Extrusion")}{" "}
-                    Specs?
-                  </h3>
-                  <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
-                    We manufacture custom machine film roll widths, gauges, and pre-stretch
-                    formulations directly from our extrusion mills for high-volume enterprise
-                    operations.
-                  </p>
-                </div>
-                <Link
-                  href="#inquiry-form"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 mt-2 transition-all shadow-sm"
-                >
-                  <PhoneCall className="w-3.5 h-3.5 mr-1 text-sky-600" />
-                  <span>Request Custom Specs</span>
-                </Link>
-              </div>
+            ) : (
+              <p className="text-center text-sm text-slate-500 py-12">
+                No products in this series yet.
+              </p>
             )}
           </motion.div>
         </AnimatePresence>
