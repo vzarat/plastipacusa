@@ -14,7 +14,7 @@ const badgeVariants = cva(
         industrial:
           "border-sky-300 bg-sky-100 text-sky-800 font-bold",
         gradient:
-          "border-transparent bg-gradient-to-r from-sky-400 via-sky-500 to-blue-600 text-white shadow-sm",
+          "border-transparent bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 text-white shadow-sm shadow-sky-500/20",
         success:
           "border-emerald-200 bg-emerald-50 text-emerald-700",
         destructive:

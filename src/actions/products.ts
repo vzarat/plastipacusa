@@ -10,6 +10,12 @@ import {
   isExcludedFifteenInchEightyGauge,
   resolvePalletizingSpecs,
 } from "@/lib/palletizing";
+import {
+  HAND_FULL_PALLET,
+  buildMachinePackageOptions,
+  isMachineFilm as detectMachineFilm,
+  normalizeMachinePackageLabel,
+} from "@/lib/products";
 
 function parsePositivePrice(...candidates: unknown[]): number | null {
   for (const candidate of candidates) {
@@ -206,17 +212,18 @@ function formatProduct(raw: any): ProductWithVariants {
         (palletizing.fullPalletRolls === 40 && (rolls === 40 || label.includes("40 ROLLS")));
 
       if (isFullPalletLabel) {
-        const fullLabel =
-          palletizing.fullPalletRolls === 40
-            ? `40 ROLLS (FULL PALLET)`
-            : `${palletizing.boxesPerFullPallet} BOXES = ${palletizing.fullPalletRolls} ROLLS (FULL PALLET)`;
+        const fullLabel = isGenesis
+          ? `40 ROLLS (FULL PALLET)`
+          : HAND_FULL_PALLET.label;
+        const fullRolls = isGenesis ? 40 : HAND_FULL_PALLET.rolls;
+        const fullBoxes = isGenesis ? 40 : HAND_FULL_PALLET.boxes;
         return {
           ...v,
-          rollsPerBox: palletizing.fullPalletRolls,
-          rolls_count: palletizing.fullPalletRolls,
-          rollsCount: palletizing.fullPalletRolls,
-          boxes_count: palletizing.boxesPerFullPallet,
-          boxesCount: palletizing.boxesPerFullPallet,
+          rollsPerBox: fullRolls,
+          rolls_count: fullRolls,
+          rollsCount: fullRolls,
+          boxes_count: fullBoxes,
+          boxesCount: fullBoxes,
           rollsPerPallet: palletizing.fullPalletRolls,
           packageSize: fullLabel,
           title: fullLabel,
@@ -248,8 +255,59 @@ function formatProduct(raw: any): ProductWithVariants {
 
   const baseSku = String(raw.part_number || raw.partNumber || raw.slug || "SKU").toUpperCase();
 
+  const earlyCategorySlug = isGenesis
+    ? nameStr.includes("hp") ||
+      slugStr.includes("hp") ||
+      nameStr.includes("high-performance") ||
+      slugStr.includes("high-performance")
+      ? "genesis-high-performance"
+      : "genesis-standard"
+    : isElite
+      ? "force-elite"
+      : "force-standard";
+
+  const isMachineProduct =
+    isGenesis ||
+    detectMachineFilm({
+      application: isGenesis ? "machine" : raw.application,
+      slug: slugStr,
+      name: nameStr,
+      brand: brandStr,
+      widthInches: resolvedWidth,
+      categorySlug: earlyCategorySlug,
+    });
+
   let packageOptions: PackageOption[] = [];
-  if (useCustomPackageTiers) {
+  if (isMachineProduct) {
+    if (useCustomPackageTiers) {
+      packageOptions = buildMachinePackageOptions({
+        baseSku,
+        price1: price6Rolls ?? productBasePrice,
+        price20: price20Rolls,
+        price40: price40Rolls,
+      });
+    } else if (warehouseVariants.length > 0) {
+      packageOptions = warehouseVariants.map((v) => {
+        const rolls = Number(v.rollsPerBox || (v as any).rollsCount || 1);
+        return {
+          rolls,
+          label: normalizeMachinePackageLabel(
+            rolls,
+            String((v as any).title || v.packageSize || v.sku)
+          ),
+          sku: v.sku,
+          price: parseFloat(v.priceUsd),
+        };
+      });
+    } else if (productBasePrice !== null) {
+      packageOptions = buildMachinePackageOptions({
+        baseSku,
+        price1: productBasePrice,
+        price20: null,
+        price40: null,
+      });
+    }
+  } else if (useCustomPackageTiers) {
     const tiers: Array<{ rolls: number; label: string; suffix: string; price: number | null }> = [
       { rolls: 6, label: "6 ROLLS", suffix: "6R", price: price6Rolls },
       { rolls: 12, label: "12 ROLLS", suffix: "12R", price: price12Rolls },
@@ -266,12 +324,23 @@ function formatProduct(raw: any): ProductWithVariants {
       }));
   } else if (warehouseVariants.length > 0) {
     // Prefer unique per-SKU variant prices from product_variants
-    packageOptions = warehouseVariants.map((v) => ({
-      rolls: Number(v.rollsPerBox || (v as any).rollsCount || 4),
-      label: String((v as any).title || v.packageSize || v.sku),
-      sku: v.sku,
-      price: parseFloat(v.priceUsd),
-    }));
+    packageOptions = warehouseVariants.map((v) => {
+      const rolls = Number(v.rollsPerBox || (v as any).rollsCount || 4);
+      const label = String((v as any).title || v.packageSize || v.sku);
+      const normalizedLabel =
+        label.toUpperCase().includes("FULL PALLET") || rolls === 256 || rolls === 192
+          ? HAND_FULL_PALLET.label
+          : label;
+      return {
+        rolls:
+          normalizedLabel === HAND_FULL_PALLET.label
+            ? HAND_FULL_PALLET.rolls
+            : rolls,
+        label: normalizedLabel,
+        sku: v.sku,
+        price: parseFloat(v.priceUsd),
+      };
+    });
   } else if (productBasePrice !== null) {
     packageOptions = [
       {
@@ -292,13 +361,7 @@ function formatProduct(raw: any): ProductWithVariants {
   const minPrice =
     candidatePrices.length > 0 ? Math.min(...candidatePrices) : undefined;
 
-  const categorySlug = isGenesis
-    ? nameStr.includes("hp") || slugStr.includes("hp") || nameStr.includes("high-performance") || slugStr.includes("high-performance")
-      ? "genesis-high-performance"
-      : "genesis-standard"
-    : isElite
-    ? "force-elite"
-    : "force-standard";
+  const categorySlug = earlyCategorySlug;
 
   const category =
     raw.category ||

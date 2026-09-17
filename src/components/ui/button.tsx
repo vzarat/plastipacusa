@@ -8,9 +8,9 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 text-white shadow-md shadow-sky-500/15 hover:shadow-lg hover:shadow-sky-500/25 hover:opacity-95 focus-visible:ring-sky-500",
+          "bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 text-white shadow-md shadow-sky-500/20 hover:shadow-lg hover:shadow-sky-500/30 hover:opacity-95 focus-visible:ring-sky-500",
         gradient:
-          "bg-gradient-to-r from-sky-400 via-sky-600 to-blue-700 text-white shadow-md shadow-sky-500/20 hover:shadow-lg hover:shadow-sky-500/30 hover:opacity-95 focus-visible:ring-sky-500",
+          "bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 text-white shadow-md shadow-sky-500/20 hover:shadow-lg hover:shadow-sky-500/30 hover:opacity-95 focus-visible:ring-sky-500",
         industrial:
           "bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 text-white font-bold shadow-md shadow-sky-500/20 hover:shadow-lg hover:shadow-sky-500/30 hover:opacity-95 focus-visible:ring-sky-500",
         destructive:

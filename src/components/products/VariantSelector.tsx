@@ -9,8 +9,19 @@ import { ShoppingCart, CheckCircle2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DirectCheckoutButton } from "@/components/checkout/DirectCheckoutButton";
+import {
+  HAND_FULL_PALLET,
+  isMachineFilm as detectMachineFilm,
+  normalizeMachinePackageLabel,
+  unitLabelForProduct,
+} from "@/lib/products";
 
-type PackageTierKind = "single_box" | "fixed_16" | "fixed_half" | "full_pallet" | "other";
+type PackageTierKind =
+  | "single_unit"
+  | "fixed_mid"
+  | "fixed_half"
+  | "full_pallet"
+  | "other";
 
 function getVariantLabel(variant: any): string {
   return String(variant?.title || variant?.packageSize || variant?.sku || "").toUpperCase();
@@ -22,7 +33,9 @@ function getRollsCount(variant: any): number {
   );
 }
 
-function getBoxesCount(variant: any): number {
+function getBoxesCount(variant: any, isMachine: boolean): number {
+  if (isMachine) return 0;
+
   const explicit = Number(variant?.boxes_count ?? variant?.boxesCount);
   if (Number.isFinite(explicit) && explicit > 0) return explicit;
 
@@ -32,26 +45,33 @@ function getBoxesCount(variant: any): number {
 
   const rolls = getRollsCount(variant);
   if (rolls <= 4) return 1;
+  if (rolls === HAND_FULL_PALLET.rolls) return HAND_FULL_PALLET.boxes;
   return Math.round(rolls / 4);
 }
 
 /** Classify package option into business-rule tiers. */
-function getPackageTierKind(variant: any): PackageTierKind {
+function getPackageTierKind(variant: any, isMachine: boolean): PackageTierKind {
   if (!variant) return "other";
 
   const label = getVariantLabel(variant);
   const rolls = getRollsCount(variant);
-  const boxes = getBoxesCount(variant);
+  const boxes = getBoxesCount(variant, isMachine);
+
+  if (isMachine) {
+    if (label.includes("FULL PALLET") || rolls === 40) return "full_pallet";
+    if (label.includes("HALF PALLET") || rolls === 20) return "fixed_half";
+    if (label.includes("1 ROLL") || rolls === 1) return "single_unit";
+    return "other";
+  }
 
   if (
     label.includes("FULL PALLET") ||
-    label.includes("64 BOXES") ||
     label.includes("48 BOXES") ||
+    label.includes("64 BOXES") ||
+    rolls === HAND_FULL_PALLET.rolls ||
     rolls === 256 ||
-    rolls === 192 ||
-    rolls === 40 ||
-    boxes === 64 ||
-    boxes === 48
+    boxes === HAND_FULL_PALLET.boxes ||
+    boxes === 64
   ) {
     return "full_pallet";
   }
@@ -66,18 +86,22 @@ function getPackageTierKind(variant: any): PackageTierKind {
   }
 
   if (label.includes("16 BOXES") || rolls === 64 || boxes === 16) {
-    return "fixed_16";
+    return "fixed_mid";
   }
 
   if (label.includes("1 BOX") || (boxes === 1 && rolls <= 4) || rolls === 4) {
-    return "single_box";
+    return "single_unit";
   }
 
   return "other";
 }
 
-function findTierVariant(variants: any[], kind: PackageTierKind): any | undefined {
-  return variants.find((v) => getPackageTierKind(v) === kind);
+function findTierVariant(
+  variants: any[],
+  kind: PackageTierKind,
+  isMachine: boolean
+): any | undefined {
+  return variants.find((v) => getPackageTierKind(v, isMachine) === kind);
 }
 
 function getVariantPrice(variant: any): number {
@@ -85,45 +109,63 @@ function getVariantPrice(variant: any): number {
   return Number.isFinite(price) && price > 0 ? price : 0;
 }
 
-/** Resolve the 1-box base unit price used for savings comparisons. */
-function getBaseBoxPrice(variants: any[]): number {
-  const singleBox = findTierVariant(variants, "single_box");
-  if (singleBox) {
-    const price = getVariantPrice(singleBox);
+/** Base unit price: per box (hand) or per roll (machine). */
+function getBaseUnitPrice(variants: any[], isMachine: boolean): number {
+  const single = findTierVariant(variants, "single_unit", isMachine);
+  if (single) {
+    const price = getVariantPrice(single);
     if (price > 0) return price;
   }
 
-  // Fallback: cheapest per-box among options with known box counts
   let best = 0;
   for (const variant of variants) {
-    const boxes = getBoxesCount(variant);
     const price = getVariantPrice(variant);
-    if (boxes > 0 && price > 0) {
-      const perBox = price / boxes;
-      if (best === 0 || perBox < best) best = perBox;
-    }
+    if (!(price > 0)) continue;
+    const divisor = isMachine
+      ? Math.max(1, getRollsCount(variant))
+      : Math.max(1, getBoxesCount(variant, false));
+    const perUnit = price / divisor;
+    if (best === 0 || perUnit < best) best = perUnit;
   }
   return best;
 }
 
-function getPackageSavings(variant: any, baseBoxPrice: number) {
-  const boxCount = Math.max(1, getBoxesCount(variant));
+function getPackageSavings(variant: any, baseUnitPrice: number, isMachine: boolean) {
+  const unitCount = isMachine
+    ? Math.max(1, getRollsCount(variant))
+    : Math.max(1, getBoxesCount(variant, false));
   const variantPrice = getVariantPrice(variant);
-  const undiscountedTotal = baseBoxPrice * boxCount;
+  const undiscountedTotal = baseUnitPrice * unitCount;
 
-  if (!baseBoxPrice || !variantPrice || undiscountedTotal <= 0) {
+  if (!baseUnitPrice || !variantPrice || undiscountedTotal <= 0) {
     return {
-      boxCount,
+      unitCount,
       savingsPercent: 0,
-      perBoxPrice: variantPrice > 0 ? (variantPrice / boxCount).toFixed(2) : "0.00",
+      perUnitPrice: variantPrice > 0 ? (variantPrice / unitCount).toFixed(2) : "0.00",
     };
   }
 
   const rawSavings = ((undiscountedTotal - variantPrice) / undiscountedTotal) * 100;
   const savingsPercent = rawSavings > 0 ? Math.round(rawSavings) : 0;
-  const perBoxPrice = (variantPrice / boxCount).toFixed(2);
+  const perUnitPrice = (variantPrice / unitCount).toFixed(2);
 
-  return { boxCount, savingsPercent, perBoxPrice };
+  return { unitCount, savingsPercent, perUnitPrice };
+}
+
+function displayPackageTitle(variant: any, isMachine: boolean): string {
+  const raw = String(variant?.title || variant?.packageSize || variant?.sku || "");
+  if (isMachine) {
+    return normalizeMachinePackageLabel(getRollsCount(variant), raw);
+  }
+  const upper = raw.toUpperCase();
+  if (
+    upper.includes("FULL PALLET") ||
+    upper.includes("64 BOXES") ||
+    getRollsCount(variant) === 256
+  ) {
+    return HAND_FULL_PALLET.label;
+  }
+  return raw;
 }
 
 interface VariantSelectorProps {
@@ -141,6 +183,9 @@ export function VariantSelector({
   onVariantChange,
 }: VariantSelectorProps) {
   const { t } = useLanguage();
+  const isMachineFilm = detectMachineFilm(product);
+  const unitLabel = unitLabelForProduct(isMachineFilm);
+  const unitLabelPlural = isMachineFilm ? "Rolls" : "Boxes";
 
   // Prefer configured package tiers when they carry real prices; otherwise use SKU variants.
   const variants = useMemo(() => {
@@ -149,32 +194,92 @@ export function VariantSelector({
         .map((opt: any) => {
           const price = Number(opt.price);
           if (!Number.isFinite(price) || price <= 0) return null;
+          const rolls = Number(opt.rolls) || 1;
+          const label = isMachineFilm
+            ? normalizeMachinePackageLabel(rolls, opt.label)
+            : rolls === HAND_FULL_PALLET.rolls ||
+                String(opt.label || "").toUpperCase().includes("FULL PALLET")
+              ? HAND_FULL_PALLET.label
+              : opt.label;
           return {
             id: opt.sku,
             sku: opt.sku,
-            packageSize: opt.label,
-            title: opt.label,
+            packageSize: label,
+            title: label,
             priceUsd: String(price),
             price,
-            rollsPerBox: opt.rolls,
-            rollsPerPallet: product?.fullPalletRolls || 192,
-            widthInches: product?.width_inches || product?.widthInches || "18.00",
+            rollsPerBox: rolls,
+            rollsPerPallet: product?.fullPalletRolls || (isMachineFilm ? 40 : 192),
+            widthInches: product?.width_inches || product?.widthInches || (isMachineFilm ? "20.00" : "18.00"),
             gauge: product?.gauge || 60,
             lengthFeet: product?.length_feet || product?.lengthFeet || 1000,
             weightLbs: "0.00",
             stockStatus: "in_stock",
             createdAt: new Date(),
-            rolls_count: opt.rolls,
-            boxes_count: opt.rolls <= 4 ? 1 : Math.round(opt.rolls / 4),
+            rolls_count: rolls,
+            boxes_count: isMachineFilm
+              ? 0
+              : rolls <= 4
+                ? 1
+                : rolls === HAND_FULL_PALLET.rolls
+                  ? HAND_FULL_PALLET.boxes
+                  : Math.round(rolls / 4),
           };
         })
         .filter(Boolean);
     }
-    return (product?.variants || []).filter((v: any) => {
-      const price = parseFloat(String(v.priceUsd ?? v.price ?? ""));
-      return Number.isFinite(price) && price > 0;
-    });
-  }, [product]);
+    return (product?.variants || [])
+      .filter((v: any) => {
+        const price = parseFloat(String(v.priceUsd ?? v.price ?? ""));
+        return Number.isFinite(price) && price > 0;
+      })
+      .map((v: any) => {
+        if (!isMachineFilm) {
+          const rolls = getRollsCount(v);
+          if (
+            String(v.packageSize || v.title || "").toUpperCase().includes("FULL PALLET") ||
+            rolls === 256
+          ) {
+            return {
+              ...v,
+              packageSize: HAND_FULL_PALLET.label,
+              title: HAND_FULL_PALLET.label,
+              rollsPerBox: HAND_FULL_PALLET.rolls,
+              rolls_count: HAND_FULL_PALLET.rolls,
+              boxes_count: HAND_FULL_PALLET.boxes,
+            };
+          }
+          return v;
+        }
+        const rolls = getRollsCount(v);
+        const label = normalizeMachinePackageLabel(rolls, v.title || v.packageSize);
+        const normalizedRolls = label.startsWith("1 ROLL")
+          ? 1
+          : label.includes("20 ROLLS")
+            ? 20
+            : label.includes("40 ROLLS")
+              ? 40
+              : rolls;
+        return {
+          ...v,
+          packageSize: label,
+          title: label,
+          rollsPerBox: normalizedRolls,
+          rolls_count: normalizedRolls,
+          boxes_count: 0,
+          boxesCount: 0,
+        };
+      })
+      .filter((v: any, index: number, arr: any[]) => {
+        if (!isMachineFilm) return true;
+        // Prefer canonical machine tiers; drop non 1/20/40 when those exist
+        const rolls = getRollsCount(v);
+        const hasCanonical = arr.some((x) => [1, 20, 40].includes(getRollsCount(x)));
+        if (hasCanonical && ![1, 20, 40].includes(rolls)) return false;
+        // Dedupe by roll count (keep first/cheapest already sorted upstream)
+        return arr.findIndex((x) => getRollsCount(x) === rolls) === index;
+      });
+  }, [product, isMachineFilm]);
 
   const addItem = useCartStore((state) => state.addItem);
 
@@ -207,17 +312,21 @@ export function VariantSelector({
     selectedVariant?.sku ||
     internalSelectedVariantId;
 
-  const packageTier = getPackageTierKind(selectedVariant);
-  const isFixedTier = packageTier === "fixed_16" || packageTier === "fixed_half";
-  const isSingleBoxTier = packageTier === "single_box";
+  const packageTier = getPackageTierKind(selectedVariant, isMachineFilm);
+  const isFixedTier = packageTier === "fixed_mid" || packageTier === "fixed_half";
+  const isSingleUnitTier = packageTier === "single_unit";
   const isFullPalletTier = packageTier === "full_pallet";
   const quantityEditable = !isFixedTier;
-  const sixteenBoxVariant = findTierVariant(variants, "fixed_16");
-  const hasSixteenBoxUpgrade = Boolean(sixteenBoxVariant);
-  const baseBoxPrice = useMemo(() => getBaseBoxPrice(variants), [variants]);
+  const midTierVariant = findTierVariant(variants, "fixed_mid", isMachineFilm);
+  const hasMidTierUpgrade = Boolean(midTierVariant) && !isMachineFilm;
+  const baseUnitPrice = useMemo(
+    () => getBaseUnitPrice(variants, isMachineFilm),
+    [variants, isMachineFilm]
+  );
   const showSmartUpsell =
-    isSingleBoxTier &&
-    hasSixteenBoxUpgrade &&
+    !isMachineFilm &&
+    isSingleUnitTier &&
+    hasMidTierUpgrade &&
     quantity >= 10 &&
     quantity <= 15;
 
@@ -231,10 +340,10 @@ export function VariantSelector({
     [onVariantChange]
   );
 
-  const handleSwitchToSixteenBoxes = () => {
-    if (!sixteenBoxVariant) return;
-    selectVariant(sixteenBoxVariant, 1);
-    setTierHint("Switched to 16 Boxes package for better bulk pricing.");
+  const handleSwitchToMidTier = () => {
+    if (!midTierVariant) return;
+    selectVariant(midTierVariant, 1);
+    setTierHint(`Switched to 16 ${unitLabelPlural} package for better bulk pricing.`);
   };
 
   // Lock fixed tiers to qty 1 whenever they become active
@@ -265,15 +374,14 @@ export function VariantSelector({
   const handleQuantityIncrease = () => {
     if (!quantityEditable) return;
 
-    if (isSingleBoxTier) {
+    if (isSingleUnitTier && !isMachineFilm) {
       if (quantity >= 15) {
-        const sixteenBoxVariant = findTierVariant(variants, "fixed_16");
-        if (sixteenBoxVariant) {
-          selectVariant(sixteenBoxVariant, 1);
-          setTierHint("Upgraded to 16 Boxes package for higher volume.");
+        if (midTierVariant) {
+          selectVariant(midTierVariant, 1);
+          setTierHint(`Upgraded to 16 ${unitLabelPlural} package for higher volume.`);
           return;
         }
-        setTierHint("For 16+ boxes, select the 16 Boxes package");
+        setTierHint(`For 16+ ${unitLabelPlural.toLowerCase()}, select the 16 ${unitLabelPlural} package`);
         setQuantity(15);
         return;
       }
@@ -282,7 +390,7 @@ export function VariantSelector({
       return;
     }
 
-    // Full pallet (and other flexible tiers): free scaling
+    // Full pallet / machine single roll / other flexible tiers
     setQuantity((prev) => prev + 1);
     setTierHint(null);
   };
@@ -295,15 +403,14 @@ export function VariantSelector({
       return;
     }
 
-    if (isSingleBoxTier) {
+    if (isSingleUnitTier && !isMachineFilm) {
       if (parsed >= 16) {
-        const sixteenBoxVariant = findTierVariant(variants, "fixed_16");
-        if (sixteenBoxVariant) {
-          selectVariant(sixteenBoxVariant, 1);
-          setTierHint("Upgraded to 16 Boxes package for higher volume.");
+        if (midTierVariant) {
+          selectVariant(midTierVariant, 1);
+          setTierHint(`Upgraded to 16 ${unitLabelPlural} package for higher volume.`);
           return;
         }
-        setTierHint("For 16+ boxes, select the 16 Boxes package");
+        setTierHint(`For 16+ ${unitLabelPlural.toLowerCase()}, select the 16 ${unitLabelPlural} package`);
         setQuantity(15);
         return;
       }
@@ -323,16 +430,16 @@ export function VariantSelector({
 
   const handleAddToCart = () => {
     if (!selectedVariant || unitPrice <= 0) return;
+    const rolls = getRollsCount(selectedVariant);
 
     addItem({
       productId: product.id,
       productSlug: product.slug,
       productName: product.title || product.name || "Stretch Film",
       productImage: product.imageUrl,
-      packageSize: selectedVariant.packageSize || selectedVariant.sku,
-      totalRolls: selectedVariant.rollsPerBox,
-      totalBoxes:
-        selectedVariant.rollsPerBox <= 4 ? 1 : Math.round(selectedVariant.rollsPerBox / 4),
+      packageSize: displayPackageTitle(selectedVariant, isMachineFilm),
+      totalRolls: rolls,
+      totalBoxes: isMachineFilm ? 0 : getBoxesCount(selectedVariant, false),
       application: product.application,
       variantId: selectedVariant.id,
       sku: selectedVariant.sku,
@@ -342,7 +449,7 @@ export function VariantSelector({
       rollsPerBox: selectedVariant.rollsPerBox,
       rollsPerPallet: selectedVariant.rollsPerPallet,
       weightLbs: selectedVariant.weightLbs,
-      pricingTier: selectedVariant.packageSize || "Package Size",
+      pricingTier: displayPackageTitle(selectedVariant, isMachineFilm),
       unitPrice,
       quantity: effectiveQuantity,
     });
@@ -383,7 +490,7 @@ export function VariantSelector({
             {t("products.packageOptions")}
           </label>
           <span className="text-xs font-semibold text-blue-700">
-            {(selectedVariant as any)?.title || selectedVariant?.packageSize}
+            {displayPackageTitle(selectedVariant, isMachineFilm)}
           </span>
         </div>
 
@@ -405,13 +512,17 @@ export function VariantSelector({
               (index === 0 && !selectedVariant);
 
             const price = getVariantPrice(variant);
-            const variantTitle = (variant as any).title || variant.packageSize || variant.sku;
+            const variantTitle = displayPackageTitle(variant, isMachineFilm);
             const rollsCount = getRollsCount(variant);
-            const boxesCount = getBoxesCount(variant);
-            const tierKind = getPackageTierKind(variant);
+            const boxesCount = getBoxesCount(variant, isMachineFilm);
+            const tierKind = getPackageTierKind(variant, isMachineFilm);
             const isBestValue = tierKind === "full_pallet";
-            const { savingsPercent, perBoxPrice } = getPackageSavings(variant, baseBoxPrice);
-            const showSavings = savingsPercent > 0 && boxesCount > 1;
+            const { savingsPercent, perUnitPrice, unitCount } = getPackageSavings(
+              variant,
+              baseUnitPrice,
+              isMachineFilm
+            );
+            const showSavings = savingsPercent > 0 && unitCount > 1;
 
             return (
               <button
@@ -467,8 +578,19 @@ export function VariantSelector({
                         )}
                       </div>
                       <span className="text-[11px] text-slate-500 block mt-0.5">
-                        SKU: {variant.sku} · {rollsCount} Rolls included ({boxesCount}{" "}
-                        {boxesCount === 1 ? "Box" : "Boxes"})
+                        {isMachineFilm ? (
+                          <>
+                            SKU: {variant.sku} · {rollsCount}{" "}
+                            {rollsCount === 1 ? "Roll" : "Rolls"}
+                            {tierKind === "fixed_half" ? " (1 layer)" : ""}
+                            {tierKind === "full_pallet" ? " (2 layers)" : ""}
+                          </>
+                        ) : (
+                          <>
+                            SKU: {variant.sku} · {rollsCount} Rolls included ({boxesCount}{" "}
+                            {boxesCount === 1 ? "Box" : "Boxes"})
+                          </>
+                        )}
                       </span>
                     </div>
                   </div>
@@ -486,9 +608,9 @@ export function VariantSelector({
                       {formatCurrency(price)}
                     </span>
                     <span className="text-[10px] text-slate-400 block font-semibold">USD</span>
-                    {boxesCount > 1 && (
+                    {unitCount > 1 && (
                       <p className="text-xs text-slate-500 mt-0.5">
-                        ${perBoxPrice} USD / box
+                        ${perUnitPrice} USD / {unitLabel.toLowerCase()}
                       </p>
                     )}
                   </div>
@@ -563,7 +685,12 @@ export function VariantSelector({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-slate-600 font-bold uppercase">
                 {t("products.quantity")}
-                {isFullPalletTier ? " (Full Pallets)" : ""}:
+                {isFullPalletTier
+                  ? " (Full Pallets)"
+                  : isSingleUnitTier
+                    ? ` (${unitLabelPlural})`
+                    : ""}
+                :
               </span>
               {isFixedTier && (
                 <span className="inline-flex items-center rounded-lg bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
@@ -588,7 +715,7 @@ export function VariantSelector({
               <input
                 type="number"
                 min={1}
-                max={isSingleBoxTier ? 15 : undefined}
+                max={isSingleUnitTier && !isMachineFilm ? 15 : undefined}
                 value={effectiveQuantity}
                 readOnly={isFixedTier}
                 disabled={isFixedTier}
@@ -599,7 +726,11 @@ export function VariantSelector({
                 type="button"
                 onClick={handleQuantityIncrease}
                 disabled={
-                  !quantityEditable || (isSingleBoxTier && quantity >= 15 && !hasSixteenBoxUpgrade)
+                  !quantityEditable ||
+                  (isSingleUnitTier &&
+                    !isMachineFilm &&
+                    quantity >= 15 &&
+                    !hasMidTierUpgrade)
                 }
                 className="w-8 h-8 flex items-center justify-center text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 font-bold disabled:opacity-40 disabled:pointer-events-none disabled:hover:bg-transparent"
               >
@@ -607,9 +738,9 @@ export function VariantSelector({
               </button>
             </div>
 
-            {isSingleBoxTier && quantity >= 15 && (
+            {isSingleUnitTier && !isMachineFilm && quantity >= 15 && (
               <p className="text-[10px] font-medium text-sky-700">
-                For 16+ boxes, select the 16 Boxes package
+                For 16+ {unitLabelPlural.toLowerCase()}, select the 16 {unitLabelPlural} package
               </p>
             )}
             {tierHint && (
@@ -640,17 +771,17 @@ export function VariantSelector({
                 <span aria-hidden="true">💡 </span>
                 <span className="font-bold text-slate-900">Smart Suggestion:</span>{" "}
                 You have selected{" "}
-                <span className="font-bold text-slate-900">{quantity}</span> boxes. Upgrading
-                to the{" "}
+                <span className="font-bold text-slate-900">{quantity}</span>{" "}
+                {unitLabelPlural.toLowerCase()}. Upgrading to the{" "}
                 <span className="font-bold text-slate-900">16 BOXES (64 ROLLS)</span> package
                 offers better bulk pricing and lower unit cost.
               </p>
               <button
                 type="button"
-                onClick={handleSwitchToSixteenBoxes}
+                onClick={handleSwitchToMidTier}
                 className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 hover:text-blue-800 underline underline-offset-2 decoration-blue-300 hover:decoration-blue-500 transition-colors cursor-pointer"
               >
-                Switch to 16 Boxes →
+                Switch to 16 {unitLabelPlural} →
               </button>
             </div>
           </div>

@@ -239,7 +239,7 @@ export function Navbar() {
                   href={accountHref}
                   prefetch={false}
                   onClick={closeMobileMenu}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 py-3 text-sm font-semibold text-white shadow-md shadow-sky-500/20 hover:opacity-95 hover:shadow-lg hover:shadow-sky-500/30 transition-all"
                 >
                   {currentUser.profile.role === "admin" ? (
                     <>
@@ -268,7 +268,7 @@ export function Navbar() {
               <Link
                 href="/login"
                 onClick={closeMobileMenu}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700 transition-colors"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 py-3 font-semibold text-white shadow-md shadow-sky-500/20 hover:opacity-95 hover:shadow-lg hover:shadow-sky-500/30 transition-all"
               >
                 <User className="w-4 h-4" />
                 {t("nav.signIn")}

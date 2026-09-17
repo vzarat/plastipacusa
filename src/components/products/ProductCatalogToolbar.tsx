@@ -48,7 +48,7 @@ export function ProductCatalogToolbar({
       </div>
       <button
         type="submit"
-        className="inline-flex items-center justify-center rounded-xl bg-sky-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-sky-700 transition-colors duration-150 cursor-pointer"
+        className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-sky-500/20 hover:opacity-95 hover:shadow-lg hover:shadow-sky-500/30 transition-all duration-200 cursor-pointer"
       >
         Search Catalog
       </button>

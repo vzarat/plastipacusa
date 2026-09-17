@@ -3,6 +3,10 @@
 import React from "react";
 import { Filter, RotateCcw } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import {
+  BRAND_GRADIENT_PILL_ACTIVE,
+  BRAND_GRADIENT_PILL_IDLE,
+} from "@/lib/brand-styles";
 
 export type CatalogAppFilter = "all" | "hand" | "machine";
 
@@ -12,9 +16,8 @@ const WIDTH_OPTIONS = ["all", "15", "18", "20", "30"] as const;
 
 const chipBase =
   "min-w-[4rem] px-3 py-2 text-xs font-semibold text-center whitespace-nowrap rounded-xl border transition-all duration-150 cursor-pointer";
-const chipSelected = "bg-blue-600 text-white border-blue-600 shadow-sm";
-const chipIdle =
-  "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50";
+const chipSelected = BRAND_GRADIENT_PILL_ACTIVE;
+const chipIdle = BRAND_GRADIENT_PILL_IDLE;
 
 interface ProductFiltersProps {
   selectedApp: CatalogAppFilter;
@@ -94,10 +97,10 @@ export function ProductFilters({
                   e.preventDefault();
                   onAppChange(opt.key);
                 }}
-                className={`text-left text-xs px-3.5 py-2.5 rounded-xl font-semibold transition-all duration-150 cursor-pointer ${
+                className={`text-left text-xs px-3.5 py-2.5 rounded-xl font-semibold transition-all duration-150 cursor-pointer border ${
                   selectedApp === opt.key
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    ? BRAND_GRADIENT_PILL_ACTIVE
+                    : BRAND_GRADIENT_PILL_IDLE
                 }`}
               >
                 {opt.label}
