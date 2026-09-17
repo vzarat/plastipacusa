@@ -304,7 +304,7 @@ export function VariantSelector({
   const handleDiscountApplied = useCallback(
     (discount: AppliedDiscount | null) => {
       setAppliedDiscount(discount);
-      if (discount && discount.discountType === "percent") {
+      if (discount && discount.discountType === "percentage") {
         setAppliedCoupon({
           id: discount.id,
           code: discount.code,

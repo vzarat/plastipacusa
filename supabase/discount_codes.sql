@@ -4,8 +4,8 @@
 create table if not exists public.discount_codes (
   id uuid primary key default gen_random_uuid(),
   code text not null,
-  discount_type text not null default 'percent'
-    check (discount_type in ('percent', 'fixed')),
+  discount_type text not null default 'percentage'
+    check (discount_type in ('percentage', 'fixed')),
   discount_value numeric(10,2) not null check (discount_value > 0),
   expires_at timestamptz,
   is_active boolean not null default true,
@@ -13,7 +13,7 @@ create table if not exists public.discount_codes (
   updated_at timestamptz not null default now(),
   constraint discount_codes_code_unique unique (code),
   constraint discount_codes_percent_range check (
-    discount_type <> 'percent' or (discount_value > 0 and discount_value <= 100)
+    discount_type <> 'percentage' or (discount_value > 0 and discount_value <= 100)
   )
 );
 
@@ -28,6 +28,41 @@ alter table public.discount_codes
 
 alter table public.discount_codes
   add column if not exists updated_at timestamptz default now();
+
+-- Align discount_type check with app values: percentage | fixed
+do $$
+begin
+  -- Drop legacy constraints if present
+  alter table public.discount_codes drop constraint if exists discount_codes_discount_type_check;
+  alter table public.discount_codes drop constraint if exists discount_codes_percent_range;
+
+  -- Normalize legacy 'percent' rows
+  update public.discount_codes
+  set discount_type = 'percentage'
+  where lower(discount_type) in ('percent', 'percentage (%)', 'percentage');
+
+  update public.discount_codes
+  set discount_type = 'fixed'
+  where lower(discount_type) like '%fixed%'
+     or lower(discount_type) in ('amount', 'flat');
+
+  alter table public.discount_codes
+    add constraint discount_codes_discount_type_check
+    check (discount_type in ('percentage', 'fixed'));
+
+  alter table public.discount_codes
+    add constraint discount_codes_percent_range
+    check (
+      discount_type <> 'percentage'
+      or (discount_value > 0 and discount_value <= 100)
+    );
+
+  alter table public.discount_codes
+    alter column discount_type set default 'percentage';
+exception
+  when others then
+    raise notice 'discount_type constraint migrate skipped: %', SQLERRM;
+end $$;
 
 -- Backfill name from code where missing
 update public.discount_codes

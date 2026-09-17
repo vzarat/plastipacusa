@@ -1,4 +1,4 @@
-export type DiscountType = "percent" | "fixed";
+export type DiscountType = "percentage" | "fixed";
 
 /**
  * App-level discount row.
@@ -20,6 +20,7 @@ export interface DiscountCode {
 /**
  * Columns written to Supabase `public.discount_codes`.
  * Required fields are always sent; optional fields are stripped when absent from schema.
+ * `discount_type` must be lowercase `'percentage'` or `'fixed'` to satisfy the DB check.
  */
 export interface DiscountCodeDbPayload {
   code: string;

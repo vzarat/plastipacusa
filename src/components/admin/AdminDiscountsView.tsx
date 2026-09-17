@@ -28,6 +28,7 @@ import {
   isMissingUpdatedAtColumnError,
   isPostgrestSchemaCacheError,
   mapDiscountCodeRow,
+  normalizeDiscountType,
   sanitizeDiscountWritePayload,
   stripOptionalDiscountColumns,
 } from "@/lib/discounts";
@@ -35,7 +36,7 @@ import {
 const EMPTY_FORM: DiscountFormValues = {
   code: "",
   name: "",
-  discount_type: "percent",
+  discount_type: "percentage",
   discount_value: 10,
   expires_at: "",
   is_active: true,
@@ -166,7 +167,7 @@ export function AdminDiscountsView() {
       toast.error("Enter a valid discount value.");
       return;
     }
-    if (form.discount_type === "percent" && (value < 1 || value > 100)) {
+    if (form.discount_type === "percentage" && (value < 1 || value > 100)) {
       toast.error("Percent discount must be between 1 and 100.");
       return;
     }
@@ -205,7 +206,7 @@ export function AdminDiscountsView() {
     setForm({
       code: row.code,
       name: row.name || row.code,
-      discount_type: row.discount_type,
+      discount_type: normalizeDiscountType(row.discount_type),
       discount_value: Number(row.discount_value),
       expires_at: row.expires_at
         ? new Date(row.expires_at).toISOString().slice(0, 16)
@@ -350,29 +351,32 @@ export function AdminDiscountsView() {
             <select
               value={form.discount_type}
               onChange={(e) =>
-                updateForm("discount_type", e.target.value as DiscountType)
+                updateForm(
+                  "discount_type",
+                  (e.target.value === "fixed" ? "fixed" : "percentage") as DiscountType
+                )
               }
               className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
             >
-              <option value="percent">Percentage (%)</option>
+              <option value="percentage">Percentage (%)</option>
               <option value="fixed">Fixed Amount ($)</option>
             </select>
           </label>
 
           <label className="space-y-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-              {form.discount_type === "percent" ? (
+              {form.discount_type === "percentage" ? (
                 <Percent className="w-3.5 h-3.5" />
               ) : (
                 <DollarSign className="w-3.5 h-3.5" />
               )}
-              {form.discount_type === "percent" ? "Percent Off" : "Amount Off (USD)"}
+              {form.discount_type === "percentage" ? "Percent Off" : "Amount Off (USD)"}
             </span>
             <input
               type="number"
-              min={form.discount_type === "percent" ? 1 : 0.01}
-              max={form.discount_type === "percent" ? 100 : undefined}
-              step={form.discount_type === "percent" ? 1 : 0.01}
+              min={form.discount_type === "percentage" ? 1 : 0.01}
+              max={form.discount_type === "percentage" ? 100 : undefined}
+              step={form.discount_type === "percentage" ? 1 : 0.01}
               value={form.discount_value}
               onChange={(e) =>
                 updateForm("discount_value", Number(e.target.value) || 0)
@@ -466,7 +470,8 @@ export function AdminDiscountsView() {
                         {row.code}
                       </span>
                       <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full">
-                        {row.discount_type === "percent"
+                        {row.discount_type === "percentage" ||
+                        String(row.discount_type).includes("percent")
                           ? `${row.discount_value}% OFF`
                           : `$${Number(row.discount_value).toFixed(2)} OFF`}
                       </span>

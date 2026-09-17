@@ -7,14 +7,27 @@ import type {
   DiscountType,
 } from "@/types/discount";
 
-/** Normalize DB / RPC discount_type values to app DiscountType. */
+/** Normalize DB / form / label text to check-constraint values: percentage | fixed. */
 export function normalizeDiscountType(value: unknown): DiscountType {
-  const raw = String(value || "")
+  const raw = String(value ?? "")
     .trim()
     .toLowerCase();
-  if (raw === "fixed" || raw === "amount" || raw === "flat") return "fixed";
-  // Accept both schema `percent` and colloquial `percentage`
-  return "percent";
+  if (raw.includes("percent")) return "percentage";
+  if (raw === "fixed" || raw === "amount" || raw === "flat" || raw.includes("fixed")) {
+    return "fixed";
+  }
+  // Default to percentage for empty / unknown (safer for % OFF codes)
+  return "percentage";
+}
+
+/** True when discount is percentage-based (legacy `percent` rows included). */
+export function isPercentageDiscount(
+  discount: Pick<AppliedDiscount, "discountType"> | DiscountType | null | undefined
+): boolean {
+  if (!discount) return false;
+  const type =
+    typeof discount === "string" ? discount : discount.discountType;
+  return normalizeDiscountType(type) === "percentage";
 }
 
 /** Resolve display name — aliases to `code` when DB omits `name`. */
@@ -72,7 +85,7 @@ export function buildDiscountWritePayload(
   return sanitizeDiscountWritePayload({
     code,
     name,
-    discount_type: form.discount_type,
+    discount_type: normalizeDiscountType(form.discount_type),
     discount_value: Number(form.discount_value) || 0,
     expires_at: form.expires_at
       ? new Date(form.expires_at).toISOString()
@@ -106,7 +119,17 @@ export function sanitizeDiscountWritePayload(
     if (typeof value === "string" && value.trim() === "" && key !== "code") {
       continue;
     }
+    if (key === "discount_type") {
+      // Enforce check constraint: percentage | fixed (never labels like "Percentage (%)")
+      next[key] = normalizeDiscountType(value);
+      continue;
+    }
     next[key] = value;
+  }
+
+  // Guarantee discount_type is always a valid constraint value
+  if (!next.discount_type) {
+    next.discount_type = normalizeDiscountType(payload.discount_type);
   }
 
   return next as unknown as DiscountCodeDbPayload;
@@ -211,7 +234,7 @@ export function applyDiscountToPrice(
   discount: AppliedDiscount | null | undefined
 ): number {
   if (!discount || !(price > 0)) return Number(price.toFixed(2));
-  if (discount.discountType === "fixed") {
+  if (normalizeDiscountType(discount.discountType) === "fixed") {
     return Number(Math.max(0, price - discount.discountValue).toFixed(2));
   }
   const pct = Number(discount.discountValue) || 0;
@@ -219,7 +242,7 @@ export function applyDiscountToPrice(
 }
 
 export function formatDiscountLabel(discount: AppliedDiscount): string {
-  if (discount.discountType === "fixed") {
+  if (normalizeDiscountType(discount.discountType) === "fixed") {
     return `$${discount.discountValue.toFixed(2)} OFF`;
   }
   return `${discount.discountValue}% OFF`;
