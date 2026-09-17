@@ -1,5 +1,4 @@
 import React from "react";
-import Link from "next/link";
 import { getProducts } from "@/actions/products";
 import { HeroBanner } from "@/components/home/HeroBanner";
 import { ClientLogosBanner } from "@/components/home/ClientLogosBanner";
@@ -20,20 +19,20 @@ export default async function HomePage() {
       {/* 2. Client Logos Marquee Banner */}
       <ClientLogosBanner />
 
-      {/* 3. Interactive Category Showcase Selector Grid */}
+      {/* 3. Nationwide USA Coverage Map — between logos and product lines */}
+      <USACoverageSection />
+
+      {/* 4. Interactive Category Showcase Selector Grid */}
       <CategoryShowcase />
 
-      {/* 4. Filterable Featured Product Catalog Grid */}
+      {/* 5. Filterable Featured Product Catalog Grid */}
       <FeaturedProductSection products={products} />
 
-      {/* 5. Trust Badges & Certifications */}
+      {/* 6. Trust Badges & Certifications */}
       <TrustBadges />
 
-      {/* 6. B2B Inquiry & Pallet Quote Form */}
+      {/* 7. B2B Inquiry & Pallet Quote Form */}
       <InquiryForm />
-
-      {/* 7. Nationwide USA Coverage Map — above Footer */}
-      <USACoverageSection />
     </div>
   );
 }

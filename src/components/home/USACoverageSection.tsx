@@ -82,7 +82,7 @@ export function USACoverageSection() {
       }}
       aria-labelledby="usa-coverage-home-heading"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 space-y-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 space-y-10">
         <div className="text-center max-w-3xl mx-auto space-y-4">
           <h2
             id="usa-coverage-home-heading"
