@@ -70,18 +70,34 @@ function matchesWidth(product: ProductWithVariants, targetWidth: number): boolea
   });
 }
 
+function parseLengthFeet(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value > 0 ? Math.round(value) : null;
+  }
+  const raw = String(value).trim();
+  if (!raw) return null;
+  // Supports 6000, "6000", "6,000", "6,000 FT", "6000FT"
+  const normalized = raw.replace(/,/g, "").replace(/\s*ft\b\.?/i, "").trim();
+  const n = Number(normalized);
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+}
+
 function matchesLength(
   product: ProductWithVariants,
   targetLength: number
 ): boolean {
-  const productLength = Number(product.length_feet);
-  if (Number.isFinite(productLength) && productLength === targetLength) {
+  const productLength = parseLengthFeet(
+    product.length_feet ?? (product as { lengthFeet?: number | string }).lengthFeet
+  );
+  if (productLength !== null && productLength === targetLength) {
     return true;
   }
 
-  return (product.variants || []).some(
-    (v) => Number(v.lengthFeet) === targetLength
-  );
+  return (product.variants || []).some((v) => {
+    const variantLength = parseLengthFeet(v.lengthFeet);
+    return variantLength !== null && variantLength === targetLength;
+  });
 }
 
 function matchesGauge(product: ProductWithVariants, targetGauge: number): boolean {

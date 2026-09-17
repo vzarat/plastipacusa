@@ -10,10 +10,15 @@ import { formatCurrency } from "@/lib/utils";
 export function CheckoutPageClient() {
   const items = useCartStore((state) => state.items);
   const getSubtotal = useCartStore((state) => state.getSubtotal);
+  const getDiscountAmount = useCartStore((state) => state.getDiscountAmount);
+  const getDiscountedTotal = useCartStore((state) => state.getDiscountedTotal);
+  const appliedCoupon = useCartStore((state) => state.appliedCoupon);
   const getTotalWeight = useCartStore((state) => state.getTotalWeight);
   const clearCart = useCartStore((state) => state.clearCart);
 
   const subtotal = getSubtotal();
+  const discountAmount = getDiscountAmount();
+  const total = getDiscountedTotal();
   const totalWeight = getTotalWeight();
 
   if (items.length === 0) {
@@ -78,9 +83,29 @@ export function CheckoutPageClient() {
               <span>Weight</span>
               <span className="font-semibold text-slate-800">{totalWeight} lbs</span>
             </div>
+            <div className="flex items-center justify-between text-slate-600">
+              <span>Subtotal</span>
+              <span className="font-semibold text-slate-800">{formatCurrency(subtotal)}</span>
+            </div>
+            {appliedCoupon && discountAmount > 0 && (
+              <>
+                <div className="flex items-center justify-between text-emerald-700 font-bold">
+                  <span className="inline-flex items-center gap-1.5">
+                    Discount
+                    <span className="text-[10px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-md">
+                      {appliedCoupon.code}
+                    </span>
+                  </span>
+                  <span>- {formatCurrency(discountAmount)} USD</span>
+                </div>
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs font-bold text-emerald-800">
+                  Total savings: {formatCurrency(discountAmount)} USD
+                </div>
+              </>
+            )}
             <div className="flex items-center justify-between text-lg font-black text-slate-900">
               <span>Total</span>
-              <span>{formatCurrency(subtotal)}</span>
+              <span>{formatCurrency(total)}</span>
             </div>
           </div>
 

@@ -11,9 +11,15 @@ import { BRAND_GRADIENT_CTA } from "@/lib/brand-styles";
 interface PromoCodeInputProps {
   userEmail?: string | null;
   compact?: boolean;
+  /** Show subtotal / discount / total under the applied badge. Default: !compact */
+  showBreakdown?: boolean;
 }
 
-export function PromoCodeInput({ userEmail, compact = false }: PromoCodeInputProps) {
+export function PromoCodeInput({
+  userEmail,
+  compact = false,
+  showBreakdown,
+}: PromoCodeInputProps) {
   const appliedCoupon = useCartStore((s) => s.appliedCoupon);
   const setAppliedCoupon = useCartStore((s) => s.setAppliedCoupon);
   const clearCoupon = useCartStore((s) => s.clearCoupon);
@@ -27,6 +33,7 @@ export function PromoCodeInput({ userEmail, compact = false }: PromoCodeInputPro
     null
   );
 
+  const includeBreakdown = showBreakdown ?? !compact;
   const discountAmount = getDiscountAmount();
   const subtotal = getSubtotal();
   const total = getDiscountedTotal();
@@ -129,20 +136,22 @@ export function PromoCodeInput({ userEmail, compact = false }: PromoCodeInputPro
             </button>
           </div>
 
-          <div className="space-y-1 text-xs">
-            <div className="flex justify-between text-slate-600">
-              <span>Subtotal</span>
-              <span className="font-semibold text-slate-800">{formatCurrency(subtotal)}</span>
+          {includeBreakdown && (
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between text-slate-600">
+                <span>Subtotal</span>
+                <span className="font-semibold text-slate-800">{formatCurrency(subtotal)}</span>
+              </div>
+              <div className="flex justify-between text-emerald-700 font-bold">
+                <span>Discount ({appliedCoupon.code})</span>
+                <span>- {formatCurrency(discountAmount)}</span>
+              </div>
+              <div className="flex justify-between text-slate-900 font-black pt-1 border-t border-emerald-200/80">
+                <span>Total</span>
+                <span>{formatCurrency(total)}</span>
+              </div>
             </div>
-            <div className="flex justify-between text-emerald-700 font-bold">
-              <span>Discount ({appliedCoupon.code})</span>
-              <span>- {formatCurrency(discountAmount)}</span>
-            </div>
-            <div className="flex justify-between text-slate-900 font-black pt-1 border-t border-emerald-200/80">
-              <span>Total</span>
-              <span>{formatCurrency(total)}</span>
-            </div>
-          </div>
+          )}
         </div>
       )}
     </div>

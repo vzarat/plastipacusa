@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { submitInquiry } from "@/actions/inquiries";
 import { DirectCheckoutButton } from "@/components/checkout/DirectCheckoutButton";
+import { PromoCodeInput } from "@/components/cart/PromoCodeInput";
 
 export function CartDrawer() {
   const router = useRouter();
@@ -32,6 +33,9 @@ export function CartDrawer() {
     updateQuantity,
     clearCart,
     getSubtotal,
+    getDiscountAmount,
+    getDiscountedTotal,
+    appliedCoupon,
     getTotalWeight,
   } = useCartStore();
 
@@ -60,6 +64,8 @@ export function CartDrawer() {
   }, [isDrawerOpen, closeDrawer]);
 
   const subtotal = getSubtotal();
+  const discountAmount = getDiscountAmount();
+  const discountedTotal = getDiscountedTotal();
   const totalWeight = getTotalWeight();
 
   const handleQuickQuote = async (e: React.FormEvent) => {
@@ -232,6 +238,8 @@ export function CartDrawer() {
         {/* Footer Summary & Actions */}
         {items.length > 0 && (
           <div className="p-6 border-t border-slate-100 bg-slate-50/60 space-y-4 shrink-0">
+            <PromoCodeInput compact userEmail={email || null} />
+
             <div className="space-y-2 text-xs">
               <div className="flex justify-between text-slate-500">
                 <span className="flex items-center gap-1.5 font-medium">
@@ -241,8 +249,30 @@ export function CartDrawer() {
               </div>
               <div className="flex justify-between text-sm font-bold text-slate-800">
                 <span>Subtotal</span>
-                <span className="text-xl font-black text-slate-900">
+                <span className="text-base font-black text-slate-900">
                   {formatCurrency(subtotal)}
+                </span>
+              </div>
+              {appliedCoupon && discountAmount > 0 && (
+                <>
+                  <div className="flex justify-between text-emerald-700 font-bold animate-in fade-in duration-200">
+                    <span className="inline-flex items-center gap-1.5">
+                      Discount
+                      <span className="text-[10px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-md">
+                        {appliedCoupon.code}
+                      </span>
+                    </span>
+                    <span>- {formatCurrency(discountAmount)} USD</span>
+                  </div>
+                  <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-[11px] font-bold text-emerald-800">
+                    Total savings: {formatCurrency(discountAmount)} USD
+                  </div>
+                </>
+              )}
+              <div className="flex justify-between text-sm font-bold text-slate-800 pt-1 border-t border-slate-200/80">
+                <span>Total</span>
+                <span className="text-xl font-black text-slate-900">
+                  {formatCurrency(discountedTotal)}
                 </span>
               </div>
               <p className="text-[10px] text-slate-400">
@@ -328,7 +358,7 @@ export function CartDrawer() {
                   variant="outline"
                   className="w-full text-xs font-semibold border-slate-200 hover:bg-slate-100"
                 >
-                  Review Order ({formatCurrency(subtotal)})
+                  Review Order ({formatCurrency(discountedTotal)})
                 </Button>
                 <button
                   type="button"

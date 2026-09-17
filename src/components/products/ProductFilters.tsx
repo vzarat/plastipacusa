@@ -11,7 +11,7 @@ import {
 export type CatalogAppFilter = "all" | "hand" | "machine";
 
 const GAUGE_OPTIONS = ["all", "60", "70", "80"] as const;
-const LENGTH_OPTIONS = ["all", "1000", "1500", "5000"] as const;
+const LENGTH_OPTIONS = ["all", "1000", "1500", "5000", "6000"] as const;
 const WIDTH_OPTIONS = ["all", "15", "18", "20", "30"] as const;
 
 const chipBase =
@@ -169,7 +169,11 @@ export function ProductFilters({
                     e.preventDefault();
                     onLengthChange(len);
                   }}
-                  className={`${chipBase} ${isSelected ? chipSelected : chipIdle}`}
+                  className={`${chipBase} ${
+                    isSelected
+                      ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-white border-transparent shadow-sm"
+                      : chipIdle
+                  }`}
                 >
                   {len === "all"
                     ? t("products.allLengths")
