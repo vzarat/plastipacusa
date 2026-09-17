@@ -36,11 +36,6 @@ const CATEGORY_PILLS: CategoryPill[] = [
     color: "#f59e0b",
   },
   {
-    slug: "genesis-standard",
-    label: "GENESIS Standard",
-    color: "#dc2626",
-  },
-  {
     slug: "genesis-high-performance",
     label: "GENESIS Automatic",
     color: "#16a34a",
@@ -202,7 +197,7 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
                 onClick={() => handleCategorySelect(pill.slug)}
                 className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer shadow-sm border ${
                   isActive
-                    ? "bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 text-white shadow-md shadow-sky-500/20 border-transparent"
+                    ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20"
                     : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 hover:text-slate-900"
                 }`}
               >
