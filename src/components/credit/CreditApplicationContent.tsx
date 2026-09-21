@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowRight, CreditCard, PhoneCall, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -9,15 +10,38 @@ import { B2BCreditFlow } from "@/components/credit/B2BCreditFlow";
 import { CreditApplicationForm } from "@/components/credit/CreditApplicationForm";
 import { FloatingCreditCards } from "@/components/ui/FloatingCreditCards";
 
+const Beams = dynamic(
+  () => import("@/components/ui/Beams").then((m) => m.Beams),
+  { ssr: false }
+);
+
 export function CreditApplicationContent() {
   const { t } = useLanguage();
 
   return (
     <div className="min-h-screen bg-slate-50/60">
-      <section className="w-full bg-slate-950 text-white py-16 px-6 md:px-16 overflow-hidden border-b border-slate-800">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <section className="relative w-full bg-[#000d23] text-white py-16 px-6 md:px-16 overflow-hidden">
+        {/* Full-bleed Beams background */}
+        <div className="absolute inset-0 z-0 overflow-hidden rounded-none pointer-events-none">
+          <div className="absolute -inset-16 z-0 overflow-hidden rounded-none opacity-100 pointer-events-none scale-125">
+            <Beams
+              backgroundColor="#000d23"
+              beamColor="#00286a"
+              beamHeight={40}
+              beamNumber={60}
+              beamWidth={2.8}
+              lightColor="#ffffff"
+              noiseIntensity={1.3}
+              rotation={45}
+              scale={0.35}
+              speed={3.5}
+            />
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10">
           {/* Left — Copy & CTAs */}
-          <div className="relative z-10 text-left flex flex-col items-start space-y-5">
+          <div className="text-left flex flex-col items-start space-y-5">
             <Badge className="bg-white/10 backdrop-blur-md border border-white/20 text-sky-100 uppercase tracking-[0.16em] text-[11px] font-bold">
               <CreditCard className="w-3.5 h-3.5 mr-1.5" />
               {t("credit.badge")}
@@ -56,8 +80,8 @@ export function CreditApplicationContent() {
             </Link>
           </div>
 
-          {/* Right — Floating cards (direct on slate-950) */}
-          <div className="relative z-10 flex justify-end items-center min-h-[280px] lg:min-h-[340px]">
+          {/* Right — Floating cards over beams */}
+          <div className="relative flex justify-end items-center min-h-[280px] lg:min-h-[340px]">
             <FloatingCreditCards className="w-full max-w-md ml-auto" />
           </div>
         </div>
