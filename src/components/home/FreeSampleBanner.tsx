@@ -33,26 +33,26 @@ export function FreeSampleBanner({
   return (
     <section
       id="free-sample"
-      className={`relative overflow-hidden border-y border-slate-800 ${className}`}
+      className={`relative overflow-visible border-y border-slate-800 ${className}`}
       aria-labelledby="free-sample-heading"
     >
       <div
-        className="relative w-full overflow-hidden bg-slate-900 p-8 md:p-12"
+        className="relative w-full overflow-visible bg-slate-900 p-8 md:p-12"
         style={{
           background:
             "linear-gradient(135deg, #0F172A 0%, #1E3A8A 48%, #2563EB 100%)",
         }}
       >
         {/* Background Interactive Canvas */}
-        <div className="absolute inset-0 z-0 opacity-60 pointer-events-none">
+        <div className="absolute inset-0 z-0 opacity-90 pointer-events-none">
           <DotField
-            bulgeStrength={67}
-            dotRadius={1.5}
-            dotSpacing={14}
-            glowColor="#1E3A8A"
-            glowRadius={160}
-            gradientFrom="#ffffff"
-            gradientTo="#3B82F6"
+            bulgeStrength={80}
+            dotRadius={2}
+            dotSpacing={18}
+            glowColor="#60A5FA"
+            glowRadius={200}
+            gradientFrom="rgba(255, 255, 255, 0.75)"
+            gradientTo="rgba(147, 197, 253, 0.55)"
             sparkle={false}
             waveAmplitude={0}
           />
@@ -95,17 +95,17 @@ export function FreeSampleBanner({
           </div>
 
           {/* Right — Product image + quality badge */}
-          <div className="relative flex justify-center items-center w-full min-h-[300px]">
+          <div className="relative flex items-center justify-center p-6 md:p-10 min-h-[380px] w-full">
             <Image
               src={STRETCH_IMAGE}
               alt="Plastipac USA stretch film roll"
               width={480}
               height={480}
-              className="drop-shadow-2xl object-contain max-h-[380px] w-auto h-auto"
+              className="object-contain max-h-[300px] md:max-h-[340px] w-auto drop-shadow-[0_20px_25px_rgba(0,0,0,0.5)]"
               priority={false}
             />
 
-            <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-xl border border-slate-100 shadow-2xl flex items-center gap-3 z-20">
+            <div className="absolute -top-2 right-2 md:right-4 bg-white/95 text-slate-900 px-3.5 py-2 rounded-xl shadow-2xl border border-slate-100 flex items-center gap-2.5 z-20 pointer-events-none">
               <ShieldCheck className="w-6 h-6 text-emerald-600 shrink-0" />
               <div className="text-left">
                 <p className="text-xs font-bold text-slate-900">
