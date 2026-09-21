@@ -6,14 +6,22 @@ create table if not exists public.sample_requests (
   full_name text not null,
   company_name text not null,
   work_email text not null,
+  phone text,
   shipping_zip text,
   shipping_address text,
   film_type text not null check (film_type in ('hand', 'machine')),
+  preferred_gauge text,
+  preferred_width text,
   product_slug text,
   product_name text,
   status text not null default 'new',
   created_at timestamptz not null default now()
 );
+
+-- Safe upgrades for existing deployments
+alter table public.sample_requests add column if not exists phone text;
+alter table public.sample_requests add column if not exists preferred_gauge text;
+alter table public.sample_requests add column if not exists preferred_width text;
 
 create index if not exists sample_requests_email_idx on public.sample_requests (work_email);
 create index if not exists sample_requests_created_idx on public.sample_requests (created_at desc);

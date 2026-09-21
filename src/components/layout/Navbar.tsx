@@ -185,6 +185,20 @@ export function Navbar() {
                 Machine / Automatic Film
               </Link>
               <Link
+                href="/about"
+                onClick={closeMobileMenu}
+                className={drawerLinkClass}
+              >
+                {t("nav.about")}
+              </Link>
+              <Link
+                href="/free-sample"
+                onClick={closeMobileMenu}
+                className={drawerLinkClass}
+              >
+                {isSpanish ? "Muestra Gratis" : "Free Sample"}
+              </Link>
+              <Link
                 href={ordersHref}
                 onClick={closeMobileMenu}
                 className={drawerLinkClass}
@@ -372,6 +386,17 @@ export function Navbar() {
                 }`}
               >
                 {t("nav.about")}
+              </Link>
+
+              <Link
+                href="/free-sample"
+                className={`px-3.5 py-2 text-sm font-semibold rounded-xl transition-all ${
+                  pathname === "/free-sample"
+                    ? "text-sky-700 bg-sky-50/80"
+                    : "text-slate-600 hover:text-sky-600 hover:bg-sky-50/50"
+                }`}
+              >
+                Free Sample
               </Link>
 
               {!currentUser && (
