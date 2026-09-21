@@ -2,7 +2,13 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Cpu } from "lucide-react";
+import {
+  Cpu,
+  Facebook,
+  Linkedin,
+  Mail,
+  MessageCircle,
+} from "lucide-react";
 
 function ChipIcon({ className = "w-8 h-8" }: { className?: string }) {
   return (
@@ -15,6 +21,55 @@ function ChipIcon({ className = "w-8 h-8" }: { className?: string }) {
           <span key={i} className="rounded-[1px] bg-amber-800/25" />
         ))}
       </div>
+    </div>
+  );
+}
+
+function SocialIconBar({ interactive = false }: { interactive?: boolean }) {
+  const linkClass = interactive
+    ? "hover:text-cyan-300 transition-colors p-1"
+    : "p-1 pointer-events-none";
+
+  return (
+    <div className="flex items-center gap-3 text-white/90">
+      <a
+        href="https://facebook.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        className={linkClass}
+        aria-label="Facebook"
+        tabIndex={interactive ? undefined : -1}
+      >
+        <Facebook className="w-4 h-4" />
+      </a>
+      <a
+        href="https://linkedin.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        className={linkClass}
+        aria-label="LinkedIn"
+        tabIndex={interactive ? undefined : -1}
+      >
+        <Linkedin className="w-4 h-4" />
+      </a>
+      <a
+        href="mailto:info@plastipacusa.com"
+        className={linkClass}
+        aria-label="Email"
+        tabIndex={interactive ? undefined : -1}
+      >
+        <Mail className="w-4 h-4" />
+      </a>
+      <a
+        href="https://wa.me/19564003683"
+        target="_blank"
+        rel="noopener noreferrer"
+        className={linkClass}
+        aria-label="WhatsApp"
+        tabIndex={interactive ? undefined : -1}
+      >
+        <MessageCircle className="w-4 h-4" />
+      </a>
     </div>
   );
 }
@@ -65,19 +120,14 @@ function CreditCardFace({
           ) : (
             <div className="h-3 w-40 rounded bg-white/20" />
           )}
-          <div className="flex items-end justify-between pt-1">
+          <div className="flex items-end justify-between pt-1 gap-3">
             <div>
               <p className="text-[8px] uppercase tracking-wider text-white/60">
                 Corporate Line
               </p>
               <p className="text-xs font-semibold text-white">NET 30</p>
             </div>
-            <div className="text-right">
-              <p className="text-[8px] uppercase tracking-wider text-white/60">
-                USA
-              </p>
-              <p className="text-[10px] font-bold text-white/90">PLASTIPAC</p>
-            </div>
+            <SocialIconBar interactive={showDetails} />
           </div>
         </div>
       </div>
@@ -89,7 +139,6 @@ export function FloatingCreditCards({ className = "" }: { className?: string }) 
   return (
     <div
       className={`relative w-full h-[300px] sm:h-[340px] lg:h-[380px] ${className}`}
-      aria-hidden
     >
       <div
         className="absolute inset-0 flex items-center justify-end"
