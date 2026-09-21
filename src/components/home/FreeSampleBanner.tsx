@@ -60,9 +60,9 @@ export function FreeSampleBanner({
       </div>
 
       {/* Internal content alignment */}
-      <div className="max-w-7xl mx-auto px-6 md:px-12 py-16 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center pointer-events-auto">
+      <div className="max-w-7xl mx-auto px-6 md:px-12 pt-16 pb-0 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch pointer-events-auto">
         {/* Left — Text & CTA */}
-        <div className="text-left flex flex-col items-start">
+        <div className="text-left flex flex-col items-start pb-16">
           <span className="text-xs uppercase tracking-wider text-blue-400 font-bold mb-2">
             INDUSTRIAL GRADE QUALITY
           </span>
@@ -95,18 +95,18 @@ export function FreeSampleBanner({
           </Link>
         </div>
 
-        {/* Right — Product image */}
-        <div className="relative flex items-center justify-center min-h-[360px] w-full">
+        {/* Right — Product image flush to banner bottom */}
+        <div className="relative flex items-end justify-center h-full w-full self-end pt-6">
           <Image
             src={STRETCH_IMAGE}
             alt="Plastipac USA stretch film roll"
             width={480}
             height={480}
-            className="object-contain max-h-[360px] w-auto relative z-10 translate-y-6 md:translate-y-10 scale-105"
+            className="block object-contain object-bottom max-h-[380px] w-auto align-bottom mb-0 pb-0 relative z-10"
             priority={false}
           />
 
-          <div className="absolute top-0 right-2 z-20 bg-white/95 text-slate-900 px-3.5 py-2 shadow-2xl border border-slate-100 flex items-center gap-2.5 pointer-events-none">
+          <div className="absolute top-6 right-2 z-20 bg-white/95 text-slate-900 px-3.5 py-2 shadow-2xl border border-slate-100 flex items-center gap-2.5 pointer-events-none">
             <ShieldCheck className="w-6 h-6 text-emerald-600 shrink-0" />
             <div className="text-left">
               <p className="text-xs font-bold text-slate-900">
