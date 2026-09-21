@@ -38,85 +38,83 @@ export function FreeSampleBanner({
   return (
     <section
       id="free-sample"
-      className={`relative overflow-visible my-12 ${className}`}
+      className={`relative w-full mx-0 rounded-none overflow-visible bg-[#000d23] ${className}`}
       aria-labelledby="free-sample-heading"
     >
-      <div className="relative w-full overflow-visible rounded-3xl p-8 md:p-12 bg-[#000d23]">
-        {/* Clip beams to banner radius; inner layer over-bleeds past edges */}
-        <div className="absolute inset-0 z-0 overflow-hidden rounded-3xl pointer-events-none">
-          <div className="absolute -inset-10 z-0 overflow-hidden rounded-3xl opacity-100 pointer-events-none scale-110">
-            <Beams
-              beamWidth={2.8}
-              beamHeight={40}
-              beamNumber={60}
-              lightColor="#ffffff"
-              beamColor="#00286a"
-              backgroundColor="#000d23"
-              speed={3.5}
-              noiseIntensity={1.3}
-              scale={0.35}
-              rotation={45}
-            />
-          </div>
+      {/* Full-bleed beams — over-scale past edges */}
+      <div className="absolute inset-0 z-0 overflow-hidden rounded-none pointer-events-none">
+        <div className="absolute -inset-16 z-0 overflow-hidden rounded-none opacity-100 pointer-events-none scale-125">
+          <Beams
+            beamWidth={2.8}
+            beamHeight={40}
+            beamNumber={60}
+            lightColor="#ffffff"
+            beamColor="#00286a"
+            backgroundColor="#000d23"
+            speed={3.5}
+            noiseIntensity={1.3}
+            scale={0.35}
+            rotation={45}
+          />
+        </div>
+      </div>
+
+      {/* Internal content alignment */}
+      <div className="max-w-7xl mx-auto px-6 md:px-12 py-16 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center pointer-events-auto">
+        {/* Left — Text & CTA */}
+        <div className="text-left flex flex-col items-start">
+          <span className="text-xs uppercase tracking-wider text-blue-400 font-bold mb-2">
+            INDUSTRIAL GRADE QUALITY
+          </span>
+
+          <h2
+            id="free-sample-heading"
+            className="text-3xl font-extrabold text-white mb-4 tracking-tight leading-tight"
+          >
+            Test the Quality — Request Your Free Sample Roll
+          </h2>
+
+          <p className="text-sm sm:text-base text-sky-100/90 leading-relaxed mb-4 max-w-xl">
+            Experience the superior load retention, puncture resistance, and
+            high-yield performance of GENESIS & FORCE stretch films in your
+            facility before placing a bulk order.
+          </p>
+
+          <p className="text-[10px] sm:text-[11px] leading-relaxed text-sky-200/70 max-w-xl mb-6">
+            *Restrictions apply. Free sample rolls are available strictly for
+            verified corporate accounts and high-volume packaging operations in
+            the contiguous US. Subject to evaluation and availability.
+          </p>
+
+          <Link
+            href={href}
+            className="inline-flex items-center justify-center gap-2 bg-white px-6 py-3.5 text-sm font-extrabold text-[#0F172A] hover:bg-sky-50 transition-colors pointer-events-auto"
+          >
+            Request Free Sample
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
 
-        {/* Foreground Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center relative z-10 pointer-events-auto max-w-7xl mx-auto">
-          {/* Left — Text & CTA */}
-          <div className="text-left flex flex-col items-start">
-            <span className="text-xs uppercase tracking-wider text-blue-400 font-bold mb-2">
-              INDUSTRIAL GRADE QUALITY
-            </span>
+        {/* Right — Product image */}
+        <div className="relative flex items-center justify-center min-h-[360px] w-full">
+          <Image
+            src={STRETCH_IMAGE}
+            alt="Plastipac USA stretch film roll"
+            width={480}
+            height={480}
+            className="object-contain max-h-[360px] w-auto relative z-10 translate-y-6 md:translate-y-10 scale-105"
+            priority={false}
+          />
 
-            <h2
-              id="free-sample-heading"
-              className="text-3xl font-extrabold text-white mb-4 tracking-tight leading-tight"
-            >
-              Test the Quality — Request Your Free Sample Roll
-            </h2>
-
-            <p className="text-sm sm:text-base text-sky-100/90 leading-relaxed mb-4 max-w-xl">
-              Experience the superior load retention, puncture resistance, and
-              high-yield performance of GENESIS & FORCE stretch films in your
-              facility before placing a bulk order.
-            </p>
-
-            <p className="text-[10px] sm:text-[11px] leading-relaxed text-sky-200/70 max-w-xl mb-6">
-              *Restrictions apply. Free sample rolls are available strictly for
-              verified corporate accounts and high-volume packaging operations in
-              the contiguous US. Subject to evaluation and availability.
-            </p>
-
-            <Link
-              href={href}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-sm font-extrabold text-[#0F172A] shadow-lg shadow-blue-950/30 hover:bg-sky-50 transition-colors pointer-events-auto"
-            >
-              Request Free Sample
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-
-          {/* Right — Product image floats past bottom edge */}
-          <div className="relative flex items-center justify-center min-h-[360px] w-full">
-            <Image
-              src={STRETCH_IMAGE}
-              alt="Plastipac USA stretch film roll"
-              width={480}
-              height={480}
-              className="object-contain max-h-[360px] w-auto relative z-10 translate-y-6 md:translate-y-10 scale-105"
-              priority={false}
-            />
-
-            <div className="absolute top-0 right-2 z-20 bg-white/95 text-slate-900 px-3.5 py-2 rounded-xl shadow-2xl border border-slate-100 flex items-center gap-2.5 pointer-events-none">
-              <ShieldCheck className="w-6 h-6 text-emerald-600 shrink-0" />
-              <div className="text-left">
-                <p className="text-xs font-bold text-slate-900">
-                  100% Quality Guaranteed
-                </p>
-                <p className="text-[10px] text-slate-500 font-medium">
-                  ISO Certified High-Yield Film
-                </p>
-              </div>
+          <div className="absolute top-0 right-2 z-20 bg-white/95 text-slate-900 px-3.5 py-2 shadow-2xl border border-slate-100 flex items-center gap-2.5 pointer-events-none">
+            <ShieldCheck className="w-6 h-6 text-emerald-600 shrink-0" />
+            <div className="text-left">
+              <p className="text-xs font-bold text-slate-900">
+                100% Quality Guaranteed
+              </p>
+              <p className="text-[10px] text-slate-500 font-medium">
+                ISO Certified High-Yield Film
+              </p>
             </div>
           </div>
         </div>
