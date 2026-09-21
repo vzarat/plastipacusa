@@ -1,7 +1,10 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Clock3, Globe, Lock, Mail, Phone, CreditCard } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 const LOGO_SRC =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PLASTIPAC_USA_LOGO%202.svg";
@@ -11,19 +14,19 @@ const linkClass =
 
 const PRODUCT_LINE_LINKS = [
   {
-    label: "FORCE Hand Stretch Film Standard",
+    labelKey: "footer.lineForceStandard" as const,
     href: "/products?category=force-standard",
   },
   {
-    label: "FORCE Hand Stretch Film Elite",
+    labelKey: "footer.lineForceElite" as const,
     href: "/products?category=force-elite",
   },
   {
-    label: "GENESIS Automatic Stretch Film Standard",
+    labelKey: "footer.lineGenesisStandard" as const,
     href: "/products?category=genesis-standard",
   },
   {
-    label: "GENESIS Automatic Stretch Film High Performance",
+    labelKey: "footer.lineGenesisHp" as const,
     href: "/products?category=genesis-high-performance",
   },
 ] as const;
@@ -116,6 +119,7 @@ function DiscoverMark() {
 }
 
 export function Footer() {
+  const { t } = useLanguage();
   const year = 2026;
 
   return (
@@ -134,8 +138,7 @@ export function Footer() {
               />
             </Link>
             <p className="text-sm leading-relaxed text-slate-600 max-w-sm">
-              Expert manufacturer and distributor of high-yield GENESIS & FORCE
-              stretch film systems across North America.
+              {t("footer.tagline")}
             </p>
             <a
               href="https://www.plastipacusa.com"
@@ -151,22 +154,22 @@ export function Footer() {
           {/* Column 2 — Quick Links + B2B Credit */}
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-4">
-              Quick Links
+              {t("footer.quickLinks")}
             </h3>
             <ul className="space-y-2.5">
               <li>
                 <Link href="/products" className={linkClass}>
-                  Products
+                  {t("footer.products")}
                 </Link>
               </li>
               <li>
                 <Link href="/#categories" className={linkClass}>
-                  Categories
+                  {t("footer.categories")}
                 </Link>
               </li>
               <li>
                 <Link href="/about" className={linkClass}>
-                  About Us
+                  {t("footer.about")}
                 </Link>
               </li>
               <li>
@@ -174,7 +177,7 @@ export function Footer() {
                   href="/free-sample"
                   className={`${linkClass} font-semibold text-sky-700`}
                 >
-                  Request Free Sample
+                  {t("footer.freeSample")}
                 </Link>
               </li>
             </ul>
@@ -182,20 +185,20 @@ export function Footer() {
               href="/credit-application"
               className="border border-blue-500 text-blue-400 hover:bg-blue-600 hover:text-white transition-all text-xs font-semibold py-2 px-3 rounded-md inline-block my-2"
             >
-              Apply for B2B Credit (Net 30) →
+              {t("footer.creditCta")}
             </Link>
           </div>
 
-          {/* Column 3 — Product Lines (text only) */}
+          {/* Column 3 — Product Categories (text only) */}
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-4">
-              Product Lines / Categories
+              {t("footer.productCategories")}
             </h3>
             <ul className="space-y-2.5">
               {PRODUCT_LINE_LINKS.map((item) => (
                 <li key={item.href}>
                   <Link href={item.href} className={linkClass}>
-                    {item.label}
+                    {t(item.labelKey)}
                   </Link>
                 </li>
               ))}
@@ -205,7 +208,7 @@ export function Footer() {
           {/* Column 4 — Contact & Support */}
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-4">
-              Contact & Support
+              {t("footer.contactSupport")}
             </h3>
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-2.5">
@@ -237,9 +240,11 @@ export function Footer() {
               <li className="flex items-start gap-2.5">
                 <Clock3 className="h-4 w-4 text-sky-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-semibold text-slate-800">USA Business Hours</p>
+                  <p className="font-semibold text-slate-800">
+                    {t("footer.businessHours")}
+                  </p>
                   <p className="text-slate-500 text-xs mt-0.5 leading-relaxed">
-                    Mon–Fri · 8:00 AM – 5:00 PM CST
+                    {t("footer.hoursDetail")}
                   </p>
                 </div>
               </li>
@@ -250,16 +255,16 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="mt-10 pt-6 border-t border-slate-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-xs text-slate-500 text-center sm:text-left">
-            <p>© {year} Plastipac USA. All rights reserved.</p>
+            <p>{t("footer.rights").replace("{year}", String(year))}</p>
             <span className="hidden sm:inline text-slate-300" aria-hidden>
               |
             </span>
             <div className="flex items-center justify-center sm:justify-start gap-3">
               <Link href="/terms-of-service" className="hover:text-slate-700">
-                Terms of Service
+                {t("footer.terms")}
               </Link>
               <Link href="/privacy-policy" className="hover:text-slate-700">
-                Privacy Policy
+                {t("footer.privacy")}
               </Link>
             </div>
           </div>

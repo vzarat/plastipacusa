@@ -8,40 +8,43 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 const STEPS: {
   step: number;
-  title: string;
-  description: string;
+  titleKey: string;
+  descKey: string;
   icon: LucideIcon;
 }[] = [
   {
     step: 1,
-    title: "Apply for Credit",
-    description: "Submit Tax ID (EIN) and corporate credit references.",
+    titleKey: "credit.step1Title",
+    descKey: "credit.step1Desc",
     icon: ClipboardList,
   },
   {
     step: 2,
-    title: "Instant PO Checkout",
-    description: "Enter official Purchase Order numbers at checkout.",
+    titleKey: "credit.step2Title",
+    descKey: "credit.step2Desc",
     icon: FileText,
   },
   {
     step: 3,
-    title: "Fast Dispatch",
-    description: "Shipments dispatched within 24-48 hours.",
+    titleKey: "credit.step3Title",
+    descKey: "credit.step3Desc",
     icon: Truck,
   },
   {
     step: 4,
-    title: "Net 30 Terms",
-    description: "Pay via ACH, Wire Transfer, or Corporate Check in 30 days.",
+    titleKey: "credit.step4Title",
+    descKey: "credit.step4Desc",
     icon: Wallet,
   },
 ];
 
 export function B2BCreditFlow() {
+  const { t } = useLanguage();
+
   return (
     <section
       aria-labelledby="b2b-credit-flow-heading"
@@ -49,17 +52,16 @@ export function B2BCreditFlow() {
     >
       <div className="mb-6 sm:mb-8 space-y-1.5">
         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-sky-700">
-          How it works
+          {t("credit.flowEyebrow")}
         </p>
         <h2
           id="b2b-credit-flow-heading"
           className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight"
         >
-          4-Step B2B Credit Flow
+          {t("credit.flowTitle")}
         </h2>
         <p className="text-sm text-slate-500 max-w-2xl">
-          From application to Net 30 settlement — built for high-volume freight
-          and verified corporate accounts.
+          {t("credit.flowSubtitle")}
         </p>
       </div>
 
@@ -88,10 +90,10 @@ export function B2BCreditFlow() {
               </div>
 
               <h3 className="text-sm font-bold text-slate-900 mb-1.5">
-                {item.title}
+                {t(item.titleKey)}
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
-                {item.description}
+                {t(item.descKey)}
               </p>
             </li>
           );

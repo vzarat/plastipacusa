@@ -12,12 +12,14 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useLanguage } from "@/context/LanguageContext";
 import { submitCreditApplication } from "@/actions/credit-applications";
 
 const fieldLabel =
   "text-[11px] font-bold uppercase tracking-wider text-slate-500";
 
 export function CreditApplicationForm() {
+  const { t } = useLanguage();
   const [form, setForm] = useState({
     companyName: "",
     contactName: "",
@@ -80,19 +82,17 @@ export function CreditApplicationForm() {
           <CheckCircle2 className="w-7 h-7" />
         </div>
         <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-          Application Received
+          {t("credit.successTitle")}
         </h2>
         <p className="text-sm text-slate-600 leading-relaxed max-w-lg mx-auto">
-          Thank you. A Plastipac USA credit specialist will review your Tax ID,
-          corporate references, and volume profile, then follow up with Net 30
-          eligibility and PO checkout activation.
+          {t("credit.successBody")}
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
           <Button asChild variant="gradient" className="rounded-xl font-bold">
-            <Link href="/products">Browse Catalog</Link>
+            <Link href="/products">{t("credit.browseCatalog")}</Link>
           </Button>
           <Button asChild variant="outline" className="rounded-xl font-bold">
-            <Link href="/">Back to Home</Link>
+            <Link href="/">{t("credit.backHome")}</Link>
           </Button>
         </div>
       </div>
@@ -110,17 +110,15 @@ export function CreditApplicationForm() {
         </div>
         <div>
           <h2 className="text-sm font-black uppercase tracking-wide text-slate-900">
-            Credit Application Form
+            {t("credit.formTitle")}
           </h2>
-          <p className="text-xs text-slate-500">
-            Required for Net 30 commercial terms and PO checkout.
-          </p>
+          <p className="text-xs text-slate-500">{t("credit.formSubtitle")}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <label className="block space-y-1.5 sm:col-span-2">
-          <span className={fieldLabel}>Company Legal Name</span>
+          <span className={fieldLabel}>{t("credit.companyName")}</span>
           <Input
             required
             value={form.companyName}
@@ -131,7 +129,7 @@ export function CreditApplicationForm() {
         </label>
 
         <label className="block space-y-1.5">
-          <span className={fieldLabel}>Contact / AP Name</span>
+          <span className={fieldLabel}>{t("credit.contactName")}</span>
           <Input
             required
             value={form.contactName}
@@ -142,7 +140,7 @@ export function CreditApplicationForm() {
         </label>
 
         <label className="block space-y-1.5">
-          <span className={fieldLabel}>Tax ID (EIN)</span>
+          <span className={fieldLabel}>{t("credit.taxId")}</span>
           <Input
             required
             value={form.taxIdEin}
@@ -154,7 +152,7 @@ export function CreditApplicationForm() {
         </label>
 
         <label className="block space-y-1.5">
-          <span className={fieldLabel}>Corporate Email</span>
+          <span className={fieldLabel}>{t("credit.email")}</span>
           <Input
             required
             type="email"
@@ -166,7 +164,7 @@ export function CreditApplicationForm() {
         </label>
 
         <label className="block space-y-1.5">
-          <span className={fieldLabel}>Business Phone</span>
+          <span className={fieldLabel}>{t("credit.phone")}</span>
           <Input
             required
             type="tel"
@@ -178,7 +176,7 @@ export function CreditApplicationForm() {
         </label>
 
         <label className="block space-y-1.5 sm:col-span-2">
-          <span className={fieldLabel}>Billing Address</span>
+          <span className={fieldLabel}>{t("credit.billingAddress")}</span>
           <Input
             value={form.billingAddress}
             onChange={(e) => update("billingAddress", e.target.value)}
@@ -188,7 +186,7 @@ export function CreditApplicationForm() {
         </label>
 
         <label className="block space-y-1.5 sm:col-span-2">
-          <span className={fieldLabel}>Shipping / Warehouse Address</span>
+          <span className={fieldLabel}>{t("credit.shippingAddress")}</span>
           <Input
             value={form.shippingAddress}
             onChange={(e) => update("shippingAddress", e.target.value)}
@@ -198,7 +196,7 @@ export function CreditApplicationForm() {
         </label>
 
         <label className="block space-y-1.5 sm:col-span-2">
-          <span className={fieldLabel}>Estimated Annual Stretch Film Volume</span>
+          <span className={fieldLabel}>{t("credit.annualVolume")}</span>
           <Input
             value={form.annualVolume}
             onChange={(e) => update("annualVolume", e.target.value)}
@@ -212,14 +210,12 @@ export function CreditApplicationForm() {
         <div className="flex items-center gap-2">
           <Building2 className="h-4 w-4 text-sky-600" />
           <p className="text-xs font-bold uppercase tracking-wider text-slate-700">
-            Corporate Credit References
+            {t("credit.referencesHeading")}
           </p>
         </div>
 
         <label className="block space-y-1.5">
-          <span className={fieldLabel}>
-            Reference 1 (required) — Company, Contact, Phone
-          </span>
+          <span className={fieldLabel}>{t("credit.reference1")}</span>
           <Input
             required
             value={form.creditReference1}
@@ -230,7 +226,7 @@ export function CreditApplicationForm() {
         </label>
 
         <label className="block space-y-1.5">
-          <span className={fieldLabel}>Reference 2 (optional)</span>
+          <span className={fieldLabel}>{t("credit.reference2")}</span>
           <Input
             value={form.creditReference2}
             onChange={(e) => update("creditReference2", e.target.value)}
@@ -240,7 +236,7 @@ export function CreditApplicationForm() {
         </label>
 
         <label className="block space-y-1.5">
-          <span className={fieldLabel}>Reference 3 (optional)</span>
+          <span className={fieldLabel}>{t("credit.reference3")}</span>
           <Input
             value={form.creditReference3}
             onChange={(e) => update("creditReference3", e.target.value)}
@@ -251,7 +247,7 @@ export function CreditApplicationForm() {
       </div>
 
       <label className="block space-y-1.5">
-        <span className={fieldLabel}>Additional Notes</span>
+        <span className={fieldLabel}>{t("credit.notes")}</span>
         <textarea
           value={form.notes}
           onChange={(e) => update("notes", e.target.value)}
@@ -263,8 +259,7 @@ export function CreditApplicationForm() {
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
         <p className="text-[11px] text-slate-500 leading-relaxed max-w-md">
-          By submitting, you authorize Plastipac USA to verify corporate credit
-          references for Net 30 eligibility.
+          {t("credit.authNote")}
         </p>
         <Button
           type="submit"
@@ -275,17 +270,17 @@ export function CreditApplicationForm() {
           {submitting ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Submitting…
+              {t("credit.submitting")}
             </>
           ) : (
-            "Submit Credit Application"
+            t("credit.submit")
           )}
         </Button>
       </div>
 
       <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
         <PhoneCall className="w-3.5 h-3.5" />
-        Questions? Call{" "}
+        {t("credit.questions")}{" "}
         <a
           href="tel:+19564003683"
           className="font-semibold text-sky-700 hover:underline"

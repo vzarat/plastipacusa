@@ -278,6 +278,89 @@ export const translations = {
     // Home / Landing
     "home.clientLogosTitle": "Industry leaders that trust our high-performance packaging solutions",
 
+    // Announcement / US Pride Banner
+    "banner.usPride":
+      "Proudly Serving American Industry & National Supply Chains | 100% US Freight Coverage",
+
+    // Footer
+    "footer.tagline":
+      "Expert manufacturer and distributor of high-yield GENESIS & FORCE stretch film systems across North America.",
+    "footer.quickLinks": "Quick Links",
+    "footer.products": "Products",
+    "footer.categories": "Categories",
+    "footer.about": "About Us",
+    "footer.freeSample": "Request Free Sample",
+    "footer.productCategories": "Product Categories",
+    "footer.lineForceStandard": "FORCE Hand Stretch Film Standard",
+    "footer.lineForceElite": "FORCE Hand Stretch Film Elite",
+    "footer.lineGenesisStandard": "GENESIS Automatic Stretch Film Standard",
+    "footer.lineGenesisHp": "GENESIS Automatic Stretch Film High Performance",
+    "footer.creditCta": "Apply for B2B Credit (Net 30) →",
+    "footer.contactSupport": "Contact & Support",
+    "footer.businessHours": "USA Business Hours",
+    "footer.hoursDetail": "Mon–Fri · 8:00 AM – 5:00 PM CST",
+    "footer.rights": "© {year} Plastipac USA. All rights reserved.",
+    "footer.terms": "Terms of Service",
+    "footer.privacy": "Privacy Policy",
+
+    // Homepage Categories
+    "categories.badge": "Engineered Product Lines",
+    "categories.title": "Select Film System & Specification",
+    "categories.subtitle":
+      "Choose between our high-yield manual hand wrap lines and heavy-duty automated machine stretch films.",
+
+    // Products catalog page
+    "catalog.badge": "Industrial Catalog",
+    "catalog.title": "Stretch Films & Technical Specifications",
+    "catalog.subtitle":
+      "Browse our high-performance manual cast stretch films, complete dimensional specifications matrix, and direct wholesale volume pricing.",
+
+    // B2B Credit Application
+    "credit.badge": "Commercial Credit",
+    "credit.title": "Apply for B2B Credit & Net 30 Commercial Terms",
+    "credit.subtitle":
+      "Streamline high-volume freight orders with dedicated lines of credit, Purchase Order (PO) checkout, and Net 30 payment terms for verified corporate accounts.",
+    "credit.notice":
+      "Net 30 and PO checkout are available to verified US corporate accounts after credit review. Incomplete applications may delay approval.",
+    "credit.flowEyebrow": "How it works",
+    "credit.flowTitle": "4-Step B2B Credit Flow",
+    "credit.flowSubtitle":
+      "From application to Net 30 settlement — built for high-volume freight and verified corporate accounts.",
+    "credit.step1Title": "Apply for Credit",
+    "credit.step1Desc": "Submit Tax ID (EIN) and corporate credit references.",
+    "credit.step2Title": "Instant PO Checkout",
+    "credit.step2Desc": "Enter official Purchase Order numbers at checkout.",
+    "credit.step3Title": "Fast Dispatch",
+    "credit.step3Desc": "Shipments dispatched within 24-48 hours.",
+    "credit.step4Title": "Net 30 Terms",
+    "credit.step4Desc":
+      "Pay via ACH, Wire Transfer, or Corporate Check in 30 days.",
+    "credit.formTitle": "Credit Application Form",
+    "credit.formSubtitle": "Required for Net 30 commercial terms and PO checkout.",
+    "credit.companyName": "Company Legal Name",
+    "credit.contactName": "Contact / AP Name",
+    "credit.taxId": "Tax ID (EIN)",
+    "credit.email": "Corporate Email",
+    "credit.phone": "Business Phone",
+    "credit.billingAddress": "Billing Address",
+    "credit.shippingAddress": "Shipping / Warehouse Address",
+    "credit.annualVolume": "Estimated Annual Stretch Film Volume",
+    "credit.referencesHeading": "Corporate Credit References",
+    "credit.reference1": "Reference 1 (required) — Company, Contact, Phone",
+    "credit.reference2": "Reference 2 (optional)",
+    "credit.reference3": "Reference 3 (optional)",
+    "credit.notes": "Additional Notes",
+    "credit.authNote":
+      "By submitting, you authorize Plastipac USA to verify corporate credit references for Net 30 eligibility.",
+    "credit.submit": "Submit Credit Application",
+    "credit.submitting": "Submitting…",
+    "credit.questions": "Questions? Call",
+    "credit.successTitle": "Application Received",
+    "credit.successBody":
+      "Thank you. A Plastipac USA credit specialist will review your Tax ID, corporate references, and volume profile, then follow up with Net 30 eligibility and PO checkout activation.",
+    "credit.browseCatalog": "Browse Catalog",
+    "credit.backHome": "Back to Home",
+
     // Hero Section
     "hero.badge": "Engineered for Maximum Pallet Load Containment",
     "hero.titlePart1": "Industrial Strength.",
@@ -597,6 +680,90 @@ export const translations = {
 
     // Home / Landing
     "home.clientLogosTitle": "Empresas líderes que confían en nuestros empaques de alto rendimiento",
+
+    // Announcement / US Pride Banner
+    "banner.usPride":
+      "Orgullosamente sirviendo a la industria y cadenas de suministro de EE. UU. | Cobertura de flete 100% nacional",
+
+    // Footer
+    "footer.tagline":
+      "Fabricante y distribuidor experto de sistemas de película estirable GENESIS y FORCE de alto rendimiento en Norteamérica.",
+    "footer.quickLinks": "Enlaces Rápidos",
+    "footer.products": "Productos",
+    "footer.categories": "Categorías",
+    "footer.about": "Nosotros",
+    "footer.freeSample": "Solicitar Muestra Gratis",
+    "footer.productCategories": "Categorías de Productos",
+    "footer.lineForceStandard": "Película Manual FORCE Standard",
+    "footer.lineForceElite": "Película Manual FORCE Elite",
+    "footer.lineGenesisStandard": "Película Automática GENESIS Standard",
+    "footer.lineGenesisHp": "Película Automática GENESIS High Performance",
+    "footer.creditCta": "Solicitar Crédito B2B (Net 30) →",
+    "footer.contactSupport": "Contacto y Soporte",
+    "footer.businessHours": "Horario Comercial EE. UU.",
+    "footer.hoursDetail": "Lun–Vie · 8:00 AM – 5:00 PM CST",
+    "footer.rights": "© {year} Plastipac USA. Todos los derechos reservados.",
+    "footer.terms": "Términos de Servicio",
+    "footer.privacy": "Política de Privacidad",
+
+    // Homepage Categories
+    "categories.badge": "Líneas de Producto Diseñadas",
+    "categories.title": "Selecciona Sistema de Película y Especificación",
+    "categories.subtitle":
+      "Elige entre nuestras líneas manuales de alto rendimiento y películas automáticas de máquina para cargas pesadas.",
+
+    // Products catalog page
+    "catalog.badge": "Catálogo Industrial",
+    "catalog.title": "Películas Estirables y Especificaciones Técnicas",
+    "catalog.subtitle":
+      "Explora nuestras películas cast de alto rendimiento, la matriz completa de especificaciones dimensionales y precios mayoristas directos.",
+
+    // B2B Credit Application
+    "credit.badge": "Crédito Comercial",
+    "credit.title": "Solicita Crédito B2B y Términos Comerciales Net 30",
+    "credit.subtitle":
+      "Agiliza pedidos de flete de alto volumen con líneas de crédito dedicadas, pago con Orden de Compra (PO) y términos Net 30 para cuentas corporativas verificadas.",
+    "credit.notice":
+      "Net 30 y el pago con Orden de Compra (PO) están disponibles para cuentas corporativas verificadas en EE. UU. tras la revisión de crédito. Las solicitudes incompletas pueden retrasar la aprobación.",
+    "credit.flowEyebrow": "Cómo funciona",
+    "credit.flowTitle": "Flujo de Crédito B2B en 4 Pasos",
+    "credit.flowSubtitle":
+      "Desde la solicitud hasta el pago Net 30 — diseñado para flete de alto volumen y cuentas corporativas verificadas.",
+    "credit.step1Title": "Solicita Crédito",
+    "credit.step1Desc": "Envía tu Tax ID (EIN) y referencias de crédito corporativas.",
+    "credit.step2Title": "Compra con Orden de Compra (PO)",
+    "credit.step2Desc": "Ingresa números oficiales de Orden de Compra al pagar.",
+    "credit.step3Title": "Despacho Rápido (24-48 hrs)",
+    "credit.step3Desc": "Embarques despachados en un plazo de 24-48 horas.",
+    "credit.step4Title": "Términos Net 30",
+    "credit.step4Desc":
+      "Paga vía ACH, transferencia bancaria o cheque corporativo en 30 días.",
+    "credit.formTitle": "Formulario de Solicitud de Crédito",
+    "credit.formSubtitle":
+      "Requerido para términos comerciales Net 30 y pago con Orden de Compra (PO).",
+    "credit.companyName": "Nombre Legal de la Empresa",
+    "credit.contactName": "Contacto / Cuentas por Pagar",
+    "credit.taxId": "Tax ID (EIN)",
+    "credit.email": "Correo Corporativo",
+    "credit.phone": "Teléfono Comercial",
+    "credit.billingAddress": "Dirección de Facturación",
+    "credit.shippingAddress": "Dirección de Envío / Almacén",
+    "credit.annualVolume": "Volumen Anual Estimado de Película Estirable",
+    "credit.referencesHeading": "Referencias de Crédito Corporativas",
+    "credit.reference1": "Referencia 1 (requerida) — Empresa, Contacto, Teléfono",
+    "credit.reference2": "Referencia 2 (opcional)",
+    "credit.reference3": "Referencia 3 (opcional)",
+    "credit.notes": "Notas Adicionales",
+    "credit.authNote":
+      "Al enviar, autorizas a Plastipac USA a verificar referencias de crédito corporativas para elegibilidad Net 30.",
+    "credit.submit": "Enviar Solicitud de Crédito",
+    "credit.submitting": "Enviando…",
+    "credit.questions": "¿Preguntas? Llama al",
+    "credit.successTitle": "Solicitud Recibida",
+    "credit.successBody":
+      "Gracias. Un especialista de crédito de Plastipac USA revisará tu Tax ID, referencias corporativas y perfil de volumen, y te contactará con la elegibilidad Net 30 y la activación de pago con PO.",
+    "credit.browseCatalog": "Explorar Catálogo",
+    "credit.backHome": "Volver al Inicio",
 
     // Hero Section
     "hero.badge": "Diseñado para la Máxima Contención de Cargas en Palets",

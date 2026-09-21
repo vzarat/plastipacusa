@@ -1,5 +1,8 @@
+"use client";
+
 import React from "react";
 import { PhoneCall } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 function UsFlagIcon({ className = "h-4 w-5" }: { className?: string }) {
   return (
@@ -22,14 +25,15 @@ function UsFlagIcon({ className = "h-4 w-5" }: { className?: string }) {
 }
 
 export function AnnouncementBar() {
+  const { t } = useLanguage();
+
   return (
     <div className="bg-gradient-to-r from-sky-600 via-sky-700 to-blue-800 text-white text-xs py-2.5 px-4 shadow-sm">
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 text-sky-50 min-w-0">
           <UsFlagIcon className="h-3.5 w-[18px] shrink-0 rounded-[1px] shadow-sm" />
           <span className="font-semibold leading-snug text-center sm:text-left">
-            Proudly Serving American Industry & National Supply Chains | 100% US
-            Freight Coverage
+            {t("banner.usPride")}
           </span>
         </div>
         <div className="flex items-center gap-3 text-xs shrink-0">

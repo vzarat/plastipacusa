@@ -201,14 +201,14 @@ export function Navbar() {
                 onClick={closeMobileMenu}
                 className={drawerLinkClass}
               >
-                Hand Stretch Film
+                {t("products.handStretchFilmSeries")}
               </Link>
               <Link
                 href="/products?app=machine"
                 onClick={closeMobileMenu}
                 className={drawerLinkClass}
               >
-                Machine / Automatic Film
+                {t("products.machineHighYieldFilm")}
               </Link>
               <Link
                 href="/about"

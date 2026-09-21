@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { PRODUCT_CATEGORIES, CategoryItem } from "@/data/categories";
 import { useCategoryStore, CategorySlug } from "@/lib/store/useCategoryStore";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface CategoryShowcaseProps {
   /** Optional controlled active category override */
@@ -20,6 +21,7 @@ export function CategoryShowcase({
   onSelectCategory: propOnSelectCategory,
   className = "",
 }: CategoryShowcaseProps) {
+  const { t } = useLanguage();
   const storeCategory = useCategoryStore((s) => s.selectedCategory);
   const storeSetCategory = useCategoryStore((s) => s.setSelectedCategory);
 
@@ -43,20 +45,18 @@ export function CategoryShowcase({
       className={`relative py-12 sm:py-16 bg-slate-50/60 dark:bg-slate-950/40 border-b border-slate-100 dark:border-slate-900 scroll-mt-24 ${className}`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-12 space-y-3">
           <Badge variant="default" className="text-xs uppercase tracking-widest font-bold">
-            Engineered Product Lines
+            {t("categories.badge")}
           </Badge>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Select Film System & Specification
+            {t("categories.title")}
           </h2>
           <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-            Choose between our high-yield manual hand wrap lines and heavy-duty automated machine stretch films.
+            {t("categories.subtitle")}
           </p>
         </div>
 
-        {/* 4 Brand Category Grid (2 cols mobile, 4 cols desktop) */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           {PRODUCT_CATEGORIES.map((cat: CategoryItem) => {
             const isActive = currentCategory === cat.slug;
@@ -74,7 +74,6 @@ export function CategoryShowcase({
                     : `bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 ${cat.hoverBorder} ${cat.hoverShadow} hover:-translate-y-1.5 hover:scale-[1.02] active:scale-[0.98]`
                 }`}
               >
-                {/* Large Scaled SVG Logo Display */}
                 <div className="relative z-10 w-full flex items-center justify-center py-2 sm:py-3">
                   <Image
                     src={cat.logoUrl}
