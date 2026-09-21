@@ -37,7 +37,9 @@ function extendMaterial(
     fragmentShader: baseFrag,
     uniforms: baseUniforms,
   } = physical;
-  const baseDefines = physical.defines ?? {};
+  // Three.js ShaderLibShader typings omit optional `defines`
+  const baseDefines =
+    (physical as { defines?: Record<string, unknown> }).defines ?? {};
 
   const uniforms = THREE.UniformsUtils.clone(baseUniforms);
   const defaults = new BaseMaterial(cfg.material || {});
