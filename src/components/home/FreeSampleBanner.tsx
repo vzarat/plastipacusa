@@ -88,7 +88,7 @@ export function FreeSampleBanner({
 
           <Link
             href={href}
-            className="inline-flex items-center justify-center gap-2 bg-white px-6 py-3.5 text-sm font-extrabold text-[#0F172A] hover:bg-sky-50 transition-colors pointer-events-auto"
+            className="inline-flex items-center gap-2 rounded-xl bg-white text-slate-900 font-semibold px-6 py-3.5 shadow-md shadow-black/20 hover:bg-slate-100 hover:scale-[1.02] hover:shadow-xl transition-all duration-200 ease-in-out pointer-events-auto"
           >
             Request Free Sample
             <ArrowRight className="h-4 w-4" />
@@ -106,7 +106,7 @@ export function FreeSampleBanner({
             priority={false}
           />
 
-          <div className="absolute top-6 right-2 z-20 bg-white/95 text-slate-900 px-3.5 py-2 shadow-2xl border border-slate-100 flex items-center gap-2.5 pointer-events-none">
+          <div className="absolute top-6 right-2 z-20 rounded-full shadow-lg shadow-black/20 bg-white/95 backdrop-blur-sm border border-slate-100/80 px-4 py-2 flex items-center gap-2.5 pointer-events-none">
             <ShieldCheck className="w-6 h-6 text-emerald-600 shrink-0" />
             <div className="text-left">
               <p className="text-xs font-bold text-slate-900">
