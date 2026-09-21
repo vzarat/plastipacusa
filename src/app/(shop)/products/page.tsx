@@ -8,6 +8,7 @@ interface ProductsPageProps {
   searchParams: Promise<{
     app?: string;
     type?: string;
+    category?: string;
     gauge?: string;
     length?: string;
     width?: string;
@@ -21,6 +22,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const initialApp = (
     ["all", "hand", "machine"].includes(rawType) ? rawType : "all"
   ) as CatalogAppFilter;
+  const initialCategory = resolvedParams.category || "all";
 
   // Fetch full catalog once; filtering/sorting happens client-side for instant UX
   const allProducts = await getProducts("all");
@@ -44,6 +46,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         <ProductCatalog
           allProducts={allProducts || []}
           initialApp={initialApp}
+          initialCategory={initialCategory}
           initialWidth={resolvedParams.width || "all"}
           initialGauge={resolvedParams.gauge || "all"}
           initialLength={resolvedParams.length || "all"}

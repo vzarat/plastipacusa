@@ -10,17 +10,43 @@ import {
 } from "@/components/products/ProductFilters";
 import { ProductCatalogToolbar } from "@/components/products/ProductCatalogToolbar";
 import type { ProductWithVariants } from "@/types";
-import { sortProductsByDimensions } from "@/lib/products";
+import {
+  SERIES_FORCE_ELITE,
+  SERIES_FORCE_STANDARD,
+  SERIES_GENESIS_HP,
+  SERIES_GENESIS_STANDARD,
+  sortProductsByDimensions,
+} from "@/lib/products";
 
 export type { CatalogAppFilter };
 
 interface ProductCatalogProps {
   allProducts: ProductWithVariants[];
   initialApp?: CatalogAppFilter;
+  initialCategory?: string;
   initialWidth?: string;
   initialGauge?: string;
   initialLength?: string;
   initialQuery?: string;
+}
+
+const CATEGORY_SERIES_MAP: Record<string, string> = {
+  "force-standard": SERIES_FORCE_STANDARD,
+  "force-elite": SERIES_FORCE_ELITE,
+  "genesis-standard": SERIES_GENESIS_STANDARD,
+  "genesis-high-performance": SERIES_GENESIS_HP,
+};
+
+function matchesCategory(
+  product: ProductWithVariants,
+  categorySlug: string
+): boolean {
+  const key = categorySlug.toLowerCase();
+  if (!key || key === "all") return true;
+  if (String(product.categorySlug || "").toLowerCase() === key) return true;
+  const series = CATEGORY_SERIES_MAP[key];
+  if (series && product.series === series) return true;
+  return false;
 }
 
 function matchesWidth(product: ProductWithVariants, targetWidth: number): boolean {
@@ -90,6 +116,7 @@ function excludeFiftyGauge(product: ProductWithVariants): boolean {
 export function ProductCatalog({
   allProducts,
   initialApp = "all",
+  initialCategory = "all",
   initialWidth = "all",
   initialGauge = "all",
   initialLength = "all",
@@ -98,6 +125,7 @@ export function ProductCatalog({
   const [isPending, startTransition] = useTransition();
   const [selectedAppType, setSelectedAppType] =
     useState<CatalogAppFilter>(initialApp);
+  const [selectedCategory] = useState(initialCategory);
   const [selectedWidth, setSelectedWidth] = useState(initialWidth);
   const [selectedGauge, setSelectedGauge] = useState(initialGauge);
   const [selectedLength, setSelectedLength] = useState(initialLength);
@@ -129,6 +157,14 @@ export function ProductCatalog({
         variants: (p.variants || []).filter((v) => Number(v.gauge) !== 50),
       }))
       .filter((product) => {
+        if (
+          selectedCategory &&
+          selectedCategory !== "all" &&
+          !matchesCategory(product, selectedCategory)
+        ) {
+          return false;
+        }
+
         if (selectedAppType !== "all" && product.application !== selectedAppType) {
           return false;
         }
@@ -185,6 +221,7 @@ export function ProductCatalog({
     return sortProductsByDimensions(filtered);
   }, [
     allProducts,
+    selectedCategory,
     selectedAppType,
     selectedWidth,
     selectedGauge,

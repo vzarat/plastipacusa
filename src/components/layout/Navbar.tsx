@@ -101,6 +101,22 @@ export function Navbar() {
 
   const openCart = () => openDrawer();
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
+  const isHomePage = pathname === "/";
+
+  const handleCategoriesClick = (
+    event: React.MouseEvent<HTMLAnchorElement>
+  ) => {
+    if (!isHomePage) return;
+    event.preventDefault();
+    closeMobileMenu();
+    const target =
+      document.getElementById("categories") ||
+      document.getElementById("category-showcase") ||
+      document.getElementById("product-catalog-section");
+    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const categoriesHref = isHomePage ? "/#categories" : "/products";
 
   const accountHref =
     currentUser?.profile.role === "admin" ? "/admin" : "/dashboard";
@@ -171,6 +187,16 @@ export function Navbar() {
                 {t("nav.products")}
               </Link>
               <Link
+                href={categoriesHref}
+                onClick={(e) => {
+                  handleCategoriesClick(e);
+                  if (!isHomePage) closeMobileMenu();
+                }}
+                className={drawerLinkClass}
+              >
+                {t("nav.categories")}
+              </Link>
+              <Link
                 href="/products?app=hand"
                 onClick={closeMobileMenu}
                 className={drawerLinkClass}
@@ -190,13 +216,6 @@ export function Navbar() {
                 className={drawerLinkClass}
               >
                 {t("nav.about")}
-              </Link>
-              <Link
-                href="/free-sample"
-                onClick={closeMobileMenu}
-                className={drawerLinkClass}
-              >
-                {isSpanish ? "Muestra Gratis" : "Free Sample"}
               </Link>
               <Link
                 href={ordersHref}
@@ -371,7 +390,8 @@ export function Navbar() {
               </Link>
 
               <Link
-                href="/#category-showcase"
+                href={categoriesHref}
+                onClick={handleCategoriesClick}
                 className="px-3.5 py-2 text-sm font-semibold rounded-xl transition-all text-slate-600 hover:text-sky-600 hover:bg-sky-50/50"
               >
                 {t("nav.categories")}
@@ -386,17 +406,6 @@ export function Navbar() {
                 }`}
               >
                 {t("nav.about")}
-              </Link>
-
-              <Link
-                href="/free-sample"
-                className={`px-3.5 py-2 text-sm font-semibold rounded-xl transition-all ${
-                  pathname === "/free-sample"
-                    ? "text-sky-700 bg-sky-50/80"
-                    : "text-slate-600 hover:text-sky-600 hover:bg-sky-50/50"
-                }`}
-              >
-                Free Sample
               </Link>
 
               {!currentUser && (

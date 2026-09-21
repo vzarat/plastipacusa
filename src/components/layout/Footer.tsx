@@ -9,6 +9,25 @@ const LOGO_SRC =
 const linkClass =
   "text-sm text-slate-600 hover:text-sky-700 transition-colors";
 
+const PRODUCT_LINE_LINKS = [
+  {
+    label: "FORCE Hand Stretch Film Standard",
+    href: "/products?category=force-standard",
+  },
+  {
+    label: "FORCE Hand Stretch Film Elite",
+    href: "/products?category=force-elite",
+  },
+  {
+    label: "GENESIS Automatic Stretch Film Standard",
+    href: "/products?category=genesis-standard",
+  },
+  {
+    label: "GENESIS Automatic Stretch Film High Performance",
+    href: "/products?category=genesis-high-performance",
+  },
+] as const;
+
 function PaymentBadge({
   label,
   children,
@@ -102,7 +121,7 @@ export function Footer() {
   return (
     <footer className="bg-slate-50 border-t border-slate-200 text-slate-600">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
           {/* Column 1 — Brand */}
           <div className="space-y-4">
             <Link href="/" className="inline-block">
@@ -129,7 +148,7 @@ export function Footer() {
             </a>
           </div>
 
-          {/* Column 2 — Quick Links */}
+          {/* Column 2 — Quick Links + B2B Credit */}
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-4">
               Quick Links
@@ -141,7 +160,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/#category-showcase" className={linkClass}>
+                <Link href="/#categories" className={linkClass}>
                   Categories
                 </Link>
               </li>
@@ -151,14 +170,39 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/free-sample" className={`${linkClass} font-semibold text-sky-700`}>
+                <Link
+                  href="/free-sample"
+                  className={`${linkClass} font-semibold text-sky-700`}
+                >
                   Request Free Sample
                 </Link>
               </li>
             </ul>
+            <Link
+              href="/credit-application"
+              className="border border-blue-500 text-blue-400 hover:bg-blue-600 hover:text-white transition-all text-xs font-semibold py-2 px-3 rounded-md inline-block my-2"
+            >
+              Apply for B2B Credit (Net 30) →
+            </Link>
           </div>
 
-          {/* Column 3 — Contact & Support */}
+          {/* Column 3 — Product Lines (text only) */}
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-4">
+              Product Lines / Categories
+            </h3>
+            <ul className="space-y-2.5">
+              {PRODUCT_LINE_LINKS.map((item) => (
+                <li key={item.href}>
+                  <Link href={item.href} className={linkClass}>
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Column 4 — Contact & Support */}
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-4">
               Contact & Support

@@ -38,8 +38,9 @@ export function CategoryShowcase({
 
   return (
     <section
+      id="categories"
       aria-label="Product Category Selector"
-      className={`relative py-12 sm:py-16 bg-slate-50/60 dark:bg-slate-950/40 border-b border-slate-100 dark:border-slate-900 ${className}`}
+      className={`relative py-12 sm:py-16 bg-slate-50/60 dark:bg-slate-950/40 border-b border-slate-100 dark:border-slate-900 scroll-mt-24 ${className}`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
