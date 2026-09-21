@@ -45,16 +45,16 @@ export function FreeSampleBanner({
         {/* Background Beams Canvas */}
         <div className="absolute inset-0 z-0 overflow-hidden rounded-3xl opacity-80 pointer-events-none">
           <Beams
-            backgroundColor="#0f172a"
-            beamColor="#2563eb"
-            beamHeight={15}
-            beamNumber={12}
-            beamWidth={2}
+            beamWidth={1.2}
+            beamHeight={24}
+            beamNumber={49}
             lightColor="#ffffff"
-            noiseIntensity={0.65}
-            rotation={0}
-            scale={0.2}
-            speed={2}
+            speed={3.5}
+            noiseIntensity={1.3}
+            scale={0.28}
+            rotation={52}
+            beamColor="#00286a"
+            backgroundColor="#000d23"
           />
         </div>
 
@@ -101,7 +101,7 @@ export function FreeSampleBanner({
               alt="Plastipac USA stretch film roll"
               width={480}
               height={480}
-              className="object-contain max-h-[360px] w-auto drop-shadow-[0_25px_35px_rgba(0,0,0,0.6)] z-10 translate-y-6 md:translate-y-10 scale-105"
+              className="object-contain max-h-[360px] w-auto relative z-10 translate-y-6 md:translate-y-10 scale-105"
               priority={false}
             />
 
