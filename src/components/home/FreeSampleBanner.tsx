@@ -1,9 +1,13 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, FlaskConical } from "lucide-react";
+import { ArrowRight, ShieldCheck } from "lucide-react";
 import { DotField } from "@/components/ui/DotField";
+
+const STRETCH_IMAGE =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/STRETCH.png";
 
 interface FreeSampleBannerProps {
   className?: string;
@@ -55,41 +59,63 @@ export function FreeSampleBanner({
         </div>
 
         {/* Foreground Content */}
-        <div className="relative z-10 pointer-events-auto max-w-7xl mx-auto">
-          <div className="max-w-3xl mx-auto text-center space-y-5">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-sky-100 pointer-events-auto">
-              <FlaskConical className="h-3.5 w-3.5" />
-              Free Sample Program
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center relative z-10 pointer-events-auto max-w-7xl mx-auto">
+          {/* Left — Text & CTA */}
+          <div className="text-left flex flex-col items-start">
+            <span className="text-xs uppercase tracking-wider text-blue-400 font-bold mb-2">
+              INDUSTRIAL GRADE QUALITY
+            </span>
 
             <h2
               id="free-sample-heading"
-              className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight"
+              className="text-3xl font-extrabold text-white mb-4 tracking-tight leading-tight"
             >
               Test the Quality — Request Your Free Sample Roll
             </h2>
 
-            <p className="text-sm sm:text-base text-sky-100/90 leading-relaxed max-w-2xl mx-auto">
+            <p className="text-sm sm:text-base text-sky-100/90 leading-relaxed mb-4 max-w-xl">
               Experience the superior load retention, puncture resistance, and
               high-yield performance of GENESIS & FORCE stretch films in your
               facility before placing a bulk order.
             </p>
 
-            <div className="pt-2 pointer-events-auto">
-              <Link
-                href={href}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-sm font-extrabold text-[#0F172A] shadow-lg shadow-blue-950/30 hover:bg-sky-50 transition-colors"
-              >
-                Request Free Sample
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-
-            <p className="text-[10px] sm:text-[11px] leading-relaxed text-sky-200/70 max-w-2xl mx-auto pt-1">
+            <p className="text-[10px] sm:text-[11px] leading-relaxed text-sky-200/70 max-w-xl mb-6">
               *Restrictions apply. Free sample rolls are available strictly for
               verified corporate accounts and high-volume packaging operations in
               the contiguous US. Subject to evaluation and availability.
             </p>
+
+            <Link
+              href={href}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-sm font-extrabold text-[#0F172A] shadow-lg shadow-blue-950/30 hover:bg-sky-50 transition-colors pointer-events-auto"
+            >
+              Request Free Sample
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+
+          {/* Right — Product image + quality badge */}
+          <div className="relative flex justify-center items-center w-full min-h-[300px]">
+            <Image
+              src={STRETCH_IMAGE}
+              alt="Plastipac USA stretch film roll"
+              width={480}
+              height={480}
+              className="drop-shadow-2xl object-contain max-h-[380px] w-auto h-auto"
+              priority={false}
+            />
+
+            <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-xl border border-slate-100 shadow-2xl flex items-center gap-3 z-20">
+              <ShieldCheck className="w-6 h-6 text-emerald-600 shrink-0" />
+              <div className="text-left">
+                <p className="text-xs font-bold text-slate-900">
+                  100% Quality Guaranteed
+                </p>
+                <p className="text-[10px] text-slate-500 font-medium">
+                  ISO Certified High-Yield Film
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
