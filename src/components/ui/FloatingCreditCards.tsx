@@ -2,13 +2,33 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import {
-  Cpu,
-  Facebook,
-  Linkedin,
-  Mail,
-  MessageCircle,
-} from "lucide-react";
+import { Cpu, Mail, MessageCircle } from "lucide-react";
+
+function FacebookIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden
+    >
+      <path d="M14 13.5h2.5l.5-3H14V8.75c0-.88.18-1.25 1.34-1.25H17V4.5h-2.6C11.9 4.5 11 6.24 11 8.48V10.5H8.5v3H11V20h3v-6.5z" />
+    </svg>
+  );
+}
+
+function LinkedinIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden
+    >
+      <path d="M6.94 6.5A1.94 1.94 0 1 1 5 4.56 1.94 1.94 0 0 1 6.94 6.5zM5.5 8.75h2.88V20H5.5zm5.12 0h2.76v1.54h.04c.38-.73 1.32-1.5 2.72-1.5 2.91 0 3.45 1.91 3.45 4.4V20h-2.88v-6.06c0-1.44-.03-3.3-2.01-3.3-2.01 0-2.32 1.57-2.32 3.19V20H10.62z" />
+    </svg>
+  );
+}
 
 function ChipIcon({ className = "w-8 h-8" }: { className?: string }) {
   return (
@@ -40,7 +60,7 @@ function SocialIconBar({ interactive = false }: { interactive?: boolean }) {
         aria-label="Facebook"
         tabIndex={interactive ? undefined : -1}
       >
-        <Facebook className="w-4 h-4" />
+        <FacebookIcon className="w-4 h-4" />
       </a>
       <a
         href="https://linkedin.com"
@@ -50,7 +70,7 @@ function SocialIconBar({ interactive = false }: { interactive?: boolean }) {
         aria-label="LinkedIn"
         tabIndex={interactive ? undefined : -1}
       >
-        <Linkedin className="w-4 h-4" />
+        <LinkedinIcon className="w-4 h-4" />
       </a>
       <a
         href="mailto:info@plastipacusa.com"
