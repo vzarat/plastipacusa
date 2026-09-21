@@ -638,3 +638,117 @@ export function getGenesisSeriesKey(product: {
   if (isGenesisHighPerformanceProduct(product)) return SERIES_GENESIS_HP;
   return null;
 }
+
+/** Shape accepted by dimension sorting (storefront + raw rows). */
+export type DimensionSortableProduct = {
+  width?: number | string | null;
+  widthInches?: number | string | null;
+  width_inches?: number | string | null;
+  gauge?: number | string | null;
+  lengthFeet?: number | string | null;
+  length_feet?: number | string | null;
+  slug?: string | null;
+  title?: string | null;
+  name?: string | null;
+  variants?: Array<{
+    widthInches?: number | string | null;
+    gauge?: number | string | null;
+    lengthFeet?: number | string | null;
+  }> | null;
+};
+
+function toPositiveNumber(value: unknown): number {
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  }
+  if (value === null || value === undefined) return 0;
+  const normalized = String(value)
+    .replace(/,/g, "")
+    .replace(/\s*(ft|in|inches|ga|gauge)\b\.?/gi, "")
+    .replace(/"/g, "")
+    .trim();
+  const n = Number(normalized);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function parseDimsFromSlugOrTitle(text: string): {
+  width: number;
+  gauge: number;
+  lengthFeet: number;
+} {
+  const raw = String(text || "").toLowerCase();
+  // e.g. stretch-film-20-x-60-ga-x-5000ft  OR  15" X 60 GA X 1000 FT
+  const match =
+    raw.match(
+      /(\d+(?:\.\d+)?)\s*(?:["”]|in(?:ch(?:es)?)?)?\s*[x×]\s*(\d+)\s*ga(?:uge)?\s*[x×]\s*([\d,]+)\s*ft?/i
+    ) ||
+    raw.match(/(\d+(?:\.\d+)?)-x-(\d+)-ga-x-([\d]+)ft/);
+
+  if (!match) return { width: 0, gauge: 0, lengthFeet: 0 };
+  return {
+    width: toPositiveNumber(match[1]),
+    gauge: toPositiveNumber(match[2]),
+    lengthFeet: toPositiveNumber(match[3]),
+  };
+}
+
+/** Extract numeric width / gauge / length for ascending catalog sort. */
+export function getProductSortDimensions(product: DimensionSortableProduct): {
+  width: number;
+  gauge: number;
+  lengthFeet: number;
+} {
+  const fromLabel = parseDimsFromSlugOrTitle(
+    `${product.slug || ""} ${product.title || ""} ${product.name || ""}`
+  );
+
+  const widthCandidates = [
+    product.width,
+    product.widthInches,
+    product.width_inches,
+    product.variants?.[0]?.widthInches,
+    fromLabel.width,
+  ];
+  const gaugeCandidates = [
+    product.gauge,
+    product.variants?.[0]?.gauge,
+    fromLabel.gauge,
+  ];
+  const lengthCandidates = [
+    product.lengthFeet,
+    product.length_feet,
+    product.variants?.[0]?.lengthFeet,
+    fromLabel.lengthFeet,
+  ];
+
+  const width =
+    widthCandidates.map(toPositiveNumber).find((n) => n > 0) || 0;
+  const gauge =
+    gaugeCandidates.map(toPositiveNumber).find((n) => n > 0) || 0;
+  const lengthFeet =
+    lengthCandidates.map(toPositiveNumber).find((n) => n > 0) || 0;
+
+  return {
+    width: Math.round(width),
+    gauge: Math.round(gauge),
+    lengthFeet: Math.round(lengthFeet),
+  };
+}
+
+/**
+ * Sort products ascending by Width → Gauge → Roll Length (FT).
+ * Example: 15"×60×1000 → 15"×60×1500 → 15"×70×1000 → 18"×60×1000 → 20"×60×5000
+ */
+export function sortProductsByDimensions<T extends DimensionSortableProduct>(
+  products: T[]
+): T[] {
+  return [...products].sort((a, b) => {
+    const da = getProductSortDimensions(a);
+    const db = getProductSortDimensions(b);
+
+    if (da.width !== db.width) return da.width - db.width;
+    if (da.gauge !== db.gauge) return da.gauge - db.gauge;
+    return da.lengthFeet - db.lengthFeet;
+  });
+}
+

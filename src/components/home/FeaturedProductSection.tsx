@@ -15,6 +15,7 @@ import {
   SERIES_GENESIS_HP,
   SERIES_GENESIS_STANDARD,
   isOfficialGenesisStandardProduct,
+  sortProductsByDimensions,
 } from "@/lib/products";
 
 interface FeaturedProductSectionProps {
@@ -107,16 +108,16 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
   // Exact series equality — never partial "GENESIS" string matching
   const filteredProducts = useMemo(() => {
     if (!products || products.length === 0) return [];
-    if (!activePill.series) {
-      return dedupeBySlug(products);
-    }
-    return products.filter((p) => {
-      if (p.series !== activePill.series) return false;
-      if (activePill.series === SERIES_GENESIS_STANDARD) {
-        return isOfficialGenesisStandardProduct(p);
-      }
-      return true;
-    });
+    const scoped = !activePill.series
+      ? dedupeBySlug(products)
+      : products.filter((p) => {
+          if (p.series !== activePill.series) return false;
+          if (activePill.series === SERIES_GENESIS_STANDARD) {
+            return isOfficialGenesisStandardProduct(p);
+          }
+          return true;
+        });
+    return sortProductsByDimensions(scoped);
   }, [products, activePill.series]);
 
   return (

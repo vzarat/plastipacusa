@@ -24,6 +24,7 @@ import {
   isMachineFilm as detectMachineFilm,
   normalizeMachinePackageLabel,
   seriesLabelFromCategorySlug,
+  sortProductsByDimensions,
 } from "@/lib/products";
 
 function parsePositivePrice(...candidates: unknown[]): number | null {
@@ -617,7 +618,7 @@ export async function getProducts(
     if (categoryFilter && categoryFilter !== "all") {
       next = next.filter((p) => matchesCategory(p, categoryFilter));
     }
-    return excludeFiftyGaugeFromStorefront(next);
+    return sortProductsByDimensions(excludeFiftyGaugeFromStorefront(next));
   };
 
   try {

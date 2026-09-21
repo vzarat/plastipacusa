@@ -10,6 +10,7 @@ import {
 } from "@/components/products/ProductFilters";
 import { ProductCatalogToolbar } from "@/components/products/ProductCatalogToolbar";
 import type { ProductWithVariants } from "@/types";
+import { sortProductsByDimensions } from "@/lib/products";
 
 export type { CatalogAppFilter };
 
@@ -20,42 +21,6 @@ interface ProductCatalogProps {
   initialGauge?: string;
   initialLength?: string;
   initialQuery?: string;
-}
-
-function parseVariantPrice(
-  variant: ProductWithVariants["variants"][number]
-): number | null {
-  const raw = Number(
-    (variant as { price?: number | string }).price ?? variant.priceUsd
-  );
-  return Number.isFinite(raw) && raw > 0 ? raw : null;
-}
-
-function getStartingPrice(product: ProductWithVariants): number {
-  const variantPrices = (product.variants || [])
-    .map(parseVariantPrice)
-    .filter((p): p is number => p !== null);
-
-  if (variantPrices.length > 0) {
-    return Math.min(...variantPrices);
-  }
-
-  if (
-    Number.isFinite(product.startingPrice) &&
-    (product.startingPrice as number) > 0
-  ) {
-    return product.startingPrice as number;
-  }
-
-  const packagePrices = (product.packageOptions || [])
-    .map((opt) => Number(opt.price))
-    .filter((p) => Number.isFinite(p) && p > 0);
-
-  if (packagePrices.length > 0) {
-    return Math.min(...packagePrices);
-  }
-
-  return Number.POSITIVE_INFINITY;
 }
 
 function matchesWidth(product: ProductWithVariants, targetWidth: number): boolean {
@@ -157,7 +122,7 @@ export function ProductCatalog({
   const filteredProducts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
 
-    return allProducts
+    const filtered = allProducts
       .filter(excludeFiftyGauge)
       .map((p) => ({
         ...p,
@@ -214,8 +179,10 @@ export function ProductCatalog({
         }
 
         return true;
-      })
-      .sort((a, b) => getStartingPrice(a) - getStartingPrice(b));
+      });
+
+    // Width → Gauge → Length (ascending), not price
+    return sortProductsByDimensions(filtered);
   }, [
     allProducts,
     selectedAppType,
