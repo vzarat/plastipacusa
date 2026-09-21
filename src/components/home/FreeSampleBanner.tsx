@@ -41,21 +41,23 @@ export function FreeSampleBanner({
       className={`relative overflow-visible my-12 ${className}`}
       aria-labelledby="free-sample-heading"
     >
-      <div className="relative w-full overflow-visible bg-slate-900 rounded-3xl p-8 md:p-12">
-        {/* Background Beams Canvas */}
-        <div className="absolute inset-0 z-0 overflow-hidden rounded-3xl opacity-80 pointer-events-none">
-          <Beams
-            beamWidth={1.2}
-            beamHeight={24}
-            beamNumber={49}
-            lightColor="#ffffff"
-            speed={3.5}
-            noiseIntensity={1.3}
-            scale={0.28}
-            rotation={52}
-            beamColor="#00286a"
-            backgroundColor="#000d23"
-          />
+      <div className="relative w-full overflow-visible rounded-3xl p-8 md:p-12 bg-[#000d23]">
+        {/* Clip beams to banner radius; inner layer over-bleeds past edges */}
+        <div className="absolute inset-0 z-0 overflow-hidden rounded-3xl pointer-events-none">
+          <div className="absolute -inset-10 z-0 overflow-hidden rounded-3xl opacity-100 pointer-events-none scale-110">
+            <Beams
+              beamWidth={2.8}
+              beamHeight={40}
+              beamNumber={60}
+              lightColor="#ffffff"
+              beamColor="#00286a"
+              backgroundColor="#000d23"
+              speed={3.5}
+              noiseIntensity={1.3}
+              scale={0.35}
+              rotation={45}
+            />
+          </div>
         </div>
 
         {/* Foreground Content */}
