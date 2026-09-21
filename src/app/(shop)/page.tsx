@@ -7,6 +7,7 @@ import { FeaturedProductSection } from "@/components/home/FeaturedProductSection
 import { TrustBadges } from "@/components/home/TrustBadges";
 import { InquiryForm } from "@/components/home/InquiryForm";
 import { USACoverageSection } from "@/components/home/USACoverageSection";
+import { FreeSampleBanner } from "@/components/home/FreeSampleBanner";
 
 export default async function HomePage() {
   const products = await getProducts();
@@ -31,7 +32,10 @@ export default async function HomePage() {
       {/* 6. Trust Badges & Certifications */}
       <TrustBadges />
 
-      {/* 7. B2B Inquiry & Pallet Quote Form */}
+      {/* 7. Free Sample CTA */}
+      <FreeSampleBanner />
+
+      {/* 8. B2B Inquiry & Pallet Quote Form */}
       <InquiryForm />
     </div>
   );

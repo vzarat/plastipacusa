@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, ArrowRight, CheckCircle2, Box, Layers } from "lucide-react";
 import { GENESIS_HP_SLUGS, SERIES_GENESIS_HP, SERIES_GENESIS_STANDARD } from "@/lib/products";
+import { RequestSampleButton } from "@/components/products/RequestSampleButton";
 
 interface ProductCardProps {
   product: ProductWithVariants;
@@ -330,6 +331,12 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           <span>BUY NOW</span>
           <ArrowRight className="w-4 h-4 text-sky-200 group-hover/btn:translate-x-0.5 transition-transform" />
         </Link>
+
+        <RequestSampleButton
+          productSlug={product?.slug}
+          productName={title}
+          variant="card"
+        />
       </div>
     </div>
   );
