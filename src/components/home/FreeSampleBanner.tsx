@@ -1,10 +1,15 @@
 "use client";
 
 import React from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ShieldCheck } from "lucide-react";
-import { DotField } from "@/components/ui/DotField";
+
+const Beams = dynamic(
+  () => import("@/components/ui/Beams").then((m) => m.Beams),
+  { ssr: false }
+);
 
 const STRETCH_IMAGE =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/STRETCH.png";
@@ -33,28 +38,23 @@ export function FreeSampleBanner({
   return (
     <section
       id="free-sample"
-      className={`relative overflow-visible border-y border-slate-800 ${className}`}
+      className={`relative overflow-visible my-12 ${className}`}
       aria-labelledby="free-sample-heading"
     >
-      <div
-        className="relative w-full overflow-visible bg-slate-900 p-8 md:p-12"
-        style={{
-          background:
-            "linear-gradient(135deg, #0F172A 0%, #1E3A8A 48%, #2563EB 100%)",
-        }}
-      >
-        {/* Background Interactive Canvas */}
-        <div className="absolute inset-0 z-0 opacity-90 pointer-events-none">
-          <DotField
-            bulgeStrength={80}
-            dotRadius={2}
-            dotSpacing={18}
-            glowColor="#60A5FA"
-            glowRadius={200}
-            gradientFrom="rgba(255, 255, 255, 0.75)"
-            gradientTo="rgba(147, 197, 253, 0.55)"
-            sparkle={false}
-            waveAmplitude={0}
+      <div className="relative w-full overflow-visible bg-slate-900 rounded-3xl p-8 md:p-12">
+        {/* Background Beams Canvas */}
+        <div className="absolute inset-0 z-0 overflow-hidden rounded-3xl opacity-80 pointer-events-none">
+          <Beams
+            backgroundColor="#0f172a"
+            beamColor="#2563eb"
+            beamHeight={15}
+            beamNumber={12}
+            beamWidth={2}
+            lightColor="#ffffff"
+            noiseIntensity={0.65}
+            rotation={0}
+            scale={0.2}
+            speed={2}
           />
         </div>
 
@@ -94,18 +94,18 @@ export function FreeSampleBanner({
             </Link>
           </div>
 
-          {/* Right — Product image + quality badge */}
-          <div className="relative flex items-center justify-center p-6 md:p-10 min-h-[380px] w-full">
+          {/* Right — Product image floats past bottom edge */}
+          <div className="relative flex items-center justify-center min-h-[360px] w-full">
             <Image
               src={STRETCH_IMAGE}
               alt="Plastipac USA stretch film roll"
               width={480}
               height={480}
-              className="object-contain max-h-[300px] md:max-h-[340px] w-auto drop-shadow-[0_20px_25px_rgba(0,0,0,0.5)]"
+              className="object-contain max-h-[360px] w-auto drop-shadow-[0_25px_35px_rgba(0,0,0,0.6)] z-10 translate-y-6 md:translate-y-10 scale-105"
               priority={false}
             />
 
-            <div className="absolute -top-2 right-2 md:right-4 bg-white/95 text-slate-900 px-3.5 py-2 rounded-xl shadow-2xl border border-slate-100 flex items-center gap-2.5 z-20 pointer-events-none">
+            <div className="absolute top-0 right-2 z-20 bg-white/95 text-slate-900 px-3.5 py-2 rounded-xl shadow-2xl border border-slate-100 flex items-center gap-2.5 pointer-events-none">
               <ShieldCheck className="w-6 h-6 text-emerald-600 shrink-0" />
               <div className="text-left">
                 <p className="text-xs font-bold text-slate-900">
