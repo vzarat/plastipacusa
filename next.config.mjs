@@ -27,6 +27,22 @@ const nextConfig = {
       },
     ],
   },
+  // Stabilize production minify when large client chunks (e.g. three.js / Beams)
+  // cause Terser worker early-exit under PWA + parallel minify.
+  webpack: (config, { dev }) => {
+    if (!dev) {
+      config.parallelism = Math.min(config.parallelism ?? 4, 2);
+      for (const plugin of config.optimization?.minimizer ?? []) {
+        if (
+          plugin?.constructor?.name === "TerserPlugin" &&
+          plugin.options
+        ) {
+          plugin.options.parallel = false;
+        }
+      }
+    }
+    return config;
+  },
 };
 
 export default withPWA(nextConfig);
