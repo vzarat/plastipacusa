@@ -1,8 +1,14 @@
 "use client";
 
-import React, { useMemo, useState, useTransition } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { PackageOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight, PackageOpen } from "lucide-react";
 import { ProductCard } from "@/components/products/ProductCard";
 import {
   ProductFilters,
@@ -19,6 +25,9 @@ import {
 } from "@/lib/products";
 
 export type { CatalogAppFilter };
+
+/** 3 rows × 3 columns on desktop (`lg:grid-cols-3`) */
+const ITEMS_PER_PAGE = 9;
 
 interface ProductCatalogProps {
   allProducts: ProductWithVariants[];
@@ -68,7 +77,6 @@ function parseLengthFeet(value: unknown): number | null {
   }
   const raw = String(value).trim();
   if (!raw) return null;
-  // Supports 6000, "6000", "6,000", "6,000 FT", "6000FT"
   const normalized = raw.replace(/,/g, "").replace(/\s*ft\b\.?/i, "").trim();
   const n = Number(normalized);
   return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
@@ -94,7 +102,6 @@ function matchesLength(
     return true;
   }
 
-  // Slug fallback e.g. stretch-film-20-x-60-ga-x-6000ft
   const slug = String(product.slug || "").toLowerCase();
   return slug.includes(`x-${targetLength}ft`) || slug.endsWith(`-${targetLength}ft`);
 }
@@ -111,6 +118,65 @@ function excludeFiftyGauge(product: ProductWithVariants): boolean {
   const label = `${product?.title || ""} ${product?.name || ""}`.toLowerCase();
   if (/\b50\s*ga(uge)?\b/.test(label)) return false;
   return true;
+}
+
+function CatalogPagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+
+  return (
+    <nav
+      aria-label="Product catalog pages"
+      className="flex flex-wrap items-center justify-center gap-2 pt-8"
+    >
+      <button
+        type="button"
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage <= 1}
+        className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
+        aria-label="Previous page"
+      >
+        <ChevronLeft className="w-4 h-4" />
+        Prev
+      </button>
+
+      {pages.map((page) => (
+        <button
+          key={page}
+          type="button"
+          onClick={() => onPageChange(page)}
+          aria-current={page === currentPage ? "page" : undefined}
+          className={`min-w-[2.25rem] rounded-xl px-3 py-2 text-xs font-bold transition-colors cursor-pointer ${
+            page === currentPage
+              ? "bg-sky-600 text-white shadow-sm shadow-sky-600/25"
+              : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+          }`}
+        >
+          {page}
+        </button>
+      ))}
+
+      <button
+        type="button"
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage >= totalPages}
+        className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
+        aria-label="Next page"
+      >
+        Next
+        <ChevronRight className="w-4 h-4" />
+      </button>
+    </nav>
+  );
 }
 
 export function ProductCatalog({
@@ -130,10 +196,13 @@ export function ProductCatalog({
   const [selectedGauge, setSelectedGauge] = useState(initialGauge);
   const [selectedLength, setSelectedLength] = useState(initialLength);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
+  const [currentPage, setCurrentPage] = useState(1);
+  const gridTopRef = useRef<HTMLDivElement>(null);
 
   const updateFilter = <T,>(setter: (value: T) => void, value: T) => {
     startTransition(() => {
       setter(value);
+      setCurrentPage(1);
     });
   };
 
@@ -144,6 +213,7 @@ export function ProductCatalog({
       setSelectedGauge("all");
       setSelectedLength("all");
       setSearchQuery("");
+      setCurrentPage(1);
     });
   };
 
@@ -217,7 +287,6 @@ export function ProductCatalog({
         return true;
       });
 
-    // Width → Gauge → Length (ascending), not price
     return sortProductsByDimensions(filtered);
   }, [
     allProducts,
@@ -229,13 +298,47 @@ export function ProductCatalog({
     searchQuery,
   ]);
 
+  // Auto-reset page when filters/search change (covers toolbar typing too)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    selectedCategory,
+    selectedAppType,
+    selectedWidth,
+    selectedGauge,
+    selectedLength,
+    searchQuery,
+  ]);
+
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE) || 1;
+  const safePage = Math.min(currentPage, totalPages);
+
+  const paginatedProducts = filteredProducts.slice(
+    (safePage - 1) * ITEMS_PER_PAGE,
+    safePage * ITEMS_PER_PAGE
+  );
+
+  const goToPage = (page: number) => {
+    const next = Math.max(1, Math.min(page, totalPages));
+    setCurrentPage(next);
+    const gridTop = gridTopRef.current?.getBoundingClientRect().top;
+    const scrollY =
+      typeof window !== "undefined" && gridTop !== undefined
+        ? window.scrollY + gridTop - 96
+        : 0;
+    window.scrollTo({ top: Math.max(0, scrollY), behavior: "smooth" });
+  };
+
   return (
     <div className="space-y-6">
       <ProductCatalogToolbar
         query={searchQuery}
         onQueryChange={setSearchQuery}
         onSubmitSearch={(value) => {
-          startTransition(() => setSearchQuery(value));
+          startTransition(() => {
+            setSearchQuery(value);
+            setCurrentPage(1);
+          });
         }}
       />
 
@@ -255,6 +358,7 @@ export function ProductCatalog({
         </div>
 
         <div
+          ref={gridTopRef}
           className={`lg:col-span-9 transition-opacity duration-150 ${
             isPending ? "opacity-70" : "opacity-100"
           }`}
@@ -269,26 +373,34 @@ export function ProductCatalog({
               </p>
             </div>
           ) : (
-            <motion.div
-              layout
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-            >
-              <AnimatePresence mode="popLayout">
-                {filteredProducts.map((product, idx) => (
-                  <motion.div
-                    key={product?.id ?? product?.slug ?? idx}
-                    layout
-                    initial={{ opacity: 0, scale: 0.96, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.96, y: -10 }}
-                    transition={{ duration: 0.25, ease: "easeOut" }}
-                    className="h-full"
-                  >
-                    <ProductCard product={product} priority={idx < 3} />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </motion.div>
+            <>
+              <motion.div
+                layout
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+              >
+                <AnimatePresence mode="popLayout">
+                  {paginatedProducts.map((product, idx) => (
+                    <motion.div
+                      key={product?.id ?? product?.slug ?? idx}
+                      layout
+                      initial={{ opacity: 0, scale: 0.96, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.96, y: -10 }}
+                      transition={{ duration: 0.25, ease: "easeOut" }}
+                      className="h-full"
+                    >
+                      <ProductCard product={product} priority={idx < 3} />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </motion.div>
+
+              <CatalogPagination
+                currentPage={safePage}
+                totalPages={totalPages}
+                onPageChange={goToPage}
+              />
+            </>
           )}
         </div>
       </div>
