@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Clock3, Globe, Lock, Mail, Phone, CreditCard } from "lucide-react";
+import { Clock3, Lock, Mail, MessageCircle, Phone, CreditCard } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
 const LOGO_SRC =
@@ -11,6 +11,22 @@ const LOGO_SRC =
 
 const linkClass =
   "text-sm text-slate-600 hover:text-sky-700 transition-colors";
+
+function FacebookIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M14 13.5h2.5l.5-3H14V8.75c0-.88.18-1.25 1.34-1.25H17V4.5h-2.6C11.9 4.5 11 6.24 11 8.48V10.5H8.5v3H11V20h3v-6.5z" />
+    </svg>
+  );
+}
+
+function LinkedinIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M6.94 6.5A1.94 1.94 0 1 1 5 4.56 1.94 1.94 0 0 1 6.94 6.5zM5.5 8.75h2.88V20H5.5zm5.12 0h2.76v1.54h.04c.38-.73 1.32-1.5 2.72-1.5 2.91 0 3.45 1.91 3.45 4.4V20h-2.88v-6.06c0-1.44-.03-3.3-2.01-3.3-2.01 0-2.32 1.57-2.32 3.19V20H10.62z" />
+    </svg>
+  );
+}
 
 const PRODUCT_LINE_LINKS = [
   {
@@ -140,15 +156,42 @@ export function Footer() {
             <p className="text-sm leading-relaxed text-slate-600 max-w-sm">
               {t("footer.tagline")}
             </p>
-            <a
-              href="https://www.plastipacusa.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-sky-700 hover:text-sky-800"
-            >
-              <Globe className="h-3.5 w-3.5" />
-              www.plastipacusa.com
-            </a>
+            <div className="flex items-center gap-2.5 text-slate-600">
+              <a
+                href="https://facebook.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 hover:text-sky-700 hover:border-sky-300 transition-colors"
+                aria-label="Facebook"
+              >
+                <FacebookIcon className="w-4 h-4" />
+              </a>
+              <a
+                href="https://linkedin.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 hover:text-sky-700 hover:border-sky-300 transition-colors"
+                aria-label="LinkedIn"
+              >
+                <LinkedinIcon className="w-4 h-4" />
+              </a>
+              <a
+                href="mailto:info@plastipacusa.com"
+                className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 hover:text-sky-700 hover:border-sky-300 transition-colors"
+                aria-label="Email"
+              >
+                <Mail className="w-4 h-4" />
+              </a>
+              <a
+                href="https://wa.me/19564003683"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 hover:text-sky-700 hover:border-sky-300 transition-colors"
+                aria-label="WhatsApp"
+              >
+                <MessageCircle className="w-4 h-4" />
+              </a>
+            </div>
           </div>
 
           {/* Column 2 — Quick Links + B2B Credit */}
