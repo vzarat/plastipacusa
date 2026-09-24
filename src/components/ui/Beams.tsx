@@ -7,6 +7,8 @@ import {
   useEffect,
   useRef,
   useMemo,
+  useState,
+  useCallback,
   type ReactNode,
 } from "react";
 import * as THREE from "three";
@@ -78,15 +80,52 @@ function extendMaterial(
   });
 }
 
+/** Fires once after the first rendered WebGL frame. */
+function FirstFrameReady({ onReady }: { onReady: () => void }) {
+  const fired = useRef(false);
+
+  useFrame(() => {
+    if (fired.current) return;
+    fired.current = true;
+    onReady();
+  });
+
+  return null;
+}
+
 function CanvasWrapper({ children }: { children: ReactNode }) {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const markedReady = useRef(false);
+
+  const markReady = useCallback(() => {
+    if (markedReady.current) return;
+    markedReady.current = true;
+    // Wait one paint so the first frame is actually on screen before fading in
+    requestAnimationFrame(() => {
+      setIsLoaded(true);
+    });
+  }, []);
+
   return (
     <div className="beams-container">
       <Canvas
-        dpr={[1, 2]}
+        dpr={[1, 1.5]}
         frameloop="always"
+        className={`beams-canvas${isLoaded ? " beams-canvas--ready" : ""}`}
         style={{ width: "100%", height: "100%" }}
-        gl={{ antialias: true, alpha: true }}
+        gl={{
+          antialias: false,
+          alpha: true,
+          powerPreference: "high-performance",
+        }}
+        onCreated={() => {
+          // Soft fallback if first-frame hook is delayed
+          requestAnimationFrame(() => {
+            requestAnimationFrame(markReady);
+          });
+        }}
       >
+        <FirstFrameReady onReady={markReady} />
         {children}
       </Canvas>
     </div>

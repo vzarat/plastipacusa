@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
@@ -195,9 +195,21 @@ export function DashboardPromoCarousel() {
   const { t } = useLanguage();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [hoverHalf, setHoverHalf] = useState<"left" | "right" | "interactive" | null>(
+    null
+  );
+  const containerRef = useRef<HTMLElement | null>(null);
 
   const goTo = useCallback((next: number) => {
     setIndex(((next % SLIDES.length) + SLIDES.length) % SLIDES.length);
+  }, []);
+
+  const prevSlide = useCallback(() => {
+    setIndex((prev) => (prev - 1 + SLIDES.length) % SLIDES.length);
+  }, []);
+
+  const nextSlide = useCallback(() => {
+    setIndex((prev) => (prev + 1) % SLIDES.length);
   }, []);
 
   useEffect(() => {
@@ -208,13 +220,78 @@ export function DashboardPromoCarousel() {
     return () => window.clearInterval(timer);
   }, [paused]);
 
+  const resolveHoverZone = useCallback(
+    (clientX: number, target: EventTarget | null) => {
+      if (
+        target instanceof Element &&
+        target.closest("button, a, input, textarea, select, label")
+      ) {
+        return "interactive" as const;
+      }
+      const el = containerRef.current;
+      if (!el) return null;
+      const { left, width } = el.getBoundingClientRect();
+      if (width <= 0) return null;
+      return clientX - left < width / 2 ? ("left" as const) : ("right" as const);
+    },
+    []
+  );
+
+  const handleMouseMove = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      setHoverHalf(resolveHoverZone(event.clientX, event.target));
+    },
+    [resolveHoverZone]
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    setPaused(false);
+    setHoverHalf(null);
+  }, []);
+
+  const handleContainerClick = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest("button, a, input, textarea, select, label")
+      ) {
+        // Let interactive elements keep their default action
+        return;
+      }
+
+      const el = containerRef.current;
+      if (!el) return;
+      const { left, width } = el.getBoundingClientRect();
+      if (width <= 0) return;
+
+      if (event.clientX - left < width / 2) {
+        prevSlide();
+      } else {
+        nextSlide();
+      }
+    },
+    [nextSlide, prevSlide]
+  );
+
   const slide = SLIDES[index];
+  const cursorClass =
+    hoverHalf === "interactive"
+      ? "cursor-pointer"
+      : hoverHalf === "left"
+        ? "cursor-w-resize"
+        : hoverHalf === "right"
+          ? "cursor-e-resize"
+          : "cursor-default";
 
   return (
     <section
-      className="relative overflow-hidden rounded-3xl border border-slate-200/80 shadow-sm"
+      ref={containerRef}
+      className={`relative overflow-hidden rounded-3xl border border-slate-200/80 shadow-sm select-none ${cursorClass}`}
       onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
+      onMouseLeave={handleMouseLeave}
+      onMouseMove={handleMouseMove}
+      onClick={handleContainerClick}
       aria-roledescription="carousel"
       aria-label={t("dashboard.promoCarouselLabel")}
     >
@@ -244,7 +321,10 @@ export function DashboardPromoCarousel() {
             type="button"
             aria-label={`${t("dashboard.promoSlide")} ${i + 1}`}
             aria-current={i === index ? "true" : undefined}
-            onClick={() => goTo(i)}
+            onClick={(event) => {
+              event.stopPropagation();
+              goTo(i);
+            }}
             className={`h-1.5 rounded-full transition-all cursor-pointer ${
               i === index
                 ? "w-6 bg-white"
