@@ -59,6 +59,9 @@ export function AdminSidebar({
   const creditApplicationsActive =
     creditApplicationsActiveProp === true ||
     pathname?.startsWith("/admin/credit-applications");
+  const customersRouteActive = Boolean(
+    pathname?.startsWith("/admin/customers")
+  );
   const { t } = useLanguage();
   const [internalIsCollapsed, setInternalIsCollapsed] = useState(false);
 
@@ -242,7 +245,9 @@ export function AdminSidebar({
               const isActive =
                 !discountsActive &&
                 !creditApplicationsActive &&
-                activeTab === item.key;
+                (customersRouteActive
+                  ? item.key === "customers"
+                  : activeTab === item.key);
 
               return (
                 <button

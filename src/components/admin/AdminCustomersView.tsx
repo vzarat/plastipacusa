@@ -1,22 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   Building2,
   Search,
   CheckCircle2,
-  AlertCircle,
-  Mail,
-  Phone,
-  MapPin,
-  CreditCard,
   FileCheck,
-  Plus,
-  ShieldCheck,
+  FolderOpen,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 export interface CustomerRecord {
   id: string;
@@ -30,6 +24,8 @@ export interface CustomerRecord {
   creditLimit: number;
   creditUsed: number;
   taxExempt: boolean;
+  taxId?: string;
+  creditApplicationStatus?: "pending" | "approved" | "rejected";
   status: "approved" | "under_review" | "suspended";
 }
 
@@ -111,7 +107,8 @@ export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) 
                   <th className="py-3.5 px-3">Credit Terms</th>
                   <th className="py-3.5 px-3">Credit Limit / Used</th>
                   <th className="py-3.5 px-3">Tax Resale Cert</th>
-                  <th className="py-3.5 px-4 sm:px-6 text-right">Approval Status</th>
+                  <th className="py-3.5 px-3">Approval Status</th>
+                  <th className="py-3.5 px-4 sm:px-6 text-right">Expediente</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
@@ -119,9 +116,14 @@ export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) 
                   <tr key={client.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-4 px-4 sm:px-6">
                       <div>
-                        <p className="font-bold text-slate-900 text-xs">{client.companyName}</p>
+                        <Link
+                          href={`/admin/customers/${client.id}`}
+                          className="font-bold text-slate-900 text-xs hover:text-blue-700 hover:underline"
+                        >
+                          {client.companyName}
+                        </Link>
                         <p className="font-mono text-[10px] text-blue-700 font-semibold">
-                          {client.id}
+                          {client.taxId ? `EIN ${client.taxId}` : client.id.slice(0, 8)}
                         </p>
                       </div>
                     </td>
@@ -167,7 +169,7 @@ export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) 
                       )}
                     </td>
 
-                    <td className="py-4 px-4 sm:px-6 text-right">
+                    <td className="py-4 px-3">
                       {client.status === "approved" ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
                           <CheckCircle2 className="w-3 h-3 text-emerald-600" />
@@ -182,6 +184,16 @@ export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) 
                           Suspended
                         </span>
                       )}
+                    </td>
+
+                    <td className="py-4 px-4 sm:px-6 text-right">
+                      <Link
+                        href={`/admin/customers/${client.id}`}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-[10px] font-bold text-slate-700 hover:border-blue-300 hover:text-blue-800 hover:bg-blue-50 transition-colors"
+                      >
+                        <FolderOpen className="w-3.5 h-3.5" />
+                        Open File
+                      </Link>
                     </td>
                   </tr>
                 ))}

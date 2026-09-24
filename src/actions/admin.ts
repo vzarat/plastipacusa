@@ -67,10 +67,12 @@ export interface AdminCustomer {
   phone: string;
   city: string;
   state: string;
-  creditTerms: "Registered" | "Customer";
+  creditTerms: string;
   creditLimit: number;
   creditUsed: number;
   taxExempt: boolean;
+  taxId?: string;
+  creditApplicationStatus?: "pending" | "approved" | "rejected";
   status: "approved" | "under_review" | "suspended";
   createdAt?: string;
 }
@@ -184,7 +186,9 @@ export async function getAdminCustomers(): Promise<AdminCustomer[]> {
 
     const { data: profiles, error } = await supabase
       .from("profiles")
-      .select("id, full_name, company_name, email, phone, role, created_at")
+      .select(
+        "id, full_name, company_name, email, phone, role, created_at, tax_id, is_tax_exempt, tax_exempt_verified, tax_certificate_url, credit_application_status, credit_limit, credit_terms"
+      )
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -192,21 +196,43 @@ export async function getAdminCustomers(): Promise<AdminCustomer[]> {
       return [];
     }
 
-    return (profiles || []).map((profile: any) => ({
-      id: profile.id,
-      companyName: profile.company_name || "Individual Customer",
-      contactName: profile.full_name || "Customer",
-      email: profile.email || "",
-      phone: profile.phone || "",
-      city: "",
-      state: "",
-      creditTerms: "Registered",
-      creditLimit: 0,
-      creditUsed: 0,
-      taxExempt: true,
-      status: profile.role === "admin" ? "approved" : "approved",
-      createdAt: profile.created_at,
-    }));
+    return (profiles || []).map((profile: any) => {
+      const creditStatus = String(
+        profile.credit_application_status || "pending"
+      ).toLowerCase();
+      let status: AdminCustomer["status"] = "under_review";
+      if (creditStatus === "approved" || profile.role === "admin") {
+        status = "approved";
+      } else if (creditStatus === "rejected") {
+        status = "suspended";
+      }
+
+      const taxExempt = Boolean(
+        profile.tax_exempt_verified ||
+          (profile.is_tax_exempt && profile.tax_certificate_url)
+      );
+
+      return {
+        id: profile.id,
+        companyName: profile.company_name || "Individual Customer",
+        contactName: profile.full_name || "Customer",
+        email: profile.email || "",
+        phone: profile.phone || "",
+        city: "",
+        state: "",
+        creditTerms: profile.credit_terms || "Registered",
+        creditLimit: Number(profile.credit_limit || 0),
+        creditUsed: 0,
+        taxExempt,
+        taxId: profile.tax_id || "",
+        creditApplicationStatus:
+          creditStatus === "approved" || creditStatus === "rejected"
+            ? creditStatus
+            : "pending",
+        status,
+        createdAt: profile.created_at,
+      };
+    });
   } catch (err) {
     console.warn("Notice: profiles query failed:", err);
     return [];

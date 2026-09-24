@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Eye,
   FileText,
+  FolderOpen,
   Loader2,
   Mail,
   Phone,
@@ -14,6 +15,7 @@ import {
   X,
   XCircle,
 } from "lucide-react";
+import Link from "next/link";
 import {
   updateCreditApplicationStatus,
   type AdminCreditApplication,
@@ -284,6 +286,15 @@ export function AdminCreditApplicationsView({
                 >
                   {statusLabel(selected.status)}
                 </span>
+                {selected.userId && (
+                  <Link
+                    href={`/admin/customers/${selected.userId}`}
+                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 hover:underline"
+                  >
+                    <FolderOpen className="w-3.5 h-3.5" />
+                    Open Expediente del Cliente
+                  </Link>
+                )}
               </div>
               <button
                 type="button"

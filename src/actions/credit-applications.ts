@@ -32,6 +32,7 @@ export interface CreditApplicationResult {
 
 export interface AdminCreditApplication {
   id: string;
+  userId: string | null;
   companyName: string;
   contactName: string;
   workEmail: string;
@@ -58,6 +59,7 @@ function normalizeStatus(value: unknown): CreditApplicationStatus {
 function mapCreditApplicationRow(row: Record<string, unknown>): AdminCreditApplication {
   return {
     id: String(row.id),
+    userId: row.user_id ? String(row.user_id) : null,
     companyName: String(row.company_name || ""),
     contactName: String(row.contact_name || ""),
     workEmail: String(row.work_email || ""),
@@ -215,19 +217,74 @@ export async function submitCreditApplication(
 
   try {
     const supabase = await createServerClient();
-    const { error } = await supabase.from("credit_applications").insert(payload);
+    const currentUser = await getCurrentUser();
+
+    const insertPayload: Record<string, unknown> = {
+      ...payload,
+    };
+    if (currentUser?.user?.id) {
+      insertPayload.user_id = currentUser.user.id;
+    }
+
+    const { error } = await supabase
+      .from("credit_applications")
+      .insert(insertPayload);
 
     if (error) {
-      console.warn(
-        "credit_applications insert failed:",
-        error.message || error.code || "unknown error"
-      );
-      return {
-        success: false,
-        error:
-          error.message ||
-          "Unable to submit credit application. Please try again or call our sales desk.",
-      };
+      // Retry without user_id if column not migrated yet
+      if (/user_id|schema cache/i.test(error.message || "")) {
+        const { error: fallbackError } = await supabase
+          .from("credit_applications")
+          .insert(payload);
+        if (fallbackError) {
+          console.warn(
+            "credit_applications insert failed:",
+            fallbackError.message || fallbackError.code || "unknown error"
+          );
+          return {
+            success: false,
+            error:
+              fallbackError.message ||
+              "Unable to submit credit application. Please try again or call our sales desk.",
+          };
+        }
+      } else {
+        console.warn(
+          "credit_applications insert failed:",
+          error.message || error.code || "unknown error"
+        );
+        return {
+          success: false,
+          error:
+            error.message ||
+            "Unable to submit credit application. Please try again or call our sales desk.",
+        };
+      }
+    }
+
+    // Mirror EIN + pending credit status onto the authenticated profile when possible
+    if (currentUser?.user?.id) {
+      try {
+        await supabase.from("profiles").upsert({
+          id: currentUser.user.id,
+          email: currentUser.user.email || workEmail,
+          company_name: companyName,
+          phone,
+          tax_id: taxIdEin,
+          credit_application_status: "pending",
+        });
+        await supabase.from("company_profiles").upsert(
+          {
+            user_id: currentUser.user.id,
+            company_name: companyName,
+            tax_id: taxIdEin,
+            credit_application_status: "pending",
+          },
+          { onConflict: "user_id" }
+        );
+      } catch {
+        // non-fatal
+      }
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -324,6 +381,14 @@ export async function updateCreditApplicationStatus(
     }
 
     const supabase = await createServerClient();
+
+    // Load application so we can sync the linked profile
+    const { data: application } = await supabase
+      .from("credit_applications")
+      .select("id, user_id, work_email, tax_id_ein, company_name")
+      .eq("id", id)
+      .maybeSingle();
+
     const { error } = await supabase
       .from("credit_applications")
       .update({
@@ -362,7 +427,49 @@ export async function updateCreditApplicationStatus(
       }
     }
 
+    // Sync credit status onto profiles / company_profiles when linked
+    try {
+      let profileId = application?.user_id as string | null;
+      if (!profileId && application?.work_email) {
+        const { data: byEmail } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("email", String(application.work_email).toLowerCase())
+          .maybeSingle();
+        profileId = byEmail?.id || null;
+      }
+
+      if (profileId) {
+        const profilePatch: Record<string, unknown> = {
+          credit_application_status: status,
+        };
+        if (status === "approved") {
+          profilePatch.credit_terms = "Net 30";
+          profilePatch.credit_limit = 10000;
+        }
+        if (application?.tax_id_ein) {
+          profilePatch.tax_id = application.tax_id_ein;
+        }
+        if (application?.company_name) {
+          profilePatch.company_name = application.company_name;
+        }
+
+        await supabase.from("profiles").update(profilePatch).eq("id", profileId);
+        await supabase.from("company_profiles").upsert(
+          {
+            user_id: profileId,
+            ...profilePatch,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" }
+        );
+      }
+    } catch {
+      // non-fatal sync
+    }
+
     revalidatePath("/admin/credit-applications");
+    revalidatePath("/admin");
     return { success: true };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

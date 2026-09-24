@@ -2,8 +2,9 @@
 
 import React, { useState, useTransition, Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { signUp } from "@/actions/auth";
+import { uploadTaxExemptionCertificate } from "@/actions/customers";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -19,10 +20,11 @@ import {
   ShieldCheck,
   Eye,
   EyeOff,
+  FileText,
+  Phone,
 } from "lucide-react";
 
 function RegisterForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTarget = searchParams.get("redirect") || "/dashboard";
 
@@ -42,6 +44,11 @@ function RegisterForm() {
   const [companyName, setCompanyName] = useState("");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [taxId, setTaxId] = useState("");
+  const [isTaxExempt, setIsTaxExempt] = useState(false);
+  const [taxExemptionNumber, setTaxExemptionNumber] = useState("");
+  const [certificateFile, setCertificateFile] = useState<File | null>(null);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -75,6 +82,12 @@ function RegisterForm() {
       setErrorMsg("Passwords do not match. Please re-enter your password.");
       return;
     }
+    if (isTaxExempt && !certificateFile && !taxExemptionNumber.trim()) {
+      setErrorMsg(
+        "Tax-exempt accounts need an exemption number or certificate upload."
+      );
+      return;
+    }
 
     startTransition(async () => {
       const res = await signUp({
@@ -82,9 +95,25 @@ function RegisterForm() {
         fullName,
         email,
         password,
+        phone,
+        taxId,
+        isTaxExempt,
+        taxExemptionNumber,
       });
 
       if (res.success) {
+        if (res.hasSession && certificateFile) {
+          const fd = new FormData();
+          fd.append("file", certificateFile);
+          const upload = await uploadTaxExemptionCertificate(fd);
+          if (!upload.success) {
+            setSuccessMsg(
+              `${res.message || "Account created."} Certificate upload pending: ${upload.error || "retry from your dashboard."}`
+            );
+            return;
+          }
+        }
+
         if (res.hasSession) {
           window.location.href = redirectTarget;
         } else {
@@ -94,14 +123,15 @@ function RegisterForm() {
           );
         }
       } else {
-        setErrorMsg(res.error || "Failed to register account. Please check your information.");
+        setErrorMsg(
+          res.error || "Failed to register account. Please check your information."
+        );
       }
     });
   };
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 p-6 sm:p-8 space-y-6">
-      {/* Header */}
       <div className="space-y-1.5 text-center sm:text-left">
         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-100 text-[11px] font-bold text-blue-800 uppercase tracking-wider mb-1">
           <Building2 className="w-3.5 h-3.5 text-blue-600" />
@@ -111,16 +141,18 @@ function RegisterForm() {
           Create Client Account
         </h1>
         <p className="text-xs sm:text-sm text-slate-500">
-          Register your organization for factory-direct pallet pricing, fast reorders, and commercial terms.
+          Register your organization for factory-direct pallet pricing, tax
+          exemption records, and commercial credit terms.
         </p>
       </div>
 
-      {/* Success Notice */}
       {successMsg && (
         <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-start gap-3 text-xs text-emerald-900 animate-fade-in-up">
           <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
           <div>
-            <strong className="block font-bold text-emerald-950 mb-0.5">Registration Successful</strong>
+            <strong className="block font-bold text-emerald-950 mb-0.5">
+              Registration Successful
+            </strong>
             <span>{successMsg}</span>
             <div className="mt-2.5">
               <Link
@@ -134,7 +166,6 @@ function RegisterForm() {
         </div>
       )}
 
-      {/* Error Alert */}
       {errorMsg && (
         <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-xs text-rose-800 animate-fade-in-up">
           <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
@@ -142,10 +173,8 @@ function RegisterForm() {
         </div>
       )}
 
-      {/* Register Form */}
       {!successMsg && (
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Company Name */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
               Company / Entity Name <span className="text-rose-500">*</span>
@@ -164,7 +193,6 @@ function RegisterForm() {
             </div>
           </div>
 
-          {/* Contact Full Name */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
               Procurement Officer / Full Name <span className="text-rose-500">*</span>
@@ -183,29 +211,118 @@ function RegisterForm() {
             </div>
           </div>
 
-          {/* Work Email */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-              Corporate Work Email <span className="text-rose-500">*</span>
-            </label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="johndoe@company.com"
-                disabled={isPending}
-                className="w-full pl-10 pr-3.5 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all disabled:opacity-60"
-              />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                Corporate Work Email <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="johndoe@company.com"
+                  disabled={isPending}
+                  className="w-full pl-10 pr-3.5 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all disabled:opacity-60"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                Business Phone
+              </label>
+              <div className="relative">
+                <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="(956) 000-0000"
+                  disabled={isPending}
+                  className="w-full pl-10 pr-3.5 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all disabled:opacity-60"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Passwords (2 columns) */}
+          {/* B2B Tax / EIN */}
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 space-y-3.5">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-blue-700" />
+              <p className="text-xs font-black uppercase tracking-wider text-slate-800">
+                Tax ID & Sales Tax Exemption
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                Tax ID / EIN
+              </label>
+              <input
+                type="text"
+                value={taxId}
+                onChange={(e) => setTaxId(e.target.value)}
+                placeholder="XX-XXXXXXX"
+                disabled={isPending}
+                className="w-full px-3.5 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all disabled:opacity-60"
+              />
+            </div>
+
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isTaxExempt}
+                onChange={(e) => setIsTaxExempt(e.target.checked)}
+                disabled={isPending}
+                className="mt-0.5 rounded border-slate-300 text-blue-700 focus:ring-blue-600"
+              />
+              <span className="text-xs text-slate-700 font-medium">
+                This company is sales-tax exempt and will provide a resale /
+                exemption certificate.
+              </span>
+            </label>
+
+            {isTaxExempt && (
+              <div className="space-y-3 pt-1">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Tax Exemption Number
+                  </label>
+                  <input
+                    type="text"
+                    value={taxExemptionNumber}
+                    onChange={(e) => setTaxExemptionNumber(e.target.value)}
+                    placeholder="State exemption / permit #"
+                    disabled={isPending}
+                    className="w-full px-3.5 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all disabled:opacity-60"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Tax Exemption Certificate (PDF / Image)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf,image/jpeg,image/png,image/webp"
+                    disabled={isPending}
+                    onChange={(e) =>
+                      setCertificateFile(e.target.files?.[0] || null)
+                    }
+                    className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-800 file:font-bold file:text-xs"
+                  />
+                  <p className="text-[10px] text-slate-400">
+                    Stored securely in Supabase Storage under your account
+                    folder.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {/* Password */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
                 Password <span className="text-rose-500">*</span>
@@ -228,12 +345,15 @@ function RegisterForm() {
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-700"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
 
-            {/* Confirm Password */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
                 Confirm Password <span className="text-rose-500">*</span>
@@ -254,19 +374,24 @@ function RegisterForm() {
                   type="button"
                   onClick={() => setShowConfirmPassword((prev) => !prev)}
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-700"
-                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                  aria-label={
+                    showConfirmPassword ? "Hide password" : "Show password"
+                  }
                 >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={isPending}
-            className="w-full py-3.5 px-4 rounded-xl bg-slate-900 hover:bg-blue-950 text-white font-bold text-sm tracking-wide shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer pt-3"
+            className="w-full py-3.5 px-4 rounded-xl bg-slate-900 hover:bg-blue-950 text-white font-bold text-sm tracking-wide shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
           >
             {isPending ? (
               <>
@@ -291,14 +416,12 @@ function RegisterForm() {
 
       <GoogleSignInButton onClick={handleGoogleSignIn} />
 
-      {/* Divider */}
       <div className="relative border-t border-slate-100">
         <span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
           Already Registered?
         </span>
       </div>
 
-      {/* Sign In Link */}
       <div className="text-center">
         <Link
           href={`/login${redirectTarget !== "/dashboard" ? `?redirect=${encodeURIComponent(redirectTarget)}` : ""}`}
@@ -309,7 +432,6 @@ function RegisterForm() {
         </Link>
       </div>
 
-      {/* Trust Callout */}
       <div className="pt-1 flex items-center justify-center gap-1.5 text-[11px] text-slate-400 font-medium">
         <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
         <span>Strict privacy • Factory-direct warranty & fulfillment terms</span>
@@ -331,4 +453,3 @@ export default function RegisterPage() {
     </Suspense>
   );
 }
-

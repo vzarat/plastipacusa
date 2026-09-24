@@ -126,17 +126,26 @@ export async function signIn({
 
 /**
  * Register a new customer account with company name & full name.
+ * Optional B2B tax fields persist to profiles / company_profiles.
  */
 export async function signUp({
   email,
   password,
   fullName,
   companyName,
+  phone,
+  taxId,
+  isTaxExempt,
+  taxExemptionNumber,
 }: {
   email: string;
   password: string;
   fullName: string;
   companyName: string;
+  phone?: string;
+  taxId?: string;
+  isTaxExempt?: boolean;
+  taxExemptionNumber?: string;
 }) {
   try {
     const supabase = await createServerClient();
@@ -156,6 +165,10 @@ export async function signUp({
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+    const trimmedTaxId = (taxId || "").trim();
+    const trimmedPhone = (phone || "").trim();
+    const trimmedExemptNo = (taxExemptionNumber || "").trim();
+    const taxExempt = Boolean(isTaxExempt);
 
     const { data, error } = await supabase.auth.signUp({
       email: normalizedEmail,
@@ -164,6 +177,9 @@ export async function signUp({
         data: {
           full_name: fullName.trim(),
           company_name: companyName.trim(),
+          phone: trimmedPhone || undefined,
+          tax_id: trimmedTaxId || undefined,
+          is_tax_exempt: taxExempt,
           role: "client",
         },
       },
@@ -181,15 +197,38 @@ export async function signUp({
             ? "admin"
             : "client";
 
-        await supabase.from("profiles").upsert({
+        const profilePayload = {
           id: data.user.id,
           full_name: fullName.trim(),
           company_name: companyName.trim(),
           role: initialRole,
           email: normalizedEmail,
+          phone: trimmedPhone || null,
+          tax_id: trimmedTaxId || null,
+          is_tax_exempt: taxExempt,
+          tax_exemption_number: trimmedExemptNo || null,
+          credit_application_status: "pending" as const,
           has_password: true,
           password_setup_skipped: false,
-        });
+        };
+
+        await supabase.from("profiles").upsert(profilePayload);
+
+        try {
+          await supabase.from("company_profiles").upsert(
+            {
+              user_id: data.user.id,
+              company_name: companyName.trim(),
+              tax_id: trimmedTaxId || null,
+              is_tax_exempt: taxExempt,
+              tax_exemption_number: trimmedExemptNo || null,
+              credit_application_status: "pending",
+            },
+            { onConflict: "user_id" }
+          );
+        } catch (companyErr) {
+          console.warn("Notice: company_profiles upsert skipped:", companyErr);
+        }
       } catch (profileErr) {
         console.warn("Notice: public.profiles table upsert skipped:", profileErr);
       }
