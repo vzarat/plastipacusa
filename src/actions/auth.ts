@@ -16,6 +16,14 @@ export interface UserProfile {
   passwordSetupSkipped?: boolean;
   backupPasswordPending?: boolean;
   createdAt?: string;
+  /** EIN / FEIN — empty means fiscal profile incomplete */
+  taxId?: string;
+  /** Explicit sales-tax exemption answer (null/undefined = never collected) */
+  isTaxExempt?: boolean | null;
+  taxExemptionNumber?: string;
+  taxCertificateUrl?: string | null;
+  /** True when tax_id or tax-exempt answer is missing — show compliance modal */
+  needsTaxCompliance?: boolean;
 }
 
 export interface CurrentUserResponse {
@@ -312,13 +320,23 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
       const { data: profile, error: profileErr } = await supabaseServer
         .from("profiles")
         .select(
-          "id, email, full_name, role, company_name, has_password, password_setup_skipped, phone, avatar_url"
+          "id, email, full_name, role, company_name, has_password, password_setup_skipped, phone, avatar_url, tax_id, is_tax_exempt, tax_exemption_number, tax_certificate_url"
         )
         .eq("id", user.id)
         .single();
 
       if (!profileErr && profile) {
         profileData = profile;
+      } else if (profileErr) {
+        // Fallback if B2B tax columns are not migrated yet
+        const { data: basicProfile } = await supabaseServer
+          .from("profiles")
+          .select(
+            "id, email, full_name, role, company_name, has_password, password_setup_skipped, phone, avatar_url"
+          )
+          .eq("id", user.id)
+          .single();
+        if (basicProfile) profileData = basicProfile;
       }
     } catch {
       // Ignore if profiles table does not exist or fails
@@ -341,6 +359,30 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
 
     const phone = profileData?.phone || user.user_metadata?.phone || "";
     const avatarUrl = profileData?.avatar_url || user.user_metadata?.avatar_url || "";
+    const taxId = String(
+      profileData?.tax_id || user.user_metadata?.tax_id || ""
+    ).trim();
+
+    // Distinguish "never answered" (null / undefined column) from false
+    let isTaxExempt: boolean | null = null;
+    if (typeof profileData?.is_tax_exempt === "boolean") {
+      // Only treat as answered when tax_id is also present (defaults to false otherwise)
+      isTaxExempt = taxId ? Boolean(profileData.is_tax_exempt) : null;
+    } else if (typeof user.user_metadata?.is_tax_exempt === "boolean" && taxId) {
+      isTaxExempt = Boolean(user.user_metadata.is_tax_exempt);
+    }
+
+    const taxExemptionNumber = String(
+      profileData?.tax_exemption_number ||
+        user.user_metadata?.tax_exemption_number ||
+        ""
+    ).trim();
+    const taxCertificateUrl =
+      (profileData?.tax_certificate_url as string | null) ||
+      (user.user_metadata?.tax_certificate_url as string | null) ||
+      null;
+
+    const needsTaxCompliance = !taxId || isTaxExempt === null;
 
     const emailLower = user.email?.toLowerCase() || "";
     const hasPassword = Boolean(
@@ -384,6 +426,11 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
         passwordSetupSkipped,
         backupPasswordPending,
         createdAt: user.created_at,
+        taxId,
+        isTaxExempt,
+        taxExemptionNumber,
+        taxCertificateUrl,
+        needsTaxCompliance,
       },
     };
   } catch {

@@ -219,6 +219,8 @@ export async function upsertMyB2BProfile(input: {
   taxCertificateUrl?: string | null;
   companyName?: string;
   phone?: string;
+  /** When true, mark credit application as pending interest (Net 30) */
+  applyForCredit?: boolean;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     const currentUser = await getCurrentUser();
@@ -246,6 +248,10 @@ export async function upsertMyB2BProfile(input: {
     if (input.taxCertificateUrl !== undefined) {
       patch.tax_certificate_url = input.taxCertificateUrl;
     }
+    if (input.applyForCredit) {
+      patch.credit_application_status = "pending";
+      patch.credit_terms = "Net 30 (Pending Application)";
+    }
 
     const { error } = await supabase.from("profiles").upsert(patch, {
       onConflict: "id",
@@ -261,12 +267,105 @@ export async function upsertMyB2BProfile(input: {
       is_tax_exempt: patch.is_tax_exempt,
       tax_exemption_number: patch.tax_exemption_number,
       tax_certificate_url: patch.tax_certificate_url,
+      credit_application_status: patch.credit_application_status,
+      credit_terms: patch.credit_terms,
     });
 
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/settings");
     return { success: true };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return { success: false, error: message };
+  }
+}
+
+/**
+ * Complete tax compliance from the dashboard modal (profile + optional certificate).
+ */
+export async function completeTaxComplianceProfile(
+  formData: FormData
+): Promise<{
+  success: boolean;
+  error?: string;
+  applyForCredit?: boolean;
+}> {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser || !isSupabaseConfigured) {
+      return { success: false, error: "Unauthorized." };
+    }
+
+    const taxIdRaw = String(formData.get("taxId") || "").trim();
+    const isTaxExemptRaw = String(formData.get("isTaxExempt") || "");
+    const taxExemptionNumber = String(
+      formData.get("taxExemptionNumber") || ""
+    ).trim();
+    const applyForCredit = formData.get("applyForCredit") === "true";
+    const file = formData.get("file");
+
+    // US EIN: XX-XXXXXXX or 9 digits
+    const digits = taxIdRaw.replace(/\D/g, "");
+    if (digits.length !== 9) {
+      return {
+        success: false,
+        error: "Enter a valid US TAX ID / FEIN (XX-XXXXXXX).",
+      };
+    }
+    const taxId = `${digits.slice(0, 2)}-${digits.slice(2)}`;
+
+    if (isTaxExemptRaw !== "true" && isTaxExemptRaw !== "false") {
+      return {
+        success: false,
+        error: "Please indicate whether your business is sales-tax exempt.",
+      };
+    }
+    const isTaxExempt = isTaxExemptRaw === "true";
+
+    if (isTaxExempt) {
+      const hasFile = file instanceof File && file.size > 0;
+      if (!taxExemptionNumber && !hasFile) {
+        return {
+          success: false,
+          error:
+            "Provide a State Tax Exempt / Resale License Number or upload your certificate.",
+        };
+      }
+    }
+
+    let taxCertificateUrl: string | null | undefined = undefined;
+
+    if (isTaxExempt && file instanceof File && file.size > 0) {
+      const uploadFd = new FormData();
+      uploadFd.append("file", file);
+      const upload = await uploadTaxExemptionCertificate(uploadFd);
+      if (!upload.success) {
+        return { success: false, error: upload.error || "Certificate upload failed." };
+      }
+      taxCertificateUrl = upload.path || null;
+    }
+
+    const result = await upsertMyB2BProfile({
+      taxId,
+      isTaxExempt,
+      taxExemptionNumber: isTaxExempt ? taxExemptionNumber : "",
+      taxCertificateUrl:
+        taxCertificateUrl !== undefined
+          ? taxCertificateUrl
+          : isTaxExempt
+            ? undefined
+            : null,
+      applyForCredit,
+    });
+
+    if (!result.success) {
+      return { success: false, error: result.error };
+    }
+
+    return { success: true, applyForCredit };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { success: false, error: message || "Unable to save tax profile." };
   }
 }
 

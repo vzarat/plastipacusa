@@ -46,6 +46,7 @@ import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { AvatarUpload } from "@/components/dashboard/AvatarUpload";
 import { DashboardGreeting } from "@/components/dashboard/DashboardGreeting";
 import { DashboardPromoCarousel } from "@/components/dashboard/DashboardPromoCarousel";
+import { TaxComplianceModal } from "@/components/dashboard/TaxComplianceModal";
 import OrderDetailModal, { OrderDetailLike } from "@/components/orders/OrderDetailModal";
 
 export interface DashboardOrderItem {
@@ -155,9 +156,11 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
   const [profileFormSuccess, setProfileFormSuccess] = useState<string | null>(null);
   const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderDetailLike | null>(null);
+  const [liveProfile, setLiveProfile] = useState<UserProfile>(profile);
 
   React.useEffect(() => {
     setBackupPasswordPending(Boolean(profile.backupPasswordPending));
+    setLiveProfile(profile);
     setProfileForm({
       fullName: profile.fullName || "",
       email: profile.email || "",
@@ -372,6 +375,18 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
 
   return (
     <>
+      <TaxComplianceModal
+        profile={liveProfile}
+        onCompleted={({ taxId, isTaxExempt, taxExemptionNumber }) => {
+          setLiveProfile((prev) => ({
+            ...prev,
+            taxId,
+            isTaxExempt,
+            taxExemptionNumber,
+            needsTaxCompliance: false,
+          }));
+        }}
+      />
       <OrderDetailModal
         open={Boolean(selectedOrder)}
         order={selectedOrder}
