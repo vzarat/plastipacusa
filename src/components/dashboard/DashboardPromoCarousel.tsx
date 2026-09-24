@@ -45,11 +45,14 @@ const MAP_STANDARD_HOVER = "#60A5FA";
 const MAP_STROKE = "#FFFFFF";
 const MAP_HUB_STATES = new Set(["TX", "CA", "IL", "FL", "GA"]);
 
-const SLIDE_MIN_H = "min-h-[360px] md:min-h-[220px] lg:min-h-[280px]";
+const SLIDE_MIN_H = "md:min-h-[260px]";
+const SLIDE_SHELL =
+  "relative md:absolute md:inset-0 text-white overflow-hidden";
 const SLIDE_PAD = "p-5 md:p-8 lg:p-10";
 const TITLE_CLASS =
   "text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight leading-tight";
-const SUBTITLE_CLASS = "text-xs sm:text-sm text-white/85 leading-relaxed max-w-md";
+const SUBTITLE_CLASS =
+  "text-xs sm:text-sm text-white/85 leading-relaxed max-w-md";
 const CTA_ROW =
   "flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-4 w-full sm:w-auto pt-0.5";
 const CTA_PRIMARY =
@@ -109,7 +112,7 @@ function CreditHeroSlide() {
   const { t } = useLanguage();
 
   return (
-    <div className="absolute inset-0 bg-[#000d23] text-white overflow-hidden">
+    <div className={`${SLIDE_SHELL} bg-[#000d23]`}>
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute -inset-16 z-0 overflow-hidden opacity-100 pointer-events-none scale-125">
           <Beams
@@ -128,9 +131,9 @@ function CreditHeroSlide() {
       </div>
 
       <div
-        className={`relative z-10 grid h-full ${SLIDE_MIN_H} grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-center ${SLIDE_PAD}`}
+        className={`relative z-10 grid h-full ${SLIDE_MIN_H} grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-center ${SLIDE_PAD}`}
       >
-        <div className="flex flex-col items-start space-y-3 sm:space-y-4 min-w-0 relative z-20 pb-16 md:pb-0">
+        <div className="flex flex-col items-start space-y-3 sm:space-y-4 min-w-0 relative z-20">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.16em] text-sky-100">
             <CreditCard className="w-3.5 h-3.5" />
             {t("dashboard.creditSlideBadge")}
@@ -166,16 +169,11 @@ function CreditHeroSlide() {
           </Link>
         </div>
 
-        {/* Desktop cards */}
-        <div className="relative hidden lg:flex justify-end items-center h-full min-h-[180px]">
+        {/* Credit cards — desktop only */}
+        <div className="relative hidden md:flex justify-end items-center h-full min-h-[180px]">
           <div className="w-full max-w-[280px] origin-right scale-[0.78] xl:scale-[0.88]">
             <FloatingCreditCards className="!h-[220px] lg:!h-[240px] ml-auto" />
           </div>
-        </div>
-
-        {/* Mobile / tablet decorative cards — bottom accent, non-blocking */}
-        <div className="pointer-events-none absolute bottom-0 right-0 lg:hidden w-[42%] max-w-[180px] opacity-70 scale-[0.55] origin-bottom-right">
-          <FloatingCreditCards className="!h-[160px]" />
         </div>
       </div>
     </div>
@@ -186,12 +184,12 @@ function FreeSampleHeroSlide() {
   const { t } = useLanguage();
 
   return (
-    <div className="absolute inset-0 bg-slate-950 text-white overflow-hidden">
+    <div className={`${SLIDE_SHELL} bg-slate-950`}>
       <SlideBackgroundImage src={HERO_WAREHOUSE_BG} />
 
       <div className={`relative z-10 h-full ${SLIDE_MIN_H}`}>
         <div
-          className={`relative z-20 flex h-full flex-col items-start justify-center space-y-3 sm:space-y-4 min-w-0 max-w-xl ${SLIDE_PAD} pr-[38%] sm:pr-[34%] md:pr-[30%] lg:pr-10 pb-16 md:pb-10`}
+          className={`relative z-20 flex h-full flex-col items-start justify-center space-y-3 sm:space-y-4 min-w-0 max-w-xl ${SLIDE_PAD} md:pr-[30%] lg:pr-10`}
         >
           <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-950/60 border border-blue-500/30 px-3 py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.16em] text-blue-300 backdrop-blur-sm">
             <Package className="w-3.5 h-3.5 text-blue-400" />
@@ -228,7 +226,8 @@ function FreeSampleHeroSlide() {
           </Link>
         </div>
 
-        <div className="pointer-events-none absolute bottom-0 right-2 sm:right-6 md:right-10 lg:right-12 z-10 w-[110px] sm:w-[150px] md:w-[200px] lg:w-[260px] xl:w-[300px] opacity-90 md:opacity-100">
+        {/* Stretch rolls — desktop only */}
+        <div className="pointer-events-none absolute bottom-0 right-6 lg:right-12 z-10 hidden md:block w-[200px] lg:w-[260px] xl:w-[300px]">
           <Image
             src={STRETCH_FILM_ROLLS_IMAGE}
             alt="Plastipac USA stretch film rolls"
@@ -278,14 +277,14 @@ function NationwideShippingSlide() {
   }, [hovered]);
 
   return (
-    <div className="absolute inset-0 bg-slate-950 text-white overflow-hidden">
+    <div className={`${SLIDE_SHELL} bg-slate-950`}>
       <SlideBackgroundImage src={AMERICAN_FLAG_BG} />
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-700 via-white/80 to-red-700 z-20 pointer-events-none" />
 
       <div
-        className={`relative z-10 grid h-full ${SLIDE_MIN_H} grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-6 items-center ${SLIDE_PAD}`}
+        className={`relative z-10 grid h-full ${SLIDE_MIN_H} grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 items-center ${SLIDE_PAD}`}
       >
-        <div className="flex flex-col items-start space-y-3 sm:space-y-4 min-w-0 relative z-20 pb-24 lg:pb-0">
+        <div className="flex flex-col items-start space-y-3 sm:space-y-4 min-w-0 relative z-20">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-red-700/20 border border-red-500/50 px-3 py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.16em] text-red-100">
             <Flag className="w-3.5 h-3.5 text-red-400" />
             {t("dashboard.shippingSlideBadge")}
@@ -315,14 +314,13 @@ function NationwideShippingSlide() {
           </div>
         </div>
 
-        {/* Map — compact on mobile as bottom accent; full on desktop */}
+        {/* USA map — desktop only */}
         <div
-          className="pointer-events-none lg:pointer-events-auto absolute bottom-3 right-3 left-3 lg:static lg:flex lg:justify-end lg:items-center opacity-80 lg:opacity-100 scale-[0.85] lg:scale-100 origin-bottom-right"
+          className="hidden md:flex justify-end items-center min-h-[180px]"
           onClick={(event) => event.stopPropagation()}
           onMouseDown={(event) => event.stopPropagation()}
-          onTouchStart={(event) => event.stopPropagation()}
         >
-          <div className="w-full max-w-[200px] ml-auto sm:max-w-[240px] lg:max-w-[360px] xl:max-w-[420px] rounded-2xl border border-white/15 bg-[#0c1c36]/70 p-1.5 sm:p-2 lg:p-3 shadow-xl shadow-black/30 backdrop-blur-sm [&_svg]:w-full [&_svg]:h-auto [&_svg]:max-h-[110px] sm:[&_svg]:max-h-[130px] lg:[&_svg]:max-h-[200px] xl:[&_svg]:max-h-[230px] lg:pointer-events-auto">
+          <div className="w-full max-w-[320px] xl:max-w-[420px] rounded-2xl border border-white/15 bg-[#0c1c36]/70 p-2 lg:p-3 shadow-xl shadow-black/30 backdrop-blur-sm [&_svg]:w-full [&_svg]:h-auto [&_svg]:max-h-[200px] xl:[&_svg]:max-h-[230px]">
             <USAMap
               defaultState={{
                 fill: MAP_STANDARD_FILL,
@@ -456,14 +454,14 @@ export function DashboardPromoCarousel() {
       aria-label={t("dashboard.promoCarouselLabel")}
     >
       <div className={`relative ${SLIDE_MIN_H}`}>
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={slide.id}
             initial={{ opacity: 0, x: 28 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -28 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-0"
+            className="relative md:absolute md:inset-0"
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
             dragElastic={0.18}
