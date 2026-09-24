@@ -7,22 +7,32 @@ import {
   type USAStateAbbreviation,
 } from "@mirawision/usa-map-react";
 import { toast } from "sonner";
+import {
+  getDeliveryLeadTime,
+  isRegionalState,
+  isTexasState,
+} from "@/lib/shipping/deliveryEstimates";
 
 const HUB_FILL = "#2563EB";
 const HUB_HOVER = "#1D4ED8";
+const REGIONAL_FILL = "#38BDF8";
+const REGIONAL_HOVER = "#0EA5E9";
 const STANDARD_FILL = "#CBD5E1";
-const STANDARD_HOVER = "#1D4ED8";
+const STANDARD_HOVER = "#64748B";
 const BORDER_WHITE = "#FFFFFF";
 const SELECTED_FILL = "#1D4ED8";
 
-/** High-volume logistics hubs — Plastipac primary blue */
-const HUB_STATES = new Set<string>(["TX", "CA", "IL", "FL", "GA"]);
-
 const HIGHLIGHT_BADGES = [
-  { label: "24-48 HR Dispatch", icon: "⚡" },
+  { label: "1 - 2 Days in Texas", icon: "⚡" },
   { label: "Direct Factory Shipping", icon: "📦" },
   { label: "Full Pallet & LTL Freight Discounts", icon: "🚛" },
 ] as const;
+
+function laneLabel(abbr: string): string {
+  if (isTexasState(abbr)) return "Texas hub";
+  if (isRegionalState(abbr)) return "Neighboring lane";
+  return "Distant lane";
+}
 
 export function USACoverageSection() {
   const [hovered, setHovered] = useState<USAStateAbbreviation | null>(null);
@@ -30,8 +40,9 @@ export function USACoverageSection() {
 
   const handleStateClick = (state: USAStateAbbreviation) => {
     setSelected(state);
+    const leadTime = getDeliveryLeadTime(state);
     toast.message(
-      `Estimated Delivery to ${state}: 1–2 Business Days. Free freight available on Full Pallet orders.`
+      `Estimated Delivery to ${state}: ${leadTime}. Free freight available on Full Pallet orders.`
     );
   };
 
@@ -48,16 +59,19 @@ export function USACoverageSection() {
     > = {};
 
     StateAbbreviations.forEach((state) => {
-      const isHub = HUB_STATES.has(state);
+      const isTexas = isTexasState(state);
+      const isRegional = isRegionalState(state);
       const isHovered = hovered === state;
       const isSelected = selected === state;
 
-      let fill = isHub ? HUB_FILL : STANDARD_FILL;
+      let fill = STANDARD_FILL;
+      if (isTexas) fill = HUB_FILL;
+      else if (isRegional) fill = REGIONAL_FILL;
+
       if (isSelected || isHovered) {
-        fill = isHub ? HUB_HOVER : STANDARD_HOVER;
-      }
-      if (isSelected && isHub) {
-        fill = SELECTED_FILL;
+        if (isTexas) fill = isSelected ? SELECTED_FILL : HUB_HOVER;
+        else if (isRegional) fill = REGIONAL_HOVER;
+        else fill = STANDARD_HOVER;
       }
 
       settings[state] = {
@@ -71,6 +85,9 @@ export function USACoverageSection() {
 
     return settings;
   }, [hovered, selected]);
+
+  const activeState = hovered || selected;
+  const selectedLeadTime = selected ? getDeliveryLeadTime(selected) : null;
 
   return (
     <section
@@ -131,7 +148,15 @@ export function USACoverageSection() {
                   style={{ backgroundColor: HUB_FILL }}
                   aria-hidden
                 />
-                High-Volume Logistics Hubs
+                Texas (1 - 2 Days)
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span
+                  className="h-3 w-3 rounded-sm"
+                  style={{ backgroundColor: REGIONAL_FILL }}
+                  aria-hidden
+                />
+                Neighboring (6 - 7 Days)
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span
@@ -139,7 +164,7 @@ export function USACoverageSection() {
                   style={{ backgroundColor: STANDARD_FILL }}
                   aria-hidden
                 />
-                Standard USA Shipping
+                Distant (7 - 8 Days)
               </span>
             </div>
           </div>
@@ -148,7 +173,7 @@ export function USACoverageSection() {
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-600">
               State Delivery Info
             </p>
-            {selected ? (
+            {selected && selectedLeadTime ? (
               <div
                 key={selected}
                 className="space-y-3 animate-in fade-in duration-200"
@@ -156,7 +181,7 @@ export function USACoverageSection() {
               >
                 <h3 className="text-2xl font-black text-slate-900">{selected}</h3>
                 <div className="rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3 text-sm font-semibold text-blue-900 leading-relaxed">
-                  Estimated Delivery to {selected}: 1–2 Business Days. Free
+                  Estimated Delivery to {selected}: {selectedLeadTime}. Free
                   freight available on Full Pallet orders.
                 </div>
                 <p className="text-xs text-slate-500 leading-relaxed">
@@ -171,12 +196,10 @@ export function USACoverageSection() {
               </p>
             )}
 
-            {(hovered || selected) && (
+            {activeState && (
               <p className="text-[11px] font-bold text-slate-400">
-                Active: {hovered || selected}
-                {HUB_STATES.has(String(hovered || selected))
-                  ? " · Hub lane"
-                  : " · Standard lane"}
+                Active: {activeState} · {laneLabel(String(activeState))} ·{" "}
+                {getDeliveryLeadTime(String(activeState))}
               </p>
             )}
           </aside>

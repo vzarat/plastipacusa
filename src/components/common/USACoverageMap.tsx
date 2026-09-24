@@ -8,174 +8,126 @@ import {
 } from "@mirawision/usa-map-react";
 import { Badge } from "@/components/ui/badge";
 import { Clock, MapPin, Truck } from "lucide-react";
+import {
+  getDeliveryLeadTime,
+  getDeliveryZone,
+  LEAD_TIME_DISTANT,
+  LEAD_TIME_REGIONAL,
+  LEAD_TIME_TEXAS,
+  type DeliveryZone,
+} from "@/lib/shipping/deliveryEstimates";
 
 /** Plastipac brand blues for active shipping zones */
 const FILL_PRIMARY = "#0052CC";
 const FILL_PRIMARY_HOVER = "#0066FF";
+const FILL_REGIONAL = "#38BDF8";
+const FILL_REGIONAL_HOVER = "#0EA5E9";
 const FILL_SECONDARY = "#E2E8F0";
 const FILL_SECONDARY_HOVER = "#CBD5E1";
 const FILL_SELECTED = "#0284C7";
 const STROKE_DEFAULT = "#94A3B8";
 const STROKE_PRIMARY = "#1E3A8A";
 
-type CoverageTier = "priority" | "standard" | "extended";
-
 interface StateCoverage {
   name: string;
-  tier: CoverageTier;
+  tier: DeliveryZone;
   leadTime: string;
   detail: string;
 }
 
-/** Priority = South Texas hub & core freight corridors; standard = lower 48; extended = AK/HI. */
-const STATE_COVERAGE: Record<string, StateCoverage> = {
-  TX: {
-    name: "Texas",
-    tier: "priority",
-    leadTime: "24–48 hours",
-    detail: "Factory-direct dispatch from our South Texas hub. Full-pallet & truckload priority lanes.",
-  },
-  LA: {
-    name: "Louisiana",
-    tier: "priority",
-    leadTime: "24–48 hours",
-    detail: "Priority Gulf Coast freight lanes with rapid pallet dispatch.",
-  },
-  OK: {
-    name: "Oklahoma",
-    tier: "priority",
-    leadTime: "24–48 hours",
-    detail: "Priority regional truckload coverage from the South Texas plant.",
-  },
-  NM: {
-    name: "New Mexico",
-    tier: "priority",
-    leadTime: "24–48 hours",
-    detail: "Priority Southwest corridor delivery for industrial accounts.",
-  },
-  AR: {
-    name: "Arkansas",
-    tier: "priority",
-    leadTime: "2–3 business days",
-    detail: "Priority Mid-South coverage with dedicated freight partners.",
-  },
-  AZ: {
-    name: "Arizona",
-    tier: "priority",
-    leadTime: "2–3 business days",
-    detail: "Priority Southwest shipping for distribution and manufacturing hubs.",
-  },
-  CO: {
-    name: "Colorado",
-    tier: "priority",
-    leadTime: "2–3 business days",
-    detail: "Priority Mountain West lanes for recurring pallet programs.",
-  },
-  KS: {
-    name: "Kansas",
-    tier: "priority",
-    leadTime: "2–3 business days",
-    detail: "Priority Central U.S. coverage with scheduled LTL and FTL options.",
-  },
-  MO: {
-    name: "Missouri",
-    tier: "priority",
-    leadTime: "2–3 business days",
-    detail: "Priority Midwest corridor for warehouse and 3PL partners.",
-  },
-  MS: {
-    name: "Mississippi",
-    tier: "priority",
-    leadTime: "2–3 business days",
-    detail: "Priority Southeast Gulf coverage for industrial shippers.",
-  },
-  AL: {
-    name: "Alabama",
-    tier: "priority",
-    leadTime: "2–3 business days",
-    detail: "Priority Southeast manufacturing corridor delivery.",
-  },
-  GA: {
-    name: "Georgia",
-    tier: "priority",
-    leadTime: "3–4 business days",
-    detail: "Priority Southeast distribution hub coverage.",
-  },
-  FL: {
-    name: "Florida",
-    tier: "priority",
-    leadTime: "3–4 business days",
-    detail: "Priority Southeast freight with full-pallet programs.",
-  },
-  TN: {
-    name: "Tennessee",
-    tier: "priority",
-    leadTime: "2–3 business days",
-    detail: "Priority Southeast / Mid-South logistics coverage.",
-  },
-  CA: {
-    name: "California",
-    tier: "standard",
-    leadTime: "4–6 business days",
-    detail: "Nationwide standard shipping for West Coast industrial accounts.",
-  },
-  NY: {
-    name: "New York",
-    tier: "standard",
-    leadTime: "4–6 business days",
-    detail: "Nationwide standard shipping for Northeast distribution centers.",
-  },
-  IL: {
-    name: "Illinois",
-    tier: "standard",
-    leadTime: "3–5 business days",
-    detail: "Nationwide Midwestern coverage for warehouse and freight partners.",
-  },
-  AK: {
-    name: "Alaska",
-    tier: "extended",
-    leadTime: "Quote-based",
-    detail: "Extended coverage — contact sales for ocean/air freight lead times.",
-  },
-  HI: {
-    name: "Hawaii",
-    tier: "extended",
-    leadTime: "Quote-based",
-    detail: "Extended coverage — contact sales for inter-island freight options.",
-  },
-};
-
 const STATE_NAMES: Record<string, string> = {
-  AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California",
-  CO: "Colorado", CT: "Connecticut", DE: "Delaware", FL: "Florida", GA: "Georgia",
-  HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa",
-  KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine", MD: "Maryland",
-  MA: "Massachusetts", MI: "Michigan", MN: "Minnesota", MS: "Mississippi",
-  MO: "Missouri", MT: "Montana", NE: "Nebraska", NV: "Nevada", NH: "New Hampshire",
-  NJ: "New Jersey", NM: "New Mexico", NY: "New York", NC: "North Carolina",
-  ND: "North Dakota", OH: "Ohio", OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania",
-  RI: "Rhode Island", SC: "South Carolina", SD: "South Dakota", TN: "Tennessee",
-  TX: "Texas", UT: "Utah", VT: "Vermont", VA: "Virginia", WA: "Washington",
-  WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming", DC: "Washington, D.C.",
+  AL: "Alabama",
+  AK: "Alaska",
+  AZ: "Arizona",
+  AR: "Arkansas",
+  CA: "California",
+  CO: "Colorado",
+  CT: "Connecticut",
+  DE: "Delaware",
+  FL: "Florida",
+  GA: "Georgia",
+  HI: "Hawaii",
+  ID: "Idaho",
+  IL: "Illinois",
+  IN: "Indiana",
+  IA: "Iowa",
+  KS: "Kansas",
+  KY: "Kentucky",
+  LA: "Louisiana",
+  ME: "Maine",
+  MD: "Maryland",
+  MA: "Massachusetts",
+  MI: "Michigan",
+  MN: "Minnesota",
+  MS: "Mississippi",
+  MO: "Missouri",
+  MT: "Montana",
+  NE: "Nebraska",
+  NV: "Nevada",
+  NH: "New Hampshire",
+  NJ: "New Jersey",
+  NM: "New Mexico",
+  NY: "New York",
+  NC: "North Carolina",
+  ND: "North Dakota",
+  OH: "Ohio",
+  OK: "Oklahoma",
+  OR: "Oregon",
+  PA: "Pennsylvania",
+  RI: "Rhode Island",
+  SC: "South Carolina",
+  SD: "South Dakota",
+  TN: "Tennessee",
+  TX: "Texas",
+  UT: "Utah",
+  VT: "Vermont",
+  VA: "Virginia",
+  WA: "Washington",
+  WV: "West Virginia",
+  WI: "Wisconsin",
+  WY: "Wyoming",
+  DC: "Washington, D.C.",
 };
 
 function getCoverage(abbr: string): StateCoverage {
-  if (STATE_COVERAGE[abbr]) return STATE_COVERAGE[abbr];
-  const isExtended = abbr === "AK" || abbr === "HI";
+  const code = abbr.toUpperCase();
+  const name = STATE_NAMES[code] || code;
+  const tier = getDeliveryZone(code);
+  const leadTime = getDeliveryLeadTime(code);
+
+  if (tier === "texas") {
+    return {
+      name,
+      tier,
+      leadTime,
+      detail:
+        "Factory-direct dispatch from our South Texas hub. Full-pallet & truckload priority lanes.",
+    };
+  }
+
+  if (tier === "regional") {
+    return {
+      name,
+      tier,
+      leadTime,
+      detail:
+        "Neighboring-state freight from the South Texas plant with scheduled LTL and FTL options.",
+    };
+  }
+
   return {
-    name: STATE_NAMES[abbr] || abbr,
-    tier: isExtended ? "extended" : "standard",
-    leadTime: isExtended ? "Quote-based" : "3–5 business days",
-    detail: isExtended
-      ? "Extended coverage — contact our commercial desk for freight options."
-      : "Nationwide USA shipping available for full-pallet and truckload orders.",
+    name,
+    tier,
+    leadTime,
+    detail:
+      "Nationwide USA shipping for full-pallet and truckload orders. Prices in USD.",
   };
 }
 
-function tierLabel(tier: CoverageTier): string {
-  if (tier === "priority") return "Priority Zone";
-  if (tier === "extended") return "Extended Coverage";
-  return "Standard USA";
+function tierLabel(tier: DeliveryZone): string {
+  if (tier === "texas") return "Texas Hub";
+  if (tier === "regional") return "Neighboring States";
+  return "Distant States";
 }
 
 export function USACoverageMap() {
@@ -205,16 +157,25 @@ export function USACoverageMap() {
       const coverage = getCoverage(state);
       const isSelected = selected === state;
       const isHovered = hovered === state;
-      const isPriority = coverage.tier === "priority";
 
-      let fill = isPriority ? FILL_PRIMARY : FILL_SECONDARY;
-      let stroke = isPriority ? STROKE_PRIMARY : STROKE_DEFAULT;
+      let fill = FILL_SECONDARY;
+      let stroke = STROKE_DEFAULT;
+
+      if (coverage.tier === "texas") {
+        fill = FILL_PRIMARY;
+        stroke = STROKE_PRIMARY;
+      } else if (coverage.tier === "regional") {
+        fill = FILL_REGIONAL;
+        stroke = STROKE_PRIMARY;
+      }
 
       if (isSelected) {
         fill = FILL_SELECTED;
         stroke = STROKE_PRIMARY;
       } else if (isHovered) {
-        fill = isPriority ? FILL_PRIMARY_HOVER : FILL_SECONDARY_HOVER;
+        if (coverage.tier === "texas") fill = FILL_PRIMARY_HOVER;
+        else if (coverage.tier === "regional") fill = FILL_REGIONAL_HOVER;
+        else fill = FILL_SECONDARY_HOVER;
       }
 
       settings[state] = {
@@ -264,9 +225,9 @@ export function USACoverageMap() {
             Interactive Delivery Map
           </h2>
           <p className="text-sm text-slate-600 leading-relaxed">
-            Click or hover any state to view Plastipac USA lead times. Priority zones
-            (brand blue) ship fastest from our South Texas plant; all other states are
-            covered nationwide in USD pricing.
+            Click or hover any state to view Plastipac USA delivery estimates from
+            our South Texas plant. All other states are covered nationwide in USD
+            pricing.
           </p>
         </div>
 
@@ -277,7 +238,15 @@ export function USACoverageMap() {
               style={{ backgroundColor: FILL_PRIMARY }}
               aria-hidden
             />
-            Priority (24–48h+)
+            Texas ({LEAD_TIME_TEXAS})
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-slate-700">
+            <span
+              className="h-3 w-3 rounded-sm"
+              style={{ backgroundColor: FILL_REGIONAL }}
+              aria-hidden
+            />
+            Neighboring ({LEAD_TIME_REGIONAL})
           </span>
           <span className="inline-flex items-center gap-1.5 text-slate-700">
             <span
@@ -285,7 +254,7 @@ export function USACoverageMap() {
               style={{ backgroundColor: FILL_SECONDARY }}
               aria-hidden
             />
-            Standard USA (3–5 days)
+            Distant ({LEAD_TIME_DISTANT})
           </span>
         </div>
       </div>
@@ -325,7 +294,10 @@ export function USACoverageMap() {
                 </div>
                 <Badge
                   variant={
-                    activeCoverage.tier === "priority" ? "gradient" : "default"
+                    activeCoverage.tier === "texas" ||
+                    activeCoverage.tier === "regional"
+                      ? "gradient"
+                      : "default"
                   }
                   className="text-[10px] font-bold uppercase shrink-0"
                 >
@@ -337,7 +309,7 @@ export function USACoverageMap() {
                 <Clock className="h-4 w-4 text-sky-600 shrink-0" />
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Est. Lead Time
+                    Est. Delivery
                   </p>
                   <p className="text-sm font-black text-sky-800">
                     {activeCoverage.leadTime}
@@ -364,7 +336,8 @@ export function USACoverageMap() {
             </>
           ) : (
             <p className="text-sm text-slate-500">
-              Select a state on the map to view shipping coverage and lead times.
+              Select a state on the map to view shipping coverage and delivery
+              estimates.
             </p>
           )}
         </aside>
