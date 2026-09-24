@@ -3,17 +3,22 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu, ShieldCheck } from "lucide-react";
+import { FileText, Menu, ShieldCheck } from "lucide-react";
 import { UserProfile } from "@/actions/auth";
+import type { AdminCreditApplication } from "@/actions/credit-applications";
 import { LanguageToggle } from "@/components/common/LanguageToggle";
 import { AdminSidebar, AdminTabKey } from "@/components/admin/AdminSidebar";
-import { AdminCouponsView } from "@/components/admin/AdminCouponsView";
+import { AdminCreditApplicationsView } from "@/components/admin/AdminCreditApplicationsView";
 
-interface AdminCouponsClientProps {
+interface AdminCreditApplicationsClientProps {
   profile: UserProfile;
+  initialApplications: AdminCreditApplication[];
 }
 
-export function AdminCouponsClient({ profile }: AdminCouponsClientProps) {
+export function AdminCreditApplicationsClient({
+  profile,
+  initialApplications,
+}: AdminCreditApplicationsClientProps) {
   const router = useRouter();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -36,6 +41,7 @@ export function AdminCouponsClient({ profile }: AdminCouponsClientProps) {
         profile={profile}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed((v) => !v)}
+        creditApplicationsActive
       />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -51,7 +57,8 @@ export function AdminCouponsClient({ profile }: AdminCouponsClientProps) {
             </button>
             <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-blue-900 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-200/80">
               <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-              Coupons
+              <FileText className="w-3.5 h-3.5 text-blue-600" />
+              Credit Applications
             </div>
           </div>
 
@@ -67,7 +74,9 @@ export function AdminCouponsClient({ profile }: AdminCouponsClientProps) {
         </header>
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          <AdminCouponsView />
+          <AdminCreditApplicationsView
+            initialApplications={initialApplications}
+          />
         </main>
       </div>
     </div>

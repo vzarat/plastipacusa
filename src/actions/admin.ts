@@ -216,51 +216,92 @@ export async function getAdminCustomers(): Promise<AdminCustomer[]> {
 export async function getAdminOrders(): Promise<AdminOrder[]> {
   try {
     const supabase = await createServerClient();
+
+    // No FK between orders.user_id and profiles — fetch separately and join in memory.
     const { data: dbOrders, error } = await supabase
       .from("orders")
-      .select(`
-        *,
-        profiles:user_id (
-          id,
-          full_name,
-          company_name,
-          email
-        )
-      `)
+      .select("*")
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("getAdminOrders query failed:", error);
+      console.warn(
+        "getAdminOrders query failed:",
+        error.message || error.code || "unknown error"
+      );
       return [];
     }
 
+    const userIds = Array.from(
+      new Set(
+        (dbOrders || [])
+          .map((row: { user_id?: string | null }) => row.user_id)
+          .filter((id): id is string => Boolean(id))
+      )
+    );
+
+    const profilesById: Record<
+      string,
+      { id: string; full_name?: string; company_name?: string; email?: string }
+    > = {};
+
+    if (userIds.length > 0) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, full_name, company_name, email")
+        .in("id", userIds);
+
+      if (profilesError) {
+        console.warn(
+          "getAdminOrders profiles enrich failed:",
+          profilesError.message || profilesError.code || "unknown error"
+        );
+      } else {
+        for (const profile of profiles || []) {
+          profilesById[profile.id] = profile;
+        }
+      }
+    }
+
     return (dbOrders || []).map((row: any) => {
-      const profile = row.profiles || {};
-      const guestFullName = row.shipping_address?.full_name || row.shipping_address?.customer_name;
+      const profile = (row.user_id && profilesById[row.user_id]) || {};
+      const guestFullName =
+        row.shipping_address?.full_name || row.shipping_address?.customer_name;
       const isGuest = !profile?.full_name && Boolean(guestFullName);
-      const rawStatus = String(row.status || row.fulfillment_status || "pending").toLowerCase();
+      const rawStatus = String(
+        row.status || row.fulfillment_status || "pending"
+      ).toLowerCase();
       const hasFailureDetails = Boolean(
-        row.shipping_address?.error_details || row.shipping_address?.error_message
+        row.shipping_address?.error_details ||
+          row.shipping_address?.error_message
       );
       const paymentStatus = hasFailureDetails
         ? "failed"
-        : (row.payment_status || (rawStatus === "paid" ? "paid" : "pending")) as any;
+        : ((row.payment_status ||
+            (rawStatus === "paid" ? "paid" : "pending")) as any);
       const fulfillmentStatus = hasFailureDetails
         ? "unfulfilled"
-        : (row.fulfillment_status ||
-            (rawStatus === "paid" || rawStatus === "fulfilled" || rawStatus === "delivered"
+        : ((row.fulfillment_status ||
+            (rawStatus === "paid" ||
+            rawStatus === "fulfilled" ||
+            rawStatus === "delivered"
               ? "fulfilled"
               : rawStatus === "in_transit" || rawStatus === "shipped"
                 ? "in_transit"
-                : "unfulfilled")) as any;
+                : "unfulfilled")) as any);
 
       return {
         id: row.id || row.po_number || `PO-USA-${row.id}`,
         createdAt: row.created_at || new Date().toISOString(),
         customerName:
-          profile.full_name || guestFullName || row.customer_name || "Commercial Customer",
+          profile.full_name ||
+          guestFullName ||
+          row.customer_name ||
+          "Commercial Customer",
         customerEmail:
-          profile.email || row.shipping_address?.email || row.customer_email || "sales@plastipacusa.com",
+          profile.email ||
+          row.shipping_address?.email ||
+          row.customer_email ||
+          "sales@plastipacusa.com",
         customerCompany:
           profile.company_name || row.company_name || "Industrial Partner",
         isGuest,

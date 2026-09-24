@@ -13,7 +13,7 @@ const nextConfig = {
   reactStrictMode: false,
   serverExternalPackages: ["drizzle-orm", "pg", "pg-pool"],
   images: {
-    unoptimized: true,
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       {
         protocol: "https",

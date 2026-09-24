@@ -1,12 +1,15 @@
 "use client";
 
 import React, {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
   useTransition,
 } from "react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, PackageOpen } from "lucide-react";
 import { ProductCard } from "@/components/products/ProductCard";
@@ -37,6 +40,7 @@ interface ProductCatalogProps {
   initialGauge?: string;
   initialLength?: string;
   initialQuery?: string;
+  initialPage?: number;
 }
 
 const CATEGORY_SERIES_MAP: Record<string, string> = {
@@ -120,13 +124,71 @@ function excludeFiftyGauge(product: ProductWithVariants): boolean {
   return true;
 }
 
+function normalizeApp(raw: string | null | undefined): CatalogAppFilter {
+  const value = raw || "all";
+  return (["all", "hand", "machine"].includes(value)
+    ? value
+    : "all") as CatalogAppFilter;
+}
+
+function normalizePage(raw: string | number | null | undefined): number {
+  const n = typeof raw === "number" ? raw : Number(raw || "1");
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
+}
+
+function buildCatalogHref(input: {
+  pathname: string;
+  app: CatalogAppFilter;
+  category: string;
+  width: string;
+  gauge: string;
+  length: string;
+  q: string;
+  page: number;
+}): string {
+  const params = new URLSearchParams();
+  if (input.app && input.app !== "all") params.set("app", input.app);
+  if (input.category && input.category !== "all") {
+    params.set("category", input.category);
+  }
+  if (input.width && input.width !== "all") params.set("width", input.width);
+  if (input.gauge && input.gauge !== "all") params.set("gauge", input.gauge);
+  if (input.length && input.length !== "all") params.set("length", input.length);
+  if (input.q.trim()) params.set("q", input.q.trim());
+  if (input.page > 1) params.set("page", String(input.page));
+  const qs = params.toString();
+  return qs ? `${input.pathname}?${qs}` : input.pathname;
+}
+
+function catalogStateKey(input: {
+  app: CatalogAppFilter;
+  category: string;
+  width: string;
+  gauge: string;
+  length: string;
+  q: string;
+  page: number;
+}): string {
+  return [
+    input.app,
+    input.category,
+    input.width,
+    input.gauge,
+    input.length,
+    input.q.trim(),
+    String(input.page),
+  ].join("|");
+}
+
 function CatalogPagination({
   currentPage,
   totalPages,
+  hrefForPage,
   onPageChange,
 }: {
   currentPage: number;
   totalPages: number;
+  hrefForPage: (page: number) => string;
   onPageChange: (page: number) => void;
 }) {
   if (totalPages <= 1) return null;
@@ -138,43 +200,66 @@ function CatalogPagination({
       aria-label="Product catalog pages"
       className="flex flex-wrap items-center justify-center gap-2 pt-8"
     >
-      <button
-        type="button"
-        onClick={() => onPageChange(currentPage - 1)}
-        disabled={currentPage <= 1}
-        className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
-        aria-label="Previous page"
-      >
-        <ChevronLeft className="w-4 h-4" />
-        Prev
-      </button>
+      {currentPage <= 1 ? (
+        <span className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-400 opacity-40">
+          <ChevronLeft className="w-4 h-4" />
+          Prev
+        </span>
+      ) : (
+        <Link
+          href={hrefForPage(currentPage - 1)}
+          onClick={(e) => {
+            e.preventDefault();
+            onPageChange(currentPage - 1);
+          }}
+          className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+          aria-label="Previous page"
+          rel="prev"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          Prev
+        </Link>
+      )}
 
       {pages.map((page) => (
-        <button
+        <Link
           key={page}
-          type="button"
-          onClick={() => onPageChange(page)}
+          href={hrefForPage(page)}
+          onClick={(e) => {
+            e.preventDefault();
+            onPageChange(page);
+          }}
           aria-current={page === currentPage ? "page" : undefined}
-          className={`min-w-[2.25rem] rounded-xl px-3 py-2 text-xs font-bold transition-colors cursor-pointer ${
+          className={`min-w-[2.25rem] rounded-xl px-3 py-2 text-xs font-bold transition-colors text-center ${
             page === currentPage
               ? "bg-sky-600 text-white shadow-sm shadow-sky-600/25"
               : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
           }`}
         >
           {page}
-        </button>
+        </Link>
       ))}
 
-      <button
-        type="button"
-        onClick={() => onPageChange(currentPage + 1)}
-        disabled={currentPage >= totalPages}
-        className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
-        aria-label="Next page"
-      >
-        Next
-        <ChevronRight className="w-4 h-4" />
-      </button>
+      {currentPage >= totalPages ? (
+        <span className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-400 opacity-40">
+          Next
+          <ChevronRight className="w-4 h-4" />
+        </span>
+      ) : (
+        <Link
+          href={hrefForPage(currentPage + 1)}
+          onClick={(e) => {
+            e.preventDefault();
+            onPageChange(currentPage + 1);
+          }}
+          className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+          aria-label="Next page"
+          rel="next"
+        >
+          Next
+          <ChevronRight className="w-4 h-4" />
+        </Link>
+      )}
     </nav>
   );
 }
@@ -187,7 +272,11 @@ export function ProductCatalog({
   initialGauge = "all",
   initialLength = "all",
   initialQuery = "",
+  initialPage = 1,
 }: ProductCatalogProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [selectedAppType, setSelectedAppType] =
     useState<CatalogAppFilter>(initialApp);
@@ -196,26 +285,102 @@ export function ProductCatalog({
   const [selectedGauge, setSelectedGauge] = useState(initialGauge);
   const [selectedLength, setSelectedLength] = useState(initialLength);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(Math.max(1, initialPage));
   const gridTopRef = useRef<HTMLDivElement>(null);
+  const lastPushedKeyRef = useRef(
+    catalogStateKey({
+      app: initialApp,
+      category: initialCategory,
+      width: initialWidth,
+      gauge: initialGauge,
+      length: initialLength,
+      q: initialQuery,
+      page: Math.max(1, initialPage),
+    })
+  );
 
-  const updateFilter = <T,>(setter: (value: T) => void, value: T) => {
-    startTransition(() => {
-      setter(value);
-      setCurrentPage(1);
-    });
-  };
+  const pushCatalogUrl = useCallback(
+    (
+      next: {
+        app: CatalogAppFilter;
+        category: string;
+        width: string;
+        gauge: string;
+        length: string;
+        q: string;
+        page: number;
+      },
+      replace = true
+    ) => {
+      const key = catalogStateKey(next);
+      if (key === lastPushedKeyRef.current) return;
+      lastPushedKeyRef.current = key;
+      const href = buildCatalogHref({ pathname, ...next });
+      const method = replace ? router.replace : router.push;
+      method(href, { scroll: false });
+    },
+    [pathname, router]
+  );
 
-  const resetFilters = () => {
-    startTransition(() => {
-      setSelectedAppType("all");
-      setSelectedWidth("all");
-      setSelectedGauge("all");
-      setSelectedLength("all");
-      setSearchQuery("");
-      setCurrentPage(1);
-    });
-  };
+  const applyCatalogState = useCallback(
+    (
+      next: {
+        app: CatalogAppFilter;
+        category: string;
+        width: string;
+        gauge: string;
+        length: string;
+        q: string;
+        page: number;
+      },
+      opts?: { replace?: boolean; scrollToGrid?: boolean }
+    ) => {
+      startTransition(() => {
+        setSelectedAppType(next.app);
+        setSelectedWidth(next.width);
+        setSelectedGauge(next.gauge);
+        setSelectedLength(next.length);
+        setSearchQuery(next.q);
+        setCurrentPage(next.page);
+      });
+      pushCatalogUrl(next, opts?.replace ?? true);
+
+      if (opts?.scrollToGrid) {
+        const gridTop = gridTopRef.current?.getBoundingClientRect().top;
+        const scrollY =
+          typeof window !== "undefined" && gridTop !== undefined
+            ? window.scrollY + gridTop - 96
+            : 0;
+        window.scrollTo({ top: Math.max(0, scrollY), behavior: "smooth" });
+      }
+    },
+    [pushCatalogUrl]
+  );
+
+  // Sync from URL on back/forward (or external query changes)
+  useEffect(() => {
+    const fromUrl = {
+      app: normalizeApp(searchParams.get("app") || searchParams.get("type")),
+      category: searchParams.get("category") || selectedCategory || "all",
+      width: searchParams.get("width") || "all",
+      gauge: searchParams.get("gauge") || "all",
+      length: searchParams.get("length") || "all",
+      q: searchParams.get("q") || "",
+      page: normalizePage(searchParams.get("page")),
+    };
+    const key = catalogStateKey(fromUrl);
+    if (key === lastPushedKeyRef.current) return;
+
+    lastPushedKeyRef.current = key;
+    setSelectedAppType(fromUrl.app);
+    setSelectedWidth(fromUrl.width);
+    setSelectedGauge(fromUrl.gauge);
+    setSelectedLength(fromUrl.length);
+    setSearchQuery(fromUrl.q);
+    setCurrentPage(fromUrl.page);
+    // selectedCategory is intentionally sticky from server props
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to URL changes
+  }, [searchParams]);
 
   const filteredProducts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -298,47 +463,141 @@ export function ProductCatalog({
     searchQuery,
   ]);
 
-  // Auto-reset page when filters/search change (covers toolbar typing too)
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [
-    selectedCategory,
-    selectedAppType,
-    selectedWidth,
-    selectedGauge,
-    selectedLength,
-    searchQuery,
-  ]);
-
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE) || 1;
   const safePage = Math.min(currentPage, totalPages);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      applyCatalogState(
+        {
+          app: selectedAppType,
+          category: selectedCategory,
+          width: selectedWidth,
+          gauge: selectedGauge,
+          length: selectedLength,
+          q: searchQuery,
+          page: totalPages,
+        },
+        { replace: true }
+      );
+    }
+  }, [
+    applyCatalogState,
+    currentPage,
+    searchQuery,
+    selectedAppType,
+    selectedCategory,
+    selectedGauge,
+    selectedLength,
+    selectedWidth,
+    totalPages,
+  ]);
 
   const paginatedProducts = filteredProducts.slice(
     (safePage - 1) * ITEMS_PER_PAGE,
     safePage * ITEMS_PER_PAGE
   );
 
+  const hrefForPage = (page: number) =>
+    buildCatalogHref({
+      pathname,
+      app: selectedAppType,
+      category: selectedCategory,
+      width: selectedWidth,
+      gauge: selectedGauge,
+      length: selectedLength,
+      q: searchQuery,
+      page,
+    });
+
+  const currentSnapshot = {
+    app: selectedAppType,
+    category: selectedCategory,
+    width: selectedWidth,
+    gauge: selectedGauge,
+    length: selectedLength,
+    q: searchQuery,
+  };
+
+  const updateFilter = <T extends string>(
+    key: "app" | "width" | "gauge" | "length" | "q",
+    value: T
+  ) => {
+    applyCatalogState(
+      {
+        ...currentSnapshot,
+        [key]: value,
+        page: 1,
+      },
+      { replace: true }
+    );
+  };
+
+  const resetFilters = () => {
+    applyCatalogState(
+      {
+        app: "all",
+        category: selectedCategory,
+        width: "all",
+        gauge: "all",
+        length: "all",
+        q: "",
+        page: 1,
+      },
+      { replace: true }
+    );
+  };
+
   const goToPage = (page: number) => {
     const next = Math.max(1, Math.min(page, totalPages));
-    setCurrentPage(next);
-    const gridTop = gridTopRef.current?.getBoundingClientRect().top;
-    const scrollY =
-      typeof window !== "undefined" && gridTop !== undefined
-        ? window.scrollY + gridTop - 96
-        : 0;
-    window.scrollTo({ top: Math.max(0, scrollY), behavior: "smooth" });
+    applyCatalogState(
+      {
+        ...currentSnapshot,
+        page: next,
+      },
+      { replace: false, scrollToGrid: true }
+    );
   };
+
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleQueryChange = (value: string) => {
+    startTransition(() => {
+      setSearchQuery(value);
+      setCurrentPage(1);
+    });
+
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      pushCatalogUrl(
+        {
+          app: selectedAppType,
+          category: selectedCategory,
+          width: selectedWidth,
+          gauge: selectedGauge,
+          length: selectedLength,
+          q: value,
+          page: 1,
+        },
+        true
+      );
+    }, 300);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
       <ProductCatalogToolbar
         query={searchQuery}
-        onQueryChange={setSearchQuery}
+        onQueryChange={handleQueryChange}
         onSubmitSearch={(value) => {
-          startTransition(() => {
-            setSearchQuery(value);
-            setCurrentPage(1);
-          });
+          if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+          updateFilter("q", value);
         }}
       />
 
@@ -349,10 +608,10 @@ export function ProductCatalog({
             selectedWidth={selectedWidth}
             selectedGauge={selectedGauge}
             selectedLength={selectedLength}
-            onAppChange={(value) => updateFilter(setSelectedAppType, value)}
-            onWidthChange={(value) => updateFilter(setSelectedWidth, value)}
-            onGaugeChange={(value) => updateFilter(setSelectedGauge, value)}
-            onLengthChange={(value) => updateFilter(setSelectedLength, value)}
+            onAppChange={(value) => updateFilter("app", value)}
+            onWidthChange={(value) => updateFilter("width", value)}
+            onGaugeChange={(value) => updateFilter("gauge", value)}
+            onLengthChange={(value) => updateFilter("length", value)}
             onReset={resetFilters}
           />
         </div>
@@ -398,6 +657,7 @@ export function ProductCatalog({
               <CatalogPagination
                 currentPage={safePage}
                 totalPages={totalPages}
+                hrefForPage={hrefForPage}
                 onPageChange={goToPage}
               />
             </>

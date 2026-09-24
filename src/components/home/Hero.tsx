@@ -20,7 +20,6 @@ export function Hero() {
           alt="Plastipac Warehouse Storage"
           fill
           priority
-          unoptimized
           sizes="100vw"
           className="object-cover object-center"
         />

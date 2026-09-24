@@ -44,6 +44,8 @@ import { useLanguage } from "@/context/LanguageContext";
 import { LanguageToggle } from "@/components/common/LanguageToggle";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { AvatarUpload } from "@/components/dashboard/AvatarUpload";
+import { DashboardGreeting } from "@/components/dashboard/DashboardGreeting";
+import { DashboardPromoCarousel } from "@/components/dashboard/DashboardPromoCarousel";
 import OrderDetailModal, { OrderDetailLike } from "@/components/orders/OrderDetailModal";
 
 export interface DashboardOrderItem {
@@ -629,7 +631,14 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
             <>
               {activeTab === "overview" ? (
                 <>
-                  {/* Welcome Banner */}
+                  <DashboardGreeting
+                    fullName={profile.fullName}
+                    email={profile.email}
+                  />
+
+                  <DashboardPromoCarousel />
+
+                  {/* Account summary banner */}
                   <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm relative overflow-hidden">
                     <div className="absolute right-0 top-0 w-80 h-full bg-gradient-to-l from-sky-50/70 to-transparent pointer-events-none hidden md:block" />
 
@@ -645,14 +654,14 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                           </span>
                         </div>
 
-                        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                          {t("dashboard.welcome")}, {profile.fullName}
-                        </h1>
+                        <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                          {profile.companyName || t("dashboard.welcome")}
+                        </h2>
 
                         <p className="text-xs sm:text-sm text-slate-600 flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-slate-800 flex items-center gap-1">
                             <Building2 className="w-3.5 h-3.5 text-slate-500" />
-                            {profile.companyName}
+                            {profile.fullName || t("dashboard.valuedCustomer")}
                           </span>
                           <span className="text-slate-300">•</span>
                           <span>{profile.email}</span>

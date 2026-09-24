@@ -15,9 +15,18 @@ create table if not exists public.credit_applications (
   credit_reference_2 text,
   credit_reference_3 text,
   notes text,
-  status text not null default 'pending',
+  status text not null default 'pending'
+    check (status in ('pending', 'approved', 'rejected')),
+  reviewed_at timestamptz,
+  reviewed_by uuid references auth.users (id),
   created_at timestamptz not null default now()
 );
+
+-- Backfill columns if the table already existed without them
+alter table public.credit_applications
+  add column if not exists reviewed_at timestamptz;
+alter table public.credit_applications
+  add column if not exists reviewed_by uuid references auth.users (id);
 
 create index if not exists credit_applications_email_idx
   on public.credit_applications (work_email);
@@ -39,6 +48,23 @@ create policy "Admins read credit applications"
   on public.credit_applications
   for select
   using (
+    exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.role = 'admin'
+    )
+  );
+
+drop policy if exists "Admins update credit applications" on public.credit_applications;
+create policy "Admins update credit applications"
+  on public.credit_applications
+  for update
+  using (
+    exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.role = 'admin'
+    )
+  )
+  with check (
     exists (
       select 1 from public.profiles p
       where p.id = auth.uid() and p.role = 'admin'

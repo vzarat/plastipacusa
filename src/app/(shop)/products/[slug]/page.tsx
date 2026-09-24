@@ -19,7 +19,7 @@ import { createClient } from "@supabase/supabase-js";
 import { PRODUCT_CATEGORIES } from "@/data/categories";
 import { resolvePalletizingSpecs } from "@/lib/palletizing";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 export const dynamicParams = true;
 
 const supabaseStatic = createClient(

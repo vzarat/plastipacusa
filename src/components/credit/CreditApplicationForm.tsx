@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   CreditCard,
   Loader2,
+  Lock,
   PhoneCall,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -14,9 +15,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLanguage } from "@/context/LanguageContext";
 import { submitCreditApplication } from "@/actions/credit-applications";
+import {
+  CREDIT_APPLICATION_COUNTRY,
+  US_STATES,
+  formatUsAddress,
+} from "@/lib/us-states";
 
 const fieldLabel =
   "text-[11px] font-bold uppercase tracking-wider text-slate-500";
+
+const selectClassName =
+  "flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 focus-visible:border-sky-400 disabled:cursor-not-allowed disabled:opacity-60";
 
 export function CreditApplicationForm() {
   const { t } = useLanguage();
@@ -26,8 +35,15 @@ export function CreditApplicationForm() {
     workEmail: "",
     phone: "",
     taxIdEin: "",
-    billingAddress: "",
-    shippingAddress: "",
+    billingStreet: "",
+    billingCity: "",
+    billingState: "",
+    billingZip: "",
+    shippingStreet: "",
+    shippingCity: "",
+    shippingState: "",
+    shippingZip: "",
+    country: CREDIT_APPLICATION_COUNTRY,
     annualVolume: "",
     creditReference1: "",
     creditReference2: "",
@@ -46,14 +62,31 @@ export function CreditApplicationForm() {
     event.preventDefault();
     setSubmitting(true);
     try {
+      const country = CREDIT_APPLICATION_COUNTRY;
+      const billingAddress = formatUsAddress({
+        street: form.billingStreet,
+        city: form.billingCity,
+        state: form.billingState,
+        zip: form.billingZip,
+        country,
+      });
+      const shippingAddress = formatUsAddress({
+        street: form.shippingStreet,
+        city: form.shippingCity,
+        state: form.shippingState,
+        zip: form.shippingZip,
+        country,
+      });
+
       const result = await submitCreditApplication({
         companyName: form.companyName,
         contactName: form.contactName,
         workEmail: form.workEmail,
         phone: form.phone,
         taxIdEin: form.taxIdEin,
-        billingAddress: form.billingAddress || undefined,
-        shippingAddress: form.shippingAddress || undefined,
+        billingAddress: billingAddress || undefined,
+        shippingAddress: shippingAddress || undefined,
+        country,
         annualVolume: form.annualVolume || undefined,
         creditReference1: form.creditReference1 || undefined,
         creditReference2: form.creditReference2 || undefined,
@@ -175,25 +208,138 @@ export function CreditApplicationForm() {
           />
         </label>
 
-        <label className="block space-y-1.5 sm:col-span-2">
-          <span className={fieldLabel}>{t("credit.billingAddress")}</span>
-          <Input
-            value={form.billingAddress}
-            onChange={(e) => update("billingAddress", e.target.value)}
-            placeholder="Street, City, State, ZIP"
-            className="rounded-xl"
-          />
-        </label>
+        {/* Billing address */}
+        <div className="sm:col-span-2 space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+          <p className={fieldLabel}>{t("credit.billingAddress")}</p>
+          <label className="block space-y-1.5">
+            <span className={fieldLabel}>{t("credit.street")}</span>
+            <Input
+              value={form.billingStreet}
+              onChange={(e) => update("billingStreet", e.target.value)}
+              placeholder="1000 Industrial Parkway"
+              className="rounded-xl"
+              autoComplete="billing street-address"
+            />
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <label className="block space-y-1.5 sm:col-span-1">
+              <span className={fieldLabel}>{t("credit.city")}</span>
+              <Input
+                value={form.billingCity}
+                onChange={(e) => update("billingCity", e.target.value)}
+                placeholder="Dallas"
+                className="rounded-xl"
+                autoComplete="billing address-level2"
+              />
+            </label>
+            <label className="block space-y-1.5">
+              <span className={fieldLabel}>{t("credit.state")}</span>
+              <select
+                required={Boolean(
+                  form.billingStreet || form.billingCity || form.billingZip
+                )}
+                value={form.billingState}
+                onChange={(e) => update("billingState", e.target.value)}
+                className={selectClassName}
+                autoComplete="billing address-level1"
+              >
+                <option value="">{t("credit.selectState")}</option>
+                {US_STATES.map((state) => (
+                  <option key={state.code} value={state.code}>
+                    {state.name} ({state.code})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block space-y-1.5">
+              <span className={fieldLabel}>{t("credit.zip")}</span>
+              <Input
+                value={form.billingZip}
+                onChange={(e) => update("billingZip", e.target.value)}
+                placeholder="75201"
+                className="rounded-xl"
+                autoComplete="billing postal-code"
+              />
+            </label>
+          </div>
+        </div>
 
-        <label className="block space-y-1.5 sm:col-span-2">
-          <span className={fieldLabel}>{t("credit.shippingAddress")}</span>
-          <Input
-            value={form.shippingAddress}
-            onChange={(e) => update("shippingAddress", e.target.value)}
-            placeholder="Street, City, State, ZIP"
-            className="rounded-xl"
-          />
-        </label>
+        {/* Shipping address */}
+        <div className="sm:col-span-2 space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+          <p className={fieldLabel}>{t("credit.shippingAddress")}</p>
+          <label className="block space-y-1.5">
+            <span className={fieldLabel}>{t("credit.street")}</span>
+            <Input
+              value={form.shippingStreet}
+              onChange={(e) => update("shippingStreet", e.target.value)}
+              placeholder="1000 Industrial Parkway"
+              className="rounded-xl"
+              autoComplete="shipping street-address"
+            />
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <label className="block space-y-1.5 sm:col-span-1">
+              <span className={fieldLabel}>{t("credit.city")}</span>
+              <Input
+                value={form.shippingCity}
+                onChange={(e) => update("shippingCity", e.target.value)}
+                placeholder="Dallas"
+                className="rounded-xl"
+                autoComplete="shipping address-level2"
+              />
+            </label>
+            <label className="block space-y-1.5">
+              <span className={fieldLabel}>{t("credit.state")}</span>
+              <select
+                required={Boolean(
+                  form.shippingStreet || form.shippingCity || form.shippingZip
+                )}
+                value={form.shippingState}
+                onChange={(e) => update("shippingState", e.target.value)}
+                className={selectClassName}
+                autoComplete="shipping address-level1"
+              >
+                <option value="">{t("credit.selectState")}</option>
+                {US_STATES.map((state) => (
+                  <option key={`ship-${state.code}`} value={state.code}>
+                    {state.name} ({state.code})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block space-y-1.5">
+              <span className={fieldLabel}>{t("credit.zip")}</span>
+              <Input
+                value={form.shippingZip}
+                onChange={(e) => update("shippingZip", e.target.value)}
+                placeholder="75201"
+                className="rounded-xl"
+                autoComplete="shipping postal-code"
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* Locked country — USA only */}
+        <div className="sm:col-span-2 space-y-1.5">
+          <span className={fieldLabel}>{t("credit.country")}</span>
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              name="country"
+              value={form.country}
+              readOnly
+              disabled
+              className="rounded-xl pl-9 bg-slate-100 text-slate-700 cursor-not-allowed border-slate-200"
+              aria-readonly="true"
+            />
+            <input type="hidden" name="country" value={CREDIT_APPLICATION_COUNTRY} />
+          </div>
+          <p className="text-[11px] text-slate-500 leading-relaxed flex items-start gap-1.5 pt-0.5">
+            <Lock className="w-3 h-3 mt-0.5 shrink-0 text-slate-400" />
+            {t("credit.countryNote")}
+          </p>
+        </div>
 
         <label className="block space-y-1.5 sm:col-span-2">
           <span className={fieldLabel}>{t("credit.annualVolume")}</span>
