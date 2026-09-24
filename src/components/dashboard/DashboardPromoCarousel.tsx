@@ -34,6 +34,9 @@ const HERO_WAREHOUSE_BG =
 const STRETCH_FILM_ROLLS_IMAGE =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/STRETCH.png";
 
+const AMERICAN_FLAG_BG =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/1140-american-flag-myths-esp.jpg";
+
 const MAP_HUB_FILL = "#DC2626";
 const MAP_HUB_HOVER = "#B91C1C";
 const MAP_STANDARD_FILL = "#93C5FD";
@@ -244,16 +247,20 @@ function NationwideShippingSlide() {
   }, [hovered]);
 
   return (
-    <div className="absolute inset-0 bg-[#0a1628] text-white overflow-hidden border-y border-red-600/40">
-      {/* Patriotic navy field + subtle red accent rail */}
-      <div
-        className="absolute inset-0 z-0 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(ellipse at 20% 30%, rgba(30,58,138,0.55), transparent 55%), radial-gradient(ellipse at 90% 80%, rgba(185,28,28,0.18), transparent 45%), #0a1628",
-        }}
-      />
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-700 via-white/80 to-red-700 z-20" />
+    <div className="absolute inset-0 bg-slate-950 text-white overflow-hidden">
+      {/* American flag background + uniform dark overlay */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <Image
+          src={AMERICAN_FLAG_BG}
+          alt=""
+          fill
+          sizes="(max-width: 1280px) 100vw, 1200px"
+          className="object-cover object-center"
+          priority={false}
+        />
+        <div className="absolute inset-0 bg-slate-950/80 backdrop-brightness-75" />
+      </div>
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-700 via-white/80 to-red-700 z-20 pointer-events-none" />
 
       <div className="relative z-10 grid h-full min-h-[280px] sm:min-h-[320px] grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-6 items-center py-10 sm:py-12 px-6 sm:px-8">
         <div className="flex flex-col items-start space-y-3 sm:space-y-4 min-w-0">
@@ -262,7 +269,7 @@ function NationwideShippingSlide() {
             {t("dashboard.shippingSlideBadge")}
           </span>
 
-          <h2 className="text-xl sm:text-2xl lg:text-[1.7rem] font-extrabold text-white tracking-tight leading-tight uppercase">
+          <h2 className="text-xl sm:text-2xl lg:text-[1.7rem] font-extrabold text-white tracking-tight leading-tight">
             {t("dashboard.shippingSlideTitle")}
           </h2>
 
