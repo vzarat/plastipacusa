@@ -631,13 +631,13 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
             <>
               {activeTab === "overview" ? (
                 <>
+                  <DashboardPromoCarousel />
+
                   <DashboardGreeting
                     fullName={profile.fullName}
                     email={profile.email}
                     companyName={profile.companyName}
                   />
-
-                  <DashboardPromoCarousel />
 
                   {/* KPI Stats Row */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
