@@ -17,11 +17,11 @@ import {
   LogOut,
   Building2,
   ShieldCheck,
+  PhoneCall,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/context/LanguageContext";
 import { LanguageToggle } from "@/components/common/LanguageToggle";
-import { RegionCurrencyBadge } from "@/components/common/RegionCurrencyBadge";
 
 const LOGO_SRC =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PLASTIPAC_USA_LOGO%202.svg";
@@ -261,15 +261,19 @@ export function Navbar() {
 
           <div className="space-y-4 pt-6 border-t border-slate-100 mt-6">
             <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-              <span className="text-xs font-bold text-slate-600">Region</span>
-              <RegionCurrencyBadge />
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
               <span className="text-xs font-bold text-slate-600">
                 {t("nav.language")}
               </span>
               <LanguageToggle />
             </div>
+
+            <a
+              href="tel:+19564003683"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-800 hover:border-sky-300 hover:bg-sky-50/50 transition-colors"
+            >
+              <PhoneCall className="w-4 h-4 text-sky-600" />
+              (956) 400-3683
+            </a>
 
             {currentUser ? (
               <div className="space-y-2">
@@ -419,8 +423,16 @@ export function Navbar() {
             </nav>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-2.5">
-            <RegionCurrencyBadge className="hidden sm:inline-flex" />
+          <div className="flex items-center gap-2 lg:gap-3">
+            <a
+              href="tel:+19564003683"
+              className="hidden lg:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 hover:text-sky-700 rounded-xl hover:bg-sky-50/60 transition-colors"
+              aria-label="Call Plastipac USA support"
+            >
+              <PhoneCall className="w-3.5 h-3.5 text-sky-600" />
+              (956) 400-3683
+            </a>
+
             <LanguageToggle />
 
             {currentUser ? (

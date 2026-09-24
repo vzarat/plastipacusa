@@ -18,6 +18,7 @@ export interface CreditApplicationInput {
   /** Always "United States" — credit terms are US-only */
   country?: string;
   annualVolume?: string;
+  desiredCreditLimit?: string;
   creditReference1?: string;
   creditReference2?: string;
   creditReference3?: string;
@@ -145,6 +146,7 @@ export async function submitCreditApplication(
   const shippingAddress = String(input.shippingAddress || "").trim();
   const country = String(input.country || "United States").trim() || "United States";
   const annualVolume = String(input.annualVolume || "").trim();
+  const desiredCreditLimit = String(input.desiredCreditLimit || "").trim();
   const creditReference1 = String(input.creditReference1 || "").trim();
   const creditReference2 = String(input.creditReference2 || "").trim();
   const creditReference3 = String(input.creditReference3 || "").trim();
@@ -175,17 +177,13 @@ export async function submitCreditApplication(
     return { success: false, error: "Please provide a business phone number." };
   }
 
-  if (!taxIdEin) {
+  // Tax ID is preferred but optional on the dashboard short-form application.
+  // Full public form still requires at least one credit reference when no desired limit is given.
+  if (!creditReference1 && !desiredCreditLimit) {
     return {
       success: false,
-      error: "Please provide your Tax ID (EIN) for credit verification.",
-    };
-  }
-
-  if (!creditReference1) {
-    return {
-      success: false,
-      error: "Please provide at least one corporate credit reference.",
+      error:
+        "Please provide at least one corporate credit reference, or a desired credit limit.",
     };
   }
 
@@ -201,9 +199,15 @@ export async function submitCreditApplication(
     credit_reference_1: creditReference1 || null,
     credit_reference_2: creditReference2 || null,
     credit_reference_3: creditReference3 || null,
-    notes: notes
-      ? `${notes}\n\nCountry: ${country}`
-      : `Country: ${country}`,
+    notes: [
+      notes ? notes : null,
+      desiredCreditLimit
+        ? `Desired credit limit: $${desiredCreditLimit}`
+        : null,
+      `Country: ${country}`,
+    ]
+      .filter(Boolean)
+      .join("\n"),
     status: "pending" as const,
   };
 
@@ -308,8 +312,18 @@ export async function submitCreditApplication(
     creditReference1,
     creditReference2,
     creditReference3,
-    notes: notes ? `${notes}\nCountry: ${country}` : `Country: ${country}`,
+    notes: [
+      notes || null,
+      desiredCreditLimit ? `Desired credit limit: $${desiredCreditLimit}` : null,
+      `Country: ${country}`,
+    ]
+      .filter(Boolean)
+      .join("\n"),
   });
+
+  revalidatePath("/admin/credit-applications");
+  revalidatePath("/dashboard/credit");
+  revalidatePath("/dashboard");
 
   return {
     success: true,
@@ -470,10 +484,102 @@ export async function updateCreditApplicationStatus(
 
     revalidatePath("/admin/credit-applications");
     revalidatePath("/admin");
+    revalidatePath("/dashboard/credit");
     return { success: true };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.warn("updateCreditApplicationStatus exception:", message);
     return { success: false, error: "Failed to update status." };
+  }
+}
+
+export type MyCreditStatus =
+  | "not_applied"
+  | "pending"
+  | "approved"
+  | "rejected";
+
+export interface MyCreditStatusInfo {
+  status: MyCreditStatus;
+  creditLimit: number;
+  creditTerms: string;
+  taxId: string;
+  applicationId: string | null;
+  reviewedAt: string | null;
+}
+
+/**
+ * Current user's credit application status for the dashboard tracker.
+ */
+export async function getMyCreditStatus(): Promise<MyCreditStatusInfo> {
+  const empty: MyCreditStatusInfo = {
+    status: "not_applied",
+    creditLimit: 0,
+    creditTerms: "Registered",
+    taxId: "",
+    applicationId: null,
+    reviewedAt: null,
+  };
+
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser || !isSupabaseConfigured) return empty;
+
+    const supabase = await createServerClient();
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select(
+        "tax_id, credit_application_status, credit_limit, credit_terms"
+      )
+      .eq("id", currentUser.user.id)
+      .maybeSingle();
+
+    const { data: application } = await supabase
+      .from("credit_applications")
+      .select("id, status, reviewed_at, created_at")
+      .or(
+        `user_id.eq.${currentUser.user.id},work_email.eq.${currentUser.user.email || ""}`
+      )
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const profileStatus = String(
+      profile?.credit_application_status || ""
+    ).toLowerCase();
+    const appStatus = application
+      ? normalizeStatus(application.status)
+      : null;
+
+    let status: MyCreditStatus = "not_applied";
+    if (application) {
+      status =
+        appStatus === "approved"
+          ? "approved"
+          : appStatus === "rejected"
+            ? "rejected"
+            : "pending";
+    } else if (profileStatus === "approved") {
+      status = "approved";
+    } else if (profileStatus === "rejected") {
+      status = "rejected";
+    } else if (profileStatus === "pending") {
+      status = "pending";
+    }
+
+    return {
+      status,
+      creditLimit: Number(profile?.credit_limit || 0),
+      creditTerms: String(profile?.credit_terms || "Registered"),
+      taxId: String(profile?.tax_id || currentUser.profile.taxId || ""),
+      applicationId: application?.id ? String(application.id) : null,
+      reviewedAt: application?.reviewed_at
+        ? String(application.reviewed_at)
+        : null,
+    };
+  } catch (err) {
+    console.warn("getMyCreditStatus exception:", err);
+    return empty;
   }
 }

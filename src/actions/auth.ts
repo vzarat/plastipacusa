@@ -22,6 +22,9 @@ export interface UserProfile {
   isTaxExempt?: boolean | null;
   taxExemptionNumber?: string;
   taxCertificateUrl?: string | null;
+  creditApplicationStatus?: "pending" | "approved" | "rejected" | null;
+  creditLimit?: number;
+  creditTerms?: string;
   /** True when tax_id or tax-exempt answer is missing — show compliance modal */
   needsTaxCompliance?: boolean;
 }
@@ -320,7 +323,7 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
       const { data: profile, error: profileErr } = await supabaseServer
         .from("profiles")
         .select(
-          "id, email, full_name, role, company_name, has_password, password_setup_skipped, phone, avatar_url, tax_id, is_tax_exempt, tax_exemption_number, tax_certificate_url"
+          "id, email, full_name, role, company_name, has_password, password_setup_skipped, phone, avatar_url, tax_id, is_tax_exempt, tax_exemption_number, tax_certificate_url, credit_application_status, credit_limit, credit_terms"
         )
         .eq("id", user.id)
         .single();
@@ -384,6 +387,18 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
 
     const needsTaxCompliance = !taxId || isTaxExempt === null;
 
+    const creditApplicationStatusRaw = String(
+      profileData?.credit_application_status || ""
+    ).toLowerCase();
+    const creditApplicationStatus =
+      creditApplicationStatusRaw === "approved" ||
+      creditApplicationStatusRaw === "rejected" ||
+      creditApplicationStatusRaw === "pending"
+        ? (creditApplicationStatusRaw as "pending" | "approved" | "rejected")
+        : null;
+    const creditLimit = Number(profileData?.credit_limit || 0);
+    const creditTerms = String(profileData?.credit_terms || "Registered");
+
     const emailLower = user.email?.toLowerCase() || "";
     const hasPassword = Boolean(
       profileData?.has_password ?? user.user_metadata?.has_password ?? false
@@ -430,6 +445,9 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
         isTaxExempt,
         taxExemptionNumber,
         taxCertificateUrl,
+        creditApplicationStatus,
+        creditLimit,
+        creditTerms,
         needsTaxCompliance,
       },
     };

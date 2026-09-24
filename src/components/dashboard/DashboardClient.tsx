@@ -39,6 +39,8 @@ import {
   MapPin,
   Mail,
   UserCheck,
+  CreditCard,
+  Loader2,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { LanguageToggle } from "@/components/common/LanguageToggle";
@@ -46,7 +48,8 @@ import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { AvatarUpload } from "@/components/dashboard/AvatarUpload";
 import { DashboardGreeting } from "@/components/dashboard/DashboardGreeting";
 import { DashboardPromoCarousel } from "@/components/dashboard/DashboardPromoCarousel";
-import { TaxComplianceModal } from "@/components/dashboard/TaxComplianceModal";
+import { TaxComplianceModal, formatEinInput, isValidUsEin } from "@/components/dashboard/TaxComplianceModal";
+import { upsertMyB2BProfile, uploadTaxExemptionCertificate } from "@/actions/customers";
 import OrderDetailModal, { OrderDetailLike } from "@/components/orders/OrderDetailModal";
 
 export interface DashboardOrderItem {
@@ -157,10 +160,24 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
   const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderDetailLike | null>(null);
   const [liveProfile, setLiveProfile] = useState<UserProfile>(profile);
+  const [taxForm, setTaxForm] = useState({
+    taxId: profile.taxId || "",
+    isTaxExempt: profile.isTaxExempt === true,
+    taxExemptionNumber: profile.taxExemptionNumber || "",
+  });
+  const [taxCertificateFile, setTaxCertificateFile] = useState<File | null>(null);
+  const [taxFormError, setTaxFormError] = useState<string | null>(null);
+  const [taxFormSuccess, setTaxFormSuccess] = useState<string | null>(null);
+  const [isTaxSubmitting, setIsTaxSubmitting] = useState(false);
 
   React.useEffect(() => {
     setBackupPasswordPending(Boolean(profile.backupPasswordPending));
     setLiveProfile(profile);
+    setTaxForm({
+      taxId: profile.taxId || "",
+      isTaxExempt: profile.isTaxExempt === true,
+      taxExemptionNumber: profile.taxExemptionNumber || "",
+    });
     setProfileForm({
       fullName: profile.fullName || "",
       email: profile.email || "",
@@ -201,6 +218,86 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
       t("dashboard.quickReorderAdded").replace("{orderId}", formatOrderId(order))
     );
     setTimeout(() => setReorderNotice(null), 4000);
+  };
+
+  const handleTaxSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setTaxFormError(null);
+    setTaxFormSuccess(null);
+
+    if (taxForm.taxId.trim() && !isValidUsEin(taxForm.taxId)) {
+      setTaxFormError(
+        locale === "es"
+          ? "TAX ID / FEIN inválido (formato XX-XXXXXXX)."
+          : "Invalid TAX ID / FEIN (format XX-XXXXXXX)."
+      );
+      return;
+    }
+
+    if (
+      taxForm.isTaxExempt &&
+      !taxForm.taxExemptionNumber.trim() &&
+      !taxCertificateFile &&
+      !liveProfile.taxCertificateUrl
+    ) {
+      setTaxFormError(
+        locale === "es"
+          ? "Proporciona el número de exención o sube el certificado."
+          : "Provide an exemption number or upload your certificate."
+      );
+      return;
+    }
+
+    setIsTaxSubmitting(true);
+    try {
+      if (taxCertificateFile) {
+        const fd = new FormData();
+        fd.append("file", taxCertificateFile);
+        const upload = await uploadTaxExemptionCertificate(fd);
+        if (!upload.success) {
+          throw new Error(upload.error || "Certificate upload failed.");
+        }
+      }
+
+      const result = await upsertMyB2BProfile({
+        taxId: taxForm.taxId.trim(),
+        isTaxExempt: taxForm.isTaxExempt,
+        taxExemptionNumber: taxForm.isTaxExempt
+          ? taxForm.taxExemptionNumber.trim()
+          : "",
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || "Unable to save tax profile.");
+      }
+
+      setLiveProfile((prev) => ({
+        ...prev,
+        taxId: taxForm.taxId.trim(),
+        isTaxExempt: taxForm.isTaxExempt,
+        taxExemptionNumber: taxForm.taxExemptionNumber.trim(),
+        needsTaxCompliance: !taxForm.taxId.trim(),
+        taxCertificateUrl: taxCertificateFile
+          ? prev.taxCertificateUrl || "uploaded"
+          : prev.taxCertificateUrl,
+      }));
+      setTaxCertificateFile(null);
+      setTaxFormSuccess(
+        locale === "es"
+          ? "Perfil fiscal actualizado correctamente."
+          : "Tax profile updated successfully."
+      );
+      toast.success(
+        locale === "es" ? "Perfil fiscal guardado." : "Tax profile saved."
+      );
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Unable to save tax profile.";
+      setTaxFormError(message);
+      toast.error(message);
+    } finally {
+      setIsTaxSubmitting(false);
+    }
   };
 
   const totalSpend = orders.reduce((sum, o) => sum + o.totalUsd, 0);
@@ -489,6 +586,24 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                 </button>
               );
             })}
+
+            <Link
+              href="/dashboard/credit"
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="w-full flex flex-col gap-0.5 px-3.5 py-3 rounded-xl text-left border-l-4 border-transparent bg-gradient-to-r from-emerald-50 to-sky-50 hover:from-emerald-100/80 hover:to-sky-100/80 transition-all"
+            >
+              <span className="flex items-center gap-3">
+                <CreditCard className="w-4 h-4 text-emerald-600" />
+                <span className="text-xs font-bold text-emerald-900">
+                  {locale === "es" ? "Solicita tu Crédito" : "Commercial Credit"}
+                </span>
+              </span>
+              <span className="pl-7 text-[10px] font-semibold text-emerald-700/80">
+                {locale === "es"
+                  ? "Aplica a términos Net 30"
+                  : "Apply for Net 30 Terms"}
+              </span>
+            </Link>
           </nav>
 
           {/* Quick Shop Link */}
@@ -1070,6 +1185,145 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
               </form>
             </div>
 
+            {/* Tax ID & Exemption Certificate */}
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 shadow-sm space-y-5">
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  {locale === "es"
+                    ? "TAX ID / FEIN y Exención Fiscal"
+                    : "TAX ID / FEIN & Tax Exemption"}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {locale === "es"
+                    ? "Actualiza tu EIN y certificado de exención en cualquier momento."
+                    : "Update your EIN and tax exemption certificate anytime."}
+                </p>
+              </div>
+
+              {taxFormError && (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+                  {taxFormError}
+                </div>
+              )}
+              {taxFormSuccess && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
+                  {taxFormSuccess}
+                </div>
+              )}
+
+              <form onSubmit={handleTaxSubmit} className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                      TAX ID / FEIN
+                    </label>
+                    <input
+                      type="text"
+                      value={taxForm.taxId}
+                      onChange={(e) =>
+                        setTaxForm((prev) => ({
+                          ...prev,
+                          taxId: formatEinInput(e.target.value),
+                        }))
+                      }
+                      placeholder="XX-XXXXXXX"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    />
+                  </div>
+                  <div className="space-y-1.5 flex flex-col justify-end">
+                    <label className="flex items-center gap-2 cursor-pointer rounded-xl border border-slate-200 px-3.5 py-3">
+                      <input
+                        type="checkbox"
+                        checked={taxForm.isTaxExempt}
+                        onChange={(e) =>
+                          setTaxForm((prev) => ({
+                            ...prev,
+                            isTaxExempt: e.target.checked,
+                          }))
+                        }
+                        className="rounded border-slate-300 text-blue-700"
+                      />
+                      <span className="text-xs font-semibold text-slate-700">
+                        {locale === "es"
+                          ? "Exento de impuesto sobre ventas (US)"
+                          : "Exempt from US Sales Tax"}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {taxForm.isTaxExempt && (
+                  <div className="grid gap-4 md:grid-cols-2 rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                        {locale === "es"
+                          ? "Número de exención / resale"
+                          : "Exemption / Resale License #"}
+                      </label>
+                      <input
+                        type="text"
+                        value={taxForm.taxExemptionNumber}
+                        onChange={(e) =>
+                          setTaxForm((prev) => ({
+                            ...prev,
+                            taxExemptionNumber: e.target.value,
+                          }))
+                        }
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                        {locale === "es"
+                          ? "Certificado (PDF / imagen)"
+                          : "Certificate (PDF / Image)"}
+                      </label>
+                      <input
+                        type="file"
+                        accept=".pdf,image/jpeg,image/png,image/webp"
+                        onChange={(e) =>
+                          setTaxCertificateFile(e.target.files?.[0] || null)
+                        }
+                        className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-800 file:font-bold"
+                      />
+                      {liveProfile.taxCertificateUrl && (
+                        <p className="text-[10px] text-emerald-700 font-semibold">
+                          {locale === "es"
+                            ? "Certificado actual en archivo."
+                            : "A certificate is already on file."}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="submit"
+                    disabled={isTaxSubmitting}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-blue-950 disabled:opacity-60"
+                  >
+                    {isTaxSubmitting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : null}
+                    {locale === "es"
+                      ? "Guardar datos fiscales"
+                      : "Save Tax Details"}
+                  </button>
+                  <Link
+                    href="/dashboard/credit"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-900 hover:bg-emerald-100"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    {locale === "es"
+                      ? "Solicitar crédito Net 30"
+                      : "Apply for Net 30 Credit"}
+                  </Link>
+                </div>
+              </form>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Entity Data */}
               <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 space-y-4 shadow-sm">
@@ -1096,10 +1350,16 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                   </div>
                   <div className="flex justify-between py-2">
                     <span className="text-slate-500 font-medium">{t("dashboard.taxCert")}</span>
-                    <span className="inline-flex items-center gap-1 font-bold text-emerald-700">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                      {t("dashboard.activeVerified")}
-                    </span>
+                    {liveProfile.taxId ? (
+                      <span className="inline-flex items-center gap-1 font-bold text-emerald-700">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        {liveProfile.taxId}
+                      </span>
+                    ) : (
+                      <span className="font-bold text-amber-700">
+                        {locale === "es" ? "Pendiente" : "Pending"}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

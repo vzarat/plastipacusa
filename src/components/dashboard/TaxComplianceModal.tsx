@@ -10,6 +10,7 @@ import {
   FileText,
   Loader2,
   ShieldAlert,
+  X,
 } from "lucide-react";
 import { completeTaxComplianceProfile } from "@/actions/customers";
 import type { UserProfile } from "@/actions/auth";
@@ -41,8 +42,8 @@ export function TaxComplianceModal({
   onCompleted,
 }: TaxComplianceModalProps) {
   const router = useRouter();
-  const shouldOpen = Boolean(profile.needsTaxCompliance);
-  const [isOpen, setIsOpen] = useState(shouldOpen);
+  const SKIP_KEY = "plastipac_tax_compliance_skipped";
+  const [isOpen, setIsOpen] = useState(false);
 
   const [taxId, setTaxId] = useState(profile.taxId || "");
   const [isTaxExempt, setIsTaxExempt] = useState<"yes" | "no" | "">(
@@ -61,8 +62,19 @@ export function TaxComplianceModal({
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    setIsOpen(Boolean(profile.needsTaxCompliance));
+    if (typeof window === "undefined") return;
+    const skipped = sessionStorage.getItem(SKIP_KEY) === "1";
+    setIsOpen(Boolean(profile.needsTaxCompliance) && !skipped);
   }, [profile.needsTaxCompliance]);
+
+  const handleSkip = () => {
+    try {
+      sessionStorage.setItem(SKIP_KEY, "1");
+    } catch {
+      // ignore storage failures
+    }
+    setIsOpen(false);
+  };
 
   if (!isOpen) {
     return null;
@@ -115,11 +127,16 @@ export function TaxComplianceModal({
       });
 
       setIsOpen(false);
+      try {
+        sessionStorage.removeItem(SKIP_KEY);
+      } catch {
+        // ignore
+      }
       toast.success("B2B tax profile saved successfully.");
 
       if (result.applyForCredit) {
         toast.message("Continue with your Net 30 credit application.");
-        router.push("/credit-application");
+        router.push("/dashboard/credit");
         return;
       }
 
@@ -145,7 +162,7 @@ export function TaxComplianceModal({
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-700 border border-amber-100">
               <ShieldAlert className="w-5 h-5" />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-0.5">
                 Compliance required
               </p>
@@ -160,6 +177,14 @@ export function TaxComplianceModal({
                 pricing and invoices compliant.
               </p>
             </div>
+            <button
+              type="button"
+              onClick={handleSkip}
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
@@ -329,8 +354,18 @@ export function TaxComplianceModal({
             )}
           </button>
 
-          <p className="text-center text-[10px] text-slate-400 font-medium pb-1">
-            This step is required once. Your dashboard unlocks after submission.
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={handleSkip}
+            className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 disabled:opacity-60 cursor-pointer"
+          >
+            Skip for now · Remind me later
+          </button>
+
+          <p className="text-center text-[11px] text-slate-500 font-medium leading-relaxed pb-1 px-1">
+            You can complete your Tax ID and Credit application anytime from
+            your Dashboard menu (Account Settings &amp; Commercial Credit).
           </p>
         </form>
       </div>
