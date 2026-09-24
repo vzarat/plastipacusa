@@ -82,6 +82,11 @@ export const translations = {
       "Test Plastipac high-performance stretch film in your warehouse facility before placing bulk orders. Zero obligation.",
     "dashboard.sampleSlideCta": "Request Free Sample",
     "dashboard.sampleSlideLearn": "Learn about our gauge options →",
+    "dashboard.shippingSlideBadge": "Nationwide Coverage",
+    "dashboard.shippingSlideTitle": "Fast & Reliable Nationwide Shipping",
+    "dashboard.shippingSlideSubtitle":
+      "We proudly ship Plastipac High-Performance Stretch Film to every corner of the USA, ensuring guaranteed quality delivery across all 50 states.",
+    "dashboard.shippingSlideCta": "View Shipping Options",
     "dashboard.emptyStateWelcome": "Welcome to Plastipac!",
     "dashboard.emptyStateSubtitle": "You haven’t placed an order yet. Start with our catalog and build your first pallet batch.",
     "dashboard.emptyStateCta": "Browse Catalog",
@@ -525,6 +530,11 @@ export const translations = {
       "Prueba la película estirable de alto rendimiento de Plastipac en tu almacén antes de pedidos al mayoreo. Sin compromiso.",
     "dashboard.sampleSlideCta": "Solicitar Muestra Gratis",
     "dashboard.sampleSlideLearn": "Conoce nuestras opciones de calibre →",
+    "dashboard.shippingSlideBadge": "Cobertura Nacional",
+    "dashboard.shippingSlideTitle": "Envío Nacional Rápido y Confiable",
+    "dashboard.shippingSlideSubtitle":
+      "Enviamos con orgullo la película estirable de alto rendimiento Plastipac a cada rincón de EE. UU., garantizando entrega de calidad en los 50 estados.",
+    "dashboard.shippingSlideCta": "Ver Opciones de Envío",
     "dashboard.emptyStateWelcome": "¡Bienvenido a Plastipac!",
     "dashboard.emptyStateSubtitle": "Todavía no has realizado un pedido. Explora nuestro catálogo y crea tu primer lote de palets.",
     "dashboard.emptyStateCta": "Ver Catálogo",

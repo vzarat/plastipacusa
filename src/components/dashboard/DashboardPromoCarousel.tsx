@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
@@ -8,11 +8,16 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight,
   CreditCard,
+  Flag,
   Package,
-  Percent,
   PhoneCall,
   Truck,
 } from "lucide-react";
+import {
+  USAMap,
+  StateAbbreviations,
+  type USAStateAbbreviation,
+} from "@mirawision/usa-map-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { FloatingCreditCards } from "@/components/ui/FloatingCreditCards";
 
@@ -29,58 +34,22 @@ const HERO_WAREHOUSE_BG =
 const STRETCH_FILM_ROLLS_IMAGE =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/STRETCH.png";
 
-type StandardSlide = {
-  id: string;
-  kind: "standard";
-  icon: React.ComponentType<{ className?: string }>;
-  titleKey: string;
-  bodyKey: string;
-  href: string;
-  ctaKey: string;
-  panel: string;
-};
+const MAP_HUB_FILL = "#DC2626";
+const MAP_HUB_HOVER = "#B91C1C";
+const MAP_STANDARD_FILL = "#93C5FD";
+const MAP_STANDARD_HOVER = "#60A5FA";
+const MAP_STROKE = "#FFFFFF";
+const MAP_HUB_STATES = new Set(["TX", "CA", "IL", "FL", "GA"]);
 
-type CreditSlide = {
-  id: string;
-  kind: "credit";
-};
-
-type FreeSampleSlide = {
-  id: string;
-  kind: "free-sample";
-};
-
-type Slide = StandardSlide | CreditSlide | FreeSampleSlide;
+type CreditSlide = { id: string; kind: "credit" };
+type FreeSampleSlide = { id: string; kind: "free-sample" };
+type NationwideSlide = { id: string; kind: "nationwide" };
+type Slide = CreditSlide | FreeSampleSlide | NationwideSlide;
 
 const SLIDES: Slide[] = [
-  {
-    id: "b2b-offers",
-    kind: "standard",
-    icon: Percent,
-    titleKey: "dashboard.promo1Title",
-    bodyKey: "dashboard.promo1Body",
-    href: "/products?app=machine",
-    ctaKey: "dashboard.promo1Cta",
-    panel: "from-sky-600 via-blue-600 to-blue-800",
-  },
-  {
-    id: "fast-shipping",
-    kind: "standard",
-    icon: Truck,
-    titleKey: "dashboard.promo2Title",
-    bodyKey: "dashboard.promo2Body",
-    href: "/products",
-    ctaKey: "dashboard.promo2Cta",
-    panel: "from-emerald-600 via-teal-600 to-cyan-800",
-  },
-  {
-    id: "commercial-credit",
-    kind: "credit",
-  },
-  {
-    id: "free-sample",
-    kind: "free-sample",
-  },
+  { id: "commercial-credit", kind: "credit" },
+  { id: "free-sample", kind: "free-sample" },
+  { id: "nationwide-shipping", kind: "nationwide" },
 ];
 
 function CreditHeroSlide() {
@@ -240,44 +209,106 @@ function FreeSampleHeroSlide() {
   );
 }
 
-function StandardSlideView({ slide }: { slide: StandardSlide }) {
+function NationwideShippingSlide() {
   const { t } = useLanguage();
-  const Icon = slide.icon;
+  const [hovered, setHovered] = useState<USAStateAbbreviation | null>(null);
+
+  const customStates = useMemo(() => {
+    const settings: Record<
+      string,
+      {
+        fill: string;
+        stroke: string;
+        onHover: (state: USAStateAbbreviation) => void;
+        onLeave: () => void;
+      }
+    > = {};
+
+    StateAbbreviations.forEach((state) => {
+      const isHub = MAP_HUB_STATES.has(state);
+      const isHovered = hovered === state;
+      let fill = isHub ? MAP_HUB_FILL : MAP_STANDARD_FILL;
+      if (isHovered) {
+        fill = isHub ? MAP_HUB_HOVER : MAP_STANDARD_HOVER;
+      }
+
+      settings[state] = {
+        fill,
+        stroke: MAP_STROKE,
+        onHover: (abbr) => setHovered(abbr),
+        onLeave: () => setHovered(null),
+      };
+    });
+
+    return settings;
+  }, [hovered]);
 
   return (
-    <div className={`absolute inset-0 bg-gradient-to-br ${slide.panel}`}>
+    <div className="absolute inset-0 bg-[#0a1628] text-white overflow-hidden border-y border-red-600/40">
+      {/* Patriotic navy field + subtle red accent rail */}
       <div
-        className="absolute inset-0 opacity-30"
+        className="absolute inset-0 z-0 pointer-events-none"
         style={{
-          backgroundImage:
-            "radial-gradient(circle at 85% 20%, rgba(255,255,255,0.35), transparent 45%), radial-gradient(circle at 10% 90%, rgba(255,255,255,0.12), transparent 40%)",
+          background:
+            "radial-gradient(ellipse at 20% 30%, rgba(30,58,138,0.55), transparent 55%), radial-gradient(ellipse at 90% 80%, rgba(185,28,28,0.18), transparent 45%), #0a1628",
         }}
       />
-      <div className="relative z-10 flex h-full min-h-[280px] sm:min-h-[320px] flex-col justify-center gap-6 py-10 sm:py-12 px-6 sm:px-8 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4 sm:gap-5 min-w-0">
-          <div className="shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center text-white backdrop-blur-sm">
-            <Icon className="w-6 h-6 sm:w-7 sm:h-7" />
-          </div>
-          <div className="min-w-0 space-y-2">
-            <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.14em] text-white/70">
-              {t("dashboard.promoEyebrow")}
-            </p>
-            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-snug">
-              {t(slide.titleKey)}
-            </h2>
-            <p className="text-sm sm:text-base text-white/90 leading-relaxed max-w-xl">
-              {t(slide.bodyKey)}
-            </p>
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-700 via-white/80 to-red-700 z-20" />
+
+      <div className="relative z-10 grid h-full min-h-[280px] sm:min-h-[320px] grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-6 items-center py-10 sm:py-12 px-6 sm:px-8">
+        <div className="flex flex-col items-start space-y-3 sm:space-y-4 min-w-0">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-700/20 border border-red-500/50 px-3 py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.16em] text-red-100">
+            <Flag className="w-3.5 h-3.5 text-red-400" />
+            {t("dashboard.shippingSlideBadge")}
+          </span>
+
+          <h2 className="text-xl sm:text-2xl lg:text-[1.7rem] font-extrabold text-white tracking-tight leading-tight uppercase">
+            {t("dashboard.shippingSlideTitle")}
+          </h2>
+
+          <p className="text-xs sm:text-sm text-slate-200 leading-relaxed max-w-md">
+            {t("dashboard.shippingSlideSubtitle")}
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-0.5 w-full sm:w-auto">
+            <Link
+              href="/#usa-coverage"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white text-[#0a1628] px-4 py-2.5 text-xs sm:text-sm font-extrabold shadow-lg shadow-black/20 hover:bg-slate-100 transition-colors border border-red-600/30"
+            >
+              <Truck className="w-4 h-4 text-red-600" />
+              {t("dashboard.shippingSlideCta")}
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <a
+              href="tel:+19564003683"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/5 hover:bg-white/10 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors"
+            >
+              <PhoneCall className="w-4 h-4 text-sky-300" />
+              (956) 400-3683
+            </a>
           </div>
         </div>
 
-        <Link
-          href={slide.href}
-          className="inline-flex items-center justify-center gap-2 self-start sm:self-center shrink-0 rounded-xl bg-white px-5 py-3 text-sm font-bold text-slate-900 shadow-sm hover:bg-slate-50 transition-colors"
+        {/* USA map — same component as homepage coverage section */}
+        <div
+          className="relative flex justify-center lg:justify-end items-center min-h-[160px] lg:min-h-[220px]"
+          onClick={(event) => event.stopPropagation()}
+          onMouseDown={(event) => event.stopPropagation()}
         >
-          {t(slide.ctaKey)}
-          <ArrowRight className="w-4 h-4" />
-        </Link>
+          <div className="w-full max-w-[360px] xl:max-w-[420px] rounded-2xl border border-white/15 bg-[#0c1c36]/70 p-2 sm:p-3 shadow-xl shadow-black/30 backdrop-blur-sm [&_svg]:w-full [&_svg]:h-auto [&_svg]:max-h-[200px] sm:[&_svg]:max-h-[230px] pointer-events-auto">
+            <USAMap
+              defaultState={{
+                fill: MAP_STANDARD_FILL,
+                stroke: MAP_STROKE,
+                label: { enabled: false },
+                tooltip: { enabled: false },
+              }}
+              customStates={customStates}
+              mapSettings={{ width: "100%", height: "auto" }}
+              className="usa-coverage-dashboard-slide-map"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -402,7 +433,7 @@ export function DashboardPromoCarousel() {
             ) : slide.kind === "free-sample" ? (
               <FreeSampleHeroSlide />
             ) : (
-              <StandardSlideView slide={slide} />
+              <NationwideShippingSlide />
             )}
           </motion.div>
         </AnimatePresence>
