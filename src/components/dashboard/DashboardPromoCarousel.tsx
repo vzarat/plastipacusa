@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, type PanInfo } from "framer-motion";
 import {
   ArrowRight,
   CreditCard,
@@ -27,6 +27,7 @@ const Beams = dynamic(
 );
 
 const AUTO_MS = 6000;
+const SWIPE_THRESHOLD = 56;
 
 const HERO_WAREHOUSE_BG =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/warehouse_storage_background.png";
@@ -44,6 +45,18 @@ const MAP_STANDARD_HOVER = "#60A5FA";
 const MAP_STROKE = "#FFFFFF";
 const MAP_HUB_STATES = new Set(["TX", "CA", "IL", "FL", "GA"]);
 
+const SLIDE_MIN_H = "min-h-[360px] md:min-h-[220px] lg:min-h-[280px]";
+const SLIDE_PAD = "p-5 md:p-8 lg:p-10";
+const TITLE_CLASS =
+  "text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight leading-tight";
+const SUBTITLE_CLASS = "text-xs sm:text-sm text-white/85 leading-relaxed max-w-md";
+const CTA_ROW =
+  "flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-4 w-full sm:w-auto pt-0.5";
+const CTA_PRIMARY =
+  "w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-extrabold transition-opacity";
+const CTA_SECONDARY =
+  "w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold transition-colors";
+
 type CreditSlide = { id: string; kind: "credit" };
 type FreeSampleSlide = { id: string; kind: "free-sample" };
 type NationwideSlide = { id: string; kind: "nationwide" };
@@ -55,12 +68,48 @@ const SLIDES: Slide[] = [
   { id: "nationwide-shipping", kind: "nationwide" },
 ];
 
+/**
+ * Remote slide background with pulse skeleton + opacity fade-in on load.
+ * Overlay + content sit above this layer so CTAs stay interactive.
+ */
+function SlideBackgroundImage({
+  src,
+  overlayClassName = "bg-slate-950/80 backdrop-brightness-75",
+}: {
+  src: string;
+  overlayClassName?: string;
+}) {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+      <div
+        className={`absolute inset-0 bg-slate-950 animate-pulse transition-opacity duration-500 ${
+          loaded ? "opacity-0" : "opacity-100"
+        }`}
+        aria-hidden
+      />
+      <Image
+        src={src}
+        alt=""
+        fill
+        sizes="(max-width: 1280px) 100vw, 1200px"
+        className={`object-cover object-center transition-opacity duration-700 ease-in-out ${
+          loaded ? "opacity-100" : "opacity-0"
+        }`}
+        priority={false}
+        onLoad={() => setLoaded(true)}
+      />
+      <div className={`absolute inset-0 ${overlayClassName}`} />
+    </div>
+  );
+}
+
 function CreditHeroSlide() {
   const { t } = useLanguage();
 
   return (
     <div className="absolute inset-0 bg-[#000d23] text-white overflow-hidden">
-      {/* Same Beams treatment as /credit-application hero */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute -inset-16 z-0 overflow-hidden opacity-100 pointer-events-none scale-125">
           <Beams
@@ -78,33 +127,31 @@ function CreditHeroSlide() {
         </div>
       </div>
 
-      <div className="relative z-10 grid h-full min-h-[280px] sm:min-h-[320px] grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-center py-10 sm:py-12 px-6 sm:px-8">
-        {/* Left — copy & CTAs */}
-        <div className="flex flex-col items-start space-y-3 sm:space-y-4 min-w-0">
+      <div
+        className={`relative z-10 grid h-full ${SLIDE_MIN_H} grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-center ${SLIDE_PAD}`}
+      >
+        <div className="flex flex-col items-start space-y-3 sm:space-y-4 min-w-0 relative z-20 pb-16 md:pb-0">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.16em] text-sky-100">
             <CreditCard className="w-3.5 h-3.5" />
             {t("dashboard.creditSlideBadge")}
           </span>
 
-          <h2 className="text-xl sm:text-2xl lg:text-[1.7rem] font-extrabold text-white tracking-tight leading-tight">
-            {t("dashboard.creditSlideTitle")}
-          </h2>
-
-          <p className="text-xs sm:text-sm text-sky-100/90 leading-relaxed max-w-md">
+          <h2 className={TITLE_CLASS}>{t("dashboard.creditSlideTitle")}</h2>
+          <p className={`${SUBTITLE_CLASS} text-sky-100/90`}>
             {t("dashboard.creditSlideSubtitle")}
           </p>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-0.5 w-full sm:w-auto">
+          <div className={CTA_ROW}>
             <Link
               href="/credit-application"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 px-4 py-2.5 text-xs sm:text-sm font-extrabold text-white shadow-lg shadow-blue-500/25 hover:opacity-95 transition-opacity"
+              className={`${CTA_PRIMARY} bg-gradient-to-r from-cyan-400 to-blue-600 text-white shadow-lg shadow-blue-500/25 hover:opacity-95`}
             >
               {t("dashboard.creditSlideCta")}
               <ArrowRight className="w-4 h-4" />
             </Link>
             <a
               href="tel:+19564003683"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/15 transition-colors"
+              className={`${CTA_SECONDARY} bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/15`}
             >
               <PhoneCall className="w-4 h-4 text-cyan-300" />
               (956) 400-3683
@@ -119,18 +166,16 @@ function CreditHeroSlide() {
           </Link>
         </div>
 
-        {/* Right — scaled floating cards */}
-        <div className="relative hidden lg:flex justify-end items-center h-full min-h-[200px]">
-          <div className="w-full max-w-[300px] origin-right scale-[0.72] xl:scale-[0.82]">
-            <FloatingCreditCards className="!h-[220px] sm:!h-[240px] lg:!h-[240px] ml-auto" />
+        {/* Desktop cards */}
+        <div className="relative hidden lg:flex justify-end items-center h-full min-h-[180px]">
+          <div className="w-full max-w-[280px] origin-right scale-[0.78] xl:scale-[0.88]">
+            <FloatingCreditCards className="!h-[220px] lg:!h-[240px] ml-auto" />
           </div>
         </div>
 
-        {/* Compact cards peek on tablet */}
-        <div className="relative flex lg:hidden justify-center sm:justify-end items-center pt-1 pb-2">
-          <div className="w-full max-w-[240px] sm:max-w-[280px] origin-center scale-[0.62] sm:scale-[0.7] -my-8">
-            <FloatingCreditCards className="!h-[200px] ml-auto" />
-          </div>
+        {/* Mobile / tablet decorative cards — bottom accent, non-blocking */}
+        <div className="pointer-events-none absolute bottom-0 right-0 lg:hidden w-[42%] max-w-[180px] opacity-70 scale-[0.55] origin-bottom-right">
+          <FloatingCreditCards className="!h-[160px]" />
         </div>
       </div>
     </div>
@@ -142,46 +187,33 @@ function FreeSampleHeroSlide() {
 
   return (
     <div className="absolute inset-0 bg-slate-950 text-white overflow-hidden">
-      {/* Uniform dark overlay matching homepage Hero */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <Image
-          src={HERO_WAREHOUSE_BG}
-          alt=""
-          fill
-          sizes="(max-width: 1280px) 100vw, 1200px"
-          className="object-cover object-center"
-          priority={false}
-        />
-        <div className="absolute inset-0 bg-slate-950/80 backdrop-brightness-75" />
-      </div>
+      <SlideBackgroundImage src={HERO_WAREHOUSE_BG} />
 
-      <div className="relative z-10 h-full min-h-[280px] sm:min-h-[320px]">
-        {/* Left — copy & CTAs */}
-        <div className="relative z-10 flex h-full flex-col items-start justify-center space-y-3 sm:space-y-4 min-w-0 max-w-xl py-10 sm:py-12 px-6 sm:px-8 pr-[42%] sm:pr-[38%] lg:pr-4 pb-14 sm:pb-12">
+      <div className={`relative z-10 h-full ${SLIDE_MIN_H}`}>
+        <div
+          className={`relative z-20 flex h-full flex-col items-start justify-center space-y-3 sm:space-y-4 min-w-0 max-w-xl ${SLIDE_PAD} pr-[38%] sm:pr-[34%] md:pr-[30%] lg:pr-10 pb-16 md:pb-10`}
+        >
           <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-950/60 border border-blue-500/30 px-3 py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.16em] text-blue-300 backdrop-blur-sm">
             <Package className="w-3.5 h-3.5 text-blue-400" />
             {t("dashboard.sampleSlideBadge")}
           </span>
 
-          <h2 className="text-xl sm:text-2xl lg:text-[1.7rem] font-extrabold text-white tracking-tight leading-tight">
-            {t("dashboard.sampleSlideTitle")}
-          </h2>
-
-          <p className="text-xs sm:text-sm text-slate-200 leading-relaxed max-w-md">
+          <h2 className={TITLE_CLASS}>{t("dashboard.sampleSlideTitle")}</h2>
+          <p className={`${SUBTITLE_CLASS} text-slate-200`}>
             {t("dashboard.sampleSlideSubtitle")}
           </p>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-0.5 w-full sm:w-auto">
+          <div className={CTA_ROW}>
             <Link
               href="/free-sample"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 px-4 py-2.5 text-xs sm:text-sm font-extrabold text-white shadow-lg shadow-sky-500/25 hover:opacity-95 transition-opacity"
+              className={`${CTA_PRIMARY} bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 text-white shadow-lg shadow-sky-500/25 hover:opacity-95`}
             >
               {t("dashboard.sampleSlideCta")}
               <ArrowRight className="w-4 h-4" />
             </Link>
             <a
               href="tel:+19564003683"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/5 hover:bg-white/10 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white backdrop-blur-sm transition-colors"
+              className={`${CTA_SECONDARY} border border-white/30 bg-white/5 hover:bg-white/10 text-white backdrop-blur-sm`}
             >
               <PhoneCall className="w-4 h-4 text-sky-300" />
               (956) 400-3683
@@ -196,8 +228,7 @@ function FreeSampleHeroSlide() {
           </Link>
         </div>
 
-        {/* Rolls anchored flush to bottom-right of the slide */}
-        <div className="pointer-events-none absolute bottom-0 right-4 sm:right-8 lg:right-12 z-10 w-[160px] sm:w-[200px] lg:w-[260px] xl:w-[300px]">
+        <div className="pointer-events-none absolute bottom-0 right-2 sm:right-6 md:right-10 lg:right-12 z-10 w-[110px] sm:w-[150px] md:w-[200px] lg:w-[260px] xl:w-[300px] opacity-90 md:opacity-100">
           <Image
             src={STRETCH_FILM_ROLLS_IMAGE}
             alt="Plastipac USA stretch film rolls"
@@ -248,39 +279,27 @@ function NationwideShippingSlide() {
 
   return (
     <div className="absolute inset-0 bg-slate-950 text-white overflow-hidden">
-      {/* American flag background + uniform dark overlay */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <Image
-          src={AMERICAN_FLAG_BG}
-          alt=""
-          fill
-          sizes="(max-width: 1280px) 100vw, 1200px"
-          className="object-cover object-center"
-          priority={false}
-        />
-        <div className="absolute inset-0 bg-slate-950/80 backdrop-brightness-75" />
-      </div>
+      <SlideBackgroundImage src={AMERICAN_FLAG_BG} />
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-700 via-white/80 to-red-700 z-20 pointer-events-none" />
 
-      <div className="relative z-10 grid h-full min-h-[280px] sm:min-h-[320px] grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-6 items-center py-10 sm:py-12 px-6 sm:px-8">
-        <div className="flex flex-col items-start space-y-3 sm:space-y-4 min-w-0">
+      <div
+        className={`relative z-10 grid h-full ${SLIDE_MIN_H} grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-6 items-center ${SLIDE_PAD}`}
+      >
+        <div className="flex flex-col items-start space-y-3 sm:space-y-4 min-w-0 relative z-20 pb-24 lg:pb-0">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-red-700/20 border border-red-500/50 px-3 py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.16em] text-red-100">
             <Flag className="w-3.5 h-3.5 text-red-400" />
             {t("dashboard.shippingSlideBadge")}
           </span>
 
-          <h2 className="text-xl sm:text-2xl lg:text-[1.7rem] font-extrabold text-white tracking-tight leading-tight">
-            {t("dashboard.shippingSlideTitle")}
-          </h2>
-
-          <p className="text-xs sm:text-sm text-slate-200 leading-relaxed max-w-md">
+          <h2 className={TITLE_CLASS}>{t("dashboard.shippingSlideTitle")}</h2>
+          <p className={`${SUBTITLE_CLASS} text-slate-200`}>
             {t("dashboard.shippingSlideSubtitle")}
           </p>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-0.5 w-full sm:w-auto">
+          <div className={CTA_ROW}>
             <Link
               href="/#usa-coverage"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white text-[#0a1628] px-4 py-2.5 text-xs sm:text-sm font-extrabold shadow-lg shadow-black/20 hover:bg-slate-100 transition-colors border border-red-600/30"
+              className={`${CTA_PRIMARY} bg-white text-[#0a1628] shadow-lg shadow-black/20 hover:bg-slate-100 border border-red-600/30`}
             >
               <Truck className="w-4 h-4 text-red-600" />
               {t("dashboard.shippingSlideCta")}
@@ -288,7 +307,7 @@ function NationwideShippingSlide() {
             </Link>
             <a
               href="tel:+19564003683"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/5 hover:bg-white/10 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors"
+              className={`${CTA_SECONDARY} border border-white/25 bg-white/5 hover:bg-white/10 text-white`}
             >
               <PhoneCall className="w-4 h-4 text-sky-300" />
               (956) 400-3683
@@ -296,13 +315,14 @@ function NationwideShippingSlide() {
           </div>
         </div>
 
-        {/* USA map — same component as homepage coverage section */}
+        {/* Map — compact on mobile as bottom accent; full on desktop */}
         <div
-          className="relative flex justify-center lg:justify-end items-center min-h-[160px] lg:min-h-[220px]"
+          className="pointer-events-none lg:pointer-events-auto absolute bottom-3 right-3 left-3 lg:static lg:flex lg:justify-end lg:items-center opacity-80 lg:opacity-100 scale-[0.85] lg:scale-100 origin-bottom-right"
           onClick={(event) => event.stopPropagation()}
           onMouseDown={(event) => event.stopPropagation()}
+          onTouchStart={(event) => event.stopPropagation()}
         >
-          <div className="w-full max-w-[360px] xl:max-w-[420px] rounded-2xl border border-white/15 bg-[#0c1c36]/70 p-2 sm:p-3 shadow-xl shadow-black/30 backdrop-blur-sm [&_svg]:w-full [&_svg]:h-auto [&_svg]:max-h-[200px] sm:[&_svg]:max-h-[230px] pointer-events-auto">
+          <div className="w-full max-w-[200px] ml-auto sm:max-w-[240px] lg:max-w-[360px] xl:max-w-[420px] rounded-2xl border border-white/15 bg-[#0c1c36]/70 p-1.5 sm:p-2 lg:p-3 shadow-xl shadow-black/30 backdrop-blur-sm [&_svg]:w-full [&_svg]:h-auto [&_svg]:max-h-[110px] sm:[&_svg]:max-h-[130px] lg:[&_svg]:max-h-[200px] xl:[&_svg]:max-h-[230px] lg:pointer-events-auto">
             <USAMap
               defaultState={{
                 fill: MAP_STANDARD_FILL,
@@ -325,9 +345,9 @@ export function DashboardPromoCarousel() {
   const { t } = useLanguage();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [hoverHalf, setHoverHalf] = useState<"left" | "right" | "interactive" | null>(
-    null
-  );
+  const [hoverHalf, setHoverHalf] = useState<
+    "left" | "right" | "interactive" | null
+  >(null);
   const containerRef = useRef<HTMLElement | null>(null);
 
   const goTo = useCallback((next: number) => {
@@ -381,12 +401,14 @@ export function DashboardPromoCarousel() {
 
   const handleContainerClick = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
+      // Prefer swipe on coarse pointers; keep half-click for mouse
+      if (window.matchMedia("(pointer: coarse)").matches) return;
+
       const target = event.target;
       if (
         target instanceof Element &&
         target.closest("button, a, input, textarea, select, label")
       ) {
-        // Let interactive elements keep their default action
         return;
       }
 
@@ -404,20 +426,28 @@ export function DashboardPromoCarousel() {
     [nextSlide, prevSlide]
   );
 
+  const handleDragEnd = useCallback(
+    (_: unknown, info: PanInfo) => {
+      if (info.offset.x <= -SWIPE_THRESHOLD) nextSlide();
+      else if (info.offset.x >= SWIPE_THRESHOLD) prevSlide();
+    },
+    [nextSlide, prevSlide]
+  );
+
   const slide = SLIDES[index];
   const cursorClass =
     hoverHalf === "interactive"
       ? "cursor-pointer"
       : hoverHalf === "left"
-        ? "cursor-w-resize"
+        ? "md:cursor-w-resize"
         : hoverHalf === "right"
-          ? "cursor-e-resize"
+          ? "md:cursor-e-resize"
           : "cursor-default";
 
   return (
     <section
       ref={containerRef}
-      className={`relative overflow-hidden rounded-3xl border border-slate-200/80 shadow-sm select-none ${cursorClass}`}
+      className={`relative overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm select-none touch-pan-y ${cursorClass}`}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={handleMouseLeave}
       onMouseMove={handleMouseMove}
@@ -425,7 +455,7 @@ export function DashboardPromoCarousel() {
       aria-roledescription="carousel"
       aria-label={t("dashboard.promoCarouselLabel")}
     >
-      <div className="relative min-h-[280px] sm:min-h-[320px]">
+      <div className={`relative ${SLIDE_MIN_H}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={slide.id}
@@ -434,6 +464,21 @@ export function DashboardPromoCarousel() {
             exit={{ opacity: 0, x: -28 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0"
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.18}
+            dragPropagation={false}
+            onDragStart={() => setPaused(true)}
+            onDragEnd={(event, info) => {
+              setPaused(false);
+              if (
+                event.target instanceof Element &&
+                event.target.closest("button, a, input, textarea, select, label")
+              ) {
+                return;
+              }
+              handleDragEnd(event, info);
+            }}
           >
             {slide.kind === "credit" ? (
               <CreditHeroSlide />
@@ -446,7 +491,7 @@ export function DashboardPromoCarousel() {
         </AnimatePresence>
       </div>
 
-      <div className="absolute bottom-4 right-5 z-20 flex items-center gap-1.5">
+      <div className="absolute bottom-3 right-4 sm:bottom-4 sm:right-5 z-20 flex items-center gap-1.5">
         {SLIDES.map((item, i) => (
           <button
             key={item.id}
