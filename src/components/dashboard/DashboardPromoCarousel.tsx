@@ -2,11 +2,13 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight,
   CreditCard,
+  Package,
   Percent,
   PhoneCall,
   Truck,
@@ -20,6 +22,9 @@ const Beams = dynamic(
 );
 
 const AUTO_MS = 6000;
+
+const HERO_WAREHOUSE_BG =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/warehouse_storage_background.png";
 
 type StandardSlide = {
   id: string;
@@ -37,7 +42,12 @@ type CreditSlide = {
   kind: "credit";
 };
 
-type Slide = StandardSlide | CreditSlide;
+type FreeSampleSlide = {
+  id: string;
+  kind: "free-sample";
+};
+
+type Slide = StandardSlide | CreditSlide | FreeSampleSlide;
 
 const SLIDES: Slide[] = [
   {
@@ -63,6 +73,10 @@ const SLIDES: Slide[] = [
   {
     id: "commercial-credit",
     kind: "credit",
+  },
+  {
+    id: "free-sample",
+    kind: "free-sample",
   },
 ];
 
@@ -142,6 +156,69 @@ function CreditHeroSlide() {
           <div className="w-full max-w-[240px] sm:max-w-[280px] origin-center scale-[0.62] sm:scale-[0.7] -my-8">
             <FloatingCreditCards className="!h-[200px] ml-auto" />
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FreeSampleHeroSlide() {
+  const { t } = useLanguage();
+
+  return (
+    <div className="absolute inset-0 bg-slate-950 text-white overflow-hidden">
+      {/* Same warehouse imagery + dark overlay as homepage Hero */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <Image
+          src={HERO_WAREHOUSE_BG}
+          alt=""
+          fill
+          sizes="(max-width: 1280px) 100vw, 1200px"
+          className="object-cover object-center"
+          priority={false}
+        />
+        <div className="absolute inset-0 bg-slate-950/80 backdrop-brightness-75" />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/55 to-slate-950/35" />
+      </div>
+
+      <div className="relative z-10 flex h-full min-h-[280px] sm:min-h-[320px] flex-col justify-center gap-5 py-10 sm:py-12 px-6 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col items-start space-y-3 sm:space-y-4 min-w-0 max-w-xl">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-950/60 border border-blue-500/30 px-3 py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.16em] text-blue-300 backdrop-blur-sm">
+            <Package className="w-3.5 h-3.5 text-blue-400" />
+            {t("dashboard.sampleSlideBadge")}
+          </span>
+
+          <h2 className="text-xl sm:text-2xl lg:text-[1.7rem] font-extrabold text-white tracking-tight leading-tight">
+            {t("dashboard.sampleSlideTitle")}
+          </h2>
+
+          <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
+            {t("dashboard.sampleSlideSubtitle")}
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-0.5 w-full sm:w-auto">
+            <Link
+              href="/free-sample"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 px-4 py-2.5 text-xs sm:text-sm font-extrabold text-white shadow-lg shadow-sky-500/25 hover:opacity-95 transition-opacity"
+            >
+              {t("dashboard.sampleSlideCta")}
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <a
+              href="tel:+19564003683"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/5 hover:bg-white/10 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white backdrop-blur-sm transition-colors"
+            >
+              <PhoneCall className="w-4 h-4 text-sky-300" />
+              (956) 400-3683
+            </a>
+          </div>
+
+          <Link
+            href="/products"
+            className="text-[11px] sm:text-xs font-semibold text-sky-300 hover:text-white transition-colors underline-offset-2 hover:underline"
+          >
+            {t("dashboard.sampleSlideLearn")}
+          </Link>
         </div>
       </div>
     </div>
@@ -307,6 +384,8 @@ export function DashboardPromoCarousel() {
           >
             {slide.kind === "credit" ? (
               <CreditHeroSlide />
+            ) : slide.kind === "free-sample" ? (
+              <FreeSampleHeroSlide />
             ) : (
               <StandardSlideView slide={slide} />
             )}
