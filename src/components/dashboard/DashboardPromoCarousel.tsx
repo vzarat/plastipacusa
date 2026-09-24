@@ -45,10 +45,10 @@ const MAP_STANDARD_HOVER = "#60A5FA";
 const MAP_STROKE = "#FFFFFF";
 const MAP_HUB_STATES = new Set(["TX", "CA", "IL", "FL", "GA"]);
 
-const SLIDE_MIN_H = "md:min-h-[260px]";
+const SLIDE_MIN_H = "md:min-h-[340px]";
 const SLIDE_SHELL =
   "relative md:absolute md:inset-0 text-white overflow-hidden";
-const SLIDE_PAD = "p-5 md:p-8 lg:p-10";
+const SLIDE_PAD = "p-5 md:px-8 md:py-12 lg:px-10 lg:py-14";
 const TITLE_CLASS =
   "text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight leading-tight";
 const SUBTITLE_CLASS =
