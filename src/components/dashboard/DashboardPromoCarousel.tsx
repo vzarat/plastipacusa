@@ -26,6 +26,9 @@ const AUTO_MS = 6000;
 const HERO_WAREHOUSE_BG =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/warehouse_storage_background.png";
 
+const STRETCH_FILM_ROLLS_IMAGE =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/STRETCH.png";
+
 type StandardSlide = {
   id: string;
   kind: "standard";
@@ -166,33 +169,33 @@ function FreeSampleHeroSlide() {
   const { t } = useLanguage();
 
   return (
-    <div className="absolute inset-0 bg-slate-950 text-white overflow-hidden">
-      {/* Same warehouse imagery + dark overlay as homepage Hero */}
+    <div className="absolute inset-0 bg-slate-900 text-white overflow-hidden">
+      {/* Brighter warehouse backdrop — left-anchored gradient for text contrast */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <Image
           src={HERO_WAREHOUSE_BG}
           alt=""
           fill
           sizes="(max-width: 1280px) 100vw, 1200px"
-          className="object-cover object-center"
+          className="object-cover object-center brightness-110 contrast-105"
           priority={false}
         />
-        <div className="absolute inset-0 bg-slate-950/80 backdrop-brightness-75" />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/55 to-slate-950/35" />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-900/40 to-transparent" />
       </div>
 
-      <div className="relative z-10 flex h-full min-h-[280px] sm:min-h-[320px] flex-col justify-center gap-5 py-10 sm:py-12 px-6 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-col items-start space-y-3 sm:space-y-4 min-w-0 max-w-xl">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-950/60 border border-blue-500/30 px-3 py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.16em] text-blue-300 backdrop-blur-sm">
-            <Package className="w-3.5 h-3.5 text-blue-400" />
+      <div className="relative z-10 grid h-full min-h-[280px] sm:min-h-[320px] grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-center py-10 sm:py-12 px-6 sm:px-8">
+        {/* Left — copy & CTAs */}
+        <div className="flex flex-col items-start space-y-3 sm:space-y-4 min-w-0">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-950/55 border border-blue-400/35 px-3 py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.16em] text-blue-200 backdrop-blur-sm shadow-sm">
+            <Package className="w-3.5 h-3.5 text-blue-300" />
             {t("dashboard.sampleSlideBadge")}
           </span>
 
-          <h2 className="text-xl sm:text-2xl lg:text-[1.7rem] font-extrabold text-white tracking-tight leading-tight">
+          <h2 className="text-xl sm:text-2xl lg:text-[1.7rem] font-extrabold text-white tracking-tight leading-tight drop-shadow-sm">
             {t("dashboard.sampleSlideTitle")}
           </h2>
 
-          <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-100 leading-relaxed max-w-md drop-shadow-sm">
             {t("dashboard.sampleSlideSubtitle")}
           </p>
 
@@ -206,7 +209,7 @@ function FreeSampleHeroSlide() {
             </Link>
             <a
               href="tel:+19564003683"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/5 hover:bg-white/10 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white backdrop-blur-sm transition-colors"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/35 bg-white/10 hover:bg-white/15 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white backdrop-blur-sm transition-colors"
             >
               <PhoneCall className="w-4 h-4 text-sky-300" />
               (956) 400-3683
@@ -215,10 +218,36 @@ function FreeSampleHeroSlide() {
 
           <Link
             href="/products"
-            className="text-[11px] sm:text-xs font-semibold text-sky-300 hover:text-white transition-colors underline-offset-2 hover:underline"
+            className="text-[11px] sm:text-xs font-semibold text-sky-200 hover:text-white transition-colors underline-offset-2 hover:underline"
           >
             {t("dashboard.sampleSlideLearn")}
           </Link>
+        </div>
+
+        {/* Right — stretch film rolls (mirrors credit card stack balance) */}
+        <div className="relative hidden lg:flex justify-end items-end h-full min-h-[200px] self-stretch pb-0">
+          <div className="relative w-full max-w-[280px] xl:max-w-[320px] flex items-end justify-center">
+            <Image
+              src={STRETCH_FILM_ROLLS_IMAGE}
+              alt="Plastipac USA stretch film rolls"
+              width={420}
+              height={420}
+              className="block object-contain object-bottom w-full h-auto max-h-[240px] xl:max-h-[260px] drop-shadow-2xl"
+              priority={false}
+            />
+          </div>
+        </div>
+
+        {/* Compact product peek on smaller screens */}
+        <div className="relative flex lg:hidden justify-center sm:justify-end items-end pt-1 -mb-2">
+          <Image
+            src={STRETCH_FILM_ROLLS_IMAGE}
+            alt="Plastipac USA stretch film rolls"
+            width={280}
+            height={280}
+            className="block object-contain object-bottom w-auto max-h-[140px] sm:max-h-[160px] drop-shadow-xl"
+            priority={false}
+          />
         </div>
       </div>
     </div>
