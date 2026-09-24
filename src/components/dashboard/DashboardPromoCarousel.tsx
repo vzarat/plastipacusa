@@ -76,7 +76,7 @@ export function DashboardPromoCarousel() {
       aria-roledescription="carousel"
       aria-label={t("dashboard.promoCarouselLabel")}
     >
-      <div className="relative min-h-[148px] sm:min-h-[160px]">
+      <div className="relative min-h-[220px] sm:min-h-[260px]">
         <AnimatePresence mode="wait">
           <motion.div
             key={slide.id}
@@ -93,19 +93,19 @@ export function DashboardPromoCarousel() {
                   "radial-gradient(circle at 85% 20%, rgba(255,255,255,0.35), transparent 45%), radial-gradient(circle at 10% 90%, rgba(255,255,255,0.12), transparent 40%)",
               }}
             />
-            <div className="relative z-10 flex h-full flex-col justify-between gap-4 p-5 sm:p-6 sm:flex-row sm:items-center">
-              <div className="flex items-start gap-3 sm:gap-4 min-w-0">
-                <div className="shrink-0 w-11 h-11 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center text-white backdrop-blur-sm">
-                  <Icon className="w-5 h-5" />
+            <div className="relative z-10 flex h-full min-h-[220px] sm:min-h-[260px] flex-col justify-center gap-6 py-10 sm:py-12 px-6 sm:px-8 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4 sm:gap-5 min-w-0">
+                <div className="shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center text-white backdrop-blur-sm">
+                  <Icon className="w-6 h-6 sm:w-7 sm:h-7" />
                 </div>
-                <div className="min-w-0 space-y-1.5">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/70">
+                <div className="min-w-0 space-y-2">
+                  <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.14em] text-white/70">
                     {t("dashboard.promoEyebrow")}
                   </p>
-                  <h2 className="text-base sm:text-lg font-black text-white tracking-tight leading-snug">
+                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-snug">
                     {t(slide.titleKey)}
                   </h2>
-                  <p className="text-xs sm:text-sm text-white/85 leading-relaxed max-w-xl">
+                  <p className="text-sm sm:text-base text-white/90 leading-relaxed max-w-xl">
                     {t(slide.bodyKey)}
                   </p>
                 </div>
@@ -113,17 +113,17 @@ export function DashboardPromoCarousel() {
 
               <Link
                 href={slide.href}
-                className="inline-flex items-center justify-center gap-1.5 self-start sm:self-center shrink-0 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-slate-900 shadow-sm hover:bg-slate-50 transition-colors"
+                className="inline-flex items-center justify-center gap-2 self-start sm:self-center shrink-0 rounded-xl bg-white px-5 py-3 text-sm font-bold text-slate-900 shadow-sm hover:bg-slate-50 transition-colors"
               >
                 {t(slide.ctaKey)}
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </motion.div>
         </AnimatePresence>
       </div>
 
-      <div className="absolute bottom-3 right-4 z-20 flex items-center gap-1.5">
+      <div className="absolute bottom-4 right-5 z-20 flex items-center gap-1.5">
         {SLIDES.map((item, i) => (
           <button
             key={item.id}
