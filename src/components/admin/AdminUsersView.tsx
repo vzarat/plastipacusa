@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo, useState, useTransition } from "react";
+import React, { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import {
   CheckCircle2,
@@ -9,6 +10,7 @@ import {
   Loader2,
   MoreHorizontal,
   Pencil,
+  RefreshCw,
   Search,
   ShieldCheck,
   Trash2,
@@ -43,6 +45,26 @@ function formatDate(iso: string | null, locale: string): string {
   }
 }
 
+function normalizeApiUser(row: Record<string, unknown>): AdminManagedUser {
+  const taxId = String(row.taxId ?? row.tax_id ?? "").trim();
+  const roleRaw = String(row.role || "client").toLowerCase();
+  return {
+    id: String(row.id),
+    fullName: String(row.fullName ?? row.full_name ?? ""),
+    email: String(row.email ?? ""),
+    companyName: String(row.companyName ?? row.company_name ?? ""),
+    phone: String(row.phone ?? ""),
+    role: roleRaw === "admin" ? "admin" : "client",
+    taxId,
+    hasTaxId: Boolean(taxId || row.hasTaxId),
+    createdAt: row.createdAt
+      ? String(row.createdAt)
+      : row.created_at
+        ? String(row.created_at)
+        : null,
+  };
+}
+
 export function AdminUsersView({
   initialUsers,
   currentAdminId,
@@ -52,6 +74,11 @@ export function AdminUsersView({
   const [users, setUsers] = useState(initialUsers);
   const [search, setSearch] = useState("");
   const [menuUserId, setMenuUserId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(
+    null
+  );
+  const menuButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [editUser, setEditUser] = useState<AdminManagedUser | null>(null);
   const [passwordUser, setPasswordUser] = useState<AdminManagedUser | null>(
     null
@@ -70,6 +97,26 @@ export function AdminUsersView({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [nextRole, setNextRole] = useState<AdminManagedRole>("client");
 
+  useEffect(() => {
+    setUsers(initialUsers);
+  }, [initialUsers]);
+
+  useEffect(() => {
+    if (!menuUserId) {
+      setMenuPos(null);
+      return;
+    }
+    const btn = menuButtonRefs.current.get(menuUserId);
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const menuWidth = 192;
+    const left = Math.min(
+      window.innerWidth - menuWidth - 12,
+      Math.max(12, rect.right - menuWidth)
+    );
+    setMenuPos({ top: rect.bottom + 6, left });
+  }, [menuUserId]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return users;
@@ -82,8 +129,44 @@ export function AdminUsersView({
     );
   }, [users, search]);
 
+  const closeMenu = () => setMenuUserId(null);
+
+  const toggleMenu = (userId: string) => {
+    setMenuUserId((id) => (id === userId ? null : userId));
+  };
+
+  const refreshUsers = async () => {
+    setIsRefreshing(true);
+    closeMenu();
+    try {
+      const res = await fetch("/api/admin/users", { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error || "Failed to refresh users.");
+        return;
+      }
+      const list = Array.isArray(data.users)
+        ? data.users.map((row: Record<string, unknown>) =>
+            normalizeApiUser(row)
+          )
+        : [];
+      setUsers(list);
+      toast.success(
+        isSpanish
+          ? `${list.length} usuarios cargados.`
+          : `${list.length} users loaded.`
+      );
+    } catch {
+      toast.error(
+        isSpanish ? "No se pudo actualizar la lista." : "Unable to refresh."
+      );
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const openEdit = (user: AdminManagedUser) => {
-    setMenuUserId(null);
+    closeMenu();
     setEditUser(user);
     setEditForm({
       fullName: user.fullName,
@@ -93,20 +176,20 @@ export function AdminUsersView({
   };
 
   const openPassword = (user: AdminManagedUser) => {
-    setMenuUserId(null);
+    closeMenu();
     setPasswordUser(user);
     setNewPassword("");
     setConfirmPassword("");
   };
 
   const openRole = (user: AdminManagedUser) => {
-    setMenuUserId(null);
+    closeMenu();
     setRoleUser(user);
     setNextRole(user.role === "admin" ? "client" : "admin");
   };
 
   const openDelete = (user: AdminManagedUser) => {
-    setMenuUserId(null);
+    closeMenu();
     setDeleteUser(user);
   };
 
@@ -175,9 +258,7 @@ export function AdminUsersView({
     }
     if (newPassword !== confirmPassword) {
       toast.error(
-        isSpanish
-          ? "Las contraseñas no coinciden."
-          : "Passwords do not match."
+        isSpanish ? "Las contraseñas no coinciden." : "Passwords do not match."
       );
       return;
     }
@@ -240,6 +321,10 @@ export function AdminUsersView({
     });
   };
 
+  const menuUser = menuUserId
+    ? users.find((u) => u.id === menuUserId) || null
+    : null;
+
   return (
     <div className="space-y-6 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs">
@@ -266,9 +351,9 @@ export function AdminUsersView({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
-        <div className="p-4 sm:px-6 border-b border-slate-100 bg-slate-50/50">
-          <div className="relative max-w-md">
+      <div className="rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-visible">
+        <div className="p-4 sm:px-6 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -282,6 +367,19 @@ export function AdminUsersView({
               className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/10 focus:border-blue-400"
             />
           </div>
+          <button
+            type="button"
+            onClick={() => void refreshUsers()}
+            disabled={isRefreshing}
+            className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-blue-300 disabled:opacity-60 cursor-pointer"
+          >
+            <RefreshCw
+              className={`w-3.5 h-3.5 text-blue-600 ${
+                isRefreshing ? "animate-spin" : ""
+              }`}
+            />
+            {isSpanish ? "Actualizar" : "Refresh"}
+          </button>
         </div>
 
         {filtered.length === 0 ? (
@@ -292,7 +390,7 @@ export function AdminUsersView({
             </p>
           </div>
         ) : (
-          <div className="w-full overflow-x-auto">
+          <div className="w-full overflow-x-auto overflow-y-visible">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
                 <tr>
@@ -359,69 +457,25 @@ export function AdminUsersView({
                     <td className="py-4 px-3 text-slate-600 whitespace-nowrap">
                       {formatDate(user.createdAt, locale)}
                     </td>
-                    <td className="py-4 px-4 sm:px-6 text-right relative">
+                    <td className="py-4 px-4 sm:px-6 text-right">
                       <button
                         type="button"
-                        onClick={() =>
-                          setMenuUserId((id) =>
-                            id === user.id ? null : user.id
-                          )
-                        }
+                        ref={(el) => {
+                          if (el) menuButtonRefs.current.set(user.id, el);
+                          else menuButtonRefs.current.delete(user.id);
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleMenu(user.id);
+                        }}
                         className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 text-[10px] font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                        aria-expanded={menuUserId === user.id}
+                        aria-haspopup="menu"
                       >
                         <MoreHorizontal className="w-3.5 h-3.5" />
                         {isSpanish ? "Menú" : "Menu"}
                         <ChevronDown className="w-3 h-3 text-slate-400" />
                       </button>
-
-                      {menuUserId === user.id && (
-                        <>
-                          <button
-                            type="button"
-                            className="fixed inset-0 z-20 cursor-default"
-                            aria-label="Close menu"
-                            onClick={() => setMenuUserId(null)}
-                          />
-                          <div className="absolute right-4 sm:right-6 top-full mt-1 z-30 w-48 rounded-xl border border-slate-200 bg-white shadow-xl py-1 text-left">
-                            <button
-                              type="button"
-                              onClick={() => openEdit(user)}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
-                            >
-                              <Pencil className="w-3.5 h-3.5 text-slate-400" />
-                              {isSpanish ? "Editar usuario" : "Edit User"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openRole(user)}
-                              disabled={user.id === currentAdminId}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
-                            >
-                              <UserCog className="w-3.5 h-3.5 text-slate-400" />
-                              {isSpanish ? "Cambiar rol" : "Change Role"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openPassword(user)}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
-                            >
-                              <KeyRound className="w-3.5 h-3.5 text-slate-400" />
-                              {isSpanish
-                                ? "Restablecer contraseña"
-                                : "Reset Password"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openDelete(user)}
-                              disabled={user.id === currentAdminId}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-40 cursor-pointer border-t border-slate-100"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              {isSpanish ? "Eliminar" : "Delete User"}
-                            </button>
-                          </div>
-                        </>
-                      )}
                     </td>
                   </tr>
                 ))}
@@ -431,7 +485,65 @@ export function AdminUsersView({
         )}
       </div>
 
-      {/* Edit modal */}
+      {menuUser &&
+        menuPos &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <>
+            <button
+              type="button"
+              className="fixed inset-0 z-[80] cursor-default bg-transparent"
+              aria-label="Close menu"
+              onClick={closeMenu}
+            />
+            <div
+              role="menu"
+              className="fixed z-[90] w-48 rounded-xl border border-slate-200 bg-white shadow-xl py-1 text-left"
+              style={{ top: menuPos.top, left: menuPos.left }}
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => openEdit(menuUser)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                <Pencil className="w-3.5 h-3.5 text-slate-400" />
+                {isSpanish ? "Editar usuario" : "Edit User"}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => openRole(menuUser)}
+                disabled={menuUser.id === currentAdminId}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
+              >
+                <UserCog className="w-3.5 h-3.5 text-slate-400" />
+                {isSpanish ? "Cambiar rol" : "Change Role"}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => openPassword(menuUser)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-slate-400" />
+                {isSpanish ? "Restablecer contraseña" : "Reset Password"}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => openDelete(menuUser)}
+                disabled={menuUser.id === currentAdminId}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-40 cursor-pointer border-t border-slate-100"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {isSpanish ? "Eliminar" : "Delete User"}
+              </button>
+            </div>
+          </>,
+          document.body
+        )}
+
       {editUser && (
         <ModalShell
           title={isSpanish ? "Editar usuario" : "Edit User"}
@@ -463,7 +575,6 @@ export function AdminUsersView({
         </ModalShell>
       )}
 
-      {/* Role modal */}
       {roleUser && (
         <ModalShell
           title={isSpanish ? "Cambiar rol" : "Change Role"}
@@ -492,15 +603,12 @@ export function AdminUsersView({
         </ModalShell>
       )}
 
-      {/* Password modal */}
       {passwordUser && (
         <ModalShell
           title={isSpanish ? "Restablecer contraseña" : "Reset Password"}
           onClose={() => setPasswordUser(null)}
         >
-          <p className="text-xs text-slate-600 mb-3">
-            {passwordUser.email}
-          </p>
+          <p className="text-xs text-slate-600 mb-3">{passwordUser.email}</p>
           <div className="space-y-3">
             <Field
               label={isSpanish ? "Nueva contraseña" : "New password"}
@@ -524,7 +632,6 @@ export function AdminUsersView({
         </ModalShell>
       )}
 
-      {/* Delete modal */}
       {deleteUser && (
         <ModalShell
           title={isSpanish ? "Eliminar usuario" : "Delete User"}
@@ -587,7 +694,7 @@ function ModalShell({
   danger?: boolean;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <button
         type="button"
         className="absolute inset-0 bg-slate-900/45 backdrop-blur-[1px]"

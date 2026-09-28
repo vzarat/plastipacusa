@@ -4,7 +4,7 @@ import {
   createServiceRoleClient,
   isServiceRoleConfigured,
 } from "@/lib/supabase/admin";
-import { createServerClient } from "@/lib/supabase/server";
+import { fetchMergedAdminUsers } from "@/lib/admin/fetch-users";
 import { revalidatePath } from "next/cache";
 
 async function assertAdmin() {
@@ -16,7 +16,8 @@ async function assertAdmin() {
 }
 
 /**
- * GET /api/admin/users — list profiles (admin only)
+ * GET /api/admin/users
+ * Lists all auth users via Admin API, merged with profiles.
  */
 export async function GET() {
   const currentUser = await assertAdmin();
@@ -25,22 +26,8 @@ export async function GET() {
   }
 
   try {
-    const supabase = await createServerClient();
-    const { data, error } = await supabase
-      .from("profiles")
-      .select(
-        "id, full_name, email, company_name, phone, role, tax_id, created_at"
-      )
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      return NextResponse.json(
-        { error: error.message || "Failed to load users." },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ users: data || [] });
+    const users = await fetchMergedAdminUsers();
+    return NextResponse.json({ users });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: message }, { status: 500 });

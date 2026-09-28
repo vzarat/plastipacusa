@@ -7,20 +7,13 @@ import {
   isServiceRoleConfigured,
 } from "@/lib/supabase/admin";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import {
+  fetchMergedAdminUsers,
+  type AdminManagedRole,
+  type AdminManagedUser,
+} from "@/lib/admin/fetch-users";
 
-export type AdminManagedRole = "client" | "admin";
-
-export interface AdminManagedUser {
-  id: string;
-  fullName: string;
-  email: string;
-  companyName: string;
-  phone: string;
-  role: AdminManagedRole;
-  taxId: string;
-  hasTaxId: boolean;
-  createdAt: string | null;
-}
+export type { AdminManagedRole, AdminManagedUser };
 
 async function requireAdmin() {
   const currentUser = await getCurrentUser();
@@ -34,43 +27,12 @@ function normalizeRole(value: unknown): AdminManagedRole {
   return String(value || "").toLowerCase() === "admin" ? "admin" : "client";
 }
 
-function mapProfileRow(row: Record<string, unknown>): AdminManagedUser {
-  const taxId = String(row.tax_id || "").trim();
-  return {
-    id: String(row.id),
-    fullName: String(row.full_name || ""),
-    email: String(row.email || ""),
-    companyName: String(row.company_name || ""),
-    phone: String(row.phone || ""),
-    role: normalizeRole(row.role),
-    taxId,
-    hasTaxId: Boolean(taxId),
-    createdAt: row.created_at ? String(row.created_at) : null,
-  };
-}
-
 export async function getAdminManagedUsers(): Promise<AdminManagedUser[]> {
   try {
     if (!(await requireAdmin()) || !isSupabaseConfigured) {
       return [];
     }
-
-    const supabase = await createServerClient();
-    const { data, error } = await supabase
-      .from("profiles")
-      .select(
-        "id, full_name, email, company_name, phone, role, tax_id, created_at"
-      )
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.warn("getAdminManagedUsers failed:", error.message);
-      return [];
-    }
-
-    return (data || []).map((row) =>
-      mapProfileRow(row as Record<string, unknown>)
-    );
+    return await fetchMergedAdminUsers();
   } catch (err) {
     console.warn("getAdminManagedUsers exception:", err);
     return [];
@@ -101,21 +63,24 @@ export async function updateAdminManagedUserProfile(input: {
       return { success: false, error: "Full name is required." };
     }
 
-    const supabase = await createServerClient();
-    const { error } = await supabase
-      .from("profiles")
-      .update({
+    const supabase = isServiceRoleConfigured()
+      ? createServiceRoleClient()
+      : await createServerClient();
+
+    const { error } = await supabase.from("profiles").upsert(
+      {
+        id: userId,
         full_name: fullName,
         company_name: companyName || null,
         phone: phone || null,
-      })
-      .eq("id", userId);
+      },
+      { onConflict: "id" }
+    );
 
     if (error) {
       return { success: false, error: error.message || "Update failed." };
     }
 
-    // Keep auth metadata in sync when service role is available
     if (isServiceRoleConfigured()) {
       try {
         const admin = createServiceRoleClient();
@@ -163,11 +128,17 @@ export async function updateAdminManagedUserRole(input: {
       };
     }
 
-    const supabase = await createServerClient();
-    const { error } = await supabase
-      .from("profiles")
-      .update({ role })
-      .eq("id", userId);
+    const supabase = isServiceRoleConfigured()
+      ? createServiceRoleClient()
+      : await createServerClient();
+
+    const { error } = await supabase.from("profiles").upsert(
+      {
+        id: userId,
+        role,
+      },
+      { onConflict: "id" }
+    );
 
     if (error) {
       return { success: false, error: error.message || "Role update failed." };
