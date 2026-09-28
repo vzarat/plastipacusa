@@ -25,8 +25,7 @@ const inter = Inter({
 });
 
 const CartDrawer = dynamic(
-  () =>
-    import("@/components/layout/CartDrawer").then((m) => m.CartDrawer),
+  () => import("@/components/layout/CartDrawer"),
   { ssr: false }
 );
 
