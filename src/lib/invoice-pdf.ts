@@ -39,8 +39,11 @@ export const PLASTIPAC_LOGO_SVG_URL =
 const PAGE_W = 612;
 const PAGE_H = 792;
 
-/** White logo plate on the blue header banner */
-const LOGO_BOX = { x: 24, y: 720, w: 110, h: 36 };
+/** Large top-left logo area on the clean white header */
+const LOGO_BOX = { x: 36, y: 698, w: 240, h: 78 };
+
+/** Small US flag icon next to contact block (top-right) */
+const FLAG_BOX = { x: 372, y: 758, w: 24, h: 15 };
 
 function pdfEscape(text: string): string {
   return String(text ?? "")
@@ -59,7 +62,8 @@ function fitInsideBox(
   imgW: number,
   imgH: number,
   box: { x: number; y: number; w: number; h: number },
-  padding = 5
+  padding = 2,
+  align: "center" | "left" = "center"
 ) {
   const availW = Math.max(1, box.w - padding * 2);
   const availH = Math.max(1, box.h - padding * 2);
@@ -67,11 +71,61 @@ function fitInsideBox(
   const drawW = imgW * scale;
   const drawH = imgH * scale;
   return {
-    x: box.x + (box.w - drawW) / 2,
+    x:
+      align === "left"
+        ? box.x + padding
+        : box.x + (box.w - drawW) / 2,
     y: box.y + (box.h - drawH) / 2,
     w: drawW,
     h: drawH,
   };
+}
+
+/** Vector US flag drawn with PDF path ops (Helvetica cannot render emoji flags). */
+function drawUsFlag(
+  lines: string[],
+  x: number,
+  y: number,
+  w: number,
+  h: number
+) {
+  const stripeH = h / 13;
+  for (let i = 0; i < 13; i += 1) {
+    const isRed = i % 2 === 0;
+    // Old Glory Red / White
+    lines.push(isRed ? "0.698 0.132 0.203 rg" : "1 1 1 rg");
+    lines.push(
+      `${x.toFixed(2)} ${(y + (12 - i) * stripeH).toFixed(2)} ${w.toFixed(2)} ${stripeH.toFixed(2)} re`
+    );
+    lines.push("f");
+  }
+
+  const cantonW = w * 0.4;
+  const cantonH = stripeH * 7;
+  lines.push("0.239 0.231 0.431 rg"); // Old Glory Blue
+  lines.push(
+    `${x.toFixed(2)} ${(y + stripeH * 6).toFixed(2)} ${cantonW.toFixed(2)} ${cantonH.toFixed(2)} re`
+  );
+  lines.push("f");
+
+  // Simplified star field as tiny white squares (readable at icon size)
+  lines.push("1 1 1 rg");
+  const cols = 5;
+  const rows = 4;
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      const sx = x + 2 + col * ((cantonW - 4) / cols) + 0.8;
+      const sy = y + stripeH * 6 + 2 + row * ((cantonH - 4) / rows) + 0.6;
+      lines.push(`${sx.toFixed(2)} ${sy.toFixed(2)} 1.1 1.1 re`);
+      lines.push("f");
+    }
+  }
+
+  // Crisp border
+  lines.push("0.75 0.78 0.82 RG");
+  lines.push("0.6 w");
+  lines.push(`${x.toFixed(2)} ${y.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re`);
+  lines.push("S");
 }
 
 function buildContentStream(data: InvoicePdfData): string {
@@ -93,21 +147,22 @@ function buildContentStream(data: InvoicePdfData): string {
     lines.push("ET");
   };
 
-  // Header bar
-  lines.push("0.086 0.467 0.722 rg");
-  lines.push(`0 ${PAGE_H - 96} ${PAGE_W} 96 re`);
-  lines.push("f");
-
-  // White logo plate (top-left of blue banner)
+  // -------------------------------------------------------------------------
+  // Clean WHITE header (no blue banner / no white plate around the logo)
+  // -------------------------------------------------------------------------
   lines.push("1 1 1 rg");
-  lines.push(
-    `${LOGO_BOX.x} ${LOGO_BOX.y} ${LOGO_BOX.w} ${LOGO_BOX.h} re`
-  );
+  lines.push(`0 ${PAGE_H - 110} ${PAGE_W} 110 re`);
   lines.push("f");
 
+  // Large logo — top left
   if (hasLogo && data.logo) {
-    const fitted = fitInsideBox(data.logo.width, data.logo.height, LOGO_BOX, 5);
-    // PDF image CTM: [w 0 0 h x y] then Do
+    const fitted = fitInsideBox(
+      data.logo.width,
+      data.logo.height,
+      LOGO_BOX,
+      0,
+      "left"
+    );
     lines.push("q");
     lines.push(
       `${fitted.w.toFixed(2)} 0 0 ${fitted.h.toFixed(2)} ${fitted.x.toFixed(2)} ${fitted.y.toFixed(2)} cm`
@@ -115,70 +170,72 @@ function buildContentStream(data: InvoicePdfData): string {
     lines.push("/Logo Do");
     lines.push("Q");
   } else {
-    // Fallback wordmark if logo fetch/rasterize fails
+    // Compact wordmark fallback only if logo rasterize fails
     lines.push("0.086 0.467 0.722 rg");
-    pushText(LOGO_BOX.x + 8, LOGO_BOX.y + 20, "PLASTIPAC", {
+    pushText(LOGO_BOX.x, LOGO_BOX.y + 42, "PLASTIPAC USA", {
       font: "F2",
-      size: 10,
+      size: 22,
     });
-    pushText(LOGO_BOX.x + 8, LOGO_BOX.y + 8, "USA", { font: "F2", size: 13 });
   }
 
-  // Company details beside the logo box
-  lines.push("1 1 1 rg");
-  pushText(150, 748, "PLASTIPAC USA", { font: "F2", size: 18 });
-  pushText(150, 730, "Industrial High-Performance Stretch Film", {
-    font: "F1",
-    size: 9,
-  });
-  pushText(150, 716, "Factory-Direct Packaging Solutions", {
-    font: "F1",
-    size: 9,
-  });
+  // US flag + contact block — top right
+  drawUsFlag(lines, FLAG_BOX.x, FLAG_BOX.y, FLAG_BOX.w, FLAG_BOX.h);
 
-  pushText(380, 748, "www.plastipacusa.com", { font: "F1", size: 9 });
-  pushText(380, 734, "sales@plastipacusa.com", { font: "F1", size: 9 });
-  pushText(380, 720, "Phone: (956) 400-3683", { font: "F2", size: 10 });
-
-  // Title + metadata (unchanged layout below header)
   lines.push("0.06 0.09 0.16 rg");
-  pushText(40, 670, "COMMERCIAL INVOICE / STATEMENT", {
+  pushText(FLAG_BOX.x + FLAG_BOX.w + 8, 762, "Proudly Serving American Industry", {
+    font: "F2",
+    size: 9,
+  });
+  lines.push("0.29 0.33 0.39 rg");
+  pushText(FLAG_BOX.x, 742, "www.plastipacusa.com", { font: "F1", size: 9 });
+  pushText(FLAG_BOX.x, 728, "sales@plastipacusa.com", { font: "F1", size: 9 });
+  lines.push("0.06 0.09 0.16 rg");
+  pushText(FLAG_BOX.x, 712, "Phone: (956) 400-3683", { font: "F2", size: 10 });
+
+  // Subtle separator under the white header
+  lines.push("0.86 0.89 0.93 RG");
+  lines.push("1 w");
+  lines.push("36 688 m 576 688 l S");
+
+  // Title + metadata (layout continuity below header)
+  lines.push("0.06 0.09 0.16 rg");
+  pushText(40, 668, "COMMERCIAL INVOICE / STATEMENT", {
     font: "F2",
     size: 14,
   });
 
   lines.push("0.95 0.97 0.99 rg");
-  lines.push("40 575 532 75 re");
+  lines.push("40 573 532 75 re");
   lines.push("f");
   lines.push("0.80 0.86 0.92 RG");
-  lines.push("40 575 532 75 re");
+  lines.push("40 573 532 75 re");
   lines.push("S");
 
   lines.push("0.06 0.09 0.16 rg");
-  pushText(50, 632, "Invoice Number:", { font: "F1", size: 9 });
-  pushText(140, 632, data.invoiceNumber, { font: "F2", size: 10 });
-  pushText(50, 616, "Order / PO Ref:", { font: "F1", size: 9 });
-  pushText(140, 616, data.orderPoRef, { font: "F2", size: 10 });
-  pushText(50, 600, "Issue Date:", { font: "F1", size: 9 });
-  pushText(140, 600, data.issueDate, { font: "F2", size: 10 });
-  pushText(50, 584, "Payment Status:", { font: "F1", size: 9 });
-  pushText(140, 584, data.paymentStatus, { font: "F2", size: 10 });
+  pushText(50, 630, "Invoice Number:", { font: "F1", size: 9 });
+  pushText(140, 630, data.invoiceNumber, { font: "F2", size: 10 });
+  pushText(50, 614, "Order / PO Ref:", { font: "F1", size: 9 });
+  pushText(140, 614, data.orderPoRef, { font: "F2", size: 10 });
+  pushText(50, 598, "Issue Date:", { font: "F1", size: 9 });
+  pushText(140, 598, data.issueDate, { font: "F2", size: 10 });
+  pushText(50, 582, "Payment Status:", { font: "F1", size: 9 });
+  pushText(140, 582, data.paymentStatus, { font: "F2", size: 10 });
 
-  pushText(340, 632, "Bill To:", { font: "F1", size: 9 });
+  pushText(340, 630, "Bill To:", { font: "F1", size: 9 });
   pushText(
     340,
-    616,
+    614,
     data.customerCompany || data.customerName || "Valued Customer",
     { font: "F2", size: 10 }
   );
   if (data.customerName && data.customerCompany) {
-    pushText(340, 600, data.customerName, { font: "F1", size: 9 });
+    pushText(340, 598, data.customerName, { font: "F1", size: 9 });
   }
   if (data.customerEmail) {
-    pushText(340, 584, data.customerEmail, { font: "F1", size: 9 });
+    pushText(340, 582, data.customerEmail, { font: "F1", size: 9 });
   }
 
-  const tableTop = 545;
+  const tableTop = 543;
   lines.push("0.086 0.467 0.722 rg");
   lines.push(`40 ${tableTop - 18} 532 22 re`);
   lines.push("f");
@@ -465,12 +522,12 @@ export async function fetchPlastipacLogoForPdf(): Promise<InvoiceLogoImage | nul
           },
           React.createElement("img", {
             src: PLASTIPAC_LOGO_SVG_URL,
-            width: 400,
-            height: 110,
+            width: 720,
+            height: 200,
             style: { objectFit: "contain" },
           })
         ),
-        { width: 440, height: 120 }
+        { width: 760, height: 220 }
       );
       pngBuffer = Buffer.from(await remoteRaster.arrayBuffer());
     } catch (remoteErr: any) {
@@ -516,12 +573,12 @@ export async function fetchPlastipacLogoForPdf(): Promise<InvoiceLogoImage | nul
           },
           React.createElement("img", {
             src: dataUrl,
-            width: 400,
-            height: 110,
+            width: 720,
+            height: 200,
             style: { objectFit: "contain" },
           })
         ),
-        { width: 440, height: 120 }
+        { width: 760, height: 220 }
       );
       pngBuffer = Buffer.from(await inlineRaster.arrayBuffer());
     }
