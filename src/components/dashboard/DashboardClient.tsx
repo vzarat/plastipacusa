@@ -51,6 +51,10 @@ import dynamic from "next/dynamic";
 import { TaxComplianceModal, formatEinInput, isValidUsEin } from "@/components/dashboard/TaxComplianceModal";
 import { upsertMyB2BProfile, uploadTaxExemptionCertificate } from "@/actions/customers";
 import OrderDetailModal, { OrderDetailLike } from "@/components/orders/OrderDetailModal";
+import {
+  InvoicePdfModal,
+  type InvoicePdfModalPhase,
+} from "@/components/dashboard/InvoicePdfModal";
 
 const DashboardPromoCarousel = dynamic(
   () =>
@@ -175,6 +179,10 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
   const [profileFormSuccess, setProfileFormSuccess] = useState<string | null>(null);
   const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderDetailLike | null>(null);
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [pdfModalPhase, setPdfModalPhase] = useState<InvoicePdfModalPhase>("idle");
+  const [pdfModalOrderLabel, setPdfModalOrderLabel] = useState<string>("");
+  const [pdfModalError, setPdfModalError] = useState<string | null>(null);
   const [liveProfile, setLiveProfile] = useState<UserProfile>(profile);
   const [taxForm, setTaxForm] = useState({
     taxId: profile.taxId || "",
@@ -234,6 +242,73 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
       t("dashboard.quickReorderAdded").replace("{orderId}", formatOrderId(order))
     );
     setTimeout(() => setReorderNotice(null), 4000);
+  };
+
+  const closeInvoicePdfModal = () => {
+    setPdfModalOpen(false);
+    setPdfModalPhase("idle");
+    setPdfModalError(null);
+  };
+
+  const handleDownloadInvoicePdf = async (order: DashboardOrder) => {
+    const orderLabel = formatOrderId(order);
+    setPdfModalOrderLabel(orderLabel);
+    setPdfModalError(null);
+    setPdfModalOpen(true);
+    setPdfModalPhase("generating");
+
+    try {
+      const response = await fetch(
+        `/api/invoices/${encodeURIComponent(order.id)}/pdf`,
+        { method: "GET", credentials: "same-origin" }
+      );
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(
+          payload?.error ||
+            (locale === "es"
+              ? "No se pudo generar la factura PDF."
+              : "Unable to generate the PDF invoice.")
+        );
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition") || "";
+      const matched = disposition.match(/filename="([^"]+)"/i);
+      const filename =
+        matched?.[1] ||
+        `order-${orderLabel.replace(/[^a-zA-Z0-9._-]+/g, "-")}.pdf`;
+
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+
+      setPdfModalPhase("success");
+      toast.success(
+        locale === "es"
+          ? "Factura PDF descargada correctamente"
+          : "PDF invoice downloaded successfully"
+      );
+
+      window.setTimeout(() => {
+        closeInvoicePdfModal();
+      }, 1600);
+    } catch (err: any) {
+      const message =
+        err?.message ||
+        (locale === "es"
+          ? "No se pudo generar la factura PDF."
+          : "Unable to generate the PDF invoice.");
+      setPdfModalPhase("error");
+      setPdfModalError(message);
+      toast.error(message);
+    }
   };
 
   const handleTaxSubmit = async (event: React.FormEvent) => {
@@ -504,6 +579,13 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
         open={Boolean(selectedOrder)}
         order={selectedOrder}
         onClose={() => setSelectedOrder(null)}
+      />
+      <InvoicePdfModal
+        open={pdfModalOpen}
+        phase={pdfModalPhase}
+        orderLabel={pdfModalOrderLabel}
+        errorMessage={pdfModalError}
+        onClose={closeInvoicePdfModal}
       />
       <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
       {/* Mobile Top Header */}
@@ -1068,10 +1150,11 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                         <td className="py-4 px-4 sm:px-6 text-right">
                           <button
                             type="button"
-                            onClick={() =>
-                              alert(`Downloading verified PDF statement for ${formatOrderId(order)}...`)
+                            onClick={() => handleDownloadInvoicePdf(order)}
+                            disabled={
+                              pdfModalOpen && pdfModalPhase === "generating"
                             }
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                           >
                             <Download className="w-3.5 h-3.5 text-slate-500" />
                             <span>{t("dashboard.pdfInvoice")}</span>
