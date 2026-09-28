@@ -12,10 +12,28 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 interface SpecsTableProps {
-  variants: ProductVariant[];
+  variants?: ProductVariant[] | null;
+}
+
+function safeNumberDisplay(value: unknown, suffix = ""): string {
+  if (value === null || value === undefined || value === "") return "—";
+  const n =
+    typeof value === "number" ? value : parseFloat(String(value).replace(/[^\d.-]/g, ""));
+  if (!Number.isFinite(n)) return "—";
+  return `${n}${suffix}`;
+}
+
+function safeLocaleNumber(value: unknown, suffix = ""): string {
+  if (value === null || value === undefined || value === "") return "—";
+  const n =
+    typeof value === "number" ? value : parseFloat(String(value).replace(/[^\d.-]/g, ""));
+  if (!Number.isFinite(n)) return "—";
+  return `${n.toLocaleString()}${suffix}`;
 }
 
 export function SpecsTable({ variants }: SpecsTableProps) {
+  const rows = Array.isArray(variants) ? variants.filter(Boolean) : [];
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
@@ -28,60 +46,79 @@ export function SpecsTable({ variants }: SpecsTableProps) {
           </p>
         </div>
         <Badge variant="default" className="font-mono text-xs font-bold self-start">
-          {variants.length} Package Options
+          {rows.length} Package Options
         </Badge>
       </div>
 
-      <div className="w-full overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
-        <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Package Size Option</TableHead>
-            <TableHead>SKU</TableHead>
-            <TableHead>Width</TableHead>
-            <TableHead>Gauge</TableHead>
-            <TableHead>Length</TableHead>
-            <TableHead>Total Weight</TableHead>
-            <TableHead>Total Rolls</TableHead>
-            <TableHead>Full Pallet</TableHead>
-            <TableHead className="text-right">Price (USD)</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {variants.map((v, index) => (
-            <TableRow key={v.id || v.sku || index} className="hover:bg-sky-50/50 font-mono text-xs">
-              <TableCell className="font-bold text-slate-900 font-sans">
-                {(v as any).title || v.packageSize || v.sku}
-              </TableCell>
-              <TableCell className="text-sky-700 font-bold">
-                {v.sku}
-              </TableCell>
-              <TableCell className="text-slate-800">
-                {parseFloat(v.widthInches)}"
-              </TableCell>
-              <TableCell className="text-slate-800">
-                {v.gauge} Ga
-              </TableCell>
-              <TableCell className="text-slate-600">
-                {v.lengthFeet.toLocaleString()} ft
-              </TableCell>
-              <TableCell className="text-slate-600">
-                {v.weightLbs} lbs
-              </TableCell>
-              <TableCell className="text-slate-600 font-sans font-medium">
-                {(v as any).rolls_count || (v as any).rollsCount || v.rollsPerBox} rolls
-              </TableCell>
-              <TableCell className="text-slate-600 font-sans font-medium">
-                {v.rollsPerPallet} rolls
-              </TableCell>
-              <TableCell className="text-right font-sans font-black text-slate-900 text-sm">
-                {formatCurrency(v.priceUsd)}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      </div>
+      {rows.length === 0 ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
+          Package options are temporarily unavailable for this product.
+        </div>
+      ) : (
+        <div className="w-full overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Package Size Option</TableHead>
+                <TableHead>SKU</TableHead>
+                <TableHead>Width</TableHead>
+                <TableHead>Gauge</TableHead>
+                <TableHead>Length</TableHead>
+                <TableHead>Total Weight</TableHead>
+                <TableHead>Total Rolls</TableHead>
+                <TableHead>Full Pallet</TableHead>
+                <TableHead className="text-right">Price (USD)</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((v, index) => {
+                const rolls =
+                  (v as any)?.rolls_count ||
+                  (v as any)?.rollsCount ||
+                  v?.rollsPerBox;
+                return (
+                  <TableRow
+                    key={v?.id || v?.sku || index}
+                    className="hover:bg-sky-50/50 font-mono text-xs"
+                  >
+                    <TableCell className="font-bold text-slate-900 font-sans">
+                      {(v as any)?.title || v?.packageSize || v?.sku || "—"}
+                    </TableCell>
+                    <TableCell className="text-sky-700 font-bold">
+                      {v?.sku || "—"}
+                    </TableCell>
+                    <TableCell className="text-slate-800">
+                      {safeNumberDisplay(v?.widthInches, '"')}
+                    </TableCell>
+                    <TableCell className="text-slate-800">
+                      {v?.gauge != null ? `${v.gauge} Ga` : "—"}
+                    </TableCell>
+                    <TableCell className="text-slate-600">
+                      {safeLocaleNumber(v?.lengthFeet, " ft")}
+                    </TableCell>
+                    <TableCell className="text-slate-600">
+                      {v?.weightLbs != null && v.weightLbs !== ""
+                        ? `${v.weightLbs} lbs`
+                        : "—"}
+                    </TableCell>
+                    <TableCell className="text-slate-600 font-sans font-medium">
+                      {rolls != null ? `${rolls} rolls` : "—"}
+                    </TableCell>
+                    <TableCell className="text-slate-600 font-sans font-medium">
+                      {v?.rollsPerPallet != null
+                        ? `${v.rollsPerPallet} rolls`
+                        : "—"}
+                    </TableCell>
+                    <TableCell className="text-right font-sans font-black text-slate-900 text-sm">
+                      {formatCurrency(v?.priceUsd ?? (v as any)?.price ?? 0)}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }

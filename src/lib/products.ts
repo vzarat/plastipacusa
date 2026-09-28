@@ -39,9 +39,10 @@ export function isMachineFilm(product: {
   brand?: string | null;
   widthInches?: number | string | null;
   width_inches?: number | string | null;
-}): boolean {
+} | null | undefined): boolean {
+  if (!product) return false;
   const app = String(
-    product.application || product.applicationType || product.type || ""
+    product?.application || product?.applicationType || product?.type || ""
   ).toLowerCase();
   if (app === "machine") return true;
 

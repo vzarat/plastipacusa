@@ -56,13 +56,23 @@ export function DirectCheckoutButton({
 
     setIsLoading(true);
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
+      let user: { id: string; email?: string | null } | null = null;
+      try {
+        const supabase = createClient();
+        const authResult = await supabase.auth.getUser();
+        user = authResult.data.user;
+        if (authResult.error) {
+          console.warn("[checkout] auth check:", authResult.error.message);
+        }
+      } catch (authErr: unknown) {
+        const message =
+          authErr instanceof Error ? authErr.message : String(authErr);
+        console.error("[checkout] Supabase client unavailable:", message);
+        toast.error("Authentication is temporarily unavailable. Please try again.");
+        return;
+      }
 
-      if (authError || !user?.id) {
+      if (!user?.id) {
         const redirectTo =
           loginRedirectPath ||
           (pathname?.startsWith("/checkout") ? "/checkout" : "/checkout");

@@ -57,14 +57,28 @@ function buildInitialVariant(product: ProductWithVariants): ProductVariant | any
 export function ProductDetail({ product }: ProductDetailProps) {
   const { t } = useLanguage();
 
-  const initialVariant = useMemo(() => buildInitialVariant(product), [product]);
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | any>(initialVariant);
+  const initialVariant = useMemo(
+    () => (product ? buildInitialVariant(product) : undefined),
+    [product]
+  );
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | any>(
+    initialVariant
+  );
 
   useEffect(() => {
     setSelectedVariant(initialVariant);
   }, [initialVariant]);
 
-  const title = product.title || product.name || "Stretch Film";
+  if (!product) {
+    return (
+      <div className="rounded-3xl border border-slate-200 bg-white p-8 text-sm text-slate-600">
+        Product details are unavailable. Please return to the catalog and try
+        another item.
+      </div>
+    );
+  }
+
+  const title = product?.title || product?.name || "Stretch Film";
 
   return (
     <div className="space-y-6">
@@ -72,7 +86,8 @@ export function ProductDetail({ product }: ProductDetailProps) {
       <div>
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs font-mono uppercase text-sky-600 font-bold tracking-wider">
-            {product.brand} • {product.filmType || "Cast Co-Extruded Multi-Layer"}
+            {product?.brand || "Plastipac"} •{" "}
+            {product?.filmType || "Cast Co-Extruded Multi-Layer"}
           </span>
         </div>
 
@@ -81,7 +96,8 @@ export function ProductDetail({ product }: ProductDetailProps) {
         </h1>
 
         <p className="text-sm text-slate-600 mt-3 leading-relaxed">
-          {product.description}
+          {product?.description ||
+            "Industrial high-performance stretch film for secure pallet containment."}
         </p>
       </div>
 
@@ -93,7 +109,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
       />
 
       <RequestSampleButton
-        productSlug={product.slug}
+        productSlug={product?.slug}
         productName={title}
         variant="detail"
       />
@@ -103,7 +119,8 @@ export function ProductDetail({ product }: ProductDetailProps) {
         <div className="flex items-center gap-2 text-slate-600">
           <PhoneCall className="w-4 h-4 text-sky-600" />
           <span>
-            {t("products.needCustomSpecs")} <strong className="text-slate-900">(956) 400 36 83</strong>
+            {t("products.needCustomSpecs")}{" "}
+            <strong className="text-slate-900">(956) 400 36 83</strong>
           </span>
         </div>
         <a

@@ -6,12 +6,10 @@ import { ProductGallery } from "@/components/products/ProductGallery";
 import { ProductDetail } from "@/components/products/ProductDetail";
 import { SpecsTable } from "@/components/products/SpecsTable";
 import { PalletizingSpecsPanel } from "@/components/products/PalletizingSpecsPanel";
-import { Badge } from "@/components/ui/badge";
 import {
   ChevronRight,
   ShieldCheck,
   CheckCircle2,
-  PhoneCall,
 } from "lucide-react";
 
 import type { Metadata } from "next";
@@ -22,33 +20,48 @@ import { resolvePalletizingSpecs } from "@/lib/palletizing";
 export const revalidate = 3600;
 export const dynamicParams = true;
 
-const supabaseStatic = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || "";
+const supabaseStatic =
+  supabaseUrl &&
+  supabaseAnonKey &&
+  !supabaseAnonKey.includes("placeholder")
+    ? createClient(supabaseUrl, supabaseAnonKey)
+    : null;
 
 export async function generateStaticParams() {
   try {
-    const { data: products, error } = await supabaseStatic
-      .from("products")
-      .select("slug");
+    if (supabaseStatic) {
+      const { data: products, error } = await supabaseStatic
+        .from("products")
+        .select("slug");
 
-    if (!error && products && products.length > 0) {
-      return products
-        .filter((product) => Boolean(product.slug))
-        .map((product) => ({
-          slug: product.slug,
-        }));
+      if (!error && products && products.length > 0) {
+        return products
+          .filter((product) => Boolean(product?.slug))
+          .map((product) => ({
+            slug: String(product.slug),
+          }));
+      }
     }
   } catch (error) {
-    console.warn("Supabase query for slugs in generateStaticParams failed, using fallback:", error);
+    console.warn(
+      "Supabase query for slugs in generateStaticParams failed, using fallback:",
+      error
+    );
   }
 
   // Fallback for offline build or unconfigured environments
-  const fallback = await getProducts();
-  return fallback.map((product) => ({
-    slug: product.slug,
-  }));
+  try {
+    const fallback = (await getProducts()) || [];
+    return fallback
+      .filter((product) => Boolean(product?.slug))
+      .map((product) => ({
+        slug: String(product.slug),
+      }));
+  } catch {
+    return [];
+  }
 }
 
 interface ProductDetailPageProps {
@@ -60,7 +73,12 @@ interface ProductDetailPageProps {
 export async function generateMetadata({
   params,
 }: ProductDetailPageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const resolved = await params;
+  const slug = String(resolved?.slug || "").trim();
+  if (!slug) {
+    return { title: "Product Not Found | Plastipac USA" };
+  }
+
   const product = await getProductBySlug(slug);
 
   if (!product) {
@@ -69,42 +87,52 @@ export async function generateMetadata({
     };
   }
 
-  const title = product.title || product.name || "Stretch Film";
+  const title = product?.title || product?.name || "Stretch Film";
 
   return {
     title: `${title} | Plastipac USA`,
     description:
-      product.shortDescription ||
-      product.description ||
+      product?.shortDescription ||
+      product?.description ||
       "Industrial high-performance stretch film and packaging solutions.",
   };
 }
 
-export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
-  const { slug } = await params;
+export default async function ProductDetailPage({
+  params,
+}: ProductDetailPageProps) {
+  const resolved = await params;
+  const slug = String(resolved?.slug || "").trim();
+
+  if (!slug) {
+    notFound();
+  }
+
   const product = await getProductBySlug(slug);
 
   if (!product) {
     notFound();
   }
 
-  const title = product.title || product.name || "Stretch Film";
+  const title = product?.title || product?.name || "Stretch Film";
+  const features = Array.isArray(product?.features) ? product.features : [];
+  const variants = Array.isArray(product?.variants) ? product.variants : [];
 
   const categorySlug =
-    product.categorySlug ||
-    (product.brand?.toLowerCase().includes("elite")
+    product?.categorySlug ||
+    (product?.brand?.toLowerCase().includes("elite")
       ? "force-elite"
-      : product.brand?.toLowerCase().includes("genesis")
-      ? product.name?.toLowerCase().includes("hp")
-        ? "genesis-high-performance"
-        : "genesis-standard"
-      : "force-standard");
+      : product?.brand?.toLowerCase().includes("genesis")
+        ? product?.name?.toLowerCase().includes("hp")
+          ? "genesis-high-performance"
+          : "genesis-standard"
+        : "force-standard");
 
   const categoryMeta =
     PRODUCT_CATEGORIES.find((c) => c.slug === categorySlug) || null;
 
   const palletizing =
-    product.fullPalletRolls && product.palletLayers && product.rollsPerLayer
+    product?.fullPalletRolls && product?.palletLayers && product?.rollsPerLayer
       ? {
           fullPalletRolls: product.fullPalletRolls,
           palletLayers: product.palletLayers,
@@ -112,26 +140,28 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           rollsPerBox: product.rollsPerBoxSpec || 4,
           boxesPerFullPallet:
             product.boxesPerFullPallet ||
-            Math.round((product.fullPalletRolls || 192) / (product.rollsPerBoxSpec || 4)),
+            Math.round(
+              (product.fullPalletRolls || 192) / (product.rollsPerBoxSpec || 4)
+            ),
           packOutSummary:
             product.palletizingSummary ||
             `${product.fullPalletRolls} rolls / full pallet`,
           familyLabel: product.palletizingFamily || "Stretch Film",
         }
       : resolvePalletizingSpecs({
-          widthInches: product.widthInches ?? product.width_inches,
-          gauge: product.gauge,
-          lengthFeet: product.length_feet,
-          application: product.application,
-          slug: product.slug,
-          name: product.title || product.name,
+          widthInches: product?.widthInches ?? product?.width_inches,
+          gauge: product?.gauge,
+          lengthFeet: product?.length_feet,
+          application: product?.application,
+          slug: product?.slug,
+          name: product?.title || product?.name,
         });
 
   const widthDisplay = Math.round(
-    Number(product.widthInches ?? product.width_inches ?? 0)
+    Number(product?.widthInches ?? product?.width_inches ?? 0)
   );
-  const gaugeDisplay = product.gauge ? `${product.gauge} GA` : undefined;
-  const lengthDisplay = product.length_feet
+  const gaugeDisplay = product?.gauge ? `${product.gauge} GA` : undefined;
+  const lengthDisplay = product?.length_feet
     ? `${Number(product.length_feet).toLocaleString()} FT`
     : undefined;
 
@@ -148,9 +178,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             Products
           </Link>
           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-          <span className="text-sky-700 font-bold truncate">
-            {title}
-          </span>
+          <span className="text-sky-700 font-bold truncate">{title}</span>
         </nav>
 
         {/* Top Product Section */}
@@ -158,10 +186,10 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           {/* Left Column: Interactive Image Gallery & Technical Features */}
           <div className="lg:col-span-6 space-y-6">
             <ProductGallery
-              images={product.images}
-              imageUrl={product.imageUrl}
+              images={product?.images || []}
+              imageUrl={product?.imageUrl || ""}
               productName={title}
-              application={product.application}
+              application={product?.application === "machine" ? "machine" : "hand"}
               categoryLogoUrl={categoryMeta?.logoUrl}
               categoryName={categoryMeta?.name}
             />
@@ -173,17 +201,27 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                 Performance Characteristics
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                {product.features.map((feature, idx) => (
-                  <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-600">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-sky-600 flex-shrink-0 mt-0.5" />
-                    <span>{feature}</span>
-                  </div>
-                ))}
+                {features.length > 0 ? (
+                  features.map((feature, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-start gap-2.5 text-xs text-slate-600"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-sky-600 flex-shrink-0 mt-0.5" />
+                      <span>{feature}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-slate-500 col-span-full">
+                    High-performance cast stretch film engineered for industrial
+                    pallet containment.
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Recommended Usage Callout */}
-            {product.recommendedUsage && (
+            {product?.recommendedUsage && (
               <div className="p-5 rounded-2xl border border-sky-100 bg-sky-50/80 text-xs text-sky-900">
                 <strong className="block text-sky-950 font-bold mb-1">
                   Recommended Industry Applications:
@@ -207,7 +245,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             gaugeLabel={gaugeDisplay}
             lengthLabel={lengthDisplay}
           />
-          <SpecsTable variants={product.variants} />
+          <SpecsTable variants={variants} />
         </section>
       </div>
     </div>

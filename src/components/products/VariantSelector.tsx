@@ -460,7 +460,7 @@ export function VariantSelector({
   };
 
   const handleAddToCart = () => {
-    if (!selectedVariant || baseUnitPriceRaw <= 0) return;
+    if (!product || !selectedVariant || baseUnitPriceRaw <= 0) return;
     const rolls = getRollsCount(selectedVariant);
 
     // Percent codes sync to cart coupon — store list price to avoid double discount.
@@ -495,6 +495,14 @@ export function VariantSelector({
     setAddedNotice(true);
     setTimeout(() => setAddedNotice(false), 2500);
   };
+
+  if (!product) {
+    return (
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
+        Unable to load packaging options for this product.
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 space-y-7 shadow-xl shadow-slate-200/40">
