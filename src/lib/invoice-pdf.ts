@@ -43,7 +43,7 @@ const PAGE_H = 792;
 const LOGO_BOX = { x: 36, y: 698, w: 240, h: 78 };
 
 /** Small US flag icon next to contact block (top-right) */
-const FLAG_BOX = { x: 372, y: 758, w: 24, h: 15 };
+const FLAG_BOX = { x: 372, y: 756, w: 28, h: 18 };
 
 function pdfEscape(text: string): string {
   return String(text ?? "")
@@ -81,7 +81,7 @@ function fitInsideBox(
   };
 }
 
-/** Vector US flag drawn with PDF path ops (Helvetica cannot render emoji flags). */
+/** Vector US flag — solid #002868 canton, then tiny white stars. */
 function drawUsFlag(
   lines: string[],
   x: number,
@@ -90,42 +90,62 @@ function drawUsFlag(
   h: number
 ) {
   const stripeH = h / 13;
+  const cantonW = w * 0.4;
+  const cantonH = stripeH * 7;
+  // PDF y grows upward: canton covers the top 7 stripes
+  const cantonY = y + stripeH * 6;
+
+  lines.push("q");
+
+  // Full-width stripes first (top stripe i=0 is red)
   for (let i = 0; i < 13; i += 1) {
     const isRed = i % 2 === 0;
-    // Old Glory Red / White
+    const stripeY = y + (12 - i) * stripeH;
     lines.push(isRed ? "0.698 0.132 0.203 rg" : "1 1 1 rg");
     lines.push(
-      `${x.toFixed(2)} ${(y + (12 - i) * stripeH).toFixed(2)} ${w.toFixed(2)} ${stripeH.toFixed(2)} re`
+      `${x.toFixed(3)} ${stripeY.toFixed(3)} ${w.toFixed(3)} ${stripeH.toFixed(3)} re`
     );
     lines.push("f");
   }
 
-  const cantonW = w * 0.4;
-  const cantonH = stripeH * 7;
-  lines.push("0.239 0.231 0.431 rg"); // Old Glory Blue
+  // Deep blue canton (#002868) drawn ON TOP of the white/red stripes
+  lines.push("0.000 0.157 0.408 rg");
   lines.push(
-    `${x.toFixed(2)} ${(y + stripeH * 6).toFixed(2)} ${cantonW.toFixed(2)} ${cantonH.toFixed(2)} re`
+    `${x.toFixed(3)} ${cantonY.toFixed(3)} ${cantonW.toFixed(3)} ${cantonH.toFixed(3)} re`
   );
   lines.push("f");
 
-  // Simplified star field as tiny white squares (readable at icon size)
+  // Tiny white star dots — keep far smaller than the canton so blue remains visible
   lines.push("1 1 1 rg");
-  const cols = 5;
-  const rows = 4;
-  for (let row = 0; row < rows; row += 1) {
-    for (let col = 0; col < cols; col += 1) {
-      const sx = x + 2 + col * ((cantonW - 4) / cols) + 0.8;
-      const sy = y + stripeH * 6 + 2 + row * ((cantonH - 4) / rows) + 0.6;
-      lines.push(`${sx.toFixed(2)} ${sy.toFixed(2)} 1.1 1.1 re`);
+  const starSize = Math.max(0.3, Math.min(0.5, Math.min(cantonW, cantonH) * 0.06));
+  const starRows = [
+    { count: 6, t: 0.86 },
+    { count: 5, t: 0.68 },
+    { count: 6, t: 0.50 },
+    { count: 5, t: 0.32 },
+    { count: 6, t: 0.14 },
+  ];
+  for (const row of starRows) {
+    const sy = cantonY + cantonH * row.t - starSize / 2;
+    const inset = row.count === 6 ? 0.12 : 0.2;
+    for (let col = 0; col < row.count; col += 1) {
+      const t = inset + ((col + 0.5) / row.count) * (1 - inset * 2);
+      const sx = x + cantonW * t - starSize / 2;
+      lines.push(
+        `${sx.toFixed(3)} ${sy.toFixed(3)} ${starSize.toFixed(3)} ${starSize.toFixed(3)} re`
+      );
       lines.push("f");
     }
   }
 
-  // Crisp border
-  lines.push("0.75 0.78 0.82 RG");
-  lines.push("0.6 w");
-  lines.push(`${x.toFixed(2)} ${y.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re`);
+  // Outer border only
+  lines.push("0.55 0.58 0.62 RG");
+  lines.push("0.5 w");
+  lines.push(
+    `${x.toFixed(3)} ${y.toFixed(3)} ${w.toFixed(3)} ${h.toFixed(3)} re`
+  );
   lines.push("S");
+  lines.push("Q");
 }
 
 function buildContentStream(data: InvoicePdfData): string {
@@ -182,10 +202,15 @@ function buildContentStream(data: InvoicePdfData): string {
   drawUsFlag(lines, FLAG_BOX.x, FLAG_BOX.y, FLAG_BOX.w, FLAG_BOX.h);
 
   lines.push("0.06 0.09 0.16 rg");
-  pushText(FLAG_BOX.x + FLAG_BOX.w + 8, 762, "Proudly Serving American Industry", {
-    font: "F2",
-    size: 9,
-  });
+  pushText(
+    FLAG_BOX.x + FLAG_BOX.w + 8,
+    FLAG_BOX.y + FLAG_BOX.h / 2 - 3,
+    "Proudly Serving American Industry",
+    {
+      font: "F2",
+      size: 9,
+    }
+  );
   lines.push("0.29 0.33 0.39 rg");
   pushText(FLAG_BOX.x, 742, "www.plastipacusa.com", { font: "F1", size: 9 });
   pushText(FLAG_BOX.x, 728, "sales@plastipacusa.com", { font: "F1", size: 9 });
