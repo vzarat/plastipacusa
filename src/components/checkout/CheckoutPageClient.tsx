@@ -124,6 +124,7 @@ export function CheckoutPageClient() {
               label="Proceed to Checkout"
               customerEmail={checkoutEmail}
               disabled={!agreedToPolicies}
+              loginRedirectPath="/checkout"
               onBeforeNavigate={() => {
                 if (!agreedToPolicies) {
                   toast.error(

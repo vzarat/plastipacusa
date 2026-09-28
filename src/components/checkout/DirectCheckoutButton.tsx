@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { BRAND_GRADIENT_CTA } from "@/lib/brand-styles";
 
@@ -10,17 +12,19 @@ interface DirectCheckoutButtonProps {
   label?: string;
   className?: string;
   disabled?: boolean;
-  /** Customer email for Stripe Checkout + email-locked promos */
+  /** Optional override; authenticated session email is preferred */
   customerEmail?: string;
   customerName?: string;
   companyName?: string;
+  /** Where to return after login when unauthenticated */
+  loginRedirectPath?: string;
   /** Return false to cancel navigation / session creation */
   onBeforeNavigate?: () => boolean | void;
 }
 
 /**
- * Primary checkout CTA — creates a Stripe Checkout Session via `/api/checkout`
- * and redirects the browser to `session.url`.
+ * Primary checkout CTA — requires login, then creates a Stripe Checkout Session
+ * via `/api/checkout` and redirects to `session.url`.
  */
 export function DirectCheckoutButton({
   label = "Proceed to Checkout",
@@ -29,9 +33,12 @@ export function DirectCheckoutButton({
   customerEmail,
   customerName,
   companyName,
+  loginRedirectPath,
   onBeforeNavigate,
 }: DirectCheckoutButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
   const items = useCartStore((state) => state.items);
   const getDiscountAmount = useCartStore((state) => state.getDiscountAmount);
   const appliedCoupon = useCartStore((state) => state.appliedCoupon);
@@ -49,12 +56,30 @@ export function DirectCheckoutButton({
 
     setIsLoading(true);
     try {
+      const supabase = createClient();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user?.id) {
+        const redirectTo =
+          loginRedirectPath ||
+          (pathname?.startsWith("/checkout") ? "/checkout" : "/checkout");
+        toast.message("Please sign in to continue to checkout.");
+        router.push(
+          `/login?redirect=${encodeURIComponent(redirectTo)}`
+        );
+        return;
+      }
+
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items,
-          customerEmail: customerEmail || undefined,
+          userId: user.id,
+          customerEmail: (customerEmail || user.email || "").trim() || undefined,
           customerName: customerName || undefined,
           companyName: companyName || undefined,
           discountAmount: getDiscountAmount(),
@@ -66,6 +91,14 @@ export function DirectCheckoutButton({
         url?: string;
         error?: string;
       };
+
+      if (response.status === 401) {
+        toast.message("Please sign in to continue to checkout.");
+        router.push(
+          `/login?redirect=${encodeURIComponent(loginRedirectPath || "/checkout")}`
+        );
+        return;
+      }
 
       if (!response.ok || !data.url) {
         toast.error(data.error || "Unable to start Stripe Checkout.");

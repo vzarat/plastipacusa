@@ -52,7 +52,7 @@ async function markOrderPaidByPaymentIntent(
     const supabase = await getSupabaseForWebhook();
     const { data: matchingOrders, error } = await supabase
       .from("orders")
-      .select("id, shipping_address, total, items, created_at");
+      .select("id, shipping_address, total, items, created_at, user_id");
 
     if (error) {
       console.error(
@@ -102,6 +102,87 @@ async function markOrderPaidByPaymentIntent(
   }
 }
 
+function resolveSessionUserId(session: Stripe.Checkout.Session): string | null {
+  const fromMeta =
+    session.metadata?.userId ||
+    session.metadata?.user_id ||
+    session.client_reference_id ||
+    null;
+  const id = String(fromMeta || "").trim();
+  return id || null;
+}
+
+/**
+ * When Checkout completes for a logged-in buyer but no local order exists yet,
+ * create a paid order row keyed to metadata.userId / client_reference_id.
+ */
+async function ensurePaidOrderForSession(input: {
+  session: Stripe.Checkout.Session;
+  paymentIntentId: string | null;
+  userId: string;
+  customerEmail: string;
+  customerName: string;
+  shippingAddress: Record<string, unknown>;
+  itemsSummary: string;
+  totalAmount: number;
+}): Promise<{ orderId?: string } | null> {
+  try {
+    const supabase = await getSupabaseForWebhook();
+    const createdAt = new Date(
+      (input.session.created || Date.now() / 1000) * 1000
+    ).toISOString();
+
+    const shipping_address = {
+      ...input.shippingAddress,
+      email: input.customerEmail,
+      full_name: input.customerName,
+      stripe_payment_intent_id: input.paymentIntentId,
+      stripe_checkout_session_id: input.session.id,
+    };
+
+    const { data, error } = await supabase
+      .from("orders")
+      .insert({
+        user_id: input.userId,
+        status: "paid",
+        total: input.totalAmount,
+        items: [
+          {
+            productName: input.itemsSummary || "Stripe Checkout Order",
+            quantity: 1,
+            unitPrice: input.totalAmount,
+            totalPrice: input.totalAmount,
+          },
+        ],
+        shipping_address,
+        created_at: createdAt,
+      })
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      console.error(
+        "[stripe webhook] failed to create order for authenticated user:",
+        error.message || error
+      );
+      return null;
+    }
+
+    console.log(
+      "[stripe webhook] created paid order for userId:",
+      input.userId,
+      "order:",
+      data?.id
+    );
+
+    return data?.id ? { orderId: String(data.id) } : null;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[stripe webhook] ensurePaidOrderForSession exception:", message);
+    return null;
+  }
+}
+
 async function dispatchAdminPoEmail(payload: {
   orderId: string;
   customerName: string;
@@ -143,8 +224,21 @@ async function handleCheckoutSessionCompleted(
       ? session.payment_intent
       : session.payment_intent?.id || null;
 
+  const userId = resolveSessionUserId(session);
+  if (!userId) {
+    console.warn(
+      "[stripe webhook] checkout.session.completed missing userId metadata / client_reference_id:",
+      session.id
+    );
+  } else {
+    console.log(
+      "[stripe webhook] checkout.session.completed for authenticated userId:",
+      userId
+    );
+  }
+
   // Persist / update DB first when possible (email must not roll this back).
-  const matched = await markOrderPaidByPaymentIntent(paymentIntentId);
+  let matched = await markOrderPaidByPaymentIntent(paymentIntentId);
 
   let lineItems: Array<{
     quantity?: number | null;
@@ -222,15 +316,34 @@ async function handleCheckoutSessionCompleted(
     .filter(Boolean)
     .join(" · ");
 
+  const totalAmount = centsToUsd(session.amount_total);
+
+  if (!matched && userId) {
+    matched = await ensurePaidOrderForSession({
+      session,
+      paymentIntentId,
+      userId,
+      customerEmail,
+      customerName,
+      shippingAddress: {
+        line1: shippingDetails?.line1 || null,
+        line2: shippingDetails?.line2 || null,
+        city: shippingCity || null,
+        state: shippingState || null,
+        postal_code: shippingDetails?.postal_code || null,
+        country: shippingDetails?.country || null,
+      },
+      itemsSummary,
+      totalAmount,
+    });
+  }
+
   const poReference =
     String(session.metadata?.po_reference || session.metadata?.order_id || "") ||
     (matched?.orderId
       ? formatOrderId({ id: matched.orderId, createdAt: new Date().toISOString() })
       : null) ||
-    session.client_reference_id ||
     session.id;
-
-  const totalAmount = centsToUsd(session.amount_total);
 
   await dispatchAdminPoEmail({
     orderId: poReference,

@@ -17,6 +17,8 @@ interface CheckoutLineItemInput {
 
 interface CheckoutRequestBody {
   items?: CheckoutLineItemInput[];
+  /** Authenticated Supabase user id from the client (verified against session) */
+  userId?: string;
   customerEmail?: string;
   customerName?: string;
   companyName?: string;
@@ -64,6 +66,21 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    // Client may send userId for clarity; never trust it over the session.
+    if (body.userId && body.userId !== user.id) {
+      console.warn(
+        "[api/checkout] Rejected mismatched userId body vs session.",
+        { bodyUserId: body.userId, sessionUserId: user.id }
+      );
+      return NextResponse.json(
+        { error: "Authentication mismatch. Please sign in again." },
+        { status: 401 }
+      );
+    }
+
+    const authenticatedUserId = user.id;
+    const authenticatedEmail = (user.email || "").trim().toLowerCase();
 
     const subtotal = items.reduce((sum, item) => {
       const line =
@@ -119,7 +136,8 @@ export async function POST(request: NextRequest) {
 
     const baseUrl = getAppBaseUrl();
     const customerEmail =
-      (body.customerEmail || user.email || "").trim().toLowerCase() || undefined;
+      (body.customerEmail || authenticatedEmail || "").trim().toLowerCase() ||
+      undefined;
 
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2026-08-26.dahlia" as any,
@@ -129,7 +147,7 @@ export async function POST(request: NextRequest) {
       mode: "payment",
       line_items,
       customer_email: customerEmail,
-      client_reference_id: user.id,
+      client_reference_id: authenticatedUserId,
       success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/checkout`,
       billing_address_collection: "required",
@@ -137,7 +155,8 @@ export async function POST(request: NextRequest) {
         allowed_countries: ["US"],
       },
       metadata: {
-        user_id: user.id,
+        userId: authenticatedUserId,
+        user_id: authenticatedUserId,
         customer_email: customerEmail || "",
         customer_name: String(body.customerName || ""),
         company_name: String(body.companyName || ""),
@@ -154,7 +173,8 @@ export async function POST(request: NextRequest) {
       },
       payment_intent_data: {
         metadata: {
-          user_id: user.id,
+          userId: authenticatedUserId,
+          user_id: authenticatedUserId,
           customer_email: customerEmail || "",
           company_name: String(body.companyName || ""),
           items_summary: items
