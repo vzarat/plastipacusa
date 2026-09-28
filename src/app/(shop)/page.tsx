@@ -10,7 +10,6 @@ const ClientLogosBanner = dynamic(
       (m) => m.ClientLogosBanner
     ),
   {
-    ssr: false,
     loading: () => (
       <div
         className="w-full border-b border-slate-100 bg-white py-10 sm:py-12"
@@ -26,7 +25,6 @@ const USACoverageSection = dynamic(
       (m) => m.USACoverageSection
     ),
   {
-    ssr: false,
     loading: () => (
       <div
         className="min-h-[480px] border-t border-slate-200/80 bg-slate-50"
@@ -77,7 +75,6 @@ const FreeSampleBanner = dynamic(
       (m) => m.FreeSampleBanner
     ),
   {
-    ssr: false,
     loading: () => <div className="min-h-[280px]" aria-hidden />,
   }
 );
@@ -86,7 +83,6 @@ const InquiryForm = dynamic(
   () =>
     import("@/components/home/InquiryForm").then((m) => m.InquiryForm),
   {
-    ssr: false,
     loading: () => <div className="min-h-[420px]" aria-hidden />,
   }
 );

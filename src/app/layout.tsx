@@ -24,10 +24,7 @@ const inter = Inter({
   ],
 });
 
-const CartDrawer = dynamic(
-  () => import("@/components/layout/CartDrawer"),
-  { ssr: false }
-);
+const CartDrawer = dynamic(() => import("@/components/layout/CartDrawer"));
 
 const APP_ICON =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/ICON_APP.png";

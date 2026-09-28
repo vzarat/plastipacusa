@@ -9,7 +9,6 @@ const USACoverageMap = dynamic(
   () =>
     import("@/components/common/USACoverageMap").then((m) => m.USACoverageMap),
   {
-    ssr: false,
     loading: () => (
       <div className="min-h-[360px] rounded-3xl border border-slate-200 bg-slate-50" aria-hidden />
     ),
