@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { toast } from "sonner";
 import { CheckoutForm } from "@/components/checkout/CheckoutForm";
-import { DirectCheckoutButton } from "@/components/checkout/DirectCheckoutButton";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency } from "@/lib/utils";
@@ -30,8 +28,12 @@ export function CheckoutPageClient() {
     return (
       <main className="mx-auto flex min-h-[60vh] max-w-4xl items-center justify-center px-6 py-16">
         <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-          <p className="text-sm font-bold uppercase tracking-[0.2em] text-sky-700">Checkout</p>
-          <h1 className="mt-4 text-3xl font-black text-slate-900">Your cart is empty</h1>
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-sky-700">
+            Checkout
+          </p>
+          <h1 className="mt-4 text-3xl font-black text-slate-900">
+            Your cart is empty
+          </h1>
           <p className="mt-3 text-sm text-slate-600">
             Add products to your cart before continuing to secure checkout.
           </p>
@@ -47,8 +49,12 @@ export function CheckoutPageClient() {
     <main className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-10">
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-bold uppercase tracking-[0.2em] text-sky-700">Checkout</p>
-          <h1 className="mt-2 text-3xl font-black text-slate-900">Secure checkout</h1>
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-sky-700">
+            Checkout
+          </p>
+          <h1 className="mt-2 text-3xl font-black text-slate-900">
+            Secure checkout
+          </h1>
         </div>
 
         <Button asChild variant="outline" className="hidden sm:inline-flex">
@@ -66,7 +72,7 @@ export function CheckoutPageClient() {
           />
         </div>
 
-        <aside className="lg:col-span-5 rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-6 shadow-sm">
+        <aside className="lg:col-span-5 rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-6 shadow-sm h-fit lg:sticky lg:top-6">
           <h2 className="text-lg font-black text-slate-900">Order summary</h2>
 
           <div className="mt-6 space-y-4">
@@ -76,7 +82,9 @@ export function CheckoutPageClient() {
                 className="flex items-start justify-between gap-3 border-b border-slate-200 pb-4"
               >
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">{item.productName}</p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {item.productName}
+                  </p>
                   <p className="mt-1 text-xs text-slate-500">
                     {item.quantity} × {formatCurrency(item.unitPrice)}
                   </p>
@@ -91,11 +99,15 @@ export function CheckoutPageClient() {
           <div className="mt-6 space-y-3 border-t border-slate-200 pt-4 text-sm">
             <div className="flex items-center justify-between text-slate-600">
               <span>Weight</span>
-              <span className="font-semibold text-slate-800">{totalWeight} lbs</span>
+              <span className="font-semibold text-slate-800">
+                {totalWeight} lbs
+              </span>
             </div>
             <div className="flex items-center justify-between text-slate-600">
               <span>Subtotal</span>
-              <span className="font-semibold text-slate-800">{formatCurrency(subtotal)}</span>
+              <span className="font-semibold text-slate-800">
+                {formatCurrency(subtotal)}
+              </span>
             </div>
             {appliedCoupon && discountAmount > 0 && (
               <>
@@ -119,35 +131,19 @@ export function CheckoutPageClient() {
             </div>
           </div>
 
-          <div className="mt-6 space-y-2">
-            <DirectCheckoutButton
-              label="Proceed to Checkout"
-              customerEmail={checkoutEmail}
-              disabled={!agreedToPolicies}
-              loginRedirectPath="/checkout"
-              onBeforeNavigate={() => {
-                if (!agreedToPolicies) {
-                  toast.error(
-                    "Please agree to the Terms of Service and Refund Policy to continue."
-                  );
-                  return false;
-                }
-              }}
-            />
-            {!agreedToPolicies && (
-              <p className="text-[11px] text-center text-slate-500">
-                Agree to the Terms of Service to enable checkout.
-              </p>
-            )}
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => clearCart()}
-            >
-              Clear cart
-            </Button>
-          </div>
+          <p className="mt-4 text-[11px] text-slate-500 leading-relaxed">
+            Payment is completed in the left column using Stripe&apos;s embedded
+            Payment Element. You will return here after confirmation.
+          </p>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full mt-4"
+            onClick={() => clearCart()}
+          >
+            Clear cart
+          </Button>
         </aside>
       </div>
     </main>

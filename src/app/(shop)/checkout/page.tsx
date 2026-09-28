@@ -1,13 +1,9 @@
-import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/actions/auth";
 import { CheckoutPageClient } from "@/components/checkout/CheckoutPageClient";
 
-export default async function CheckoutPage() {
-  const currentUser = await getCurrentUser();
-
-  if (!currentUser) {
-    redirect("/login?redirect=/checkout");
-  }
-
+/**
+ * Embedded Stripe Elements checkout — guests may pay with email;
+ * signed-in users are still preferred when a session cookie is present.
+ */
+export default function CheckoutPage() {
   return <CheckoutPageClient />;
 }

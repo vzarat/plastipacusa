@@ -1,7 +1,9 @@
 "use client";
 
-import { PromoCodeInput } from "@/components/cart/PromoCodeInput";
 import Link from "next/link";
+import { toast } from "sonner";
+import { PromoCodeInput } from "@/components/cart/PromoCodeInput";
+import { StripeEmbeddedCheckout } from "@/components/checkout/StripeEmbeddedCheckout";
 
 interface CheckoutFormProps {
   agreedToPolicies: boolean;
@@ -23,25 +25,25 @@ export function CheckoutForm({
           Secure checkout
         </p>
         <h2 className="text-lg font-black text-slate-900">
-          Review details, then pay with Stripe
+          Pay on-site with Stripe Elements
         </h2>
         <p className="text-sm leading-relaxed text-slate-600">
-          Agree to the policies below, then use{" "}
-          <span className="font-semibold text-slate-800">Proceed to Checkout</span>{" "}
-          in the order summary to open Stripe&apos;s secure payment page.
+          Enter your email, agree to the policies, and complete payment with the
+          embedded Stripe form — no redirect to hosted Checkout.
         </p>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3">
         <label className="space-y-1.5 block">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-            Email (for email-locked promo codes)
+            Email (receipt + promo codes)
           </span>
           <input
             type="email"
             value={checkoutEmail}
             onChange={(e) => onCheckoutEmailChange(e.target.value)}
             placeholder="you@company.com"
+            required
             className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400"
           />
         </label>
@@ -57,7 +59,10 @@ export function CheckoutForm({
           className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
           aria-describedby="checkout-policy-consent"
         />
-        <span id="checkout-policy-consent" className="text-xs leading-relaxed text-slate-600">
+        <span
+          id="checkout-policy-consent"
+          className="text-xs leading-relaxed text-slate-600"
+        >
           I agree to Plastipac USA&apos;s{" "}
           <Link
             href="/terms-of-service"
@@ -82,11 +87,15 @@ export function CheckoutForm({
         </span>
       </label>
 
-      {!agreedToPolicies && (
-        <p className="text-[11px] text-center text-slate-500">
-          Agree to the policies above to enable checkout.
-        </p>
-      )}
+      <StripeEmbeddedCheckout
+        customerEmail={checkoutEmail}
+        agreedToPolicies={agreedToPolicies}
+        onRequireAgreement={() => {
+          toast.error(
+            "Please agree to the Terms of Service and Refund Policy to continue."
+          );
+        }}
+      />
     </div>
   );
 }
