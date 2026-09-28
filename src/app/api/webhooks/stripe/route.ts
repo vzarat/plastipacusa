@@ -184,7 +184,25 @@ async function handleCheckoutSessionCompleted(
     String(session.metadata?.company_name || session.metadata?.company || "") ||
     "Plastipac USA Customer";
 
-  const shippingDetails = session.shipping_details?.address;
+  // Stripe API versions diverge here: older Sessions expose `shipping_details`,
+  // newer ones use `collected_information.shipping_details` or customer address.
+  const sessionWithShipping = session as Stripe.Checkout.Session & {
+    shipping_details?: {
+      address?: Stripe.Address | null;
+    } | null;
+    collected_information?: {
+      shipping_details?: {
+        address?: Stripe.Address | null;
+      } | null;
+    } | null;
+  };
+
+  const shippingDetails =
+    sessionWithShipping.collected_information?.shipping_details?.address ||
+    sessionWithShipping.shipping_details?.address ||
+    session.customer_details?.address ||
+    null;
+
   const shippingState =
     shippingDetails?.state ||
     String(session.metadata?.shipping_state || "") ||
