@@ -337,7 +337,7 @@ export function CartDrawer() {
             ) : (
               <div className="space-y-2">
                 <DirectCheckoutButton
-                  label="Proceed to Direct Checkout"
+                  label="Proceed to Checkout"
                   onBeforeNavigate={() => {
                     closeDrawer();
                   }}

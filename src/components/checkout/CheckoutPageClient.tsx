@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { CheckoutForm } from "@/components/checkout/CheckoutForm";
 import { DirectCheckoutButton } from "@/components/checkout/DirectCheckoutButton";
 import { Button } from "@/components/ui/button";
@@ -15,6 +17,9 @@ export function CheckoutPageClient() {
   const appliedCoupon = useCartStore((state) => state.appliedCoupon);
   const getTotalWeight = useCartStore((state) => state.getTotalWeight);
   const clearCart = useCartStore((state) => state.clearCart);
+
+  const [agreedToPolicies, setAgreedToPolicies] = useState(false);
+  const [checkoutEmail, setCheckoutEmail] = useState("");
 
   const subtotal = getSubtotal();
   const discountAmount = getDiscountAmount();
@@ -43,7 +48,7 @@ export function CheckoutPageClient() {
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.2em] text-sky-700">Checkout</p>
-          <h1 className="mt-2 text-3xl font-black text-slate-900">Direct checkout</h1>
+          <h1 className="mt-2 text-3xl font-black text-slate-900">Secure checkout</h1>
         </div>
 
         <Button asChild variant="outline" className="hidden sm:inline-flex">
@@ -53,7 +58,12 @@ export function CheckoutPageClient() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7 rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm">
-          <CheckoutForm />
+          <CheckoutForm
+            agreedToPolicies={agreedToPolicies}
+            onAgreedToPoliciesChange={setAgreedToPolicies}
+            checkoutEmail={checkoutEmail}
+            onCheckoutEmailChange={setCheckoutEmail}
+          />
         </div>
 
         <aside className="lg:col-span-5 rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-6 shadow-sm">
@@ -110,7 +120,24 @@ export function CheckoutPageClient() {
           </div>
 
           <div className="mt-6 space-y-2">
-            <DirectCheckoutButton label="Proceed to Direct Checkout" />
+            <DirectCheckoutButton
+              label="Proceed to Checkout"
+              customerEmail={checkoutEmail}
+              disabled={!agreedToPolicies}
+              onBeforeNavigate={() => {
+                if (!agreedToPolicies) {
+                  toast.error(
+                    "Please agree to the Terms of Service and Refund Policy to continue."
+                  );
+                  return false;
+                }
+              }}
+            />
+            {!agreedToPolicies && (
+              <p className="text-[11px] text-center text-slate-500">
+                Agree to the Terms of Service to enable checkout.
+              </p>
+            )}
             <Button
               type="button"
               variant="outline"

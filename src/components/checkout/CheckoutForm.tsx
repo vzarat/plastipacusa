@@ -1,27 +1,34 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { toast } from "sonner";
-import { DirectCheckoutButton } from "@/components/checkout/DirectCheckoutButton";
 import { PromoCodeInput } from "@/components/cart/PromoCodeInput";
+import Link from "next/link";
 
-export function CheckoutForm() {
-  const [agreedToPolicies, setAgreedToPolicies] = useState(false);
-  const [checkoutEmail, setCheckoutEmail] = useState("");
+interface CheckoutFormProps {
+  agreedToPolicies: boolean;
+  onAgreedToPoliciesChange: (agreed: boolean) => void;
+  checkoutEmail: string;
+  onCheckoutEmailChange: (email: string) => void;
+}
 
+export function CheckoutForm({
+  agreedToPolicies,
+  onAgreedToPoliciesChange,
+  checkoutEmail,
+  onCheckoutEmailChange,
+}: CheckoutFormProps) {
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 space-y-2">
         <p className="text-xs font-bold uppercase tracking-wider text-sky-700">
-          Direct checkout
+          Secure checkout
         </p>
         <h2 className="text-lg font-black text-slate-900">
-          Complete your order via our secure payment link
+          Review details, then pay with Stripe
         </h2>
         <p className="text-sm leading-relaxed text-slate-600">
-          You will be redirected to Plastipac&apos;s direct checkout / quote desk to finalize
-          payment and shipping details for your cart.
+          Agree to the policies below, then use{" "}
+          <span className="font-semibold text-slate-800">Proceed to Checkout</span>{" "}
+          in the order summary to open Stripe&apos;s secure payment page.
         </p>
       </div>
 
@@ -33,7 +40,7 @@ export function CheckoutForm() {
           <input
             type="email"
             value={checkoutEmail}
-            onChange={(e) => setCheckoutEmail(e.target.value)}
+            onChange={(e) => onCheckoutEmailChange(e.target.value)}
             placeholder="you@company.com"
             className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400"
           />
@@ -45,7 +52,7 @@ export function CheckoutForm() {
         <input
           type="checkbox"
           checked={agreedToPolicies}
-          onChange={(e) => setAgreedToPolicies(e.target.checked)}
+          onChange={(e) => onAgreedToPoliciesChange(e.target.checked)}
           required
           className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
           aria-describedby="checkout-policy-consent"
@@ -75,20 +82,9 @@ export function CheckoutForm() {
         </span>
       </label>
 
-      <DirectCheckoutButton
-        label="Complete Order via Direct Link"
-        disabled={!agreedToPolicies}
-        onBeforeNavigate={() => {
-          if (!agreedToPolicies) {
-            toast.error("Please agree to the Terms of Service and Refund Policy to continue.");
-            return false;
-          }
-        }}
-      />
-
       {!agreedToPolicies && (
         <p className="text-[11px] text-center text-slate-500">
-          Agree to the policies above to enable direct checkout.
+          Agree to the policies above to enable checkout.
         </p>
       )}
     </div>
