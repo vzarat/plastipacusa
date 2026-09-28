@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { formatOrderId } from "@/lib/utils";
 import {
+  fetchPlastipacLogoForPdf,
   generateInvoicePdf,
   sanitizeInvoiceFilename,
   type InvoicePdfItem,
@@ -127,6 +128,8 @@ export async function GET(
       .toUpperCase();
     const invoiceNumber = `INV-${new Date(createdAt).getFullYear()}-${idDigits || "0000"}`;
 
+    const logo = await fetchPlastipacLogoForPdf();
+
     const pdfBytes = generateInvoicePdf({
       invoiceNumber,
       orderPoRef,
@@ -143,6 +146,7 @@ export async function GET(
         order.customer_email || order.shipping_address?.email || user.email || undefined,
       items: mapOrderItems(order.items, totalUsd),
       totalUsd,
+      logo,
     });
 
     const filename = sanitizeInvoiceFilename(orderPoRef);
