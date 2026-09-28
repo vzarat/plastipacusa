@@ -121,7 +121,10 @@ export function CategoryBarChart() {
 
                 <div className="flex items-center gap-2 text-xs flex-shrink-0">
                   <span className="font-mono font-bold text-slate-900">
-                    {cat.palletsCount.toLocaleString()}{" "}
+                    {(typeof cat?.palletsCount === "number"
+                      ? cat.palletsCount
+                      : Number(cat?.palletsCount) || 0
+                    ).toLocaleString("en-US")}{" "}
                     <span className="text-[10px] font-normal text-slate-400">
                       Plt
                     </span>

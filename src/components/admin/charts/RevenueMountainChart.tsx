@@ -255,7 +255,7 @@ export function RevenueMountainChart() {
               {t("admin.bentoPallets")}
             </span>
             <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              {totalPeriodPallets.toLocaleString()}{" "}
+              {(Number(totalPeriodPallets) || 0).toLocaleString("en-US")}{" "}
               <span className="text-xs font-semibold text-slate-400">Pallets</span>
             </div>
           </div>

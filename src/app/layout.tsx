@@ -115,19 +115,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`scroll-smooth ${inter.variable}`}>
       <head>
-        {/* Critical-path DNS / TLS warm-up for remote product media + API */}
+        {/* Critical-path DNS / TLS warm-up for remote product media + API.
+            Fonts: next/font self-hosts Inter and injects correct
+            <link rel="preload" as="font" crossOrigin> tags automatically —
+            do not add Google Fonts preconnect/preload (causes unused warnings). */}
         <link rel="preconnect" href={SUPABASE_ORIGIN} crossOrigin="anonymous" />
         <link rel="dns-prefetch" href={SUPABASE_ORIGIN} />
-
-        {/* Google Fonts origins (next/font self-hosts Inter; hints keep fallback paths fast) */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-        <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
 
         {/* Occasional remote imagery host from next/image remotePatterns */}
         <link rel="dns-prefetch" href="https://images.unsplash.com" />

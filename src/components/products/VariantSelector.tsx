@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { ProductVariant } from "@/types";
 import { useCartStore } from "@/lib/store/useCartStore";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatLocaleNumber } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
 import { ShoppingCart, CheckCircle2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -196,15 +196,15 @@ export function VariantSelector({
       if (product?.packageOptions?.length) {
         return product.packageOptions
           .map((opt: any) => {
-            const price = Number(opt.price);
+            const price = Number(opt?.price);
             if (!Number.isFinite(price) || price <= 0) return null;
-            const rolls = Number(opt.rolls) || 1;
+            const rolls = Number(opt?.rolls) || 1;
             const label = isMachineFilm
-              ? normalizeMachinePackageLabel(rolls, opt.label)
+              ? normalizeMachinePackageLabel(rolls, opt?.label)
               : rolls === HAND_FULL_PALLET.rolls ||
-                  String(opt.label || "").toUpperCase().includes("FULL PALLET")
+                  String(opt?.label || "").toUpperCase().includes("FULL PALLET")
                 ? HAND_FULL_PALLET.label
-                : opt.label;
+                : opt?.label;
             return {
               id: opt.sku,
               sku: opt.sku,
@@ -214,12 +214,15 @@ export function VariantSelector({
               price,
               rollsPerBox: rolls,
               rollsPerPallet: product?.fullPalletRolls || (isMachineFilm ? 40 : 192),
-              widthInches: product?.width_inches || product?.widthInches || (isMachineFilm ? "20.00" : "18.00"),
+              widthInches:
+                product?.width_inches ||
+                product?.widthInches ||
+                (isMachineFilm ? "20.00" : "18.00"),
               gauge: product?.gauge || 60,
               lengthFeet: product?.length_feet || product?.lengthFeet || 1000,
               weightLbs: "0.00",
               stockStatus: "in_stock",
-              createdAt: new Date(),
+              createdAt: new Date().toISOString(),
               rolls_count: rolls,
               boxes_count: isMachineFilm
                 ? 0
@@ -470,23 +473,39 @@ export function VariantSelector({
         ? unitPrice
         : baseUnitPriceRaw;
 
+    const widthInches = String(
+      selectedVariant?.widthInches ??
+        product?.width_inches ??
+        product?.widthInches ??
+        "18.00"
+    );
+    const gauge = Number(
+      selectedVariant?.gauge ?? product?.gauge ?? 60
+    );
+    const lengthFeet = Number(
+      selectedVariant?.lengthFeet ?? product?.length_feet ?? 1000
+    );
+
     addItem({
       productId: product.id,
       productSlug: product.slug,
       productName: product.title || product.name || "Stretch Film",
-      productImage: product.imageUrl,
+      productImage: product.imageUrl || "",
       packageSize: displayPackageTitle(selectedVariant, isMachineFilm),
       totalRolls: rolls,
       totalBoxes: isMachineFilm ? 0 : getBoxesCount(selectedVariant, false),
-      application: product.application,
+      application: product.application === "machine" ? "machine" : "hand",
       variantId: selectedVariant.id,
-      sku: selectedVariant.sku,
-      widthInches: selectedVariant.widthInches,
-      gauge: selectedVariant.gauge,
-      lengthFeet: selectedVariant.lengthFeet,
-      rollsPerBox: selectedVariant.rollsPerBox,
-      rollsPerPallet: selectedVariant.rollsPerPallet,
-      weightLbs: selectedVariant.weightLbs,
+      sku: selectedVariant.sku || "",
+      widthInches,
+      gauge: Number.isFinite(gauge) && gauge > 0 ? gauge : 60,
+      lengthFeet: Number.isFinite(lengthFeet) && lengthFeet > 0 ? lengthFeet : 1000,
+      rollsPerBox: Number(selectedVariant?.rollsPerBox) || rolls || 1,
+      rollsPerPallet:
+        Number(selectedVariant?.rollsPerPallet) ||
+        Number(product?.fullPalletRolls) ||
+        (isMachineFilm ? 40 : 192),
+      weightLbs: String(selectedVariant?.weightLbs ?? "0.00"),
       pricingTier: displayPackageTitle(selectedVariant, isMachineFilm),
       unitPrice: cartUnitPrice,
       quantity: effectiveQuantity,
@@ -715,8 +734,11 @@ export function VariantSelector({
           selectedVariant?.lengthFeet ||
           1000;
 
-        const coreType =
-          (product as any)?.core_type || (product as any)?.coreType || 'Standard 3" Core';
+        const coreType = String(
+          (product as any)?.core_type ||
+            (product as any)?.coreType ||
+            'Standard 3" Core'
+        );
 
         return (
           <div className="space-y-2">
@@ -734,14 +756,14 @@ export function VariantSelector({
                 <span className="text-slate-400 block text-[10px] uppercase font-semibold">
                   {t("products.gauge")}
                 </span>
-                <span className="font-bold text-slate-900">{gaugeVal} Gauge</span>
+                <span className="font-bold text-slate-900">{gaugeVal ?? "—"} Gauge</span>
               </div>
               <div>
                 <span className="text-slate-400 block text-[10px] uppercase font-semibold">
                   {t("products.length")}
                 </span>
                 <span className="font-bold text-slate-900">
-                  {Number(lengthVal).toLocaleString()} Feet
+                  {formatLocaleNumber(lengthVal, "1,000")} Feet
                 </span>
               </div>
               <div>

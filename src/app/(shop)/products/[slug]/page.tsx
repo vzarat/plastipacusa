@@ -161,9 +161,11 @@ export default async function ProductDetailPage({
     Number(product?.widthInches ?? product?.width_inches ?? 0)
   );
   const gaugeDisplay = product?.gauge ? `${product.gauge} GA` : undefined;
-  const lengthDisplay = product?.length_feet
-    ? `${Number(product.length_feet).toLocaleString()} FT`
-    : undefined;
+  const lengthDisplay = (() => {
+    const n = Number(product?.length_feet);
+    if (!Number.isFinite(n) || n <= 0) return undefined;
+    return `${n.toLocaleString("en-US")} FT`;
+  })();
 
   return (
     <div className="py-10 bg-slate-50/40 min-h-screen">
@@ -202,15 +204,33 @@ export default async function ProductDetailPage({
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {features.length > 0 ? (
-                  features.map((feature, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-start gap-2.5 text-xs text-slate-600"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5 text-sky-600 flex-shrink-0 mt-0.5" />
-                      <span>{feature}</span>
-                    </div>
-                  ))
+                  features.map((feature, idx) => {
+                    const label =
+                      typeof feature === "string"
+                        ? feature
+                        : feature &&
+                            typeof feature === "object" &&
+                            ("text" in (feature as object) ||
+                              "label" in (feature as object))
+                          ? String(
+                              (feature as { text?: string; label?: string }).text ||
+                                (feature as { text?: string; label?: string }).label ||
+                                ""
+                            )
+                          : typeof feature === "number" || typeof feature === "boolean"
+                            ? String(feature)
+                            : "";
+                    if (!label) return null;
+                    return (
+                      <div
+                        key={idx}
+                        className="flex items-start gap-2.5 text-xs text-slate-600"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-sky-600 flex-shrink-0 mt-0.5" />
+                        <span>{label}</span>
+                      </div>
+                    );
+                  })
                 ) : (
                   <p className="text-xs text-slate-500 col-span-full">
                     High-performance cast stretch film engineered for industrial
@@ -221,12 +241,14 @@ export default async function ProductDetailPage({
             </div>
 
             {/* Recommended Usage Callout */}
-            {product?.recommendedUsage && (
+            {product?.recommendedUsage &&
+              (typeof product.recommendedUsage === "string" ||
+                typeof product.recommendedUsage === "number") && (
               <div className="p-5 rounded-2xl border border-sky-100 bg-sky-50/80 text-xs text-sky-900">
                 <strong className="block text-sky-950 font-bold mb-1">
                   Recommended Industry Applications:
                 </strong>
-                {product.recommendedUsage}
+                {String(product.recommendedUsage)}
               </div>
             )}
           </div>

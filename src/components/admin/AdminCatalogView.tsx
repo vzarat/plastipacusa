@@ -356,7 +356,10 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
-                {len.toLocaleString()} FT
+                {typeof len === "number"
+                  ? len.toLocaleString("en-US")
+                  : Number(len || 0).toLocaleString("en-US")}{" "}
+                FT
               </button>
             ))}
           </div>

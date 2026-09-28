@@ -177,7 +177,7 @@ export function ProductFilters({
                 >
                   {len === "all"
                     ? t("products.allLengths")
-                    : `${Number(len).toLocaleString()} FT`}
+                    : `${Number(len || 0).toLocaleString("en-US")} FT`}
                 </button>
               );
             })}

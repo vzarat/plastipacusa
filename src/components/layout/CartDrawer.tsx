@@ -179,7 +179,11 @@ export function CartDrawer() {
                       {item.productName}
                     </h4>
                     <p className="text-xs text-slate-500">
-                      {formatRollDimensions(item.widthInches, item.gauge, item.lengthFeet)}
+                      {formatRollDimensions(
+                        item?.widthInches,
+                        item?.gauge,
+                        item?.lengthFeet
+                      )}
                     </p>
                   </div>
                   <button

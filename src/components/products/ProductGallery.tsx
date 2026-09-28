@@ -111,7 +111,6 @@ export function ProductGallery({
               alt={categoryName || "Category Brand Logo"}
               width={180}
               height={48}
-              priority
               className="h-10 md:h-12 w-auto object-contain"
             />
           </div>

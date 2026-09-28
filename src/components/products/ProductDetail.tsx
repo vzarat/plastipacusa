@@ -19,17 +19,31 @@ function resolveVariantPrice(variant: ProductVariant | any): number | null {
 }
 
 function buildInitialVariant(product: ProductWithVariants): ProductVariant | any {
+  const widthInches = String(
+    product?.width_inches ?? product?.widthInches ?? "18.00"
+  );
+  const gauge = Number(product?.gauge ?? 60) || 60;
+  const lengthFeet = Number(product?.length_feet ?? 1000) || 1000;
+
   const packageOptions = product.packageOptions || [];
   if (packageOptions.length > 0) {
-    const cheapest = [...packageOptions].sort((a, b) => a.price - b.price)[0];
+    const cheapest = [...packageOptions].sort(
+      (a, b) => (Number(a?.price) || Infinity) - (Number(b?.price) || Infinity)
+    )[0];
+    if (!cheapest) return undefined;
     return {
       id: cheapest.sku,
       sku: cheapest.sku,
       packageSize: cheapest.label,
       title: cheapest.label,
-      priceUsd: String(cheapest.price),
-      price: cheapest.price,
-      rollsPerBox: cheapest.rolls,
+      priceUsd: String(cheapest.price ?? 0),
+      price: Number(cheapest.price) || 0,
+      rollsPerBox: Number(cheapest.rolls) || 1,
+      widthInches,
+      gauge,
+      lengthFeet,
+      rollsPerPallet: product?.fullPalletRolls || 192,
+      weightLbs: "0.00",
     };
   }
 
@@ -48,6 +62,11 @@ function buildInitialVariant(product: ProductWithVariants): ProductVariant | any
       priceUsd: String(product.startingPrice),
       price: product.startingPrice,
       rollsPerBox: 1,
+      widthInches,
+      gauge,
+      lengthFeet,
+      rollsPerPallet: product?.fullPalletRolls || 192,
+      weightLbs: "0.00",
     };
   }
 
