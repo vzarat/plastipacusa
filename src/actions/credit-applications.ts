@@ -1,9 +1,9 @@
 "use server";
 
-import { Resend } from "resend";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/actions/auth";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { notifyAdminCreditApplication } from "@/lib/email";
 
 export type CreditApplicationStatus = "pending" | "approved" | "rejected";
 
@@ -77,61 +77,6 @@ function mapCreditApplicationRow(row: Record<string, unknown>): AdminCreditAppli
     createdAt: String(row.created_at || new Date().toISOString()),
     reviewedAt: (row.reviewed_at as string | null) || null,
   };
-}
-
-async function sendCreditApplicationEmail(payload: {
-  companyName: string;
-  contactName: string;
-  workEmail: string;
-  phone: string;
-  taxIdEin: string;
-  billingAddress: string;
-  shippingAddress: string;
-  annualVolume: string;
-  creditReference1: string;
-  creditReference2: string;
-  creditReference3: string;
-  notes: string;
-}) {
-  const resendApiKey = process.env.RESEND_API_KEY;
-  if (!resendApiKey) return;
-
-  const adminEmail =
-    process.env.ADMIN_NOTIFICATION_EMAIL ||
-    process.env.ADMIN_EMAIL ||
-    "vzarat96@gmail.com";
-
-  try {
-    const resend = new Resend(resendApiKey);
-    const lines = [
-      "New B2B Credit Application",
-      "",
-      `Company: ${payload.companyName}`,
-      `Contact: ${payload.contactName}`,
-      `Email: ${payload.workEmail}`,
-      `Phone: ${payload.phone}`,
-      `Tax ID / EIN: ${payload.taxIdEin}`,
-      `Billing Address: ${payload.billingAddress || "—"}`,
-      `Shipping Address: ${payload.shippingAddress || "—"}`,
-      `Estimated Annual Volume: ${payload.annualVolume || "—"}`,
-      `Credit Reference 1: ${payload.creditReference1 || "—"}`,
-      `Credit Reference 2: ${payload.creditReference2 || "—"}`,
-      `Credit Reference 3: ${payload.creditReference3 || "—"}`,
-      `Notes: ${payload.notes || "—"}`,
-      "",
-      "Review in Admin → Credit Applications",
-    ];
-
-    await resend.emails.send({
-      from: "Plastipac Credit <onboarding@resend.dev>",
-      to: [adminEmail],
-      replyTo: payload.workEmail,
-      subject: `B2B Credit Application — ${payload.companyName}`,
-      text: lines.join("\n"),
-    });
-  } catch (emailError) {
-    console.error("credit application email dispatch error:", emailError);
-  }
 }
 
 export async function submitCreditApplication(
@@ -219,15 +164,18 @@ export async function submitCreditApplication(
     };
   }
 
+  let applicantUserId: string | null = null;
+
   try {
     const supabase = await createServerClient();
     const currentUser = await getCurrentUser();
+    applicantUserId = currentUser?.user?.id || null;
 
     const insertPayload: Record<string, unknown> = {
       ...payload,
     };
-    if (currentUser?.user?.id) {
-      insertPayload.user_id = currentUser.user.id;
+    if (applicantUserId) {
+      insertPayload.user_id = applicantUserId;
     }
 
     const { error } = await supabase
@@ -300,26 +248,29 @@ export async function submitCreditApplication(
   }
 
   // Notify admin after a successful DB write (email failure must not fail the submit).
-  await sendCreditApplicationEmail({
-    companyName,
-    contactName,
-    workEmail,
-    phone,
-    taxIdEin,
-    billingAddress: withCountry(billingAddress) || "",
-    shippingAddress: withCountry(shippingAddress) || "",
-    annualVolume,
-    creditReference1,
-    creditReference2,
-    creditReference3,
-    notes: [
-      notes || null,
-      desiredCreditLimit ? `Desired credit limit: $${desiredCreditLimit}` : null,
-      `Country: ${country}`,
-    ]
-      .filter(Boolean)
-      .join("\n"),
-  });
+  try {
+    await notifyAdminCreditApplication({
+      customerName: contactName,
+      companyName,
+      taxIdEin,
+      requestedCreditLimit: desiredCreditLimit || undefined,
+      workEmail,
+      phone,
+      userId: applicantUserId,
+      notes: [
+        notes || null,
+        annualVolume ? `Estimated annual volume: ${annualVolume}` : null,
+        creditReference1 ? `Credit ref 1: ${creditReference1}` : null,
+        creditReference2 ? `Credit ref 2: ${creditReference2}` : null,
+        creditReference3 ? `Credit ref 3: ${creditReference3}` : null,
+        `Country: ${country}`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    });
+  } catch (emailError) {
+    console.error("credit application email dispatch error:", emailError);
+  }
 
   revalidatePath("/admin/credit-applications");
   revalidatePath("/dashboard/credit");

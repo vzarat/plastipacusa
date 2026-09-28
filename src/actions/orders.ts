@@ -2,11 +2,14 @@
 
 import React from "react";
 import Stripe from "stripe";
-import { Resend } from "resend";
 import { createServerClient } from "@/lib/supabase/server";
 import { formatOrderId } from "@/lib/utils";
+import {
+  getSenderEmail,
+  notifyAdminPurchaseOrder,
+  sendEmail,
+} from "@/lib/email";
 import { OrderConfirmationEmail } from "@/emails/OrderConfirmationEmail";
-import { AdminOrderNotificationEmail } from "@/emails/AdminOrderNotificationEmail";
 
 export async function verifyPaymentIntent(paymentIntentId: string) {
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -172,54 +175,80 @@ export async function createOrderFromCheckout(
       const orderItems = (cartItems || []).map((item: any) => ({
         quantity: Number(item.quantity || 1),
         productName: item.productName || item.name || "Plastipac Product",
-        linePrice: Number(item.totalPrice ?? item.unitPrice ?? 0) * Number(item.quantity || 1),
+        linePrice:
+          Number(item.totalPrice ?? item.unitPrice ?? 0) *
+          Number(item.quantity || 1),
       }));
 
-      const senderEmail = process.env.SENDER_EMAIL || process.env.ADMIN_EMAIL || "orders@plastipacusa.com";
-      const adminEmail = process.env.ADMIN_EMAIL || process.env.ADMIN_NOTIFICATION_EMAIL || "vzarat96@gmail.com";
-      const resendApiKey = process.env.RESEND_API_KEY;
+      const customerName = shippingAddress.full_name || "Customer";
+      const customerEmail =
+        shippingAddress.email || user.email || "customer@plastipacusa.com";
+      const companyName =
+        shippingDetails?.company_name ||
+        shippingDetails?.companyName ||
+        "Plastipac USA Customer";
+      const orderDate = new Date().toISOString();
+      const totalAmount = Number(total.toFixed(2));
+      const shippingState = shippingAddress.state
+        ? String(shippingAddress.state)
+        : "";
+      const shippingCity = shippingAddress.city
+        ? String(shippingAddress.city)
+        : "";
+      const shippingAddressSummary = [
+        shippingAddress.line1,
+        shippingAddress.line2,
+        [shippingCity, shippingState, shippingAddress.postal_code]
+          .filter(Boolean)
+          .join(", "),
+        shippingAddress.country,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      const itemsSummary = orderItems
+        .map(
+          (item: { quantity: number; productName: string }) =>
+            `${item.quantity}× ${item.productName}`
+        )
+        .join("; ");
 
-      if (resendApiKey) {
-        const resend = new Resend(resendApiKey);
+      const sender = getSenderEmail("orders@plastipacusa.com");
 
-        const customerName = shippingAddress.full_name || "Customer";
-        const customerEmail = shippingAddress.email || user.email || "customer@plastipacusa.com";
-        const companyName = shippingDetails?.company_name || shippingDetails?.companyName || "Plastipac USA Customer";
-
-        await Promise.allSettled([
-          resend.emails.send({
-            from: `Plastipac USA <${senderEmail}>`,
-            to: [customerEmail],
-            subject: `Order Confirmation - Order #${createdOrderId}`,
-            react: React.createElement(OrderConfirmationEmail, {
-              orderId: createdOrderId,
-              customerName,
-              companyName,
-              orderDate: new Date().toISOString(),
-              totalAmount: Number(total.toFixed(2)),
-              items: orderItems,
-              locale: "en",
-              shippingAddress,
-            }),
+      await Promise.allSettled([
+        sendEmail({
+          from: `Plastipac USA <${sender}>`,
+          to: customerEmail,
+          subject: `Order Confirmation - Order #${createdOrderId}`,
+          text: [
+            `Thank you for your order.`,
+            `PO Reference: ${createdOrderId}`,
+            `Total: $${totalAmount.toFixed(2)}`,
+          ].join("\n"),
+          react: React.createElement(OrderConfirmationEmail, {
+            orderId: createdOrderId,
+            customerName,
+            companyName,
+            orderDate,
+            totalAmount,
+            items: orderItems,
+            locale: "en",
+            shippingAddress,
           }),
-          resend.emails.send({
-            from: `Plastipac USA <${senderEmail}>`,
-            to: [adminEmail],
-            subject: `New Order Received - #${createdOrderId}`,
-            react: React.createElement(AdminOrderNotificationEmail, {
-              orderId: createdOrderId,
-              customerName,
-              customerEmail,
-              customerCompany: companyName,
-              orderDate: new Date().toISOString(),
-              totalAmount: Number(total.toFixed(2)),
-              items: orderItems,
-              shippingAddress,
-              adminDashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://plastipacusa.com"}/admin/orders`,
-            }),
-          }),
-        ]);
-      }
+        }),
+        notifyAdminPurchaseOrder({
+          orderId: createdOrderId,
+          customerName,
+          customerEmail,
+          customerCompany: companyName,
+          totalAmount,
+          shippingState,
+          shippingCity,
+          shippingAddressSummary,
+          itemCount: orderItems.length,
+          itemsSummary,
+          orderDate,
+        }),
+      ]);
     } catch (emailError) {
       console.error("Order email dispatch error:", emailError);
     }

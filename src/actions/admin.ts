@@ -1,12 +1,16 @@
 "use server";
 
 import React from "react";
-import { Resend } from "resend";
 import { getCurrentUser } from "./auth";
 import { createServerClient } from "@/lib/supabase/server";
 import { formatOrderId } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { OrderConfirmationEmail } from "@/emails/OrderConfirmationEmail";
+import {
+  getSenderEmail,
+  notifyAdminPurchaseOrder,
+  sendEmail,
+} from "@/lib/email";
 
 export interface AdminOrderItem {
   productId: number;
@@ -133,41 +137,68 @@ export async function createOrder(order: AdminOrder) {
       return { success: false, error: error.message || "Failed to save order." };
     }
 
-    const resendApiKey = process.env.RESEND_API_KEY;
-    const adminNotificationEmail = process.env.ADMIN_NOTIFICATION_EMAIL || "vzarat96@gmail.com";
     const orderId = normalizedOrderId;
+    const shipping = order.shippingAddress || {};
+    const shippingState = shipping.state ? String(shipping.state) : "";
+    const shippingCity = shipping.city ? String(shipping.city) : "";
+    const shippingAddressSummary = [
+      shipping.street,
+      [shippingCity, shippingState, shipping.zip].filter(Boolean).join(", "),
+      shipping.country,
+    ]
+      .filter(Boolean)
+      .join(" · ");
 
-    if (resendApiKey) {
-      try {
-        const resend = new Resend(resendApiKey);
-        const recipients = Array.from(
-          new Set([order.customerEmail, adminNotificationEmail].filter(Boolean))
-        );
+    try {
+      const items = Array.isArray(order.items) ? order.items : [];
+      const itemsSummary =
+        order.itemsSummary ||
+        items
+          .map((item) => `${item.quantity}× ${item.productName}`)
+          .join("; ");
 
-        await resend.emails.send({
-          from: "Plastipac Orders <onboarding@resend.dev>",
-          to: recipients,
+      await Promise.allSettled([
+        sendEmail({
+          from: `Plastipac Orders <${getSenderEmail("onboarding@resend.dev")}>`,
+          to: order.customerEmail,
           subject:
             locale === "es"
               ? `Confirmación de Pedido #${orderId} - Plastipac USA`
               : `Order Confirmation #${orderId} - Plastipac USA`,
+          text: [
+            `PO Reference: ${orderId}`,
+            `Total: $${Number(order.totalUsd || 0).toFixed(2)}`,
+          ].join("\n"),
           react: React.createElement(OrderConfirmationEmail, {
             orderId,
             customerName: order.customerName,
             companyName: order.customerCompany,
             orderDate: order.createdAt,
             totalAmount: Number(order.totalUsd || 0),
-            items: order.items.map((item) => ({
+            items: items.map((item) => ({
               quantity: item.quantity,
               productName: item.productName,
               linePrice: Number((item.unitPrice || 0) * (item.quantity || 1)),
             })),
             locale,
           }),
-        });
-      } catch (emailError) {
-        console.error("createOrder email dispatch error:", emailError);
-      }
+        }),
+        notifyAdminPurchaseOrder({
+          orderId,
+          customerName: order.customerName,
+          customerEmail: order.customerEmail,
+          customerCompany: order.customerCompany,
+          totalAmount: Number(order.totalUsd || 0),
+          shippingState,
+          shippingCity,
+          shippingAddressSummary,
+          itemCount: items.length,
+          itemsSummary,
+          orderDate: order.createdAt || createdAt,
+        }),
+      ]);
+    } catch (emailError) {
+      console.error("createOrder email dispatch error:", emailError);
     }
 
     return { success: true, orderId, locale };
