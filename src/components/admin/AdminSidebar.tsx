@@ -20,6 +20,7 @@ import {
   ChevronRight,
   Percent,
   FileText,
+  Users,
 } from "lucide-react";
 
 export type AdminTabKey = "overview" | "orders" | "products" | "customers" | "settings";
@@ -38,6 +39,8 @@ interface AdminSidebarProps {
   discountsActive?: boolean;
   /** When true (or path is /admin/credit-applications), highlight Credit Applications */
   creditApplicationsActive?: boolean;
+  /** When true (or path is /admin/users), highlight Users nav link */
+  usersActive?: boolean;
 }
 
 export function AdminSidebar({
@@ -52,6 +55,7 @@ export function AdminSidebar({
   onToggleCollapse,
   discountsActive: discountsActiveProp,
   creditApplicationsActive: creditApplicationsActiveProp,
+  usersActive: usersActiveProp,
 }: AdminSidebarProps) {
   const pathname = usePathname();
   const discountsActive =
@@ -59,10 +63,13 @@ export function AdminSidebar({
   const creditApplicationsActive =
     creditApplicationsActiveProp === true ||
     pathname?.startsWith("/admin/credit-applications");
+  const usersActive =
+    usersActiveProp === true || pathname?.startsWith("/admin/users");
   const customersRouteActive = Boolean(
     pathname?.startsWith("/admin/customers")
   );
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
+  const isSpanish = locale === "es";
   const [internalIsCollapsed, setInternalIsCollapsed] = useState(false);
 
   const isCollapsed =
@@ -245,6 +252,7 @@ export function AdminSidebar({
               const isActive =
                 !discountsActive &&
                 !creditApplicationsActive &&
+                !usersActive &&
                 (customersRouteActive
                   ? item.key === "customers"
                   : activeTab === item.key);
@@ -331,6 +339,40 @@ export function AdminSidebar({
               {isCollapsed && (
                 <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap hidden md:flex items-center gap-2">
                   Discounts
+                </div>
+              )}
+            </Link>
+
+            {/* Users — dedicated route */}
+            <Link
+              href="/admin/users"
+              onClick={onCloseMobile}
+              className={`w-full flex items-center ${
+                isCollapsed ? "justify-center p-3" : "justify-between px-3.5 py-2.5 border-l-4"
+              } rounded-xl text-xs transition-all duration-200 relative group ${
+                usersActive
+                  ? isCollapsed
+                    ? "bg-blue-50 text-blue-900 ring-1 ring-blue-300 shadow-xs font-bold"
+                    : "border-blue-600 bg-blue-50/70 font-bold text-blue-950 shadow-xs"
+                  : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-medium"
+              }`}
+              aria-label={isSpanish ? "Usuarios" : "Users"}
+            >
+              <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
+                <Users
+                  className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${
+                    usersActive
+                      ? "text-blue-600"
+                      : "text-slate-400 group-hover:text-slate-700"
+                  }`}
+                />
+                {!isCollapsed && (
+                  <span>{isSpanish ? "Usuarios" : "Users"}</span>
+                )}
+              </div>
+              {isCollapsed && (
+                <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap hidden md:flex items-center gap-2">
+                  {isSpanish ? "Usuarios" : "Users"}
                 </div>
               )}
             </Link>
