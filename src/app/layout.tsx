@@ -6,7 +6,9 @@ import { Toaster } from "sonner";
 import { LanguageProvider } from "@/context/LanguageContext";
 import ClientPWAProvider from "@/components/providers/ClientPWAProvider";
 
-/** Self-hosted via next/font — no render-blocking Google Fonts CSS. */
+const SUPABASE_ORIGIN = "https://ahvmjptomjjnqjylofpa.supabase.co";
+
+/** Self-hosted via next/font — avoids render-blocking Google Fonts CSS at runtime. */
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
@@ -26,10 +28,8 @@ const inter = Inter({
 
 const CartDrawer = dynamic(() => import("@/components/layout/CartDrawer"));
 
-const APP_ICON =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/ICON_APP.png";
-const FAVICON =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/FAVICON.png";
+const APP_ICON = `${SUPABASE_ORIGIN}/storage/v1/object/public/Products/ICON_APP.png`;
+const FAVICON = `${SUPABASE_ORIGIN}/storage/v1/object/public/Products/FAVICON.png`;
 
 const SITE_URL = "https://www.plastipacusa.com";
 const DEFAULT_TITLE =
@@ -114,6 +114,24 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`scroll-smooth ${inter.variable}`}>
+      <head>
+        {/* Critical-path DNS / TLS warm-up for remote product media + API */}
+        <link rel="preconnect" href={SUPABASE_ORIGIN} crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href={SUPABASE_ORIGIN} />
+
+        {/* Google Fonts origins (next/font self-hosts Inter; hints keep fallback paths fast) */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+
+        {/* Occasional remote imagery host from next/image remotePatterns */}
+        <link rel="dns-prefetch" href="https://images.unsplash.com" />
+      </head>
       <body
         className={`${inter.className} min-h-screen bg-slate-50/50 text-slate-900 antialiased selection:bg-sky-500 selection:text-white`}
       >
