@@ -277,12 +277,14 @@ export function DashboardCreditClient({
         />
       )}
 
-      <main className="flex-1 p-5 sm:p-8 lg:p-10 overflow-y-auto space-y-8 max-w-5xl">
-        <Net30CreditHeroBanner />
+      <main className="flex-1 w-full max-w-7xl mx-auto p-5 sm:p-8 lg:p-10 overflow-y-auto space-y-6">
+        <div className="w-full">
+          <Net30CreditHeroBanner />
+        </div>
 
         {/* High-contrast status card */}
         <section
-          className={`rounded-3xl border-2 p-5 sm:p-6 shadow-sm ${statusUi.shell}`}
+          className={`w-full rounded-3xl border-2 p-5 sm:p-6 shadow-sm ${statusUi.shell}`}
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-2">
@@ -318,7 +320,7 @@ export function DashboardCreditClient({
         </section>
 
         {/* How it works — 4 clear steps */}
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 shadow-sm space-y-5">
+        <section className="w-full rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 shadow-sm space-y-5">
           <div>
             <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">
               {isSpanish ? "Cómo funciona" : "How It Works"}
@@ -329,7 +331,7 @@ export function DashboardCreditClient({
                 : "Four clear steps to unlock Net 30 payment terms."}
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
             {steps.map((step) => {
               const Icon = step.icon;
               return (
@@ -359,7 +361,7 @@ export function DashboardCreditClient({
         {canApply ? (
           <section
             id="credit-application-form"
-            className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 shadow-sm space-y-5"
+            className="w-full rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 shadow-sm space-y-5"
           >
             <div>
               <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">
@@ -554,7 +556,7 @@ export function DashboardCreditClient({
             </form>
           </section>
         ) : (
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+          <section className="w-full rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
             {creditStatus.status === "pending"
               ? isSpanish
                 ? "Tu solicitud está en revisión. Un especialista de crédito te contactará por correo en 24–48 horas hábiles."
