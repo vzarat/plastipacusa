@@ -102,6 +102,8 @@ export function FreeSampleBanner({
             alt="Plastipac USA stretch film roll"
             width={480}
             height={480}
+            sizes="(max-width: 768px) 70vw, 300px"
+            loading="lazy"
             className="block object-contain object-bottom max-h-[380px] w-auto align-bottom mb-0 pb-0 relative z-10"
             priority={false}
           />

@@ -79,6 +79,8 @@ export function ClientLogoSlot({ client }: { client: ClientLogoItem }) {
             alt={`${client.name} logo`}
             width={160}
             height={60}
+            sizes="160px"
+            loading="lazy"
             className={`${sizeClass} opacity-100`}
           />
         </div>

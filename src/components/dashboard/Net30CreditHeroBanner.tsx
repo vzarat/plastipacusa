@@ -4,11 +4,18 @@ import React from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowRight, CreditCard, PhoneCall } from "lucide-react";
-import { FloatingCreditCards } from "@/components/ui/FloatingCreditCards";
 import { useLanguage } from "@/context/LanguageContext";
 
 const Beams = dynamic(
   () => import("@/components/ui/Beams").then((m) => m.Beams),
+  { ssr: false }
+);
+
+const FloatingCreditCards = dynamic(
+  () =>
+    import("@/components/ui/FloatingCreditCards").then(
+      (m) => m.FloatingCreditCards
+    ),
   { ssr: false }
 );
 

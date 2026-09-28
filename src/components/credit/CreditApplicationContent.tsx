@@ -8,10 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/context/LanguageContext";
 import { B2BCreditFlow } from "@/components/credit/B2BCreditFlow";
 import { CreditApplicationForm } from "@/components/credit/CreditApplicationForm";
-import { FloatingCreditCards } from "@/components/ui/FloatingCreditCards";
 
 const Beams = dynamic(
   () => import("@/components/ui/Beams").then((m) => m.Beams),
+  { ssr: false }
+);
+
+const FloatingCreditCards = dynamic(
+  () =>
+    import("@/components/ui/FloatingCreditCards").then(
+      (m) => m.FloatingCreditCards
+    ),
   { ssr: false }
 );
 

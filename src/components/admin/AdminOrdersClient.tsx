@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { AdminOrder, updateOrderStatus } from "@/actions/admin";
@@ -9,11 +10,7 @@ import { UserProfile } from "@/actions/auth";
 import { useLanguage } from "@/context/LanguageContext";
 import { LanguageToggle } from "@/components/common/LanguageToggle";
 import { AdminSidebar, AdminTabKey } from "./AdminSidebar";
-import { AdminDashboardOverview } from "./AdminDashboardOverview";
-import { AdminOrdersTable } from "./AdminOrdersTable";
-import { AdminCatalogView } from "./AdminCatalogView";
-import { AdminCustomersView, CustomerRecord } from "./AdminCustomersView";
-import { AdminSettingsView } from "./AdminSettingsView";
+import type { CustomerRecord } from "./AdminCustomersView";
 import {
   Menu,
   X,
@@ -22,6 +19,57 @@ import {
   Bell,
   ExternalLink,
 } from "lucide-react";
+
+const AdminDashboardOverview = dynamic(
+  () =>
+    import("./AdminDashboardOverview").then((m) => m.AdminDashboardOverview),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-[420px] rounded-2xl border border-slate-200 bg-white" aria-hidden />
+    ),
+  }
+);
+
+const AdminOrdersTable = dynamic(
+  () => import("./AdminOrdersTable").then((m) => m.AdminOrdersTable),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-[420px] rounded-2xl border border-slate-200 bg-white" aria-hidden />
+    ),
+  }
+);
+
+const AdminCatalogView = dynamic(
+  () => import("./AdminCatalogView").then((m) => m.AdminCatalogView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-[420px] rounded-2xl border border-slate-200 bg-white" aria-hidden />
+    ),
+  }
+);
+
+const AdminCustomersView = dynamic(
+  () => import("./AdminCustomersView").then((m) => m.AdminCustomersView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-[420px] rounded-2xl border border-slate-200 bg-white" aria-hidden />
+    ),
+  }
+);
+
+const AdminSettingsView = dynamic(
+  () => import("./AdminSettingsView").then((m) => m.AdminSettingsView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-[320px] rounded-2xl border border-slate-200 bg-white" aria-hidden />
+    ),
+  }
+);
 
 interface AdminOrdersClientProps {
   initialOrders: AdminOrder[];

@@ -47,10 +47,26 @@ import { LanguageToggle } from "@/components/common/LanguageToggle";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { AvatarUpload } from "@/components/dashboard/AvatarUpload";
 import { DashboardGreeting } from "@/components/dashboard/DashboardGreeting";
-import { DashboardPromoCarousel } from "@/components/dashboard/DashboardPromoCarousel";
+import dynamic from "next/dynamic";
 import { TaxComplianceModal, formatEinInput, isValidUsEin } from "@/components/dashboard/TaxComplianceModal";
 import { upsertMyB2BProfile, uploadTaxExemptionCertificate } from "@/actions/customers";
 import OrderDetailModal, { OrderDetailLike } from "@/components/orders/OrderDetailModal";
+
+const DashboardPromoCarousel = dynamic(
+  () =>
+    import("@/components/dashboard/DashboardPromoCarousel").then(
+      (m) => m.DashboardPromoCarousel
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="min-h-[220px] rounded-2xl border border-slate-200 bg-white"
+        aria-hidden
+      />
+    ),
+  }
+);
 
 export interface DashboardOrderItem {
   productId: number;

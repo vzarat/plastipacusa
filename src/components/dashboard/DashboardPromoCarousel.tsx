@@ -19,10 +19,17 @@ import {
   type USAStateAbbreviation,
 } from "@mirawision/usa-map-react";
 import { useLanguage } from "@/context/LanguageContext";
-import { FloatingCreditCards } from "@/components/ui/FloatingCreditCards";
 
 const Beams = dynamic(
   () => import("@/components/ui/Beams").then((m) => m.Beams),
+  { ssr: false }
+);
+
+const FloatingCreditCards = dynamic(
+  () =>
+    import("@/components/ui/FloatingCreditCards").then(
+      (m) => m.FloatingCreditCards
+    ),
   { ssr: false }
 );
 

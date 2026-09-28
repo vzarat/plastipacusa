@@ -1,9 +1,20 @@
 import React from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, Factory, ArrowRight, Truck, PhoneCall, Target } from "lucide-react";
-import { USACoverageMap } from "@/components/common/USACoverageMap";
+
+const USACoverageMap = dynamic(
+  () =>
+    import("@/components/common/USACoverageMap").then((m) => m.USACoverageMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-[360px] rounded-3xl border border-slate-200 bg-slate-50" aria-hidden />
+    ),
+  }
+);
 
 export const metadata = {
   title: "About Plastipac USA | Industrial Stretch Packaging",

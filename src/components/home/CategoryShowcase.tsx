@@ -80,7 +80,8 @@ export function CategoryShowcase({
                     alt={`${cat.name} Logo`}
                     width={280}
                     height={110}
-                    priority
+                    sizes="(max-width: 768px) 40vw, 180px"
+                    loading="lazy"
                     className="h-20 md:h-24 w-auto object-contain mx-auto transition-transform duration-300 group-hover:scale-105 select-none"
                   />
                 </div>

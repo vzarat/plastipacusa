@@ -1,9 +1,34 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
+import dynamic from "next/dynamic";
+import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
-import { CartDrawer } from "@/components/layout/CartDrawer";
 import { LanguageProvider } from "@/context/LanguageContext";
 import ClientPWAProvider from "@/components/providers/ClientPWAProvider";
+
+/** Self-hosted via next/font — no render-blocking Google Fonts CSS. */
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  preload: true,
+  adjustFontFallback: true,
+  variable: "--font-sans",
+  fallback: [
+    "-apple-system",
+    "BlinkMacSystemFont",
+    "Segoe UI",
+    "Roboto",
+    "Helvetica",
+    "Arial",
+    "sans-serif",
+  ],
+});
+
+const CartDrawer = dynamic(
+  () =>
+    import("@/components/layout/CartDrawer").then((m) => m.CartDrawer),
+  { ssr: false }
+);
 
 const APP_ICON =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/ICON_APP.png";
@@ -92,8 +117,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="scroll-smooth">
-      <body className="min-h-screen bg-slate-50/50 text-slate-900 antialiased selection:bg-sky-500 selection:text-white">
+    <html lang="en" className={`scroll-smooth ${inter.variable}`}>
+      <body
+        className={`${inter.className} min-h-screen bg-slate-50/50 text-slate-900 antialiased selection:bg-sky-500 selection:text-white`}
+      >
         <LanguageProvider>
           <ClientPWAProvider />
           {children}

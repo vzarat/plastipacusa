@@ -24,9 +24,27 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { RevenueMountainChart } from "./charts/RevenueMountainChart";
-import { FulfillmentDonutChart } from "./charts/FulfillmentDonutChart";
-import { CategoryBarChart } from "./charts/CategoryBarChart";
+import dynamic from "next/dynamic";
+
+const RevenueMountainChart = dynamic(
+  () =>
+    import("./charts/RevenueMountainChart").then(
+      (m) => m.RevenueMountainChart
+    ),
+  { ssr: false }
+);
+const FulfillmentDonutChart = dynamic(
+  () =>
+    import("./charts/FulfillmentDonutChart").then(
+      (m) => m.FulfillmentDonutChart
+    ),
+  { ssr: false }
+);
+const CategoryBarChart = dynamic(
+  () =>
+    import("./charts/CategoryBarChart").then((m) => m.CategoryBarChart),
+  { ssr: false }
+);
 
 interface AdminDashboardOverviewProps {
   orders: AdminOrder[];
