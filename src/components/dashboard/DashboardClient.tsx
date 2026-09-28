@@ -556,12 +556,12 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
             </div>
           </div>
 
-          {/* Navigation Menu Links */}
+          {/* Navigation: Overview → Reorders → Invoices → Commercial Credit → Settings → Help */}
           <nav className="space-y-1">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.key;
-              return (
+              const button = (
                 <button
                   key={item.key}
                   type="button"
@@ -585,25 +585,36 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                   )}
                 </button>
               );
-            })}
 
-            <Link
-              href="/dashboard/credit"
-              onClick={() => setIsMobileSidebarOpen(false)}
-              className="w-full flex flex-col gap-0.5 px-3.5 py-3 rounded-xl text-left border-l-4 border-transparent bg-gradient-to-r from-emerald-50 to-sky-50 hover:from-emerald-100/80 hover:to-sky-100/80 transition-all"
-            >
-              <span className="flex items-center gap-3">
-                <CreditCard className="w-4 h-4 text-emerald-600" />
-                <span className="text-xs font-bold text-emerald-900">
-                  {locale === "es" ? "Solicita tu Crédito" : "Commercial Credit"}
-                </span>
-              </span>
-              <span className="pl-7 text-[10px] font-semibold text-emerald-700/80">
-                {locale === "es"
-                  ? "Aplica a términos Net 30"
-                  : "Apply for Net 30 Terms"}
-              </span>
-            </Link>
+              if (item.key === "invoices") {
+                return (
+                  <React.Fragment key="invoices-credit">
+                    {button}
+                    <Link
+                      href="/dashboard/credit"
+                      onClick={() => setIsMobileSidebarOpen(false)}
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 ease-in-out text-left border-l-4 border-transparent text-emerald-900 hover:text-emerald-950 hover:bg-emerald-50/70 font-semibold"
+                    >
+                      <CreditCard className="w-4 h-4 shrink-0 text-emerald-600" />
+                      <span className="flex-1 min-w-0">
+                        <span className="block truncate">
+                          {locale === "es"
+                            ? "Solicita tu Crédito"
+                            : "Commercial Credit"}
+                        </span>
+                        <span className="block text-[10px] font-medium text-emerald-700/75 truncate">
+                          {locale === "es"
+                            ? "Aplica a términos Net 30"
+                            : "Apply for Net 30 Terms"}
+                        </span>
+                      </span>
+                    </Link>
+                  </React.Fragment>
+                );
+              }
+
+              return button;
+            })}
           </nav>
 
           {/* Quick Shop Link */}

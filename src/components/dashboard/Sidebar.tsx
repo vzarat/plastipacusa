@@ -35,6 +35,9 @@ interface DashboardSidebarProps {
   onCloseMobile?: () => void;
 }
 
+const navItemBase =
+  "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 ease-in-out text-left border-l-4 cursor-pointer";
+
 export function DashboardSidebar({
   profile,
   activeKey,
@@ -46,21 +49,34 @@ export function DashboardSidebar({
   const { t, locale } = useLanguage();
   const isSpanish = locale === "es";
 
-  const tabItems: {
-    key: Exclude<DashboardNavKey, "credit">;
-    label: string;
-    icon: React.ComponentType<{ className?: string }>;
-  }[] = [
-    { key: "overview", label: t("dashboard.overviewOrders"), icon: LayoutDashboard },
-    { key: "reorders", label: t("dashboard.quickReorders"), icon: RotateCw },
-    { key: "invoices", label: t("dashboard.invoices"), icon: Receipt },
-    { key: "settings", label: t("dashboard.account"), icon: Settings },
-    { key: "help", label: t("dashboard.support"), icon: HelpCircle },
-  ];
-
   const handleTab = (key: Exclude<DashboardNavKey, "credit">) => {
+    if (key === "settings" && !onNavigate) {
+      window.location.href = "/dashboard/settings";
+      onCloseMobile?.();
+      return;
+    }
+    if (key === "help" && !onNavigate) {
+      window.location.href = "/dashboard";
+      onCloseMobile?.();
+      return;
+    }
     onNavigate?.(key);
     onCloseMobile?.();
+  };
+
+  const itemClass = (active: boolean, accent?: "credit") => {
+    if (accent === "credit") {
+      return `${navItemBase} ${
+        active
+          ? "border-emerald-600 bg-emerald-50/90 font-bold text-emerald-950 shadow-xs"
+          : "border-transparent text-emerald-900 hover:text-emerald-950 hover:bg-emerald-50/70 font-semibold"
+      }`;
+    }
+    return `${navItemBase} ${
+      active
+        ? "border-blue-600 bg-slate-100/80 font-medium text-blue-900 shadow-xs"
+        : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-medium"
+    }`;
   };
 
   return (
@@ -87,101 +103,97 @@ export function DashboardSidebar({
           </div>
         </div>
 
+        {/* Uniform nav: Overview → Reorders → Invoices → Commercial Credit → Settings → Help */}
         <nav className="space-y-1">
-          {tabItems.slice(0, 3).map((item) => {
-            const Icon = item.icon;
-            const isActive = activeKey === item.key;
-            return (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => handleTab(item.key)}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 ease-in-out text-left border-l-4 cursor-pointer ${
-                  isActive
-                    ? "border-blue-600 bg-slate-100/80 font-medium text-blue-900 shadow-xs"
-                    : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-medium"
-                }`}
-              >
-                <Icon
-                  className={`w-4 h-4 transition-colors duration-200 ${
-                    isActive ? "text-blue-600" : "text-slate-400"
-                  }`}
-                />
-                <span className="flex-1">{item.label}</span>
-              </button>
-            );
-          })}
+          <button
+            type="button"
+            onClick={() => handleTab("overview")}
+            className={itemClass(activeKey === "overview")}
+          >
+            <LayoutDashboard
+              className={`w-4 h-4 ${
+                activeKey === "overview" ? "text-blue-600" : "text-slate-400"
+              }`}
+            />
+            <span className="flex-1">{t("dashboard.overviewOrders")}</span>
+          </button>
 
-          {/* Commercial Credit — prominent CTA */}
+          <button
+            type="button"
+            onClick={() => handleTab("reorders")}
+            className={itemClass(activeKey === "reorders")}
+          >
+            <RotateCw
+              className={`w-4 h-4 ${
+                activeKey === "reorders" ? "text-blue-600" : "text-slate-400"
+              }`}
+            />
+            <span className="flex-1">{t("dashboard.quickReorders")}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleTab("invoices")}
+            className={itemClass(activeKey === "invoices")}
+          >
+            <Receipt
+              className={`w-4 h-4 ${
+                activeKey === "invoices" ? "text-blue-600" : "text-slate-400"
+              }`}
+            />
+            <span className="flex-1">{t("dashboard.invoices")}</span>
+          </button>
+
           <Link
             href="/dashboard/credit"
             onClick={onCloseMobile}
-            className={`w-full flex flex-col gap-0.5 px-3.5 py-3 rounded-xl text-left border-l-4 transition-all duration-200 ${
-              activeKey === "credit"
-                ? "border-emerald-600 bg-emerald-50/90 shadow-xs"
-                : "border-emerald-200/80 bg-gradient-to-r from-emerald-50 to-sky-50 hover:from-emerald-100/80 hover:to-sky-100/80"
-            }`}
+            className={itemClass(activeKey === "credit", "credit")}
           >
-            <span className="flex items-center gap-3">
-              <CreditCard
-                className={`w-4 h-4 ${
-                  activeKey === "credit" ? "text-emerald-700" : "text-emerald-600"
-                }`}
-              />
-              <span
-                className={`text-xs font-bold ${
-                  activeKey === "credit" ? "text-emerald-950" : "text-emerald-900"
-                }`}
-              >
+            <CreditCard
+              className={`w-4 h-4 shrink-0 ${
+                activeKey === "credit" ? "text-emerald-700" : "text-emerald-600"
+              }`}
+            />
+            <span className="flex-1 min-w-0">
+              <span className="block truncate">
                 {isSpanish ? "Solicita tu Crédito" : "Commercial Credit"}
               </span>
-            </span>
-            <span className="pl-7 text-[10px] font-semibold text-emerald-700/80">
-              {isSpanish ? "Aplica a términos Net 30" : "Apply for Net 30 Terms"}
+              <span className="block text-[10px] font-medium text-emerald-700/75 truncate">
+                {isSpanish ? "Aplica a términos Net 30" : "Apply for Net 30 Terms"}
+              </span>
             </span>
           </Link>
 
-          {tabItems.slice(3).map((item) => {
-            const Icon = item.icon;
-            const isActive = activeKey === item.key;
-            return (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => {
-                  if (item.key === "settings") {
-                    // Prefer dedicated settings URL when navigating from credit page
-                    if (!onNavigate) {
-                      window.location.href = "/dashboard/settings";
-                      return;
-                    }
-                  }
-                  if (item.key === "help" && !onNavigate) {
-                    window.location.href = "/dashboard";
-                    return;
-                  }
-                  handleTab(item.key);
-                }}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 ease-in-out text-left border-l-4 cursor-pointer ${
-                  isActive
-                    ? "border-blue-600 bg-slate-100/80 font-medium text-blue-900 shadow-xs"
-                    : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-medium"
-                }`}
-              >
-                <Icon
-                  className={`w-4 h-4 transition-colors duration-200 ${
-                    isActive ? "text-blue-600" : "text-slate-400"
-                  }`}
-                />
-                <span className="flex-1">{item.label}</span>
-                {item.key === "settings" && backupPasswordPending && (
-                  <span className="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
-                    1
-                  </span>
-                )}
-              </button>
-            );
-          })}
+          <button
+            type="button"
+            onClick={() => handleTab("settings")}
+            className={itemClass(activeKey === "settings")}
+          >
+            <Settings
+              className={`w-4 h-4 ${
+                activeKey === "settings" ? "text-blue-600" : "text-slate-400"
+              }`}
+            />
+            <span className="flex-1">{t("dashboard.account")}</span>
+            {backupPasswordPending && (
+              <span className="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
+                1
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleTab("help")}
+            className={itemClass(activeKey === "help")}
+          >
+            <HelpCircle
+              className={`w-4 h-4 ${
+                activeKey === "help" ? "text-blue-600" : "text-slate-400"
+              }`}
+            />
+            <span className="flex-1">{t("dashboard.support")}</span>
+          </button>
         </nav>
 
         <div className="pt-2">

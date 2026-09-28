@@ -4,11 +4,14 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Building2,
   CheckCircle2,
   Clock,
   CreditCard,
   FileCheck,
+  FileText,
   Loader2,
+  Mail,
   Menu,
   ShieldCheck,
   XCircle,
@@ -21,6 +24,7 @@ import {
 } from "@/actions/credit-applications";
 import { LanguageToggle } from "@/components/common/LanguageToggle";
 import { DashboardSidebar } from "@/components/dashboard/Sidebar";
+import { Net30CreditHeroBanner } from "@/components/dashboard/Net30CreditHeroBanner";
 import { useLanguage } from "@/context/LanguageContext";
 import { formatCurrency } from "@/lib/utils";
 import {
@@ -33,24 +37,55 @@ interface DashboardCreditClientProps {
   creditStatus: MyCreditStatusInfo;
 }
 
-function statusLabel(
+function statusPresentation(
   status: MyCreditStatusInfo["status"],
   creditLimit: number,
   isSpanish: boolean
-): string {
+) {
   if (status === "approved") {
-    return isSpanish
-      ? `Aprobado — Límite ${formatCurrency(creditLimit)}`
-      : `Approved - Limit ${formatCurrency(creditLimit)}`;
+    return {
+      label: isSpanish
+        ? `Crédito activo — Límite ${formatCurrency(creditLimit)}`
+        : `Active Credit Limit — ${formatCurrency(creditLimit)}`,
+      Icon: CheckCircle2,
+      shell:
+        "border-emerald-300 bg-gradient-to-br from-emerald-50 via-emerald-50/80 to-white text-emerald-950",
+      badge: "bg-emerald-600 text-white",
+      icon: "text-emerald-700",
+    };
   }
   if (status === "pending") {
-    return isSpanish ? "En revisión" : "Pending Review";
+    return {
+      label: isSpanish ? "En revisión" : "Under Review",
+      Icon: Clock,
+      shell:
+        "border-sky-300 bg-gradient-to-br from-sky-50 via-blue-50/80 to-white text-sky-950",
+      badge: "bg-sky-600 text-white",
+      icon: "text-sky-700",
+    };
   }
   if (status === "rejected") {
-    return isSpanish ? "Rechazado" : "Rejected";
+    return {
+      label: isSpanish ? "Rechazado" : "Rejected",
+      Icon: XCircle,
+      shell:
+        "border-rose-300 bg-gradient-to-br from-rose-50 via-rose-50/80 to-white text-rose-950",
+      badge: "bg-rose-600 text-white",
+      icon: "text-rose-700",
+    };
   }
-  return isSpanish ? "Sin solicitud" : "Not Applied";
+  return {
+    label: isSpanish ? "Sin solicitud" : "Not Applied",
+    Icon: FileCheck,
+    shell:
+      "border-amber-300 bg-gradient-to-br from-amber-50 via-amber-50/70 to-white text-amber-950",
+    badge: "bg-amber-500 text-white",
+    icon: "text-amber-700",
+  };
 }
+
+const inputClass =
+  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-400 transition-shadow";
 
 export function DashboardCreditClient({
   profile,
@@ -75,9 +110,63 @@ export function DashboardCreditClient({
   const canApply =
     creditStatus.status === "not_applied" || creditStatus.status === "rejected";
 
+  const statusUi = statusPresentation(
+    creditStatus.status,
+    creditStatus.creditLimit,
+    isSpanish
+  );
+  const StatusIcon = statusUi.Icon;
+
+  const steps = [
+    {
+      n: "01",
+      title: isSpanish
+        ? "Cuenta B2B activa y TAX ID / FEIN"
+        : "Active B2B Account & TAX ID / FEIN",
+      body: isSpanish
+        ? "Mantén tu perfil verificado con EIN en archivo desde Ajustes."
+        : "Keep your profile verified with an EIN on file from Settings.",
+      icon: Building2,
+    },
+    {
+      n: "02",
+      title: isSpanish
+        ? "Referencias comerciales o banco"
+        : "Trade References or Bank Verification",
+      body: isSpanish
+        ? "Opcional para límites más altos — añádelas en notas o te las solicitaremos."
+        : "Optional for higher limits — add them in notes or we will request them.",
+      icon: FileText,
+    },
+    {
+      n: "03",
+      title: isSpanish
+        ? "Formulario con límite mensual"
+        : "Application with Monthly Credit Limit",
+      body: isSpanish
+        ? "Solicita de $5,000 a $50,000+ USD según tu volumen de pallet."
+        : "Request $5k–$50k+ USD based on your pallet volume needs.",
+      icon: CreditCard,
+    },
+    {
+      n: "04",
+      title: isSpanish
+        ? "Aprobación en 24–48 horas hábiles"
+        : "Fast Approval in 24–48 Business Hours",
+      body: isSpanish
+        ? "Recibirás la decisión y el límite por correo electrónico."
+        : "You will receive the decision and limit by email.",
+      icon: Mail,
+    },
+  ];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.companyName.trim() || !form.contactName.trim() || !form.workEmail.trim()) {
+    if (
+      !form.companyName.trim() ||
+      !form.contactName.trim() ||
+      !form.workEmail.trim()
+    ) {
       toast.error(
         isSpanish
           ? "Completa los datos de la empresa y el contacto."
@@ -189,114 +278,80 @@ export function DashboardCreditClient({
       )}
 
       <main className="flex-1 p-5 sm:p-8 lg:p-10 overflow-y-auto space-y-8 max-w-5xl">
-        <div className="space-y-2">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-800">
-            <CreditCard className="w-3.5 h-3.5" />
-            Net 30
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            {isSpanish
-              ? "Crédito Comercial Plastipac"
-              : "Plastipac Commercial Credit"}
-          </h1>
-          <p className="text-sm text-slate-500 max-w-2xl">
-            {isSpanish
-              ? "Solicita términos Net 30 para pedidos de pallet completo y programas de reposición recurrente."
-              : "Apply for Net 30 terms on full-pallet orders and recurring replenishment programs."}
-          </p>
-        </div>
+        <Net30CreditHeroBanner />
 
-        {/* Status tracker */}
+        {/* High-contrast status card */}
         <section
-          className={`rounded-3xl border p-5 sm:p-6 shadow-sm ${
-            creditStatus.status === "approved"
-              ? "border-emerald-200 bg-emerald-50/50"
-              : creditStatus.status === "pending"
-                ? "border-amber-200 bg-amber-50/40"
-                : creditStatus.status === "rejected"
-                  ? "border-rose-200 bg-rose-50/40"
-                  : "border-slate-200 bg-white"
-          }`}
+          className={`rounded-3xl border-2 p-5 sm:p-6 shadow-sm ${statusUi.shell}`}
         >
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-            {isSpanish ? "Estado de crédito" : "Credit Status"}
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            {creditStatus.status === "approved" ? (
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-            ) : creditStatus.status === "pending" ? (
-              <Clock className="w-5 h-5 text-amber-600" />
-            ) : creditStatus.status === "rejected" ? (
-              <XCircle className="w-5 h-5 text-rose-600" />
-            ) : (
-              <FileCheck className="w-5 h-5 text-slate-400" />
-            )}
-            <p className="text-lg font-black text-slate-900">
-              {statusLabel(
-                creditStatus.status,
-                creditStatus.creditLimit,
-                isSpanish
-              )}
-            </p>
-          </div>
-          {creditStatus.status === "approved" && (
-            <p className="mt-2 text-xs text-emerald-800 font-medium">
-              {isSpanish ? "Términos:" : "Terms:"} {creditStatus.creditTerms}
-            </p>
-          )}
-        </section>
-
-        {/* How it works */}
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 shadow-sm space-y-5">
-          <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">
-            {isSpanish ? "Cómo funciona" : "How It Works"}
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {[
-              {
-                title: isSpanish ? "Límites de crédito" : "Credit Limits",
-                body: isSpanish
-                  ? "Asignamos un límite de compra según historial, volumen estimado y referencias comerciales."
-                  : "We assign a purchasing limit based on history, estimated volume, and trade references.",
-              },
-              {
-                title: isSpanish
-                  ? "Términos de pago a 30 días"
-                  : "30-Day Payment Terms",
-                body: isSpanish
-                  ? "Paga dentro de 30 días desde la factura — ideal para flujo de caja en programas de pallet."
-                  : "Pay within 30 days of invoice — ideal for cash-flow on pallet programs.",
-              },
-              {
-                title: isSpanish ? "Requisitos" : "Requirements",
-                body: isSpanish
-                  ? "Cuenta B2B activa, datos de empresa, TAX ID / EIN (recomendado) y límite deseado."
-                  : "Active B2B account, company details, TAX ID / EIN (recommended), and desired limit.",
-              },
-              {
-                title: isSpanish
-                  ? "Proceso de aprobación"
-                  : "Approval Process",
-                body: isSpanish
-                  ? "Revisión por el equipo de crédito, usualmente en 1–3 días hábiles. Te notificamos por correo."
-                  : "Credit team review, typically 1–3 business days. We notify you by email.",
-              },
-            ].map((item) => (
-              <div
-                key={item.title}
-                className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 space-y-1.5"
-              >
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-sky-600" />
-                  <h3 className="text-xs font-bold text-slate-900">
-                    {item.title}
-                  </h3>
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {item.body}
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] opacity-70">
+                {isSpanish ? "Estado de crédito" : "Credit Status"}
+              </p>
+              <div className="flex items-center gap-2.5">
+                <StatusIcon className={`w-6 h-6 ${statusUi.icon}`} />
+                <p className="text-xl sm:text-2xl font-black tracking-tight">
+                  {statusUi.label}
                 </p>
               </div>
-            ))}
+              {creditStatus.status === "approved" && (
+                <p className="text-xs font-semibold opacity-80">
+                  {isSpanish ? "Términos:" : "Terms:"} {creditStatus.creditTerms}
+                </p>
+              )}
+              {creditStatus.status === "not_applied" && (
+                <p className="text-xs font-medium opacity-80 max-w-lg">
+                  {isSpanish
+                    ? "Aún no has solicitado Net 30. Completa el formulario abajo para empezar."
+                    : "You have not applied for Net 30 yet. Complete the form below to get started."}
+                </p>
+              )}
+            </div>
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${statusUi.badge}`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              Net 30
+            </span>
+          </div>
+        </section>
+
+        {/* How it works — 4 clear steps */}
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 shadow-sm space-y-5">
+          <div>
+            <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">
+              {isSpanish ? "Cómo funciona" : "How It Works"}
+            </h2>
+            <p className="text-xs text-slate-500 mt-1">
+              {isSpanish
+                ? "Cuatro pasos claros para obtener términos Net 30."
+                : "Four clear steps to unlock Net 30 payment terms."}
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {steps.map((step) => {
+              const Icon = step.icon;
+              return (
+                <div
+                  key={step.n}
+                  className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 space-y-2"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900 text-[10px] font-black text-white">
+                      {step.n}
+                    </span>
+                    <Icon className="w-4 h-4 text-sky-600" />
+                  </div>
+                  <h3 className="text-xs font-bold text-slate-900 leading-snug">
+                    {step.title}
+                  </h3>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    {step.body}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </section>
 
@@ -322,8 +377,9 @@ export function DashboardCreditClient({
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                    {isSpanish ? "Empresa" : "Company Name"} *
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                    {isSpanish ? "Empresa" : "Company Name"}{" "}
+                    <span className="text-rose-500">*</span>
                   </label>
                   <input
                     required
@@ -331,12 +387,18 @@ export function DashboardCreditClient({
                     onChange={(e) =>
                       setForm((p) => ({ ...p, companyName: e.target.value }))
                     }
-                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
+                    placeholder={
+                      isSpanish
+                        ? "Razón social legal"
+                        : "Legal company name"
+                    }
+                    className={inputClass}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                    {isSpanish ? "Contacto" : "Contact Name"} *
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                    {isSpanish ? "Contacto" : "Contact Name"}{" "}
+                    <span className="text-rose-500">*</span>
                   </label>
                   <input
                     required
@@ -344,12 +406,17 @@ export function DashboardCreditClient({
                     onChange={(e) =>
                       setForm((p) => ({ ...p, contactName: e.target.value }))
                     }
-                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
+                    placeholder={
+                      isSpanish
+                        ? "Nombre del responsable de compras"
+                        : "Procurement contact full name"
+                    }
+                    className={inputClass}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                    Email *
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                    Email <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="email"
@@ -358,12 +425,19 @@ export function DashboardCreditClient({
                     onChange={(e) =>
                       setForm((p) => ({ ...p, workEmail: e.target.value }))
                     }
-                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
+                    placeholder="name@company.com"
+                    className={inputClass}
                   />
+                  <p className="text-[10px] text-slate-400">
+                    {isSpanish
+                      ? "Usaremos este correo para la decisión de crédito."
+                      : "We will use this email for the credit decision."}
+                  </p>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                    {isSpanish ? "Teléfono" : "Phone"} *
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                    {isSpanish ? "Teléfono" : "Business Phone"}{" "}
+                    <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="tel"
@@ -372,15 +446,16 @@ export function DashboardCreditClient({
                     onChange={(e) =>
                       setForm((p) => ({ ...p, phone: e.target.value }))
                     }
-                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
+                    placeholder="(956) 000-0000"
+                    className={inputClass}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
                     {isSpanish
-                      ? "Límite de crédito deseado (USD)"
-                      : "Desired Credit Limit (USD)"}{" "}
-                    *
+                      ? "Límite mensual deseado (USD)"
+                      : "Desired Monthly Credit Limit (USD)"}{" "}
+                    <span className="text-rose-500">*</span>
                   </label>
                   <input
                     required
@@ -390,17 +465,25 @@ export function DashboardCreditClient({
                     onChange={(e) =>
                       setForm((p) => ({
                         ...p,
-                        desiredCreditLimit: e.target.value.replace(/[^\d.]/g, ""),
+                        desiredCreditLimit: e.target.value.replace(
+                          /[^\d.]/g,
+                          ""
+                        ),
                       }))
                     }
-                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-semibold"
+                    className={`${inputClass} font-semibold`}
                   />
+                  <p className="text-[10px] text-slate-400">
+                    {isSpanish
+                      ? "Rango típico: $5,000 – $50,000+ según volumen."
+                      : "Typical range: $5,000 – $50,000+ based on volume."}
+                  </p>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                    TAX ID / EIN{" "}
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                    TAX ID / FEIN{" "}
                     <span className="normal-case font-medium text-slate-400">
-                      ({isSpanish ? "opcional" : "optional"})
+                      ({isSpanish ? "recomendado" : "recommended"})
                     </span>
                   </label>
                   <input
@@ -412,14 +495,21 @@ export function DashboardCreditClient({
                       }))
                     }
                     placeholder="XX-XXXXXXX"
-                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-mono"
+                    className={`${inputClass} font-mono`}
                   />
+                  <p className="text-[10px] text-slate-400">
+                    {isSpanish
+                      ? "Formato EIN de EE.UU. También puedes guardarlo en Ajustes."
+                      : "US EIN format. You can also save it in Settings."}
+                  </p>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  {isSpanish ? "Notas" : "Notes"}{" "}
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                  {isSpanish
+                    ? "Notas / referencias"
+                    : "Notes / Trade References"}{" "}
                   <span className="normal-case font-medium text-slate-400">
                     ({isSpanish ? "opcional" : "optional"})
                   </span>
@@ -430,11 +520,11 @@ export function DashboardCreditClient({
                   onChange={(e) =>
                     setForm((p) => ({ ...p, notes: e.target.value }))
                   }
-                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm resize-y"
+                  className={`${inputClass} resize-y`}
                   placeholder={
                     isSpanish
-                      ? "Volumen mensual estimado, referencias, etc."
-                      : "Estimated monthly volume, trade references, etc."
+                      ? "Volumen mensual estimado, referencias comerciales, banco…"
+                      : "Estimated monthly volume, trade references, bank contacts…"
                   }
                 />
               </div>
@@ -467,8 +557,8 @@ export function DashboardCreditClient({
           <section className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
             {creditStatus.status === "pending"
               ? isSpanish
-                ? "Tu solicitud está en revisión. Un especialista de crédito te contactará pronto."
-                : "Your application is under review. A credit specialist will follow up shortly."
+                ? "Tu solicitud está en revisión. Un especialista de crédito te contactará por correo en 24–48 horas hábiles."
+                : "Your application is under review. A credit specialist will email you within 24–48 business hours."
               : isSpanish
                 ? "Tu cuenta ya tiene términos Net 30 aprobados."
                 : "Your account already has approved Net 30 terms."}
