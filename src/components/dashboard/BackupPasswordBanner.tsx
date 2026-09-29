@@ -24,7 +24,7 @@ export function BackupPasswordBanner({ pending }: BackupPasswordBannerProps) {
 
   return (
     <div className="border-b border-amber-200 bg-amber-50">
-      <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1600px] 3xl:max-w-[1800px] px-4 py-3 sm:px-6 lg:px-8 xl:px-10">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />

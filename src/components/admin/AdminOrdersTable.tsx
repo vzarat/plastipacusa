@@ -515,11 +515,11 @@ export function AdminOrdersTable({
         )}
 
         {/* Live Orders Table */}
-        <div className="w-full overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
-          <table className="w-full text-left text-xs">
+        <div className="w-full overflow-x-auto lg:overflow-visible -mx-4 px-4 sm:mx-0 sm:px-0">
+          <table className="w-full min-w-[900px] lg:min-w-0 table-auto text-left text-xs xl:text-[13px]">
             <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
               <tr>
-                <th className="py-3.5 px-4 sm:px-6 w-10">
+                <th className="py-3.5 px-4 sm:px-6 xl:px-8 w-10">
                   <input
                     type="checkbox"
                     checked={isAllSelected}
@@ -528,14 +528,14 @@ export function AdminOrdersTable({
                     aria-label="Select all orders"
                   />
                 </th>
-                <th className="py-3.5 px-3">PO / Order ID</th>
-                <th className="py-3.5 px-3">Date</th>
-                <th className="py-3.5 px-4">Client Company</th>
-                <th className="py-3.5 px-4">Items Purchased</th>
-                <th className="py-3.5 px-3">Total Amount</th>
-                <th className="py-3.5 px-3">Payment Status</th>
-                <th className="py-3.5 px-3">Fulfillment Status</th>
-                <th className="py-3.5 px-4 sm:px-6 text-right">Actions</th>
+                <th className="py-3.5 px-3 xl:px-5 whitespace-nowrap">PO / Order ID</th>
+                <th className="py-3.5 px-3 xl:px-5 whitespace-nowrap">Date</th>
+                <th className="py-3.5 px-4 xl:px-6 min-w-[10rem]">Client Company</th>
+                <th className="py-3.5 px-4 xl:px-6 min-w-[14rem] xl:min-w-[20rem]">Items Purchased</th>
+                <th className="py-3.5 px-3 xl:px-5 whitespace-nowrap">Total Amount</th>
+                <th className="py-3.5 px-3 xl:px-5 whitespace-nowrap">Payment Status</th>
+                <th className="py-3.5 px-3 xl:px-5 whitespace-nowrap">Fulfillment Status</th>
+                <th className="py-3.5 px-4 sm:px-6 xl:px-8 text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">

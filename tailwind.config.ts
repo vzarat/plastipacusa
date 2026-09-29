@@ -22,6 +22,10 @@ const config: Config = {
       },
     },
     extend: {
+      screens: {
+        /** Ultrawide / 2K+ workspace layouts */
+        "3xl": "1800px",
+      },
       fontFamily: {
         sans: [
           "var(--font-sans)",

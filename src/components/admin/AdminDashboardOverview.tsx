@@ -155,8 +155,8 @@ export function AdminDashboardOverview({
         </div>
       </div>
 
-      {/* TOP ROW: 4 Compact KPI Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      {/* TOP ROW: KPI Stat Cards — denser on ultrawide */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-4 sm:gap-5">
         {/* Card 1: Total Sales */}
         <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs hover:shadow-sm hover:border-slate-300 transition-all space-y-3">
           <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
@@ -252,28 +252,28 @@ export function AdminDashboardOverview({
         </div>
       </div>
 
-      {/* MIDDLE ROW: Bento Grid (66% Left Mountain Chart + 33% Right Donut & Alert Feed) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: 66% width (2 cols) */}
-        <div className="lg:col-span-2">
+      {/* MIDDLE ROW: charts breathe on wide screens */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 3xl:grid-cols-12 gap-6 3xl:gap-8">
+        {/* Left: mountain chart */}
+        <div className="lg:col-span-2 3xl:col-span-8 min-w-0">
           <RevenueMountainChart />
         </div>
 
-        {/* Right: 33% width (1 col) */}
-        <div className="lg:col-span-1">
+        {/* Right: donut */}
+        <div className="lg:col-span-1 3xl:col-span-4 min-w-0">
           <FulfillmentDonutChart />
         </div>
       </div>
 
       {/* BOTTOM ROW: Bento Grid with Explicit Breathing Room */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
-        {/* Left: Category Bar Chart (5 cols on lg, 4 on xl) */}
-        <div className="lg:col-span-5 xl:col-span-4">
+        {/* Left: Category Bar Chart */}
+        <div className="lg:col-span-5 xl:col-span-4 3xl:col-span-3 min-w-0">
           <CategoryBarChart />
         </div>
 
-        {/* Right: High-Value Orders Quick Table (7 cols on lg, 8 on xl) */}
-        <div className="lg:col-span-7 xl:col-span-8 bg-white border border-slate-200/80 shadow-xs hover:shadow-sm transition-all rounded-2xl p-6 space-y-5 flex flex-col justify-between">
+        {/* Right: High-Value Orders Quick Table */}
+        <div className="lg:col-span-7 xl:col-span-8 3xl:col-span-9 bg-white border border-slate-200/80 shadow-xs hover:shadow-sm transition-all rounded-2xl p-6 space-y-5 flex flex-col justify-between min-w-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">

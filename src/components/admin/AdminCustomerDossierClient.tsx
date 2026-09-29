@@ -80,7 +80,7 @@ export function AdminCustomerDossierClient({
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 min-w-0 w-full max-w-[1600px] 3xl:max-w-[1800px] mx-auto p-4 sm:p-6 lg:p-8 xl:px-10">
           <AdminCustomerDossierView dossier={dossier} />
         </main>
       </div>

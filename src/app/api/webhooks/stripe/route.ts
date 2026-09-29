@@ -593,6 +593,14 @@ async function handleCheckoutSessionCompleted(
     "";
 
   try {
+    const emailLineItems =
+      Array.isArray(order.items) && order.items.length > 0
+        ? mapOrderItems(order.items, totalAmount)
+        : lineItems.map((item) => ({
+            description: String(item.description || "Plastipac Product"),
+            quantity: Number(item.quantity || 1) || 1,
+          }));
+
     await sendOrderConfirmationEmail({
       orderId: poReference,
       customerName,
@@ -602,6 +610,10 @@ async function handleCheckoutSessionCompleted(
       itemsSummary,
       itemCount,
       shippingAddressSummary: shippingAddressSummary || undefined,
+      orderDate: new Date(
+        (session.created || Date.now() / 1000) * 1000
+      ).toISOString(),
+      lineItems: emailLineItems,
       pdfBytes,
     });
   } catch (emailErr: unknown) {

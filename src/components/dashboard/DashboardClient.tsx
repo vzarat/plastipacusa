@@ -657,7 +657,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
 
       {/* Left Sidebar Navigation Column */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200/90 flex flex-col justify-between p-6 transition-transform duration-200 md:sticky md:translate-x-0 md:h-screen md:top-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 shrink-0 bg-white border-r border-slate-200/90 flex flex-col justify-between p-6 transition-transform duration-200 md:sticky md:translate-x-0 md:h-screen md:top-0 ${
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -829,8 +829,8 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
         />
       )}
 
-      {/* Right Main Content Area */}
-      <main className="flex-1 p-5 sm:p-8 lg:p-10 overflow-y-auto space-y-8 max-w-7xl">
+      {/* Right Main Content Area — expands; sidebar stays fixed width */}
+      <main className="flex-1 min-w-0 w-full max-w-[1600px] 3xl:max-w-[1800px] mx-auto p-5 sm:p-8 lg:p-10 xl:px-12 overflow-y-auto space-y-8">
         {/* Top Minimal Action Bar */}
         <div className="flex items-center justify-between border-b border-slate-200/80 pb-4">
           <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
@@ -907,33 +907,39 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                     companyName={profile.companyName}
                   />
 
-                  {/* KPI Stats Row */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                  {/* KPI Stats Row — denser on wide monitors */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-4 sm:gap-5 xl:gap-6">
                     {/* Total Orders */}
-                    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xs space-y-2">
+                    <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs space-y-2 sm:col-span-1 lg:col-span-1">
                       <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
                         <span>{t("dashboard.totalOrders")}</span>
                         <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                           <Package className="w-4 h-4" />
                         </div>
                       </div>
-                      <div className="text-2xl sm:text-3xl font-black text-slate-900">
-                        {orders.length} <span className="text-sm font-semibold text-slate-400">{t("dashboard.poOrders")}</span>
+                      <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                        {orders.length}{" "}
+                        <span className="text-sm font-semibold text-slate-400">
+                          {t("dashboard.poOrders")}
+                        </span>
                       </div>
                       <p className="text-[11px] text-slate-500">
-                        {t("dashboard.totalProcurement")} <strong className="text-slate-800">{formatCurrency(totalSpend)} USD</strong>
+                        {t("dashboard.totalProcurement")}{" "}
+                        <strong className="text-slate-800">
+                          {formatCurrency(totalSpend)} USD
+                        </strong>
                       </p>
                     </div>
 
                     {/* Last Order Date */}
-                    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xs space-y-2">
+                    <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs space-y-2">
                       <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
                         <span>{t("dashboard.lastOrder")}</span>
                         <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
                           <Truck className="w-4 h-4" />
                         </div>
                       </div>
-                      <div className="text-2xl sm:text-3xl font-black text-slate-900">
+                      <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                         {lastOrder ? lastOrder.date : t("dashboard.noRecentPo")}
                       </div>
                       <p className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
@@ -942,6 +948,37 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                       </p>
                     </div>
 
+                    {/* Total spend highlight */}
+                    <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs space-y-2">
+                      <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
+                        <span>{t("dashboard.totalProcurement")}</span>
+                        <div className="w-8 h-8 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center">
+                          <TrendingUp className="w-4 h-4" />
+                        </div>
+                      </div>
+                      <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                        {formatCurrency(totalSpend)}
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        USD · B2B lifetime volume
+                      </p>
+                    </div>
+
+                    {/* Cart / open lines */}
+                    <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs space-y-2">
+                      <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
+                        <span>{t("dashboard.reviewCart")}</span>
+                        <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                          <ShoppingCart className="w-4 h-4" />
+                        </div>
+                      </div>
+                      <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                        {totalCartCount}
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        Active cart line items
+                      </p>
+                    </div>
                   </div>
                 </>
               ) : (
@@ -1007,16 +1044,16 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                 </div>
               ) : (
                 <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-sm">
-                  <div className="w-full overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
-                    <table className="w-full text-left text-xs">
+                  <div className="w-full overflow-x-auto lg:overflow-visible -mx-4 px-4 sm:mx-0 sm:px-0">
+                    <table className="w-full min-w-[720px] lg:min-w-0 table-auto text-left text-xs xl:text-[13px]">
                       <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
                         <tr>
-                          <th className="py-3.5 px-4 sm:px-6">{t("dashboard.tablePoId")}</th>
-                          <th className="py-3.5 px-4">{t("dashboard.tableDate")}</th>
-                          <th className="py-3.5 px-4">{t("dashboard.tableProducts")}</th>
-                          <th className="py-3.5 px-4">{t("dashboard.tableTotal")}</th>
-                          <th className="py-3.5 px-4">{t("dashboard.tableStatus")}</th>
-                          <th className="py-3.5 px-4 sm:px-6 text-right">{t("dashboard.tableAction")}</th>
+                          <th className="py-3.5 px-4 sm:px-6 xl:px-8 whitespace-nowrap">{t("dashboard.tablePoId")}</th>
+                          <th className="py-3.5 px-4 xl:px-6 whitespace-nowrap">{t("dashboard.tableDate")}</th>
+                          <th className="py-3.5 px-4 xl:px-6 min-w-[12rem] xl:min-w-[18rem]">{t("dashboard.tableProducts")}</th>
+                          <th className="py-3.5 px-4 xl:px-6 whitespace-nowrap">{t("dashboard.tableTotal")}</th>
+                          <th className="py-3.5 px-4 xl:px-6 whitespace-nowrap">{t("dashboard.tableStatus")}</th>
+                          <th className="py-3.5 px-4 sm:px-6 xl:px-8 text-right whitespace-nowrap">{t("dashboard.tableAction")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -1033,7 +1070,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                               onClick={() => setSelectedOrder(order)}
                             >
                               {/* Order ID */}
-                              <td className="py-4 px-4 sm:px-6 font-mono font-bold text-slate-900">
+                              <td className="py-4 px-4 sm:px-6 xl:px-8 font-mono font-bold text-slate-900 whitespace-nowrap align-middle">
                                 {formatOrderId(order)}
                                 {order.trackingNumber && (
                                   <span className="block text-[10px] font-mono text-slate-400 font-normal">
@@ -1043,17 +1080,17 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                               </td>
 
                               {/* Date */}
-                              <td className="py-4 px-4 text-slate-600 font-medium">
+                              <td className="py-4 px-4 xl:px-6 text-slate-600 font-medium whitespace-nowrap align-middle">
                                 {order.date}
                               </td>
 
                               {/* Products Summary */}
-                              <td className="py-4 px-4 font-semibold text-slate-800">
+                              <td className="py-4 px-4 xl:px-6 font-semibold text-slate-800 align-middle whitespace-normal break-words max-w-xs xl:max-w-xl 2xl:max-w-2xl">
                                 {order.itemsSummary}
                               </td>
 
                               {/* Total */}
-                              <td className="py-4 px-4 font-black text-slate-900 text-sm">
+                              <td className="py-4 px-4 xl:px-6 font-black text-slate-900 text-sm whitespace-nowrap align-middle">
                                 {formatCurrency(order.totalUsd)}
                               </td>
 
@@ -1139,38 +1176,38 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
             </div>
 
             <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-sm">
-              <div className="w-full overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
-                <table className="w-full text-left text-xs">
+              <div className="w-full overflow-x-auto lg:overflow-visible -mx-4 px-4 sm:mx-0 sm:px-0">
+                <table className="w-full min-w-[800px] lg:min-w-0 table-auto text-left text-xs xl:text-[13px]">
                   <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
                     <tr>
-                      <th className="py-3.5 px-4 sm:px-6">{t("dashboard.invNumber")}</th>
-                      <th className="py-3.5 px-4">{t("dashboard.invPoRef")}</th>
-                      <th className="py-3.5 px-4">{t("dashboard.invDate")}</th>
-                      <th className="py-3.5 px-4">{t("dashboard.invTerms")}</th>
-                      <th className="py-3.5 px-4">{t("dashboard.invAmount")}</th>
-                      <th className="py-3.5 px-4">{t("dashboard.invStatus")}</th>
-                      <th className="py-3.5 px-4 sm:px-6 text-right">{t("dashboard.invDocument")}</th>
+                      <th className="py-3.5 px-4 sm:px-6 xl:px-8 whitespace-nowrap">{t("dashboard.invNumber")}</th>
+                      <th className="py-3.5 px-4 xl:px-6 whitespace-nowrap">{t("dashboard.invPoRef")}</th>
+                      <th className="py-3.5 px-4 xl:px-6 whitespace-nowrap">{t("dashboard.invDate")}</th>
+                      <th className="py-3.5 px-4 xl:px-6 whitespace-nowrap">{t("dashboard.invTerms")}</th>
+                      <th className="py-3.5 px-4 xl:px-6 whitespace-nowrap">{t("dashboard.invAmount")}</th>
+                      <th className="py-3.5 px-4 xl:px-6 whitespace-nowrap">{t("dashboard.invStatus")}</th>
+                      <th className="py-3.5 px-4 sm:px-6 xl:px-8 text-right whitespace-nowrap">{t("dashboard.invDocument")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {orders.map((order, idx) => (
                       <tr key={order.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-4 px-4 sm:px-6 font-mono font-bold text-slate-900">
+                        <td className="py-4 px-4 sm:px-6 xl:px-8 font-mono font-bold text-slate-900 whitespace-nowrap">
                           INV-2026-00{idx + 142}
                         </td>
-                        <td className="py-4 px-4 font-mono text-slate-600 font-semibold">
+                        <td className="py-4 px-4 xl:px-6 font-mono text-slate-600 font-semibold whitespace-nowrap">
                           {formatOrderId(order)}
                         </td>
-                        <td className="py-4 px-4 text-slate-600 font-medium">
+                        <td className="py-4 px-4 xl:px-6 text-slate-600 font-medium whitespace-nowrap">
                           {order.date}
                         </td>
-                        <td className="py-4 px-4 text-slate-700 font-semibold">
+                        <td className="py-4 px-4 xl:px-6 text-slate-700 font-semibold whitespace-nowrap">
                           {t("dashboard.net30")}
                         </td>
-                        <td className="py-4 px-4 font-black text-slate-900 text-sm">
+                        <td className="py-4 px-4 xl:px-6 font-black text-slate-900 text-sm whitespace-nowrap">
                           {formatCurrency(order.totalUsd)}
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-4 px-4 xl:px-6">
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold text-[11px]">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                             {t("dashboard.paidCleared")}
