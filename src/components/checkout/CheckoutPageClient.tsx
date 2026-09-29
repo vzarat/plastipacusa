@@ -1,13 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Loader2, Lock, LogIn, UserPlus } from "lucide-react";
 import { CheckoutForm } from "@/components/checkout/CheckoutForm";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function CheckoutPageClient() {
+  const { locale } = useLanguage();
+  const isEs = locale === "es";
+
   const items = useCartStore((state) => state.items);
   const getSubtotal = useCartStore((state) => state.getSubtotal);
   const getDiscountAmount = useCartStore((state) => state.getDiscountAmount);
@@ -18,6 +24,42 @@ export function CheckoutPageClient() {
 
   const [agreedToPolicies, setAgreedToPolicies] = useState(false);
   const [checkoutEmail, setCheckoutEmail] = useState("");
+  const [authChecking, setAuthChecking] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const verifySession = async () => {
+      setAuthChecking(true);
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (cancelled) return;
+
+        if (user?.id) {
+          setIsAuthenticated(true);
+          if (user.email) {
+            setCheckoutEmail((prev) => prev || user.email || "");
+          }
+        } else {
+          setIsAuthenticated(false);
+        }
+      } catch {
+        if (!cancelled) setIsAuthenticated(false);
+      } finally {
+        if (!cancelled) setAuthChecking(false);
+      }
+    };
+
+    void verifySession();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const subtotal = getSubtotal();
   const discountAmount = getDiscountAmount();
@@ -40,6 +82,70 @@ export function CheckoutPageClient() {
           <Button asChild variant="gradient" className="mt-8">
             <Link href="/products">Continue shopping</Link>
           </Button>
+        </div>
+      </main>
+    );
+  }
+
+  if (authChecking) {
+    return (
+      <main className="mx-auto flex min-h-[50vh] max-w-4xl items-center justify-center px-6 py-16">
+        <div className="flex items-center gap-2 text-sm text-slate-600">
+          <Loader2 className="h-4 w-4 animate-spin text-sky-600" />
+          {isEs ? "Verificando sesión…" : "Verifying session…"}
+        </div>
+      </main>
+    );
+  }
+
+  if (!isAuthenticated) {
+    const redirect = encodeURIComponent("/checkout");
+    return (
+      <main className="mx-auto flex min-h-[60vh] max-w-4xl items-center justify-center px-6 py-16">
+        <div className="w-full max-w-xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-800 px-8 py-6 text-white">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/25 bg-white/10">
+                <Lock className="h-5 w-5 text-sky-100" aria-hidden />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-sky-100/90">
+                  {isEs ? "Cuenta B2B requerida" : "B2B account required"}
+                </p>
+                <h1 className="text-xl font-black">
+                  {isEs ? "Inicia sesión para pagar" : "Sign in to checkout"}
+                </h1>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-4 px-8 py-7">
+            <p className="text-sm leading-relaxed text-slate-600">
+              {isEs
+                ? "Debes iniciar sesión o crear una cuenta B2B para completar tu pedido."
+                : "You must sign in or create a B2B account to complete your order."}
+            </p>
+            <p className="text-xs text-slate-500">
+              {isEs
+                ? "You must sign in or create a B2B account to complete your order."
+                : "Debes iniciar sesión o crear una cuenta B2B para completar tu pedido."}
+            </p>
+            <div className="flex flex-col gap-2.5 pt-2 sm:flex-row">
+              <Link
+                href={`/login?redirect=${redirect}`}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 px-4 py-3 text-sm font-bold text-white shadow-md"
+              >
+                <LogIn className="h-4 w-4" aria-hidden />
+                {isEs ? "Iniciar sesión" : "Sign In"}
+              </Link>
+              <Link
+                href={`/register?redirect=${redirect}`}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 hover:bg-slate-50"
+              >
+                <UserPlus className="h-4 w-4" aria-hidden />
+                {isEs ? "Crear cuenta" : "Register"}
+              </Link>
+            </div>
+          </div>
         </div>
       </main>
     );

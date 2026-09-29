@@ -40,7 +40,11 @@ export async function middleware(request: NextRequest) {
     error: error?.message,
   });
 
-  const isProtectedRoute = pathname.startsWith("/dashboard") || pathname.startsWith("/admin");
+  const isProtectedRoute =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/admin") ||
+    pathname === "/checkout" ||
+    pathname.startsWith("/checkout/");
 
   if (isProtectedRoute && (error || !user)) {
     const redirectUrl = new URL("/login", request.url);
@@ -55,6 +59,8 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/admin/:path*",
+    "/checkout",
+    "/checkout/:path*",
   ],
 };
 

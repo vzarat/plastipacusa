@@ -62,7 +62,10 @@ export async function POST(request: NextRequest) {
 
     if (!user?.id) {
       return NextResponse.json(
-        { error: "You must be signed in to checkout." },
+        {
+          error:
+            "Unauthorized. You must sign in or create a B2B account to complete checkout.",
+        },
         { status: 401 }
       );
     }

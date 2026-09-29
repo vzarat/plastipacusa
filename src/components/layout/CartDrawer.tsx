@@ -20,7 +20,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { submitInquiry } from "@/actions/inquiries";
 import { DirectCheckoutButton } from "@/components/checkout/DirectCheckoutButton";
+import { CheckoutAuthRequiredModal } from "@/components/checkout/CheckoutAuthRequiredModal";
 import { PromoCodeInput } from "@/components/cart/PromoCodeInput";
+import { createClient } from "@/lib/supabase/client";
 
 export function CartDrawer() {
   const router = useRouter();
@@ -45,6 +47,26 @@ export function CartDrawer() {
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
   const [phone, setPhone] = useState("");
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  const goToCheckoutIfAuthenticated = async () => {
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user?.id) {
+        setShowAuthModal(true);
+        return;
+      }
+
+      closeDrawer();
+      router.push("/checkout");
+    } catch {
+      setShowAuthModal(true);
+    }
+  };
 
   useEffect(() => {
     if (!isDrawerOpen || typeof document === "undefined") return;
@@ -355,10 +377,7 @@ export function CartDrawer() {
                   Request Official Quote
                 </Button>
                 <Button
-                  onClick={() => {
-                    closeDrawer();
-                    router.push("/checkout");
-                  }}
+                  onClick={() => void goToCheckoutIfAuthenticated()}
                   variant="outline"
                   className="w-full text-xs font-semibold border-slate-200 hover:bg-slate-100"
                 >
@@ -376,6 +395,12 @@ export function CartDrawer() {
           </div>
         )}
       </aside>
+
+      <CheckoutAuthRequiredModal
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        redirectTo="/checkout"
+      />
     </div>
   );
 }

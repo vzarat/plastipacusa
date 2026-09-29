@@ -48,7 +48,17 @@ export async function createPaymentIntent(
       userId = user?.id || "";
       sessionEmail = (user?.email || "").trim().toLowerCase();
     } catch {
-      // Guest checkout is allowed — metadata will carry email.
+      return {
+        success: false,
+        error: "You must sign in to complete checkout.",
+      };
+    }
+
+    if (!userId) {
+      return {
+        success: false,
+        error: "You must sign in or create a B2B account to complete your order.",
+      };
     }
 
     const customerEmail =

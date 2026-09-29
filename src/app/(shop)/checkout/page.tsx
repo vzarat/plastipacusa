@@ -1,8 +1,8 @@
 import { CheckoutPageClient } from "@/components/checkout/CheckoutPageClient";
 
 /**
- * Embedded Stripe Elements checkout — guests may pay with email;
- * signed-in users are still preferred when a session cookie is present.
+ * Embedded Stripe Elements checkout — requires an authenticated B2B session.
+ * Guests are redirected to /login?redirect=/checkout by middleware + client gate.
  */
 export default function CheckoutPage() {
   return <CheckoutPageClient />;
