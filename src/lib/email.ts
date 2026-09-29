@@ -239,32 +239,10 @@ export async function notifyAdminPurchaseOrder(
   });
 }
 
-const ORDER_CONFIRMATION_FROM = "Plastipac USA <orders@plastipacusa.com>";
-const INTERNAL_SALES_EMAIL = "sales@plastipacusa.com";
-const SUPPORT_EMAIL = "support@plastipacusa.com";
-const ORDER_CONFIRMATION_LOGO_URL =
-  process.env.NEXT_PUBLIC_EMAIL_LOGO_URL?.trim() ||
-  "https://www.plastipacusa.com/logo.png";
-const DASHBOARD_ORDERS_URL = "https://www.plastipacusa.com/dashboard/orders";
-
-/** Corporate palette for transactional HTML emails */
-const BRAND = {
-  primary: "#0055A5",
-  navy: "#003366",
-  bg: "#F8FAFC",
-  panel: "#F1F5F9",
-  text: "#1E293B",
-  muted: "#64748B",
-  border: "#E2E8F0",
-  white: "#FFFFFF",
-} as const;
-
-export interface OrderConfirmationLineItem {
-  description: string;
-  quantity: number;
-  unitPrice?: number;
-  total?: number;
-}
+export type {
+  OrderConfirmationLineItem,
+  OrderConfirmationContent as OrderConfirmationEmailPayload,
+} from "@/lib/order-confirmation-email";
 
 export interface OrderConfirmationEmailInput {
   orderId: string;
@@ -276,110 +254,13 @@ export interface OrderConfirmationEmailInput {
   itemCount?: number;
   shippingAddressSummary?: string;
   orderDate?: string;
-  lineItems?: OrderConfirmationLineItem[];
+  lineItems?: import("@/lib/order-confirmation-email").OrderConfirmationLineItem[];
   pdfBytes: Uint8Array;
-}
-
-function escapeHtml(value: string): string {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-function formatUsd(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(Number(amount || 0));
-}
-
-function formatOrderDateLabel(raw?: string): string {
-  try {
-    const d = raw ? new Date(raw) : new Date();
-    if (Number.isNaN(d.getTime())) {
-      return new Date().toLocaleDateString("es-MX", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-    }
-    return d.toLocaleDateString("es-MX", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  } catch {
-    return new Date().toLocaleDateString("es-MX");
-  }
-}
-
-function resolveLineItems(
-  payload: OrderConfirmationEmailInput
-): OrderConfirmationLineItem[] {
-  if (Array.isArray(payload.lineItems) && payload.lineItems.length > 0) {
-    return payload.lineItems;
-  }
-
-  // Fallback: parse "2× Product; 1× Other" style summaries from Stripe.
-  const parts = String(payload.itemsSummary || "")
-    .split(";")
-    .map((p) => p.trim())
-    .filter(Boolean);
-
-  if (parts.length === 0) {
-    return [
-      {
-        description: "Pedido industrial Plastipac",
-        quantity: payload.itemCount || 1,
-        unitPrice: payload.totalAmountUsd,
-        total: payload.totalAmountUsd,
-      },
-    ];
-  }
-
-  return parts.map((part) => {
-    const match = part.match(/^(\d+)\s*[×x]\s*(.+)$/i);
-    if (match) {
-      return {
-        description: match[2].trim(),
-        quantity: Number(match[1]) || 1,
-      };
-    }
-    return { description: part, quantity: 1 };
-  });
-}
-
-function buildProductsTableRows(items: OrderConfirmationLineItem[]): string {
-  return items
-    .map((item, index) => {
-      const qty = Number(item.quantity || 1) || 1;
-      const lineTotal =
-        item.total != null
-          ? Number(item.total)
-          : item.unitPrice != null
-            ? Number(item.unitPrice) * qty
-            : null;
-      const bg = index % 2 === 0 ? BRAND.white : BRAND.panel;
-      return `
-        <tr>
-          <td style="padding:10px 12px;border-bottom:1px solid ${BRAND.border};background:${bg};color:${BRAND.text};font-size:13px;line-height:1.4;">
-            ${escapeHtml(item.description)}
-          </td>
-          <td align="center" style="padding:10px 12px;border-bottom:1px solid ${BRAND.border};background:${bg};color:${BRAND.text};font-size:13px;font-weight:700;white-space:nowrap;">
-            ${qty}
-          </td>
-          <td align="right" style="padding:10px 12px;border-bottom:1px solid ${BRAND.border};background:${bg};color:${BRAND.text};font-size:13px;font-weight:700;white-space:nowrap;">
-            ${lineTotal != null ? escapeHtml(formatUsd(lineTotal)) : "—"}
-          </td>
-        </tr>`;
-    })
-    .join("");
 }
 
 /**
  * Customer + sales confirmation after Stripe checkout completes.
+ * Uses branding from Supabase `email_templates` when available.
  * Never throws — logs and returns result (webhook must stay ACK'd).
  */
 export async function sendOrderConfirmationEmail(
@@ -391,252 +272,42 @@ export async function sendOrderConfirmationEmail(
     return { success: false, skipped: true, error: "Missing customer email." };
   }
 
-  const recipients = Array.from(
-    new Set([buyerEmail, INTERNAL_SALES_EMAIL].filter(Boolean))
-  );
-
-  const orderId = payload.orderId;
-  const totalFormatted = formatUsd(payload.totalAmountUsd);
-  const safeName = payload.customerName || "Cliente";
-  const purchaseDate = formatOrderDateLabel(payload.orderDate);
-  const lineItems = resolveLineItems(payload);
-  const productRows = buildProductsTableRows(lineItems);
-
-  const companyBlock = payload.customerCompany
-    ? `<tr>
-         <td style="padding:0 0 8px;color:${BRAND.muted};font-size:13px;">
-           <strong style="color:${BRAND.text};">Empresa:</strong> ${escapeHtml(payload.customerCompany)}
-         </td>
-       </tr>`
-    : "";
-
-  const shippingBlock = payload.shippingAddressSummary
-    ? `<p style="margin:0 0 4px;color:${BRAND.muted};font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Dirección de entrega</p>
-       <p style="margin:0;color:${BRAND.text};font-size:14px;line-height:1.55;">${escapeHtml(payload.shippingAddressSummary)}</p>`
-    : `<p style="margin:0;color:${BRAND.muted};font-size:14px;line-height:1.55;">La dirección de entrega será confirmada por nuestro equipo de logística.</p>`;
-
-  const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Confirmación de Pedido #${escapeHtml(orderId)}</title>
-  <!--[if mso]>
-  <style type="text/css">
-    body, table, td { font-family: Arial, Helvetica, sans-serif !important; }
-  </style>
-  <![endif]-->
-</head>
-<body style="margin:0;padding:0;background-color:${BRAND.bg};-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:${BRAND.bg};margin:0;padding:0;width:100%;">
-    <tr>
-      <td align="center" style="padding:28px 12px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background-color:${BRAND.white};border:1px solid ${BRAND.border};">
-
-          <!-- HEADER / LOGO -->
-          <tr>
-            <td align="center" style="background-color:${BRAND.white};padding:28px 24px 18px;border-bottom:3px solid ${BRAND.primary};">
-              <img
-                src="${ORDER_CONFIRMATION_LOGO_URL}"
-                alt="Plastipac USA"
-                width="220"
-                style="display:block;margin:0 auto;max-width:220px;width:100%;height:auto;border:0;outline:none;text-decoration:none;"
-              />
-              <p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${BRAND.navy};">
-                Plastipac USA · Stretch Film &amp; Packaging
-              </p>
-            </td>
-          </tr>
-
-          <!-- ACCENT BAR -->
-          <tr>
-            <td style="background-color:${BRAND.navy};padding:14px 24px;">
-              <h1 style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:20px;line-height:1.3;font-weight:700;color:${BRAND.white};text-align:center;">
-                Confirmación de Pedido
-              </h1>
-            </td>
-          </tr>
-
-          <!-- BODY -->
-          <tr>
-            <td style="padding:28px 24px 8px;font-family:Arial,Helvetica,sans-serif;color:${BRAND.text};">
-              <p style="margin:0 0 14px;font-size:16px;font-weight:700;color:${BRAND.text};">
-                Hola ${escapeHtml(safeName)},
-              </p>
-              <p style="margin:0 0 18px;font-size:14px;line-height:1.6;color:${BRAND.muted};">
-                Hemos recibido tu pedido y se encuentra en proceso de preparación.
-                Tu pago fue confirmado y el estado de la orden es
-                <strong style="color:${BRAND.primary};">Paid &amp; Cleared</strong>.
-              </p>
-
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:${BRAND.panel};border:1px solid ${BRAND.border};margin:0 0 20px;">
-                <tr>
-                  <td style="padding:16px 18px;">
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                      <tr>
-                        <td style="padding:0 0 8px;color:${BRAND.muted};font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">
-                          Resumen del pedido
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding:0 0 6px;color:${BRAND.text};font-size:14px;">
-                          <strong>Número de Orden:</strong> #${escapeHtml(orderId)}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding:0 0 6px;color:${BRAND.text};font-size:14px;">
-                          <strong>Fecha de Compra:</strong> ${escapeHtml(purchaseDate)}
-                        </td>
-                      </tr>
-                      ${companyBlock}
-                    </table>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- PRODUCTS TABLE -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid ${BRAND.border};margin:0 0 20px;">
-                <tr>
-                  <td colspan="3" style="background-color:${BRAND.primary};padding:10px 12px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${BRAND.white};">
-                    Detalle de productos
-                  </td>
-                </tr>
-                <tr>
-                  <th align="left" style="padding:10px 12px;background-color:${BRAND.panel};border-bottom:1px solid ${BRAND.border};color:${BRAND.navy};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Producto</th>
-                  <th align="center" style="padding:10px 12px;background-color:${BRAND.panel};border-bottom:1px solid ${BRAND.border};color:${BRAND.navy};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Cant.</th>
-                  <th align="right" style="padding:10px 12px;background-color:${BRAND.panel};border-bottom:1px solid ${BRAND.border};color:${BRAND.navy};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Subtotal</th>
-                </tr>
-                ${productRows}
-                <tr>
-                  <td colspan="2" align="right" style="padding:14px 12px;background-color:${BRAND.white};color:${BRAND.text};font-size:14px;font-weight:700;border-top:2px solid ${BRAND.navy};">
-                    Total pagado (USD)
-                  </td>
-                  <td align="right" style="padding:14px 12px;background-color:${BRAND.white};color:${BRAND.primary};font-size:16px;font-weight:800;border-top:2px solid ${BRAND.navy};white-space:nowrap;">
-                    ${escapeHtml(totalFormatted)}
-                  </td>
-                </tr>
-              </table>
-
-              <!-- SHIPPING -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:${BRAND.panel};border:1px solid ${BRAND.border};margin:0 0 24px;">
-                <tr>
-                  <td style="padding:16px 18px;font-family:Arial,Helvetica,sans-serif;">
-                    ${shippingBlock}
-                  </td>
-                </tr>
-              </table>
-
-              <!-- CTA -->
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:0 auto 8px;">
-                <tr>
-                  <td align="center" bgcolor="${BRAND.primary}" style="background-color:${BRAND.primary};border-radius:8px;">
-                    <!--[if mso]>
-                    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${DASHBOARD_ORDERS_URL}" style="height:44px;v-text-anchor:middle;width:220px;" arcsize="12%" stroke="f" fillcolor="${BRAND.primary}">
-                      <w:anchorlock/>
-                      <center style="color:#ffffff;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;">Ver mi Pedido</center>
-                    </v:roundrect>
-                    <![endif]-->
-                    <!--[if !mso]><!-- -->
-                    <a href="${DASHBOARD_ORDERS_URL}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:${BRAND.white};text-decoration:none;border-radius:8px;background-color:${BRAND.primary};">
-                      Ver mi Pedido
-                    </a>
-                    <!--<![endif]-->
-                  </td>
-                </tr>
-              </table>
-              <p style="margin:0 0 8px;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${BRAND.muted};">
-                También puedes abrir: <a href="${DASHBOARD_ORDERS_URL}" style="color:${BRAND.primary};">${DASHBOARD_ORDERS_URL}</a>
-              </p>
-              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:${BRAND.muted};text-align:center;">
-                El PDF del resumen de tu pedido está adjunto a este correo.
-              </p>
-            </td>
-          </tr>
-
-          <!-- FOOTER -->
-          <tr>
-            <td style="padding:24px;background-color:${BRAND.navy};font-family:Arial,Helvetica,sans-serif;color:${BRAND.white};">
-              <p style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#93C5FD;">
-                Atención a Clientes / Soporte
-              </p>
-              <p style="margin:0 0 6px;font-size:13px;line-height:1.5;color:${BRAND.white};">
-                <a href="mailto:${INTERNAL_SALES_EMAIL}" style="color:#BFDBFE;text-decoration:none;">${INTERNAL_SALES_EMAIL}</a>
-                &nbsp;|&nbsp;
-                <a href="mailto:${SUPPORT_EMAIL}" style="color:#BFDBFE;text-decoration:none;">${SUPPORT_EMAIL}</a>
-              </p>
-              <p style="margin:0 0 6px;font-size:13px;line-height:1.5;color:${BRAND.white};">
-                Teléfonos: +1 (956) 400-3683 / +52 (899) 923-1320
-              </p>
-              <p style="margin:0 0 6px;font-size:13px;line-height:1.5;color:#CBD5E1;">
-                Priv. San Rafael, Parque Moll Industrial, C.P. 88756, Reynosa, Tamps.
-              </p>
-              <p style="margin:0 0 16px;font-size:13px;line-height:1.5;">
-                <a href="https://www.plastipacusa.com" style="color:#93C5FD;text-decoration:underline;">www.plastipacusa.com</a>
-              </p>
-              <p style="margin:0;padding-top:14px;border-top:1px solid rgba(255,255,255,0.18);font-size:11px;line-height:1.55;color:#94A3B8;">
-                Este es un correo automático de confirmación de compra enviado por Plastipac USA.
-                Si tienes alguna duda con tu pedido, responde directamente a este correo o contacta a nuestro equipo de ventas.
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
-
-  const text = [
-    `Hola ${safeName},`,
-    "",
-    "Confirmación de Pedido — Plastipac USA",
-    "Hemos recibido tu pedido y se encuentra en proceso de preparación.",
-    "",
-    `Número de Orden: #${orderId}`,
-    `Fecha de Compra: ${purchaseDate}`,
-    payload.customerCompany ? `Empresa: ${payload.customerCompany}` : null,
-    "",
-    "Productos:",
-    ...lineItems.map((item) => {
-      const qty = item.quantity || 1;
-      const line =
-        item.total != null
-          ? formatUsd(item.total)
-          : item.unitPrice != null
-            ? formatUsd(Number(item.unitPrice) * qty)
-            : "";
-      return `- ${item.description} × ${qty}${line ? ` — ${line}` : ""}`;
-    }),
-    "",
-    `Total pagado: ${totalFormatted} USD`,
-    payload.shippingAddressSummary
-      ? `Dirección de entrega: ${payload.shippingAddressSummary}`
-      : null,
-    "",
-    `Ver mi Pedido: ${DASHBOARD_ORDERS_URL}`,
-    "",
-    "Atención a Clientes / Soporte:",
-    `${INTERNAL_SALES_EMAIL} | ${SUPPORT_EMAIL}`,
-    "Teléfonos: +1 (956) 400-3683 / +52 (899) 923-1320",
-    "Priv. San Rafael, Parque Moll Industrial, C.P. 88756, Reynosa, Tamps.",
-    "www.plastipacusa.com",
-    "",
-    "Este es un correo automático de confirmación de compra enviado por Plastipac USA. Si tienes alguna duda con tu pedido, responde directamente a este correo o contacta a nuestro equipo de ventas.",
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  const pdfFilename = `Order_${orderId.replace(/[^a-zA-Z0-9._-]+/g, "-")}.pdf`;
-
   try {
+    const { fetchOrderConfirmationTemplate } = await import(
+      "@/lib/email-template-store"
+    );
+    const { buildOrderConfirmationHtml } = await import(
+      "@/lib/order-confirmation-email"
+    );
+
+    const template = await fetchOrderConfirmationTemplate();
+    const salesEmail = template.footerSalesEmail || "sales@plastipacusa.com";
+    const recipients = Array.from(
+      new Set([buyerEmail, salesEmail].filter(Boolean))
+    );
+
+    const rendered = buildOrderConfirmationHtml(template, {
+      orderId: payload.orderId,
+      customerName: payload.customerName,
+      customerEmail: buyerEmail,
+      customerCompany: payload.customerCompany,
+      totalAmountUsd: payload.totalAmountUsd,
+      itemsSummary: payload.itemsSummary,
+      itemCount: payload.itemCount,
+      shippingAddressSummary: payload.shippingAddressSummary,
+      orderDate: payload.orderDate,
+      lineItems: payload.lineItems,
+    });
+
+    const pdfFilename = `Order_${payload.orderId.replace(/[^a-zA-Z0-9._-]+/g, "-")}.pdf`;
+
     const result = await sendEmail({
-      from: ORDER_CONFIRMATION_FROM,
+      from: rendered.from,
       to: recipients,
-      subject: `Confirmación de Pedido #${orderId} - Plastipac USA`,
-      text,
-      html,
-      replyTo: INTERNAL_SALES_EMAIL,
+      subject: rendered.subject,
+      text: rendered.text,
+      html: rendered.html,
+      replyTo: salesEmail,
       attachments: [
         {
           filename: pdfFilename,
@@ -647,11 +318,11 @@ export async function sendOrderConfirmationEmail(
 
     if (result.success) {
       console.log(
-        `[email] Order confirmation sent for #${orderId} to ${recipients.join(", ")} (Resend id: ${result.id || "n/a"})`
+        `[email] Order confirmation sent for #${payload.orderId} to ${recipients.join(", ")} (Resend id: ${result.id || "n/a"})`
       );
     } else if (!result.skipped) {
       console.error(
-        `[email] Order confirmation failed for #${orderId}:`,
+        `[email] Order confirmation failed for #${payload.orderId}:`,
         result.error || "unknown"
       );
     }

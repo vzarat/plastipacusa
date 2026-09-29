@@ -277,7 +277,7 @@ export function DashboardCreditClient({
         />
       )}
 
-      <main className="flex-1 min-w-0 w-full max-w-[1600px] 3xl:max-w-[1800px] mx-auto p-5 sm:p-8 lg:p-10 xl:px-12 overflow-y-auto space-y-6">
+      <main className="flex-1 min-w-0 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 lg:py-10 overflow-y-auto space-y-6">
         <div className="w-full">
           <Net30CreditHeroBanner />
         </div>

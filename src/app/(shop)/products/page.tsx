@@ -23,7 +23,7 @@ function CatalogFallback() {
       <div className="h-12 rounded-2xl bg-slate-200/70" />
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-3 h-80 rounded-2xl bg-slate-200/60" />
-        <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
           {Array.from({ length: 9 }).map((_, i) => (
             <div key={i} className="h-64 rounded-2xl bg-slate-200/60" />
           ))}
@@ -49,7 +49,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
   return (
     <div className="py-12 bg-slate-50/40 min-h-[calc(100vh-200px)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8">
         <CatalogPageHeader />
 
         <Suspense fallback={<CatalogFallback />}>

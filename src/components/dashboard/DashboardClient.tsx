@@ -830,7 +830,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
       )}
 
       {/* Right Main Content Area — expands; sidebar stays fixed width */}
-      <main className="flex-1 min-w-0 w-full max-w-[1600px] 3xl:max-w-[1800px] mx-auto p-5 sm:p-8 lg:p-10 xl:px-12 overflow-y-auto space-y-8">
+      <main className="flex-1 min-w-0 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 lg:py-10 overflow-y-auto space-y-8">
         {/* Top Minimal Action Bar */}
         <div className="flex items-center justify-between border-b border-slate-200/80 pb-4">
           <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">

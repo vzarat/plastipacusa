@@ -7,13 +7,15 @@ import { Menu, ShieldCheck } from "lucide-react";
 import { UserProfile } from "@/actions/auth";
 import { LanguageToggle } from "@/components/common/LanguageToggle";
 import { AdminSidebar, AdminTabKey } from "@/components/admin/AdminSidebar";
-import { AdminDiscountsView } from "@/components/admin/AdminDiscountsView";
+import { AdminEmailTemplatesView } from "@/components/admin/AdminEmailTemplatesView";
 
-interface AdminDiscountsClientProps {
+interface AdminEmailTemplatesClientProps {
   profile: UserProfile;
 }
 
-export function AdminDiscountsClient({ profile }: AdminDiscountsClientProps) {
+export function AdminEmailTemplatesClient({
+  profile,
+}: AdminEmailTemplatesClientProps) {
   const router = useRouter();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -36,7 +38,7 @@ export function AdminDiscountsClient({ profile }: AdminDiscountsClientProps) {
         profile={profile}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed((v) => !v)}
-        discountsActive
+        emailTemplatesActive
       />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -52,7 +54,7 @@ export function AdminDiscountsClient({ profile }: AdminDiscountsClientProps) {
             </button>
             <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-blue-900 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-200/80">
               <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-              Discounts
+              Email Templates
             </div>
           </div>
 
@@ -68,7 +70,7 @@ export function AdminDiscountsClient({ profile }: AdminDiscountsClientProps) {
         </header>
 
         <main className="flex-1 min-w-0 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-          <AdminDiscountsView />
+          <AdminEmailTemplatesView />
         </main>
       </div>
     </div>

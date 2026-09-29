@@ -210,7 +210,7 @@ export function AdminOrdersClient({
         </header>
 
         {/* Dynamic Tab Body */}
-        <main className="flex-1 min-w-0 w-full max-w-[1600px] 3xl:max-w-[1800px] mx-auto p-4 sm:p-6 lg:p-8 xl:px-10 space-y-6">
+        <main className="flex-1 min-w-0 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 space-y-6">
           {activeTab === "overview" && (
             <AdminDashboardOverview
               orders={orders}
