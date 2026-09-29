@@ -2,10 +2,7 @@
 
 import { getCurrentUser } from "@/actions/auth";
 import { sendEmail } from "@/lib/email";
-import {
-  createServiceRoleClient,
-  isServiceRoleConfigured,
-} from "@/lib/supabase/admin";
+import { isServiceRoleConfigured } from "@/lib/supabase/admin";
 import {
   DEFAULT_EMAIL_TEMPLATE,
   EMAIL_TEMPLATES_SQL,
@@ -17,6 +14,7 @@ import {
 } from "@/lib/order-confirmation-email";
 import {
   fetchOrderConfirmationTemplate,
+  getEmailTemplatesClient,
   rowToBranding,
 } from "@/lib/email-template-store";
 
@@ -60,53 +58,80 @@ export async function getOrderConfirmationTemplate(): Promise<EmailTemplateBrand
   return fetchOrderConfirmationTemplate();
 }
 
+/**
+ * Always returns an editable template. DB/RLS/table errors fall back to defaults
+ * so the admin form and Resend test send remain usable.
+ */
 export async function loadEmailTemplateForAdmin(): Promise<{
   success: boolean;
   template: EmailTemplateBranding;
   persisted: boolean;
+  clientMode?: "service_role" | "anon";
   sqlHint?: string;
   error?: string;
 }> {
   try {
     await requireAdmin();
-    if (!isServiceRoleConfigured()) {
+
+    try {
+      const { client, mode } = await getEmailTemplatesClient();
+      const { data, error } = await client
+        .from("email_templates")
+        .select("*")
+        .eq("slug", ORDER_CONFIRMATION_TEMPLATE_SLUG)
+        .maybeSingle();
+
+      if (error) {
+        console.warn("[email-templates] admin load fallback:", error.message);
+        return {
+          success: true,
+          template: { ...DEFAULT_EMAIL_TEMPLATE },
+          persisted: false,
+          clientMode: mode,
+          sqlHint: EMAIL_TEMPLATES_SQL,
+          error: error.message,
+        };
+      }
+
+      return {
+        success: true,
+        template: rowToBranding(data as Record<string, unknown> | null),
+        persisted: Boolean(data),
+        clientMode: mode,
+        ...(!isServiceRoleConfigured()
+          ? {
+              error:
+                "Using anon/session Supabase client (SUPABASE_SERVICE_ROLE_KEY not set).",
+            }
+          : {}),
+      };
+    } catch (dbErr: unknown) {
+      const message = dbErr instanceof Error ? dbErr.message : String(dbErr);
+      console.warn("[email-templates] admin load exception fallback:", message);
       return {
         success: true,
         template: { ...DEFAULT_EMAIL_TEMPLATE },
         persisted: false,
         sqlHint: EMAIL_TEMPLATES_SQL,
-        error: "SUPABASE_SERVICE_ROLE_KEY is not configured.",
+        error: message,
       };
     }
-
-    const supabase = createServiceRoleClient();
-    const { data, error } = await supabase
-      .from("email_templates")
-      .select("*")
-      .eq("slug", ORDER_CONFIRMATION_TEMPLATE_SLUG)
-      .maybeSingle();
-
-    if (error) {
-      return {
-        success: true,
-        template: { ...DEFAULT_EMAIL_TEMPLATE },
-        persisted: false,
-        sqlHint: EMAIL_TEMPLATES_SQL,
-        error: error.message,
-      };
-    }
-
-    return {
-      success: true,
-      template: rowToBranding(data as Record<string, unknown> | null),
-      persisted: Boolean(data),
-    };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
+    // Unauthorized still fails hard; everything else stays editable.
+    if (message === "Unauthorized") {
+      return {
+        success: false,
+        template: { ...DEFAULT_EMAIL_TEMPLATE },
+        persisted: false,
+        error: message,
+      };
+    }
     return {
-      success: false,
+      success: true,
       template: { ...DEFAULT_EMAIL_TEMPLATE },
       persisted: false,
+      sqlHint: EMAIL_TEMPLATES_SQL,
       error: message,
     };
   }
@@ -118,38 +143,48 @@ export async function saveEmailTemplate(
   success: boolean;
   error?: string;
   sqlHint?: string;
+  clientMode?: "service_role" | "anon";
 }> {
   try {
     await requireAdmin();
-    if (!isServiceRoleConfigured()) {
+
+    try {
+      const { client, mode } = await getEmailTemplatesClient();
+      const payload = brandingToRow(mergeEmailTemplate(branding));
+      const { error } = await client
+        .from("email_templates")
+        .upsert(payload, { onConflict: "slug" });
+
+      if (error) {
+        console.warn("[email-templates] save fallback:", error.message);
+        return {
+          success: false,
+          error: error.message,
+          sqlHint: EMAIL_TEMPLATES_SQL,
+          clientMode: mode,
+        };
+      }
+
+      return { success: true, clientMode: mode };
+    } catch (dbErr: unknown) {
+      const message = dbErr instanceof Error ? dbErr.message : String(dbErr);
+      console.warn("[email-templates] save exception:", message);
       return {
         success: false,
-        error: "SUPABASE_SERVICE_ROLE_KEY is not configured.",
+        error: message,
         sqlHint: EMAIL_TEMPLATES_SQL,
       };
     }
-
-    const supabase = createServiceRoleClient();
-    const payload = brandingToRow(mergeEmailTemplate(branding));
-    const { error } = await supabase
-      .from("email_templates")
-      .upsert(payload, { onConflict: "slug" });
-
-    if (error) {
-      return {
-        success: false,
-        error: error.message,
-        sqlHint: EMAIL_TEMPLATES_SQL,
-      };
-    }
-
-    return { success: true };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return { success: false, error: message };
   }
 }
 
+/**
+ * Test send uses the in-memory form template (or defaults). Does not require
+ * service role or email_templates table — only Resend + admin session.
+ */
 export async function sendTestOrderConfirmationEmail(input: {
   to: string;
   template?: EmailTemplateBranding;
@@ -161,8 +196,16 @@ export async function sendTestOrderConfirmationEmail(input: {
       return { success: false, error: "Enter a valid test email address." };
     }
 
-    const stored = await fetchOrderConfirmationTemplate();
-    const template = mergeEmailTemplate(input.template || stored);
+    // Prefer the live form payload so test send works without DB persistence.
+    let template = mergeEmailTemplate(input.template);
+    if (!input.template) {
+      try {
+        template = mergeEmailTemplate(await fetchOrderConfirmationTemplate());
+      } catch {
+        template = { ...DEFAULT_EMAIL_TEMPLATE };
+      }
+    }
+
     const rendered = buildOrderConfirmationHtml(template, {
       ...SAMPLE_ORDER_CONTENT,
       customerEmail: to,

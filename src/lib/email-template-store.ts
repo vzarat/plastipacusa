@@ -1,7 +1,9 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   createServiceRoleClient,
   isServiceRoleConfigured,
 } from "@/lib/supabase/admin";
+import { createServerClient } from "@/lib/supabase/server";
 import {
   DEFAULT_EMAIL_TEMPLATE,
   ORDER_CONFIRMATION_TEMPLATE_SLUG,
@@ -50,14 +52,25 @@ function rowToBranding(row: Record<string, unknown> | null): EmailTemplateBrandi
   });
 }
 
-/** Load order confirmation branding (defaults if table missing). */
+/**
+ * Prefer service-role when configured; otherwise use the standard
+ * cookie-based anon/server client (admin session / RLS).
+ */
+export async function getEmailTemplatesClient(): Promise<{
+  client: SupabaseClient;
+  mode: "service_role" | "anon";
+}> {
+  if (isServiceRoleConfigured()) {
+    return { client: createServiceRoleClient(), mode: "service_role" };
+  }
+  return { client: await createServerClient(), mode: "anon" };
+}
+
+/** Load order confirmation branding (defaults if table/key missing). */
 export async function fetchOrderConfirmationTemplate(): Promise<EmailTemplateBranding> {
   try {
-    if (!isServiceRoleConfigured()) {
-      return { ...DEFAULT_EMAIL_TEMPLATE };
-    }
-    const supabase = createServiceRoleClient();
-    const { data, error } = await supabase
+    const { client } = await getEmailTemplatesClient();
+    const { data, error } = await client
       .from("email_templates")
       .select("*")
       .eq("slug", ORDER_CONFIRMATION_TEMPLATE_SLUG)
