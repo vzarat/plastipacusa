@@ -5,7 +5,10 @@ import {
   isServiceRoleConfigured,
 } from "@/lib/supabase/admin";
 import { formatOrderId } from "@/lib/utils";
-import { notifyAdminPurchaseOrder } from "@/lib/email";
+import {
+  notifyAdminPurchaseOrder,
+  sendOrderConfirmationEmail,
+} from "@/lib/email";
 import {
   fetchPlastipacLogoForPdf,
   generateInvoicePdf,
@@ -573,7 +576,7 @@ async function handleCheckoutSessionCompleted(
   }
 
   // PDF generation is required — failures must surface as HTTP 500 for Stripe retries.
-  await generateOrderSummaryPdf(order);
+  const pdfBytes = await generateOrderSummaryPdf(order);
 
   const poReference =
     orderIdHint ||
@@ -583,21 +586,57 @@ async function handleCheckoutSessionCompleted(
       items: order.items || [],
     });
 
-  await dispatchAdminPoEmail({
-    orderId: poReference,
-    customerName,
-    customerEmail,
-    customerCompany,
-    totalAmount,
-    shippingState,
-    shippingCity,
-    shippingAddressSummary: shippingAddressSummary || undefined,
-    itemCount,
-    itemsSummary,
-    orderDate: new Date(
-      (session.created || Date.now() / 1000) * 1000
-    ).toISOString(),
-  });
+  const resolvedCustomerEmail =
+    customerEmail ||
+    order.customer_email ||
+    (order.shipping_address?.email as string | undefined) ||
+    "";
+
+  try {
+    await sendOrderConfirmationEmail({
+      orderId: poReference,
+      customerName,
+      customerEmail: resolvedCustomerEmail,
+      customerCompany,
+      totalAmountUsd: totalAmount,
+      itemsSummary,
+      itemCount,
+      shippingAddressSummary: shippingAddressSummary || undefined,
+      pdfBytes,
+    });
+  } catch (emailErr: unknown) {
+    const message =
+      emailErr instanceof Error ? emailErr.message : String(emailErr);
+    console.error(
+      "[stripe webhook] Order confirmation email failed (payment still OK):",
+      message
+    );
+  }
+
+  try {
+    await dispatchAdminPoEmail({
+      orderId: poReference,
+      customerName,
+      customerEmail: resolvedCustomerEmail || customerEmail,
+      customerCompany,
+      totalAmount,
+      shippingState,
+      shippingCity,
+      shippingAddressSummary: shippingAddressSummary || undefined,
+      itemCount,
+      itemsSummary,
+      orderDate: new Date(
+        (session.created || Date.now() / 1000) * 1000
+      ).toISOString(),
+    });
+  } catch (adminEmailErr: unknown) {
+    const message =
+      adminEmailErr instanceof Error ? adminEmailErr.message : String(adminEmailErr);
+    console.error(
+      "[stripe webhook] Admin PO email failed (payment still OK):",
+      message
+    );
+  }
 
   console.log(
     `[stripe webhook] checkout.session.completed confirmed for order ${order.id} (${PAID_CLEARED_LABEL})`
