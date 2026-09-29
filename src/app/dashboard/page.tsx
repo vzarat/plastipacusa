@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/actions/auth";
 import { SetPasswordModal } from "@/components/auth/SetPasswordModal";
@@ -89,10 +89,15 @@ async function getDashboardOrders(
   }
 }
 
-export default async function DashboardPage({ searchParams }: any) {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ setup_password?: string; tab?: string }>;
+}) {
   const currentUser = await getCurrentUser();
+  const params = await searchParams;
   const shouldSetupPassword =
-    searchParams?.setup_password === "true" ||
+    params?.setup_password === "true" ||
     (currentUser?.profile?.hasPassword === false && !currentUser?.profile?.passwordSetupSkipped);
 
   if (!currentUser) {
@@ -106,9 +111,25 @@ export default async function DashboardPage({ searchParams }: any) {
 
   const userOrders = await getDashboardOrders(currentUser);
 
+  const tabParam = params?.tab;
+  const initialTab =
+    tabParam === "invoices" ||
+    tabParam === "overview" ||
+    tabParam === "reorders" ||
+    tabParam === "settings" ||
+    tabParam === "help"
+      ? tabParam
+      : undefined;
+
   return (
     <>
-      <DashboardClient profile={currentUser.profile} orders={userOrders} />
+      <Suspense fallback={<div className="min-h-screen bg-slate-50" aria-hidden />}>
+        <DashboardClient
+          profile={currentUser.profile}
+          orders={userOrders}
+          initialTab={initialTab}
+        />
+      </Suspense>
       <SetPasswordModal isOpen={shouldSetupPassword} />
     </>
   );

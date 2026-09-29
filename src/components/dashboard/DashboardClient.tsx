@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency, formatOrderId } from "@/lib/utils";
@@ -123,6 +123,7 @@ type TabKey = "overview" | "reorders" | "invoices" | "settings" | "help";
 export function DashboardClient({ profile, orders, initialTab }: DashboardClientProps) {
   const { t, locale } = useLanguage();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const NAV_ITEMS: {
     key: TabKey;
@@ -157,7 +158,32 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
     }
   };
 
-  const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? "overview");
+  const resolveTab = (raw: string | null | undefined): TabKey | null => {
+    if (
+      raw === "overview" ||
+      raw === "reorders" ||
+      raw === "invoices" ||
+      raw === "settings" ||
+      raw === "help"
+    ) {
+      return raw;
+    }
+    return null;
+  };
+
+  const [activeTab, setActiveTab] = useState<TabKey>(
+    resolveTab(initialTab) ?? "overview"
+  );
+
+  useEffect(() => {
+    const fromQuery = resolveTab(searchParams.get("tab"));
+    if (fromQuery && fromQuery !== activeTab) {
+      setActiveTab(fromQuery);
+    }
+    // Sync when ?tab= changes (e.g. guided tour → invoices)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [reorderNotice, setReorderNotice] = useState<string | null>(null);
   const [backupPasswordPending, setBackupPasswordPending] = useState(
@@ -664,6 +690,9 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                   key={item.key}
                   type="button"
                   onClick={() => handleTabClick(item.key)}
+                  data-tour={
+                    item.key === "invoices" ? "dashboard-invoices-nav" : undefined
+                  }
                   className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 ease-in-out text-left border-l-4 cursor-pointer ${
                     isActive
                       ? "border-blue-600 bg-slate-100/80 font-medium text-blue-900 shadow-xs"
@@ -1099,7 +1128,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
 
         {/* TAB 2: INVOICES & STATEMENTS */}
         {activeTab === "invoices" && (
-          <div className="space-y-6">
+          <div className="space-y-6" data-tour="dashboard-invoices-panel">
             <div className="space-y-1">
               <h2 className="text-2xl font-black text-slate-900 tracking-tight">
                 {t("dashboard.invoicesTitle")}

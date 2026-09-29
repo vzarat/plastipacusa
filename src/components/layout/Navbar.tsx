@@ -310,6 +310,7 @@ export function Navbar() {
               <Link
                 href="/login"
                 onClick={closeMobileMenu}
+                data-tour="nav-sign-in"
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 py-3 font-semibold text-white shadow-md shadow-sky-500/20 hover:opacity-95 hover:shadow-lg hover:shadow-sky-500/30 transition-all"
               >
                 <User className="w-4 h-4" />
@@ -530,6 +531,7 @@ export function Navbar() {
             ) : (
               <Link
                 href="/login"
+                data-tour="nav-sign-in"
                 className="flex items-center gap-2 bg-gradient-to-r from-sky-400 via-sky-600 to-blue-700 text-white font-semibold text-xs sm:text-sm px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl shadow-md shadow-sky-500/20 hover:shadow-lg hover:shadow-sky-500/30 hover:opacity-95 transition-all cursor-pointer"
               >
                 <User className="w-4 h-4 text-white" />

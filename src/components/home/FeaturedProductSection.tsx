@@ -123,6 +123,7 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
   return (
     <section
       id="product-catalog-section"
+      data-tour="tour-catalog"
       className="py-16 sm:py-20 bg-white border-b border-slate-100 transition-colors duration-300"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

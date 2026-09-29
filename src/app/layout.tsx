@@ -27,6 +27,13 @@ const inter = Inter({
 });
 
 const CartDrawer = dynamic(() => import("@/components/layout/CartDrawer"));
+const OnboardingTour = dynamic(
+  () =>
+    import("@/components/onboarding/OnboardingTour").then(
+      (m) => m.OnboardingTour
+    ),
+  { ssr: false }
+);
 
 const APP_ICON = `${SUPABASE_ORIGIN}/storage/v1/object/public/Products/ICON_APP.png`;
 const FAVICON = `${SUPABASE_ORIGIN}/storage/v1/object/public/Products/FAVICON.png`;
@@ -132,6 +139,7 @@ export default function RootLayout({
           <ClientPWAProvider />
           {children}
           <CartDrawer />
+          <OnboardingTour />
           <Toaster closeButton position="top-right" richColors />
         </LanguageProvider>
       </body>
