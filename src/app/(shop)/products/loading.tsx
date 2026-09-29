@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function ProductsLoading() {
   return (
     <div className="py-12 bg-slate-50/40 min-h-[calc(100vh-200px)] animate-fade-in-up">
-      <div className="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header Skeleton */}
         <div className="mb-10 space-y-2">
           <Skeleton className="w-36 h-5 rounded-full" />
@@ -42,7 +42,7 @@ export default function ProductsLoading() {
 
           {/* Grid Skeleton */}
           <div className="lg:col-span-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               <ProductCardSkeleton />
               <ProductCardSkeleton />
               <ProductCardSkeleton />

@@ -24,7 +24,7 @@ export function CategoryCardSkeleton() {
 export function CategoryShowcaseSkeleton() {
   return (
     <section className="py-20 bg-slate-50/60 border-b border-slate-100">
-      <div className="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
           <Skeleton className="w-36 h-6 rounded-full mx-auto" />
           <Skeleton className="w-72 sm:w-96 h-10 rounded-xl mx-auto" />
@@ -103,7 +103,7 @@ export function ProductGridSkeleton({ count = 4 }: { count?: number }) {
 export function ProductDetailSkeleton() {
   return (
     <div className="py-10 bg-slate-50/40 min-h-screen">
-      <div className="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         {/* Breadcrumb Skeleton */}
         <div className="flex items-center gap-2">
           <Skeleton className="w-12 h-4 rounded" />

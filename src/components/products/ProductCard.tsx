@@ -206,10 +206,9 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
 
   return (
     <div className="group h-full flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-white overflow-hidden transition-all duration-300 hover:border-sky-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-500/10 card-hover-effect">
-      {/* Top content grows; price/CTA stay pinned to the card footer */}
-      <div className="flex-1 flex flex-col min-h-0">
-        {/* 1. Clean Product Image Area */}
-        <div className="relative aspect-[4/3] w-full bg-slate-50/50 overflow-hidden border-b border-slate-100 flex items-center justify-center shrink-0">
+      <div>
+        {/* 1. Clean Product Image Area (Completely free of floating dark pills and text overlays) */}
+        <div className="relative aspect-[4/3] w-full bg-slate-50/50 overflow-hidden border-b border-slate-100 flex items-center justify-center">
           {/* Official Category Brand Logo Badge */}
           <div className="absolute top-3.5 left-3.5 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-800 shadow-sm flex items-center justify-center">
             <Image
@@ -228,7 +227,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             fill
             priority={priority}
             placeholder="empty"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1536px) 33vw, (max-width: 1800px) 25vw, 16vw"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
             className={`object-contain p-5 transition-all duration-300 ${
               secondaryImage
                 ? "group-hover:opacity-0 group-hover:scale-95"
@@ -243,14 +242,14 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               alt={`${title} Packaging Box`}
               fill
               placeholder="empty"
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1536px) 33vw, (max-width: 1800px) 25vw, 16vw"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
               className="object-contain p-5 opacity-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300 pointer-events-none"
             />
           )}
         </div>
 
         {/* 2. Refined Product Info & B2B Volume Indicator */}
-        <div className="p-5 sm:p-6 pb-4 space-y-3.5 flex-1">
+        <div className="p-6 pb-4 space-y-3.5">
           <div>
             <span className={`text-[10px] font-mono uppercase ${catStyles.seriesColor} font-bold tracking-wider block`}>
               {isGenesis
@@ -295,26 +294,16 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         </div>
       </div>
 
-      {/* 3. Price + CTA anchored to card bottom */}
-      <div className="mt-auto p-5 sm:p-6 pt-0 space-y-3 shrink-0">
-        <div className="flex items-end justify-between gap-3 pt-3 border-t border-slate-100">
-          <div className="min-w-0">
+      {/* 3. Pricing Display & Full-Width High-Conversion CTA Button */}
+      <div className="p-6 pt-0 space-y-3.5">
+        {/* Dynamic Tier Price Header */}
+        <div className="flex items-baseline justify-between pt-3 border-t border-slate-100">
+          <div>
             <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">
               Starting at
             </span>
-            <span className="mt-1 inline-block text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-              {isGenesis
-                ? "Machine Roll"
-                : cheapestPackage?.rolls
-                ? `${cheapestPackage.rolls} Rolls`
-                : primaryVariant?.rollsPerBox
-                ? `${primaryVariant.rollsPerBox} Rolls / Box`
-                : "Package"}
-            </span>
-          </div>
-          <div className="text-right ml-auto shrink-0">
-            <div className="flex items-baseline justify-end gap-1.5">
-              <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight tabular-nums">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-black text-slate-900 tracking-tight">
                 {primaryPrice !== null ? formatCurrency(primaryPrice) : "—"}
               </span>
               {primaryPrice !== null && (
@@ -322,8 +311,18 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               )}
             </div>
           </div>
+          <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
+            {isGenesis
+              ? "Machine Roll"
+              : cheapestPackage?.rolls
+              ? `${cheapestPackage.rolls} Rolls`
+              : primaryVariant?.rollsPerBox
+              ? `${primaryVariant.rollsPerBox} Rolls / Box`
+              : "Package"}
+          </span>
         </div>
 
+        {/* High-Conversion "BUY NOW" Button */}
         <Link
           href={`/products/${product?.slug || "stretch-film-18-x-60-ga-x-1000ft"}`}
           className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 text-white font-extrabold text-sm shadow-md shadow-sky-500/20 hover:opacity-95 hover:shadow-lg hover:shadow-sky-500/30 transition-all duration-200 active:scale-[0.99] group/btn"

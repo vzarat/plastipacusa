@@ -830,7 +830,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
       )}
 
       {/* Right Main Content Area — expands; sidebar stays fixed width */}
-      <main className="flex-1 min-w-0 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 lg:py-10 overflow-y-auto space-y-8">
+      <main className="flex-1 min-w-0 w-full max-w-[1800px] mx-auto px-6 py-5 sm:py-8 lg:py-10 overflow-y-auto space-y-8">
         {/* Top Minimal Action Bar */}
         <div className="flex items-center justify-between border-b border-slate-200/80 pb-4">
           <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
@@ -908,7 +908,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                   />
 
                   {/* KPI Stats Row — denser on wide monitors */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-4 sm:gap-5 xl:gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-5 xl:gap-6">
                     {/* Total Orders */}
                     <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs space-y-2 sm:col-span-1 lg:col-span-1">
                       <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">

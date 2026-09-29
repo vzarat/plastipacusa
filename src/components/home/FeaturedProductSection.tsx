@@ -126,7 +126,7 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
       data-tour="tour-catalog"
       className="py-16 sm:py-20 bg-white border-b border-slate-100 transition-colors duration-300"
     >
-      <div className="max-w-[1800px] mx-auto w-full px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-10 gap-6">
           <div className="space-y-2.5">
             <div className="flex items-center gap-2">
@@ -207,7 +207,7 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
             transition={{ duration: 0.28, ease: "easeInOut" }}
           >
             {filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
                 {filteredProducts.map((product, idx) => (
                   <ProductCard
                     key={`${product.series || "x"}-${product.slug || product.id || idx}`}

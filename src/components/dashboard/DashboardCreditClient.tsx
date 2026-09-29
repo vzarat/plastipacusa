@@ -277,7 +277,7 @@ export function DashboardCreditClient({
         />
       )}
 
-      <main className="flex-1 min-w-0 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 lg:py-10 overflow-y-auto space-y-6">
+      <main className="flex-1 min-w-0 w-full max-w-[1800px] mx-auto px-6 py-5 sm:py-8 lg:py-10 overflow-y-auto space-y-6">
         <div className="w-full">
           <Net30CreditHeroBanner />
         </div>
@@ -331,7 +331,7 @@ export function DashboardCreditClient({
                 : "Four clear steps to unlock Net 30 payment terms."}
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-4 w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-4 w-full">
             {steps.map((step) => {
               const Icon = step.icon;
               return (
