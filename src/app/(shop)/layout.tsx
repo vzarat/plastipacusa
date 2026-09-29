@@ -2,6 +2,7 @@ import React from "react";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 
 export default function ShopLayout({
   children,
@@ -14,6 +15,7 @@ export default function ShopLayout({
       <Navbar />
       <main className="flex-1 bg-white">{children}</main>
       <Footer />
+      <OnboardingTour />
     </div>
   );
 }

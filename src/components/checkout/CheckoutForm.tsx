@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CreditCard, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { PromoCodeInput } from "@/components/cart/PromoCodeInput";
 import { StripeEmbeddedCheckout } from "@/components/checkout/StripeEmbeddedCheckout";
@@ -31,6 +32,40 @@ export function CheckoutForm({
           Enter your email, agree to the policies, and complete payment with the
           embedded Stripe form — no redirect to hosted Checkout.
         </p>
+      </div>
+
+      <div
+        className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+        data-tour="checkout-payment-options"
+      >
+        <div className="rounded-2xl border border-sky-200 bg-sky-50/70 p-4 space-y-1.5">
+          <div className="flex items-center gap-2 text-sky-800">
+            <CreditCard className="w-4 h-4" />
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Credit Card
+            </span>
+          </div>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Pay instantly with Visa, Mastercard, Amex, or Discover via Stripe.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-1.5">
+          <div className="flex items-center gap-2 text-slate-800">
+            <Building2 className="w-4 h-4 text-sky-700" />
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Net 30 Commercial Credit
+            </span>
+          </div>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Approved B2B accounts can invoice on Net 30 terms.{" "}
+            <Link
+              href="/credit-application"
+              className="font-semibold text-sky-700 hover:underline"
+            >
+              Apply for credit →
+            </Link>
+          </p>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3">

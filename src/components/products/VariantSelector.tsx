@@ -563,7 +563,7 @@ export function VariantSelector({
       </div>
 
       {/* Package Size Pill Selector */}
-      <div className="space-y-3">
+      <div className="space-y-3" data-tour="product-price-tiers">
         <div className="flex items-center justify-between">
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
             {t("products.packageOptions")}
@@ -717,7 +717,8 @@ export function VariantSelector({
         onApplied={handleDiscountApplied}
       />
 
-      {/* Specifications Highlight Box */}
+      {/* Specs + Quantity (onboarding step 1) */}
+      <div className="space-y-4" data-tour="product-specs">
       {(() => {
         const widthVal =
           (product as any)?.width_inches ||
@@ -777,8 +778,8 @@ export function VariantSelector({
         );
       })()}
 
-      {/* Quantity & Actions */}
-      <div className="space-y-4 pt-2 border-t border-slate-100">
+      {/* Quantity */}
+      <div className="pt-2 border-t border-slate-100">
         <div className="flex items-center justify-between gap-4">
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 flex-wrap">
@@ -868,7 +869,11 @@ export function VariantSelector({
             </span>
           </div>
         </div>
+      </div>
+      </div>
 
+      {/* Actions */}
+      <div className="space-y-4 pt-2">
         {showSmartUpsell && (
           <div
             key={`upsell-${quantity}`}
@@ -897,7 +902,7 @@ export function VariantSelector({
           </div>
         )}
 
-        <div className="space-y-2.5 pt-1">
+        <div className="space-y-2.5 pt-1" data-tour="product-add-to-cart">
           <Button
             type="button"
             onClick={handleAddToCart}

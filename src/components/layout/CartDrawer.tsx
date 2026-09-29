@@ -339,7 +339,7 @@ export function CartDrawer() {
                 )}
               </form>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2" data-tour="cart-quick-actions">
                 <DirectCheckoutButton
                   label="Proceed to Checkout"
                   onBeforeNavigate={() => {

@@ -1,0 +1,111 @@
+/**
+ * Plastipac-branded driver.js popover styles for the purchase onboarding tour.
+ */
+
+.plastipac-tour-popover.driver-popover {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  box-shadow:
+    0 20px 40px -16px rgba(14, 165, 233, 0.28),
+    0 8px 16px -8px rgba(15, 23, 42, 0.18);
+  max-width: min(360px, calc(100vw - 2rem));
+  padding: 1rem 1rem 0.85rem;
+}
+
+.plastipac-tour-popover .driver-popover-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #0c4a6e;
+  line-height: 1.3;
+}
+
+.plastipac-tour-popover .driver-popover-description {
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: #475569;
+  margin-top: 0.35rem;
+}
+
+.plastipac-tour-popover .driver-popover-progress-text {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.plastipac-tour-popover .driver-popover-footer {
+  margin-top: 0.85rem;
+  gap: 0.4rem;
+}
+
+.plastipac-tour-popover .driver-popover-navigation-btns {
+  gap: 0.4rem;
+}
+
+.plastipac-tour-popover button.driver-popover-next-btn,
+.plastipac-tour-popover button.driver-popover-prev-btn,
+.plastipac-tour-popover button.driver-popover-close-btn {
+  border-radius: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.5rem 0.85rem;
+  text-shadow: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.plastipac-tour-popover button.driver-popover-next-btn {
+  background: linear-gradient(90deg, #0ea5e9, #0284c7, #1d4ed8);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 8px 16px -8px rgba(14, 165, 233, 0.55);
+}
+
+.plastipac-tour-popover button.driver-popover-prev-btn {
+  background: #f8fafc;
+  color: #334155;
+  border-color: #e2e8f0;
+}
+
+.plastipac-tour-popover button.driver-popover-close-btn {
+  background: transparent;
+  color: #64748b;
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.plastipac-tour-popover button.driver-popover-next-btn:hover,
+.plastipac-tour-popover button.driver-popover-prev-btn:hover,
+.plastipac-tour-popover button.driver-popover-close-btn:hover {
+  filter: brightness(0.97);
+}
+
+.plastipac-tour-popover .driver-popover-arrow-side-left .driver-popover-arrow,
+.plastipac-tour-popover .driver-popover-arrow-side-right .driver-popover-arrow,
+.plastipac-tour-popover .driver-popover-arrow-side-top .driver-popover-arrow,
+.plastipac-tour-popover .driver-popover-arrow-side-bottom .driver-popover-arrow {
+  border-color: #ffffff;
+}
+
+.driver-overlay {
+  background: rgba(15, 23, 42, 0.55) !important;
+}
+
+@media (max-width: 640px) {
+  .plastipac-tour-popover.driver-popover {
+    max-width: calc(100vw - 1.25rem);
+    border-radius: 0.9rem;
+  }
+
+  .plastipac-tour-popover .driver-popover-title {
+    font-size: 0.9rem;
+  }
+
+  .plastipac-tour-popover .driver-popover-description {
+    font-size: 0.78rem;
+  }
+}
