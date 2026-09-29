@@ -2,14 +2,7 @@
 
 import React, { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import {
-  Loader2,
-  Mail,
-  Save,
-  Send,
-  Eye,
-  AlertTriangle,
-} from "lucide-react";
+import { Loader2, Mail, Save, Send, Eye } from "lucide-react";
 import {
   loadEmailTemplateForAdmin,
   saveEmailTemplate,
@@ -48,9 +41,6 @@ export function AdminEmailTemplatesView() {
   });
   const [testEmail, setTestEmail] = useState("");
   const [loading, setLoading] = useState(true);
-  const [sqlHint, setSqlHint] = useState<string | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [persisted, setPersisted] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -59,10 +49,7 @@ export function AdminEmailTemplatesView() {
       setLoading(true);
       const result = await loadEmailTemplateForAdmin();
       if (cancelled) return;
-      setTemplate(result.template);
-      setPersisted(result.persisted);
-      setSqlHint(result.sqlHint || null);
-      setLoadError(result.error || null);
+      setTemplate(result.template || { ...DEFAULT_EMAIL_TEMPLATE });
       setLoading(false);
     })();
     return () => {
@@ -86,13 +73,9 @@ export function AdminEmailTemplatesView() {
     startTransition(async () => {
       const result = await saveEmailTemplate(template);
       if (result.success) {
-        setPersisted(true);
-        setSqlHint(null);
-        setLoadError(null);
-        toast.success("Plantilla guardada en Supabase.");
+        toast.success("Template saved.");
       } else {
-        if (result.sqlHint) setSqlHint(result.sqlHint);
-        toast.error(result.error || "No se pudo guardar la plantilla.");
+        toast.error(result.error || "Could not save template.");
       }
     });
   };
@@ -104,9 +87,9 @@ export function AdminEmailTemplatesView() {
         template,
       });
       if (result.success) {
-        toast.success(`Correo de prueba enviado a ${testEmail}`);
+        toast.success(`Test email sent to ${testEmail}`);
       } else {
-        toast.error(result.error || "No se pudo enviar el correo de prueba.");
+        toast.error(result.error || "Could not send test email.");
       }
     });
   };
@@ -115,7 +98,7 @@ export function AdminEmailTemplatesView() {
     return (
       <div className="flex min-h-[320px] items-center justify-center gap-2 text-sm text-slate-600">
         <Loader2 className="h-4 w-4 animate-spin text-sky-600" />
-        Cargando plantilla…
+        Loading template…
       </div>
     );
   }
@@ -129,11 +112,11 @@ export function AdminEmailTemplatesView() {
             Email Templates
           </div>
           <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900">
-            Confirmación de compra
+            Order Confirmation
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-600">
-            Personaliza branding, mensaje y footer del correo Resend. La vista
-            previa se actualiza en vivo con un pedido ficticio (#TEST-123).
+            Customize branding, message, and footer for Resend order emails.
+            Live preview updates with a sample order (#TEST-123).
           </p>
         </div>
         <button
@@ -147,36 +130,17 @@ export function AdminEmailTemplatesView() {
           ) : (
             <Save className="h-4 w-4" />
           )}
-          Guardar plantilla
+          Save template
         </button>
       </div>
-
-      {(sqlHint || loadError) && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 space-y-2">
-          <div className="flex items-start gap-2 font-semibold">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-            <span>
-              {persisted
-                ? "Aviso"
-                : "La tabla `email_templates` aún no está disponible — se usan valores por defecto."}
-            </span>
-          </div>
-          {loadError && <p className="text-xs text-amber-800">{loadError}</p>}
-          {sqlHint && (
-            <pre className="overflow-x-auto rounded-xl bg-white/80 p-3 text-[11px] leading-relaxed text-slate-700 border border-amber-100">
-              {sqlHint}
-            </pre>
-          )}
-        </div>
-      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         <div className="xl:col-span-5 space-y-5">
           <section className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm space-y-4">
             <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">
-              Contenido
+              Content
             </h2>
-            <Field label="Asunto (usa {{orderId}})">
+            <Field label="Subject (use {{orderId}})">
               <input
                 className={inputClass}
                 value={template.subject}
@@ -190,51 +154,35 @@ export function AdminEmailTemplatesView() {
                 onChange={(e) => update("logoUrl", e.target.value)}
               />
             </Field>
-            <Field label="Prefijo de saludo">
+            <Field label="Greeting prefix">
               <input
                 className={inputClass}
                 value={template.greetingPrefix}
                 onChange={(e) => update("greetingPrefix", e.target.value)}
               />
             </Field>
-            <Field label="Mensaje principal">
+            <Field label="Main message">
               <textarea
                 className={`${inputClass} min-h-[96px] resize-y`}
                 value={template.mainMessage}
                 onChange={(e) => update("mainMessage", e.target.value)}
               />
             </Field>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Field label="Texto CTA">
-                <input
-                  className={inputClass}
-                  value={template.ctaLabel}
-                  onChange={(e) => update("ctaLabel", e.target.value)}
-                />
-              </Field>
-              <Field label="URL CTA">
-                <input
-                  className={inputClass}
-                  value={template.ctaUrl}
-                  onChange={(e) => update("ctaUrl", e.target.value)}
-                />
-              </Field>
-            </div>
           </section>
 
           <section className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm space-y-4">
             <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">
-              Colores corporativos
+              Brand colors
             </h2>
             <div className="grid grid-cols-2 gap-3">
               {(
                 [
-                  ["primaryColor", "Primario / azul"],
+                  ["primaryColor", "Primary / blue"],
                   ["navyColor", "Navy header"],
-                  ["backgroundColor", "Fondo"],
+                  ["backgroundColor", "Background"],
                   ["panelColor", "Panel"],
-                  ["textColor", "Texto"],
-                  ["mutedColor", "Texto secundario"],
+                  ["textColor", "Text"],
+                  ["mutedColor", "Muted text"],
                 ] as const
               ).map(([key, label]) => (
                 <Field key={key} label={label}>
@@ -258,9 +206,9 @@ export function AdminEmailTemplatesView() {
 
           <section className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm space-y-4">
             <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">
-              Footer / contacto
+              Footer / contact
             </h2>
-            <Field label="Email de ventas">
+            <Field label="Sales email">
               <input
                 className={inputClass}
                 value={template.footerSalesEmail}
@@ -268,14 +216,14 @@ export function AdminEmailTemplatesView() {
               />
             </Field>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Field label="Teléfono US">
+              <Field label="Phone US">
                 <input
                   className={inputClass}
                   value={template.footerSupportPhoneUs}
                   onChange={(e) => update("footerSupportPhoneUs", e.target.value)}
                 />
               </Field>
-              <Field label="Teléfono MX">
+              <Field label="Phone MX">
                 <input
                   className={inputClass}
                   value={template.footerSupportPhoneMx}
@@ -283,21 +231,21 @@ export function AdminEmailTemplatesView() {
                 />
               </Field>
             </div>
-            <Field label="Dirección de planta">
+            <Field label="Plant address">
               <textarea
                 className={`${inputClass} min-h-[72px] resize-y`}
                 value={template.footerAddress}
                 onChange={(e) => update("footerAddress", e.target.value)}
               />
             </Field>
-            <Field label="Sitio web">
+            <Field label="Website">
               <input
                 className={inputClass}
                 value={template.footerWebsite}
                 onChange={(e) => update("footerWebsite", e.target.value)}
               />
             </Field>
-            <Field label="Disclaimer legal">
+            <Field label="Legal disclaimer">
               <textarea
                 className={`${inputClass} min-h-[88px] resize-y`}
                 value={template.legalDisclaimer}
@@ -308,13 +256,13 @@ export function AdminEmailTemplatesView() {
 
           <section className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm space-y-4">
             <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">
-              Enviar correo de prueba
+              Send test email
             </h2>
-            <Field label="Correo para prueba">
+            <Field label="Test recipient">
               <input
                 type="email"
                 className={inputClass}
-                placeholder="tu@empresa.com"
+                placeholder="you@company.com"
                 value={testEmail}
                 onChange={(e) => setTestEmail(e.target.value)}
               />
@@ -330,11 +278,11 @@ export function AdminEmailTemplatesView() {
               ) : (
                 <Send className="h-4 w-4" />
               )}
-              Enviar correo de prueba
+              Send test email
             </button>
             <p className="text-[11px] text-slate-500">
-              Envía Order #TEST-123 con productos ficticios usando la plantilla
-              actual (aunque aún no esté guardada).
+              Sends Order #TEST-123 with sample products using the current
+              template (even if it is not saved).
             </p>
           </section>
         </div>

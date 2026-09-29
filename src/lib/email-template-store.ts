@@ -11,11 +11,20 @@ import {
   type EmailTemplateBranding,
 } from "@/lib/order-confirmation-email";
 
+function resolveLogoUrl(raw: unknown): string {
+  const value = String(raw || "").trim();
+  // Broken/legacy absolute path that 404s on production.
+  if (!value || /plastipacusa\.com\/logo\.png$/i.test(value)) {
+    return DEFAULT_EMAIL_TEMPLATE.logoUrl;
+  }
+  return value;
+}
+
 function rowToBranding(row: Record<string, unknown> | null): EmailTemplateBranding {
   if (!row) return { ...DEFAULT_EMAIL_TEMPLATE };
   return mergeEmailTemplate({
     subject: String(row.subject || DEFAULT_EMAIL_TEMPLATE.subject),
-    logoUrl: String(row.logo_url || DEFAULT_EMAIL_TEMPLATE.logoUrl),
+    logoUrl: resolveLogoUrl(row.logo_url),
     primaryColor: String(row.primary_color || DEFAULT_EMAIL_TEMPLATE.primaryColor),
     navyColor: String(row.navy_color || DEFAULT_EMAIL_TEMPLATE.navyColor),
     backgroundColor: String(

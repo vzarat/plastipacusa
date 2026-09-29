@@ -7,6 +7,10 @@ export const ORDER_CONFIRMATION_TEMPLATE_SLUG = "order_confirmation";
 export const DASHBOARD_ORDERS_URL = "https://www.plastipacusa.com/dashboard/orders";
 export const DEFAULT_ORDER_FROM = "Plastipac USA <orders@plastipacusa.com>";
 
+/** Public absolute logo (same CDN asset used in Navbar/Footer). */
+export const DEFAULT_LOGO_URL =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PLASTIPAC_USA_LOGO%202.svg";
+
 export interface EmailTemplateBranding {
   subject: string;
   logoUrl: string;
@@ -18,7 +22,9 @@ export interface EmailTemplateBranding {
   mutedColor: string;
   greetingPrefix: string;
   mainMessage: string;
+  /** @deprecated CTA removed from template; kept for DB row compatibility */
   ctaLabel: string;
+  /** @deprecated CTA removed from template; kept for DB row compatibility */
   ctaUrl: string;
   footerSalesEmail: string;
   footerSupportPhoneUs: string;
@@ -30,19 +36,19 @@ export interface EmailTemplateBranding {
 }
 
 export const DEFAULT_EMAIL_TEMPLATE: EmailTemplateBranding = {
-  subject: "Confirmación de Pedido #{{orderId}} - Plastipac USA",
-  logoUrl: "https://www.plastipacusa.com/logo.png",
+  subject: "Order Confirmation #{{orderId}} - Plastipac USA",
+  logoUrl: DEFAULT_LOGO_URL,
   primaryColor: "#0055A5",
   navyColor: "#003366",
   backgroundColor: "#F8FAFC",
   panelColor: "#F1F5F9",
   textColor: "#1E293B",
   mutedColor: "#64748B",
-  greetingPrefix: "Hola",
+  greetingPrefix: "Hello",
   mainMessage:
-    "Hemos recibido tu pedido y se encuentra en proceso de preparación. Tu pago fue confirmado y el estado de la orden es Paid & Cleared.",
-  ctaLabel: "Ver mi Pedido",
-  ctaUrl: DASHBOARD_ORDERS_URL,
+    "We have received your order and it is currently being processed. Your payment has been confirmed and order status is Paid & Cleared.",
+  ctaLabel: "",
+  ctaUrl: "",
   footerSalesEmail: "sales@plastipacusa.com",
   footerSupportPhoneUs: "+1 (956) 400-3683",
   footerSupportPhoneMx: "+52 (899) 923-1320",
@@ -50,7 +56,7 @@ export const DEFAULT_EMAIL_TEMPLATE: EmailTemplateBranding = {
     "Priv. San Rafael, Parque Moll Industrial, C.P. 88756, Reynosa, Tamps.",
   footerWebsite: "www.plastipacusa.com",
   legalDisclaimer:
-    "Este es un correo automático de confirmación de compra enviado por Plastipac USA. Si tienes alguna duda con tu pedido, responde directamente a este correo o contacta a nuestro equipo de ventas.",
+    "This is an automated purchase confirmation email from Plastipac USA. If you have any questions about your order, reply to this email or contact our sales team.",
   fromAddress: DEFAULT_ORDER_FROM,
 };
 
@@ -93,19 +99,19 @@ export function formatOrderDateLabel(raw?: string): string {
   try {
     const d = raw ? new Date(raw) : new Date();
     if (Number.isNaN(d.getTime())) {
-      return new Date().toLocaleDateString("es-MX", {
+      return new Date().toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
         day: "numeric",
       });
     }
-    return d.toLocaleDateString("es-MX", {
+    return d.toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
     });
   } catch {
-    return new Date().toLocaleDateString("es-MX");
+    return new Date().toLocaleDateString("en-US");
   }
 }
 
@@ -134,7 +140,7 @@ export function resolveLineItems(
   if (parts.length === 0) {
     return [
       {
-        description: "Pedido industrial Plastipac",
+        description: "Plastipac industrial order",
         quantity: payload.itemCount || 1,
         unitPrice: payload.totalAmountUsd,
         total: payload.totalAmountUsd,
@@ -212,28 +218,30 @@ export function buildOrderConfirmationHtml(
   const orderId = content.orderId;
   const subject = resolveSubject(template, orderId);
   const totalFormatted = formatUsd(content.totalAmountUsd);
-  const safeName = content.customerName || "Cliente";
+  const safeName = content.customerName || "Customer";
   const purchaseDate = formatOrderDateLabel(content.orderDate);
   const lineItems = resolveLineItems(content);
   const productRows = buildProductsTableRows(lineItems, template);
   const border = "#E2E8F0";
   const white = "#FFFFFF";
+  const logoSrc =
+    String(template.logoUrl || DEFAULT_LOGO_URL).trim() || DEFAULT_LOGO_URL;
 
   const companyBlock = content.customerCompany
     ? `<tr>
          <td style="padding:0 0 8px;color:${template.mutedColor};font-size:13px;">
-           <strong style="color:${template.textColor};">Empresa:</strong> ${escapeHtml(content.customerCompany)}
+           <strong style="color:${template.textColor};">Company:</strong> ${escapeHtml(content.customerCompany)}
          </td>
        </tr>`
     : "";
 
   const shippingBlock = content.shippingAddressSummary
-    ? `<p style="margin:0 0 4px;color:${template.mutedColor};font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Dirección de entrega</p>
+    ? `<p style="margin:0 0 4px;color:${template.mutedColor};font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Shipping Address</p>
        <p style="margin:0;color:${template.textColor};font-size:14px;line-height:1.55;">${escapeHtml(content.shippingAddressSummary)}</p>`
-    : `<p style="margin:0;color:${template.mutedColor};font-size:14px;line-height:1.55;">La dirección de entrega será confirmada por nuestro equipo de logística.</p>`;
+    : `<p style="margin:0;color:${template.mutedColor};font-size:14px;line-height:1.55;">Shipping address will be confirmed by our logistics team.</p>`;
 
   const html = `<!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -252,11 +260,15 @@ export function buildOrderConfirmationHtml(
           <tr>
             <td align="center" style="background-color:${white};padding:28px 24px 18px;border-bottom:3px solid ${template.primaryColor};">
               <img
-                src="${escapeHtml(template.logoUrl)}"
-                alt="Plastipac USA"
+                src="${escapeHtml(logoSrc)}"
+                alt="PLASTIPAC USA"
                 width="220"
                 style="display:block;margin:0 auto;max-width:220px;width:100%;height:auto;border:0;outline:none;text-decoration:none;"
+                onerror="this.onerror=null;this.style.display='none';if(this.nextElementSibling){this.nextElementSibling.style.display='block';}"
               />
+              <div style="display:none;margin:0 auto;font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:${template.navyColor};">
+                PLASTIPAC USA
+              </div>
               <p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${template.navyColor};">
                 Plastipac USA · Stretch Film &amp; Packaging
               </p>
@@ -265,7 +277,7 @@ export function buildOrderConfirmationHtml(
           <tr>
             <td style="background-color:${template.navyColor};padding:14px 24px;">
               <h1 style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:20px;line-height:1.3;font-weight:700;color:${white};text-align:center;">
-                Confirmación de Pedido
+                Order Confirmation
               </h1>
             </td>
           </tr>
@@ -283,17 +295,17 @@ export function buildOrderConfirmationHtml(
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
                         <td style="padding:0 0 8px;color:${template.mutedColor};font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">
-                          Resumen del pedido
+                          Order Summary
                         </td>
                       </tr>
                       <tr>
                         <td style="padding:0 0 6px;color:${template.textColor};font-size:14px;">
-                          <strong>Número de Orden:</strong> #${escapeHtml(orderId)}
+                          <strong>Order Number:</strong> #${escapeHtml(orderId)}
                         </td>
                       </tr>
                       <tr>
                         <td style="padding:0 0 6px;color:${template.textColor};font-size:14px;">
-                          <strong>Fecha de Compra:</strong> ${escapeHtml(purchaseDate)}
+                          <strong>Purchase Date:</strong> ${escapeHtml(purchaseDate)}
                         </td>
                       </tr>
                       ${companyBlock}
@@ -304,56 +316,44 @@ export function buildOrderConfirmationHtml(
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid ${border};margin:0 0 20px;">
                 <tr>
                   <td colspan="4" style="background-color:${template.primaryColor};padding:10px 12px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${white};">
-                    Detalle de productos
+                    Product Details
                   </td>
                 </tr>
                 <tr>
-                  <th align="left" style="padding:10px 12px;background-color:${template.panelColor};border-bottom:1px solid ${border};color:${template.navyColor};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Producto</th>
-                  <th align="center" style="padding:10px 12px;background-color:${template.panelColor};border-bottom:1px solid ${border};color:${template.navyColor};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Cant.</th>
-                  <th align="right" style="padding:10px 12px;background-color:${template.panelColor};border-bottom:1px solid ${border};color:${template.navyColor};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">P. unitario</th>
+                  <th align="left" style="padding:10px 12px;background-color:${template.panelColor};border-bottom:1px solid ${border};color:${template.navyColor};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Product</th>
+                  <th align="center" style="padding:10px 12px;background-color:${template.panelColor};border-bottom:1px solid ${border};color:${template.navyColor};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Qty</th>
+                  <th align="right" style="padding:10px 12px;background-color:${template.panelColor};border-bottom:1px solid ${border};color:${template.navyColor};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Unit Price</th>
                   <th align="right" style="padding:10px 12px;background-color:${template.panelColor};border-bottom:1px solid ${border};color:${template.navyColor};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Subtotal</th>
                 </tr>
                 ${productRows}
                 <tr>
                   <td colspan="3" align="right" style="padding:14px 12px;background-color:${white};color:${template.textColor};font-size:14px;font-weight:700;border-top:2px solid ${template.navyColor};">
-                    Total pagado (USD)
+                    Total Paid (USD)
                   </td>
                   <td align="right" style="padding:14px 12px;background-color:${white};color:${template.primaryColor};font-size:16px;font-weight:800;border-top:2px solid ${template.navyColor};white-space:nowrap;">
                     ${escapeHtml(totalFormatted)}
                   </td>
                 </tr>
               </table>
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:${template.panelColor};border:1px solid ${border};margin:0 0 24px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:${template.panelColor};border:1px solid ${border};margin:0 0 8px;">
                 <tr>
                   <td style="padding:16px 18px;font-family:Arial,Helvetica,sans-serif;">
                     ${shippingBlock}
                   </td>
                 </tr>
               </table>
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:0 auto 8px;">
-                <tr>
-                  <td align="center" bgcolor="${template.primaryColor}" style="background-color:${template.primaryColor};border-radius:8px;">
-                    <a href="${escapeHtml(template.ctaUrl)}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:${white};text-decoration:none;border-radius:8px;background-color:${template.primaryColor};">
-                      ${escapeHtml(template.ctaLabel)}
-                    </a>
-                  </td>
-                </tr>
-              </table>
-              <p style="margin:0 0 8px;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${template.mutedColor};">
-                <a href="${escapeHtml(template.ctaUrl)}" style="color:${template.primaryColor};">${escapeHtml(template.ctaUrl)}</a>
-              </p>
             </td>
           </tr>
           <tr>
             <td style="padding:24px;background-color:${template.navyColor};font-family:Arial,Helvetica,sans-serif;color:${white};">
               <p style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#93C5FD;">
-                Atención / Soporte
+                Support
               </p>
               <p style="margin:0 0 6px;font-size:13px;line-height:1.5;color:${white};">
                 <a href="mailto:${escapeHtml(template.footerSalesEmail)}" style="color:#BFDBFE;text-decoration:none;">${escapeHtml(template.footerSalesEmail)}</a>
               </p>
               <p style="margin:0 0 6px;font-size:13px;line-height:1.5;color:${white};">
-                Teléfonos: ${escapeHtml(template.footerSupportPhoneUs)} | ${escapeHtml(template.footerSupportPhoneMx)}
+                Phones: ${escapeHtml(template.footerSupportPhoneUs)} | ${escapeHtml(template.footerSupportPhoneMx)}
               </p>
               <p style="margin:0 0 6px;font-size:13px;line-height:1.5;color:#CBD5E1;">
                 ${escapeHtml(template.footerAddress)}
@@ -373,17 +373,17 @@ export function buildOrderConfirmationHtml(
 </body>
 </html>`;
 
-  const text = [
+  const textBody = [
     `${template.greetingPrefix} ${safeName},`,
     "",
-    "Confirmación de Pedido — Plastipac USA",
+    "Order Confirmation — Plastipac USA",
     template.mainMessage,
     "",
-    `Número de Orden: #${orderId}`,
-    `Fecha de Compra: ${purchaseDate}`,
-    content.customerCompany ? `Empresa: ${content.customerCompany}` : null,
+    `Order Number: #${orderId}`,
+    `Purchase Date: ${purchaseDate}`,
+    content.customerCompany ? `Company: ${content.customerCompany}` : null,
     "",
-    "Productos:",
+    "Products:",
     ...lineItems.map((item) => {
       const qty = item.quantity || 1;
       const line =
@@ -395,16 +395,14 @@ export function buildOrderConfirmationHtml(
       return `- ${item.description} × ${qty}${line ? ` — ${line}` : ""}`;
     }),
     "",
-    `Total pagado: ${totalFormatted} USD`,
+    `Total Paid: ${totalFormatted} USD`,
     content.shippingAddressSummary
-      ? `Dirección de entrega: ${content.shippingAddressSummary}`
+      ? `Shipping Address: ${content.shippingAddressSummary}`
       : null,
     "",
-    `${template.ctaLabel}: ${template.ctaUrl}`,
-    "",
-    "Atención / Soporte:",
+    "Support:",
     template.footerSalesEmail,
-    `Teléfonos: ${template.footerSupportPhoneUs} | ${template.footerSupportPhoneMx}`,
+    `Phones: ${template.footerSupportPhoneUs} | ${template.footerSupportPhoneMx}`,
     template.footerAddress,
     template.footerWebsite,
     "",
@@ -415,7 +413,7 @@ export function buildOrderConfirmationHtml(
 
   return {
     html,
-    text,
+    text: textBody,
     subject,
     from: template.fromAddress || DEFAULT_ORDER_FROM,
   };

@@ -2,10 +2,8 @@
 
 import { getCurrentUser } from "@/actions/auth";
 import { sendEmail } from "@/lib/email";
-import { isServiceRoleConfigured } from "@/lib/supabase/admin";
 import {
   DEFAULT_EMAIL_TEMPLATE,
-  EMAIL_TEMPLATES_SQL,
   ORDER_CONFIRMATION_TEMPLATE_SLUG,
   SAMPLE_ORDER_CONTENT,
   buildOrderConfirmationHtml,
@@ -59,15 +57,15 @@ export async function getOrderConfirmationTemplate(): Promise<EmailTemplateBrand
 }
 
 /**
- * Always returns an editable template. DB/RLS/table errors fall back to defaults
- * so the admin form and Resend test send remain usable.
+ * Always returns an editable template. DB/RLS/table errors silently fall back
+ * to static defaults so the admin form and Resend test send remain usable
+ * without any visual error banners.
  */
 export async function loadEmailTemplateForAdmin(): Promise<{
   success: boolean;
   template: EmailTemplateBranding;
   persisted: boolean;
   clientMode?: "service_role" | "anon";
-  sqlHint?: string;
   error?: string;
 }> {
   try {
@@ -88,8 +86,6 @@ export async function loadEmailTemplateForAdmin(): Promise<{
           template: { ...DEFAULT_EMAIL_TEMPLATE },
           persisted: false,
           clientMode: mode,
-          sqlHint: EMAIL_TEMPLATES_SQL,
-          error: error.message,
         };
       }
 
@@ -98,12 +94,6 @@ export async function loadEmailTemplateForAdmin(): Promise<{
         template: rowToBranding(data as Record<string, unknown> | null),
         persisted: Boolean(data),
         clientMode: mode,
-        ...(!isServiceRoleConfigured()
-          ? {
-              error:
-                "Using anon/session Supabase client (SUPABASE_SERVICE_ROLE_KEY not set).",
-            }
-          : {}),
       };
     } catch (dbErr: unknown) {
       const message = dbErr instanceof Error ? dbErr.message : String(dbErr);
@@ -112,13 +102,10 @@ export async function loadEmailTemplateForAdmin(): Promise<{
         success: true,
         template: { ...DEFAULT_EMAIL_TEMPLATE },
         persisted: false,
-        sqlHint: EMAIL_TEMPLATES_SQL,
-        error: message,
       };
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    // Unauthorized still fails hard; everything else stays editable.
     if (message === "Unauthorized") {
       return {
         success: false,
@@ -131,8 +118,6 @@ export async function loadEmailTemplateForAdmin(): Promise<{
       success: true,
       template: { ...DEFAULT_EMAIL_TEMPLATE },
       persisted: false,
-      sqlHint: EMAIL_TEMPLATES_SQL,
-      error: message,
     };
   }
 }
@@ -142,7 +127,6 @@ export async function saveEmailTemplate(
 ): Promise<{
   success: boolean;
   error?: string;
-  sqlHint?: string;
   clientMode?: "service_role" | "anon";
 }> {
   try {
@@ -157,10 +141,10 @@ export async function saveEmailTemplate(
 
       if (error) {
         console.warn("[email-templates] save fallback:", error.message);
+        // Soft-fail: keep editor usable; persistence is optional.
         return {
           success: false,
-          error: error.message,
-          sqlHint: EMAIL_TEMPLATES_SQL,
+          error: "Could not save to database. Defaults remain available for testing.",
           clientMode: mode,
         };
       }
@@ -171,8 +155,7 @@ export async function saveEmailTemplate(
       console.warn("[email-templates] save exception:", message);
       return {
         success: false,
-        error: message,
-        sqlHint: EMAIL_TEMPLATES_SQL,
+        error: "Could not save to database. Defaults remain available for testing.",
       };
     }
   } catch (err: unknown) {
@@ -196,7 +179,6 @@ export async function sendTestOrderConfirmationEmail(input: {
       return { success: false, error: "Enter a valid test email address." };
     }
 
-    // Prefer the live form payload so test send works without DB persistence.
     let template = mergeEmailTemplate(input.template);
     if (!input.template) {
       try {
