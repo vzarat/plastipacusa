@@ -36,10 +36,14 @@ async function getDashboardOrders(
         const hasFailureDetails = Boolean(
           row.shipping_address?.error_details || row.shipping_address?.error_message
         );
+        const isPaidCleared =
+          rawStatus === "paid" ||
+          rawStatus === "paid & cleared" ||
+          String(row.payment_status || "").toLowerCase() === "paid & cleared";
         const normalizedStatus: DashboardOrder["status"] =
           hasFailureDetails
             ? "failed"
-            : rawStatus === "paid"
+            : isPaidCleared
               ? "paid"
               : rawStatus === "fulfilled" || rawStatus === "delivered"
                 ? "delivered"
@@ -50,7 +54,7 @@ async function getDashboardOrders(
         const paymentStatus: DashboardOrder["paymentStatus"] =
           hasFailureDetails
             ? "failed"
-            : rawStatus === "paid"
+            : isPaidCleared
               ? "paid"
               : "pending";
 

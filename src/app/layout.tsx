@@ -5,6 +5,7 @@ import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
 import { LanguageProvider } from "@/context/LanguageContext";
 import ClientPWAProvider from "@/components/providers/ClientPWAProvider";
+import { OnboardingTourWrapper } from "@/components/onboarding/OnboardingTourWrapper";
 
 const SUPABASE_ORIGIN = "https://ahvmjptomjjnqjylofpa.supabase.co";
 
@@ -27,13 +28,6 @@ const inter = Inter({
 });
 
 const CartDrawer = dynamic(() => import("@/components/layout/CartDrawer"));
-const OnboardingTour = dynamic(
-  () =>
-    import("@/components/onboarding/OnboardingTour").then(
-      (m) => m.OnboardingTour
-    ),
-  { ssr: false }
-);
 
 const APP_ICON = `${SUPABASE_ORIGIN}/storage/v1/object/public/Products/ICON_APP.png`;
 const FAVICON = `${SUPABASE_ORIGIN}/storage/v1/object/public/Products/FAVICON.png`;
@@ -139,7 +133,7 @@ export default function RootLayout({
           <ClientPWAProvider />
           {children}
           <CartDrawer />
-          <OnboardingTour />
+          <OnboardingTourWrapper />
           <Toaster closeButton position="top-right" richColors />
         </LanguageProvider>
       </body>

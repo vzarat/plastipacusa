@@ -1,21 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { createServerClient } from "@/lib/supabase/server";
 import {
   createServiceRoleClient,
   isServiceRoleConfigured,
 } from "@/lib/supabase/admin";
 import { formatOrderId } from "@/lib/utils";
 import { notifyAdminPurchaseOrder } from "@/lib/email";
+import {
+  fetchPlastipacLogoForPdf,
+  generateInvoicePdf,
+  type InvoicePdfItem,
+} from "@/lib/invoice-pdf";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+/** Display + audit label required for cleared Stripe checkouts */
+const PAID_CLEARED_LABEL = "Paid & Cleared";
+/** Canonical DB status used by dashboard filters */
+const PAID_STATUS = "paid";
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-async function getSupabaseForWebhook() {
-  if (isServiceRoleConfigured()) {
-    return createServiceRoleClient();
+function getStripe() {
+  if (!stripeSecretKey) {
+    throw new Error("STRIPE_SECRET_KEY is not configured.");
   }
-  return createServerClient();
+  return new Stripe(stripeSecretKey, {
+    apiVersion: "2026-08-26.dahlia" as any,
+  });
+}
+
+function getAdminSupabase() {
+  if (!isServiceRoleConfigured()) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY is required for Stripe webhook order updates."
+    );
+  }
+  return createServiceRoleClient();
 }
 
 function centsToUsd(amount: number | null | undefined): number {
@@ -39,67 +62,36 @@ function summarizeLineItems(
   };
 }
 
-/**
- * Mark a matching order as paid when we can correlate a Stripe id.
- * Failures are logged and never thrown — email / webhook ACK must not be blocked.
- */
-async function markOrderPaidByPaymentIntent(
-  paymentIntentId: string | null | undefined
-): Promise<{ orderId?: string; shipping?: Record<string, unknown> } | null> {
-  if (!paymentIntentId) return null;
-
-  try {
-    const supabase = await getSupabaseForWebhook();
-    const { data: matchingOrders, error } = await supabase
-      .from("orders")
-      .select("id, shipping_address, total, items, created_at, user_id");
-
-    if (error) {
-      console.error(
-        "[stripe webhook] order lookup failed:",
-        error.message || error
-      );
-      return null;
-    }
-
-    const orderToUpdate = matchingOrders?.find(
-      (order: { shipping_address?: { stripe_payment_intent_id?: string } }) =>
-        order.shipping_address?.stripe_payment_intent_id === paymentIntentId
-    );
-
-    if (!orderToUpdate) {
-      console.log(
-        "[stripe webhook] no local order matched payment intent:",
-        paymentIntentId
-      );
-      return null;
-    }
-
-    const { error: updateError } = await supabase
-      .from("orders")
-      .update({ status: "paid" })
-      .eq("id", orderToUpdate.id);
-
-    if (updateError) {
-      console.error(
-        "[stripe webhook] order status update failed:",
-        updateError.message || updateError
-      );
-      // Still return the record so email can use existing details.
-    }
-
-    return {
-      orderId: String(orderToUpdate.id),
-      shipping: (orderToUpdate.shipping_address || {}) as Record<
-        string,
-        unknown
-      >,
-    };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("[stripe webhook] markOrderPaid exception:", message);
-    return null;
+function mapOrderItems(rawItems: unknown, fallbackTotal: number): InvoicePdfItem[] {
+  if (!Array.isArray(rawItems) || rawItems.length === 0) {
+    return [
+      {
+        description: "Industrial Stretch Packaging Order",
+        quantity: 1,
+        unitPrice: fallbackTotal,
+        total: fallbackTotal,
+      },
+    ];
   }
+
+  return rawItems.map((item: any) => {
+    const quantity = Number(item?.quantity ?? 1) || 1;
+    const unitPrice = Number(item?.unitPrice ?? item?.unit_price ?? 0) || 0;
+    const total =
+      Number(item?.totalPrice ?? item?.total_price ?? unitPrice * quantity) ||
+      unitPrice * quantity;
+    const name =
+      item?.productName ||
+      item?.product_name ||
+      item?.name ||
+      "Stretch Film";
+    return {
+      description: String(name),
+      quantity,
+      unitPrice,
+      total,
+    };
+  });
 }
 
 function resolveSessionUserId(session: Stripe.Checkout.Session): string | null {
@@ -112,10 +104,150 @@ function resolveSessionUserId(session: Stripe.Checkout.Session): string | null {
   return id || null;
 }
 
+function resolveOrderIdFromSession(
+  session: Stripe.Checkout.Session
+): string | null {
+  const raw =
+    session.metadata?.order_id ||
+    session.metadata?.orderId ||
+    session.metadata?.po_reference ||
+    null;
+  const id = String(raw || "").trim();
+  return id || null;
+}
+
+type OrderRow = {
+  id: string;
+  shipping_address?: Record<string, unknown> | null;
+  total?: number | null;
+  total_usd?: number | null;
+  total_amount?: number | null;
+  items?: unknown;
+  created_at?: string | null;
+  user_id?: string | null;
+  customer_name?: string | null;
+  customer_email?: string | null;
+  company_name?: string | null;
+  status?: string | null;
+};
+
+async function findOrderForSession(input: {
+  orderIdHint: string | null;
+  paymentIntentId: string | null;
+  checkoutSessionId: string;
+  userId: string | null;
+}): Promise<OrderRow | null> {
+  const supabase = getAdminSupabase();
+
+  if (input.orderIdHint) {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("id", input.orderIdHint)
+      .maybeSingle();
+
+    if (!error && data) return data as OrderRow;
+  }
+
+  const { data: rows, error } = await supabase
+    .from("orders")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (error) {
+    throw new Error(`Order lookup failed: ${error.message}`);
+  }
+
+  const list = (rows || []) as OrderRow[];
+
+  const byPaymentIntent = input.paymentIntentId
+    ? list.find(
+        (order) =>
+          order.shipping_address?.stripe_payment_intent_id ===
+          input.paymentIntentId
+      )
+    : null;
+  if (byPaymentIntent) return byPaymentIntent;
+
+  const bySession = list.find(
+    (order) =>
+      order.shipping_address?.stripe_checkout_session_id ===
+      input.checkoutSessionId
+  );
+  if (bySession) return bySession;
+
+  if (input.userId) {
+    const pendingForUser = list.find(
+      (order) =>
+        order.user_id === input.userId &&
+        String(order.status || "").toLowerCase() !== "paid" &&
+        String(order.status || "").toLowerCase() !== "paid & cleared"
+    );
+    if (pendingForUser) return pendingForUser;
+  }
+
+  return null;
+}
+
 /**
- * When Checkout completes for a logged-in buyer but no local order exists yet,
- * create a paid order row keyed to metadata.userId / client_reference_id.
+ * Mark order Paid & Cleared. Uses canonical `status: paid` for app filters and
+ * stores the display label on `payment_status` / shipping_address when present.
  */
+async function markOrderPaidAndCleared(
+  order: OrderRow,
+  extras: {
+    paymentIntentId: string | null;
+    checkoutSessionId: string;
+  }
+): Promise<OrderRow> {
+  const supabase = getAdminSupabase();
+  const shipping_address = {
+    ...(order.shipping_address || {}),
+    stripe_payment_intent_id:
+      extras.paymentIntentId ||
+      order.shipping_address?.stripe_payment_intent_id ||
+      null,
+    stripe_checkout_session_id: extras.checkoutSessionId,
+    payment_status: PAID_CLEARED_LABEL,
+  };
+
+  const primaryUpdate = {
+    status: PAID_STATUS,
+    payment_status: PAID_CLEARED_LABEL,
+    shipping_address,
+  };
+
+  let { data, error } = await supabase
+    .from("orders")
+    .update(primaryUpdate)
+    .eq("id", order.id)
+    .select("*")
+    .maybeSingle();
+
+  // Older schemas may not have payment_status — retry without it.
+  if (error && /payment_status/i.test(error.message || "")) {
+    const fallback = await supabase
+      .from("orders")
+      .update({ status: PAID_STATUS, shipping_address })
+      .eq("id", order.id)
+      .select("*")
+      .maybeSingle();
+    data = fallback.data;
+    error = fallback.error;
+  }
+
+  if (error) {
+    throw new Error(`Failed to mark order Paid & Cleared: ${error.message}`);
+  }
+
+  console.log(
+    `[stripe webhook] Order ${order.id} marked as ${PAID_CLEARED_LABEL}`
+  );
+
+  return (data as OrderRow) || { ...order, status: PAID_STATUS, shipping_address };
+}
+
 async function ensurePaidOrderForSession(input: {
   session: Stripe.Checkout.Session;
   paymentIntentId: string | null;
@@ -125,62 +257,142 @@ async function ensurePaidOrderForSession(input: {
   shippingAddress: Record<string, unknown>;
   itemsSummary: string;
   totalAmount: number;
-}): Promise<{ orderId?: string } | null> {
-  try {
-    const supabase = await getSupabaseForWebhook();
-    const createdAt = new Date(
-      (input.session.created || Date.now() / 1000) * 1000
-    ).toISOString();
+}): Promise<OrderRow> {
+  const supabase = getAdminSupabase();
+  const createdAt = new Date(
+    (input.session.created || Date.now() / 1000) * 1000
+  ).toISOString();
 
-    const shipping_address = {
-      ...input.shippingAddress,
-      email: input.customerEmail,
-      full_name: input.customerName,
-      stripe_payment_intent_id: input.paymentIntentId,
-      stripe_checkout_session_id: input.session.id,
-    };
+  const shipping_address = {
+    ...input.shippingAddress,
+    email: input.customerEmail,
+    full_name: input.customerName,
+    stripe_payment_intent_id: input.paymentIntentId,
+    stripe_checkout_session_id: input.session.id,
+    payment_status: PAID_CLEARED_LABEL,
+  };
 
-    const { data, error } = await supabase
+  const payload: Record<string, unknown> = {
+    user_id: input.userId,
+    status: PAID_STATUS,
+    payment_status: PAID_CLEARED_LABEL,
+    total: input.totalAmount,
+    items: [
+      {
+        productName: input.itemsSummary || "Stripe Checkout Order",
+        quantity: 1,
+        unitPrice: input.totalAmount,
+        totalPrice: input.totalAmount,
+      },
+    ],
+    shipping_address,
+    created_at: createdAt,
+  };
+
+  let insert = await supabase.from("orders").insert(payload).select("*").maybeSingle();
+
+  if (insert.error && /payment_status/i.test(insert.error.message || "")) {
+    const { payment_status: _unusedPaymentStatus, ...withoutPaymentStatus } =
+      payload;
+    void _unusedPaymentStatus;
+    insert = await supabase
       .from("orders")
-      .insert({
-        user_id: input.userId,
-        status: "paid",
-        total: input.totalAmount,
-        items: [
-          {
-            productName: input.itemsSummary || "Stripe Checkout Order",
-            quantity: 1,
-            unitPrice: input.totalAmount,
-            totalPrice: input.totalAmount,
-          },
-        ],
-        shipping_address,
-        created_at: createdAt,
-      })
-      .select("id")
+      .insert(withoutPaymentStatus)
+      .select("*")
       .maybeSingle();
-
-    if (error) {
-      console.error(
-        "[stripe webhook] failed to create order for authenticated user:",
-        error.message || error
-      );
-      return null;
-    }
-
-    console.log(
-      "[stripe webhook] created paid order for userId:",
-      input.userId,
-      "order:",
-      data?.id
-    );
-
-    return data?.id ? { orderId: String(data.id) } : null;
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("[stripe webhook] ensurePaidOrderForSession exception:", message);
-    return null;
   }
+
+  if (insert.error || !insert.data) {
+    throw new Error(
+      `Failed to create paid order: ${insert.error?.message || "no row returned"}`
+    );
+  }
+
+  console.log(
+    `[stripe webhook] Created order ${insert.data.id} as ${PAID_CLEARED_LABEL} for user ${input.userId}`
+  );
+
+  return insert.data as OrderRow;
+}
+
+async function generateOrderSummaryPdf(order: OrderRow): Promise<Uint8Array> {
+  const createdAt = order.created_at || new Date().toISOString();
+  const orderPoRef = formatOrderId({
+    id: order.id,
+    createdAt,
+    items: order.items,
+  });
+  const totalUsd = Number(
+    order.total_usd ?? order.total_amount ?? order.total ?? 0
+  );
+  const issueDate = new Date(createdAt).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  const idDigits = String(order.id || "")
+    .replace(/[^0-9a-f]/gi, "")
+    .slice(-4)
+    .toUpperCase();
+  const invoiceNumber = `INV-${new Date(createdAt).getFullYear()}-${idDigits || "0000"}`;
+
+  const logo = await fetchPlastipacLogoForPdf();
+  if (!logo) {
+    console.warn(
+      "[stripe webhook] Plastipac logo could not be rasterized — generating PDF without logo."
+    );
+  }
+
+  const pdfBytes = generateInvoicePdf({
+    invoiceNumber,
+    orderPoRef,
+    issueDate,
+    paymentStatus: PAID_CLEARED_LABEL,
+    customerName:
+      order.customer_name ||
+      (order.shipping_address?.full_name as string | undefined) ||
+      (order.shipping_address?.name as string | undefined),
+    customerCompany:
+      order.company_name ||
+      (order.shipping_address?.company_name as string | undefined),
+    customerEmail:
+      order.customer_email ||
+      (order.shipping_address?.email as string | undefined),
+    items: mapOrderItems(order.items, totalUsd),
+    totalUsd,
+    logo,
+  });
+
+  // Best-effort archive to Supabase Storage (non-fatal if bucket missing).
+  try {
+    const supabase = getAdminSupabase();
+    const path = `orders/${order.id}/${orderPoRef}.pdf`;
+    const { error: uploadError } = await supabase.storage
+      .from("invoices")
+      .upload(path, Buffer.from(pdfBytes), {
+        contentType: "application/pdf",
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.warn(
+        "[stripe webhook] PDF storage upload skipped:",
+        uploadError.message
+      );
+    } else {
+      console.log(`[stripe webhook] Order summary PDF stored at invoices/${path}`);
+    }
+  } catch (storageErr: unknown) {
+    const message =
+      storageErr instanceof Error ? storageErr.message : String(storageErr);
+    console.warn("[stripe webhook] PDF storage unavailable:", message);
+  }
+
+  console.log(
+    `[stripe webhook] Order summary PDF generated for ${orderPoRef} (${pdfBytes.byteLength} bytes)`
+  );
+
+  return pdfBytes;
 }
 
 async function dispatchAdminPoEmail(payload: {
@@ -206,7 +418,7 @@ async function dispatchAdminPoEmail(payload: {
       return;
     }
     console.log(
-      "[stripe webhook] admin PO email sent to ADMIN_NOTIFICATION_EMAIL for",
+      "[stripe webhook] admin PO email sent for",
       payload.orderId
     );
   } catch (err: unknown) {
@@ -225,20 +437,18 @@ async function handleCheckoutSessionCompleted(
       : session.payment_intent?.id || null;
 
   const userId = resolveSessionUserId(session);
-  if (!userId) {
-    console.warn(
-      "[stripe webhook] checkout.session.completed missing userId metadata / client_reference_id:",
-      session.id
-    );
-  } else {
-    console.log(
-      "[stripe webhook] checkout.session.completed for authenticated userId:",
-      userId
-    );
-  }
+  const orderIdHint = resolveOrderIdFromSession(session);
 
-  // Persist / update DB first when possible (email must not roll this back).
-  let matched = await markOrderPaidByPaymentIntent(paymentIntentId);
+  console.log(
+    "[stripe webhook] checkout.session.completed",
+    JSON.stringify({
+      sessionId: session.id,
+      userId,
+      orderIdHint,
+      paymentIntentId,
+      paymentStatus: session.payment_status,
+    })
+  );
 
   let lineItems: Array<{
     quantity?: number | null;
@@ -278,8 +488,6 @@ async function handleCheckoutSessionCompleted(
     String(session.metadata?.company_name || session.metadata?.company || "") ||
     "Plastipac USA Customer";
 
-  // Stripe API versions diverge here: older Sessions expose `shipping_details`,
-  // newer ones use `collected_information.shipping_details` or customer address.
   const sessionWithShipping = session as Stripe.Checkout.Session & {
     shipping_details?: {
       address?: Stripe.Address | null;
@@ -318,8 +526,20 @@ async function handleCheckoutSessionCompleted(
 
   const totalAmount = centsToUsd(session.amount_total);
 
-  if (!matched && userId) {
-    matched = await ensurePaidOrderForSession({
+  let order = await findOrderForSession({
+    orderIdHint,
+    paymentIntentId,
+    checkoutSessionId: session.id,
+    userId,
+  });
+
+  if (order) {
+    order = await markOrderPaidAndCleared(order, {
+      paymentIntentId,
+      checkoutSessionId: session.id,
+    });
+  } else if (userId) {
+    order = await ensurePaidOrderForSession({
       session,
       paymentIntentId,
       userId,
@@ -336,14 +556,22 @@ async function handleCheckoutSessionCompleted(
       itemsSummary,
       totalAmount,
     });
+  } else {
+    throw new Error(
+      "Unable to correlate Checkout Session to a Plastipac order (missing order_id / userId)."
+    );
   }
 
+  // PDF generation is required — failures must surface as HTTP 500 for Stripe retries.
+  await generateOrderSummaryPdf(order);
+
   const poReference =
-    String(session.metadata?.po_reference || session.metadata?.order_id || "") ||
-    (matched?.orderId
-      ? formatOrderId({ id: matched.orderId, createdAt: new Date().toISOString() })
-      : null) ||
-    session.id;
+    orderIdHint ||
+    formatOrderId({
+      id: order.id,
+      createdAt: order.created_at || new Date().toISOString(),
+      items: order.items,
+    });
 
   await dispatchAdminPoEmail({
     orderId: poReference,
@@ -356,16 +584,49 @@ async function handleCheckoutSessionCompleted(
     shippingAddressSummary: shippingAddressSummary || undefined,
     itemCount,
     itemsSummary,
-    orderDate: new Date((session.created || Date.now() / 1000) * 1000).toISOString(),
+    orderDate: new Date(
+      (session.created || Date.now() / 1000) * 1000
+    ).toISOString(),
   });
+
+  console.log(
+    `[stripe webhook] checkout.session.completed confirmed for order ${order.id} (${PAID_CLEARED_LABEL})`
+  );
 }
 
 async function handlePaymentIntentSucceeded(
   paymentIntent: Stripe.PaymentIntent
 ) {
-  // Persist paid status only — admin email is dispatched from
-  // checkout.session.completed (and from createOrderFromCheckout) to avoid duplicates.
-  await markOrderPaidByPaymentIntent(paymentIntent.id);
+  const supabase = getAdminSupabase();
+  const { data: rows, error } = await supabase
+    .from("orders")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (error) {
+    throw new Error(`Order lookup failed: ${error.message}`);
+  }
+
+  const order = (rows || []).find(
+    (row: OrderRow) =>
+      row.shipping_address?.stripe_payment_intent_id === paymentIntent.id
+  ) as OrderRow | undefined;
+
+  if (!order) {
+    console.log(
+      "[stripe webhook] payment_intent.succeeded — no local order matched:",
+      paymentIntent.id
+    );
+    return;
+  }
+
+  await markOrderPaidAndCleared(order, {
+    paymentIntentId: paymentIntent.id,
+    checkoutSessionId: String(
+      order.shipping_address?.stripe_checkout_session_id || ""
+    ),
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -382,21 +643,19 @@ export async function POST(request: NextRequest) {
   const signature = request.headers.get("stripe-signature");
   if (!signature) {
     return NextResponse.json(
-      { error: "Missing Stripe signature." },
+      { error: "Webhook Error: Invalid signature" },
       { status: 400 }
     );
   }
 
-  const rawBody = await request.text();
+  // Raw body required for Stripe signature verification — do not JSON-parse first.
+  const body = await request.text();
   let event: Stripe.Event;
 
   try {
-    const stripe = new Stripe(stripeSecretKey, {
-      apiVersion: "2026-08-26.dahlia" as any,
-    });
-
+    const stripe = getStripe();
     event = stripe.webhooks.constructEvent(
-      rawBody,
+      body,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!
     );
@@ -404,14 +663,12 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("[stripe webhook] Signature verification failed:", message);
     return NextResponse.json(
-      { error: "Invalid Stripe signature." },
+      { error: "Webhook Error: Invalid signature" },
       { status: 400 }
     );
   }
 
-  const stripe = new Stripe(stripeSecretKey, {
-    apiVersion: "2026-08-26.dahlia" as any,
-  });
+  const stripe = getStripe();
 
   try {
     switch (event.type) {
@@ -429,10 +686,12 @@ export async function POST(request: NextRequest) {
         console.log("[stripe webhook] Ignored event type:", event.type);
     }
   } catch (error: unknown) {
-    // Log but still ACK — Stripe retries should not loop on transient handler bugs
-    // after signature verification already succeeded.
     const message = error instanceof Error ? error.message : String(error);
-    console.error("[stripe webhook] Handler error (ACK still 200):", message);
+    console.error("[stripe webhook] Handler failure (returning 500 for retry):", message);
+    return NextResponse.json(
+      { error: message || "Webhook handler failed." },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ received: true }, { status: 200 });
