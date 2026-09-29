@@ -122,7 +122,17 @@ type OrderRow = {
   total?: number | null;
   total_usd?: number | null;
   total_amount?: number | null;
-  items?: unknown;
+  items?: Array<{
+    gauge?: string | number | null;
+    quantity?: number;
+    productName?: string;
+    product_name?: string;
+    name?: string;
+    unitPrice?: number;
+    unit_price?: number;
+    totalPrice?: number;
+    total_price?: number;
+  }> | null;
   created_at?: string | null;
   user_id?: string | null;
   customer_name?: string | null;
@@ -320,7 +330,7 @@ async function generateOrderSummaryPdf(order: OrderRow): Promise<Uint8Array> {
   const orderPoRef = formatOrderId({
     id: order.id,
     createdAt,
-    items: order.items,
+    items: order.items || [],
   });
   const totalUsd = Number(
     order.total_usd ?? order.total_amount ?? order.total ?? 0
@@ -570,7 +580,7 @@ async function handleCheckoutSessionCompleted(
     formatOrderId({
       id: order.id,
       createdAt: order.created_at || new Date().toISOString(),
-      items: order.items,
+      items: order.items || [],
     });
 
   await dispatchAdminPoEmail({
