@@ -8,7 +8,12 @@ import {
 } from "@/lib/supabase/admin";
 import { ProductWithVariants, ProductVariant, PackageOption } from "@/types";
 import { AdminProduct, ProductFormValues, PACKAGE_TIER_DEFAULTS } from "@/types/product";
-import { PRODUCT_CATEGORIES, getApplicationForCategory } from "@/data/categories";
+import {
+  PRODUCT_CATEGORIES,
+  categoryIdForSlug,
+  categorySlugFromRecord,
+  getApplicationForCategory,
+} from "@/data/categories";
 import { verifyAdmin } from "./admin";
 import {
   isExcludedFifteenInchEightyGauge,
@@ -52,7 +57,7 @@ async function writeProductRow(
   id?: string
 ) {
   let next = { ...payload };
-  for (let attempt = 0; attempt < 6; attempt += 1) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
     const query =
       mode === "insert"
         ? supabase.from("products").insert(next).select("*").single()
@@ -874,14 +879,85 @@ function extractLengthFeetFromText(text: string): number | null {
   return match ? Number(match[1]) : null;
 }
 
-function formatAdminProduct(raw: any): AdminProduct {
-  const categorySlug = String(
-    PRODUCT_CATEGORIES.find((c) => c.id === raw.category_id || c.slug === raw.category_id)?.slug ||
-      raw.category_id ||
-      "force-standard"
-  );
+function firstText(...values: unknown[]): string {
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    const text = String(value).trim();
+    if (text) return text;
+  }
+  return "";
+}
 
-  const specSource = [raw.name, raw.storefront_title, raw.storefrontTitle, raw.slug]
+function readSoldOut(raw: any): boolean {
+  if (raw.is_sold_out !== null && raw.is_sold_out !== undefined) return Boolean(raw.is_sold_out);
+  if (raw.isSoldOut !== null && raw.isSoldOut !== undefined) return Boolean(raw.isSoldOut);
+  if (typeof raw.in_stock === "boolean") return !raw.in_stock;
+  const availability = String(raw.availability || "").toLowerCase();
+  if (availability.includes("sold")) return true;
+  if (availability.includes("in stock") || availability === "available") return false;
+  return false;
+}
+
+function readIsActive(raw: any): boolean {
+  if (raw.is_active !== null && raw.is_active !== undefined) return Boolean(raw.is_active);
+  if (raw.visible !== null && raw.visible !== undefined) return Boolean(raw.visible);
+  return true;
+}
+
+function applicationFromRecord(raw: any, categorySlug: string): "hand" | "machine" {
+  const type = String(raw.application || raw.type || "").toLowerCase();
+  if (type === "machine" || type.includes("machine") || type.includes("automatic")) return "machine";
+  if (type === "hand" || type.includes("hand") || type.includes("manual")) return "hand";
+  return getApplicationForCategory(categorySlug);
+}
+
+async function syncBaseVariant(
+  supabase: Awaited<ReturnType<typeof getProductWriteClient>>,
+  productId: string,
+  values: Partial<ProductFormValues>
+) {
+  const { data } = await supabase
+    .from("product_variants")
+    .select("id, product_id, sku, title, price, stock_quantity, boxes_count")
+    .eq("product_id", productId);
+  const variants = data || [];
+  const base = pickBaseVariant(variants);
+  if (!base) return variants;
+
+  const patch: Record<string, unknown> = {};
+  if (values.priceUsd !== undefined && values.priceUsd !== null && Number(values.priceUsd) > 0) {
+    patch.price = Number(values.priceUsd);
+  }
+  if (values.stockQuantity !== undefined && values.stockQuantity !== null) {
+    patch.stock_quantity = Number(values.stockQuantity);
+  }
+  if (Object.keys(patch).length > 0) {
+    await supabase.from("product_variants").update(patch).eq("id", base.id);
+    Object.assign(base, patch);
+  }
+  return variants;
+}
+
+function pickBaseVariant(variants: any[] | null | undefined) {
+  const rows = Array.isArray(variants) ? variants : [];
+  if (!rows.length) return null;
+  return (
+    rows.find((variant) => Number(variant.boxes_count ?? variant.boxesCount) === 1) ||
+    [...rows].sort(
+      (a, b) => Number(a.price ?? a.price_usd ?? a.priceUsd ?? 0) - Number(b.price ?? b.price_usd ?? b.priceUsd ?? 0)
+    )[0]
+  );
+}
+
+function formatAdminProduct(raw: any): AdminProduct {
+  const joinedCategory = raw.categories || raw.category || null;
+  const categorySlug = categorySlugFromRecord(
+    raw.category_id || raw.categoryId || joinedCategory?.id,
+    joinedCategory?.slug || raw.category_slug || raw.categorySlug
+  );
+  const baseVariant = pickBaseVariant(raw.product_variants || raw.variants);
+
+  const specSource = [raw.title, raw.name, raw.storefront_title, raw.storefrontTitle, raw.slug]
     .filter(Boolean)
     .join(" ");
   const gauge = readPositiveNumber(raw.gauge) ?? readPositiveNumber(specSource.match(/(\d+)\s*ga\b/i)?.[1]);
@@ -891,18 +967,27 @@ function formatAdminProduct(raw: any): AdminProduct {
   const lengthFeet =
     readPositiveNumber(raw.length_feet, raw.lengthFeet, raw.length) ??
     extractLengthFeetFromText(specSource);
+  const priceUsd = parsePositivePrice(
+    raw.base_unit_price,
+    raw.price_usd,
+    raw.priceUsd,
+    raw.price,
+    baseVariant?.price,
+    baseVariant?.price_usd,
+    baseVariant?.priceUsd
+  );
 
   return {
     id: String(raw.id),
-    slug: String(raw.slug),
-    name: String(raw.name || ""),
-    storefrontTitle: String(raw.storefront_title || raw.storefrontTitle || ""),
-    partNumber: String(raw.part_number || ""),
-    description: String(raw.description || ""),
+    slug: String(raw.slug || ""),
+    name: firstText(raw.title, raw.name, raw.product_title),
+    storefrontTitle: firstText(raw.display_name, raw.displayName, raw.storefront_title, raw.storefrontTitle),
+    partNumber: firstText(raw.part_number, raw.partNumber, raw.sku, baseVariant?.sku),
+    description: firstText(raw.description),
     gauge,
     widthInches,
     lengthFeet,
-    priceUsd: raw.price_usd === null || raw.price_usd === undefined ? null : Number(raw.price_usd),
+    priceUsd,
     priceCase: raw.price_case === null || raw.price_case === undefined ? null : Number(raw.price_case),
     priceHalfPallet:
       raw.price_half_pallet === null || raw.price_half_pallet === undefined ? null : Number(raw.price_half_pallet),
@@ -923,14 +1008,15 @@ function formatAdminProduct(raw: any): AdminProduct {
       raw.price_40_rolls === null || raw.price_40_rolls === undefined
         ? PACKAGE_TIER_DEFAULTS.price40Rolls
         : Number(raw.price_40_rolls),
-    stockQuantity: Number(raw.stock_quantity ?? 0),
-    isSoldOut: Boolean(raw.is_sold_out ?? raw.isSoldOut ?? false),
-    // GENESIS categories are always machine-application; every other category is hand-application
-    application: getApplicationForCategory(categorySlug),
+    stockQuantity: Number(
+      raw.stock_quantity ?? raw.stock_qty ?? raw.stockQuantity ?? baseVariant?.stock_quantity ?? 0
+    ),
+    isSoldOut: readSoldOut(raw),
+    application: applicationFromRecord(raw, categorySlug),
     categorySlug,
     imageUrl: String(raw.image_url || raw.imageUrl || (Array.isArray(raw.images) && raw.images[0]) || ""),
     images: Array.isArray(raw.images) ? raw.images : [],
-    isActive: raw.is_active === undefined || raw.is_active === null ? true : Boolean(raw.is_active),
+    isActive: readIsActive(raw),
     createdAt: raw.created_at || undefined,
     updatedAt: raw.updated_at || undefined,
   };
@@ -958,7 +1044,37 @@ export async function getAdminProducts(): Promise<AdminProduct[]> {
       return [];
     }
 
-    return (data || []).map(formatAdminProduct);
+    const rows = data || [];
+    const productIds = rows.map((row) => row.id).filter(Boolean);
+    const [variantResult, categoryResult] = await Promise.all([
+      productIds.length
+        ? supabase
+            .from("product_variants")
+            .select("id, product_id, sku, title, price, stock_quantity, boxes_count")
+            .in("product_id", productIds)
+        : Promise.resolve({ data: [] as any[], error: null }),
+      supabase.from("categories").select("id, slug, name"),
+    ]);
+    const variantRows = variantResult.data || [];
+    const categoryRows = categoryResult.data || [];
+    const variantsByProduct = new Map<string, any[]>();
+    for (const variant of variantRows || []) {
+      const key = String(variant.product_id);
+      const list = variantsByProduct.get(key) || [];
+      list.push(variant);
+      variantsByProduct.set(key, list);
+    }
+    const categoriesById = new Map(
+      (categoryRows || []).map((category) => [String(category.id), category])
+    );
+
+    return rows.map((row) =>
+      formatAdminProduct({
+        ...row,
+        categories: categoriesById.get(String(row.category_id)) || null,
+        product_variants: variantsByProduct.get(String(row.id)) || [],
+      })
+    );
   } catch (err: any) {
     console.error("getAdminProducts error:", err);
     return [];
@@ -996,10 +1112,13 @@ export async function createProduct(values: ProductFormValues) {
       slug = `${baseSlug}-${attempt}`;
     }
 
+    const categoryId = categoryIdForSlug(values.categorySlug);
     const insertPayload = {
       slug,
+      title: values.name.trim(),
       name: values.name.trim(),
       storefront_title: values.storefrontTitle?.trim() || null,
+      display_name: values.storefrontTitle?.trim() || null,
       part_number: values.partNumber?.trim() || null,
       description: values.description?.trim() || "",
       short_description: (values.description || "").slice(0, 500),
@@ -1018,7 +1137,7 @@ export async function createProduct(values: ProductFormValues) {
       is_active: values.isActive ?? true,
       image_url: values.imageUrl || values.images?.[0] || "",
       images: values.images || [],
-      category_id: PRODUCT_CATEGORIES.find((c) => c.slug === values.categorySlug)?.id || values.categorySlug || null,
+      category_id: categoryId,
     };
 
     const { data, error } = await writeProductRow(supabase, "insert", insertPayload);
@@ -1028,9 +1147,18 @@ export async function createProduct(values: ProductFormValues) {
       return { success: false, error: error.message || "Failed to create product." };
     }
 
+    const variants = await syncBaseVariant(supabase, data.id, values);
     revalidateProductPaths(data.slug);
 
-    return { success: true, product: formatAdminProduct(data) };
+    return {
+      success: true,
+      product: formatAdminProduct({
+        ...data,
+        title: data.title || values.name,
+        categories: { slug: values.categorySlug },
+        product_variants: variants,
+      }),
+    };
   } catch (err: any) {
     console.error("createProduct error:", err);
     return { success: false, error: err?.message || "Failed to create product." };
@@ -1050,16 +1178,28 @@ export async function updateProduct(id: string, values: Partial<ProductFormValue
     const supabase = await getProductWriteClient();
 
     const updatePayload: Record<string, any> = {};
-    if (values.name !== undefined) updatePayload.name = values.name.trim();
-    if (values.storefrontTitle !== undefined) updatePayload.storefront_title = values.storefrontTitle?.trim() || null;
-    if (values.partNumber !== undefined) updatePayload.part_number = values.partNumber?.trim() || null;
-    if (values.description !== undefined) {
-      updatePayload.description = values.description?.trim() || "";
-      updatePayload.short_description = (values.description || "").slice(0, 500);
+    const trimmedName = values.name?.trim();
+    if (trimmedName) {
+      updatePayload.title = trimmedName;
+      updatePayload.name = trimmedName;
+    }
+    if (values.storefrontTitle !== undefined && values.storefrontTitle.trim()) {
+      updatePayload.storefront_title = values.storefrontTitle.trim();
+      updatePayload.display_name = values.storefrontTitle.trim();
+    }
+    if (values.partNumber !== undefined && values.partNumber.trim()) {
+      updatePayload.part_number = values.partNumber.trim();
+    }
+    if (values.description !== undefined && values.description.trim()) {
+      updatePayload.description = values.description.trim();
+      updatePayload.short_description = values.description.trim().slice(0, 500);
     }
     if (values.application !== undefined) updatePayload.application = values.application;
-    if (values.gauge !== undefined) updatePayload.gauge = values.gauge;
-    if (values.priceUsd !== undefined) updatePayload.price_usd = values.priceUsd;
+    if (values.gauge !== undefined && values.gauge !== null) updatePayload.gauge = values.gauge;
+    if (values.priceUsd !== undefined && values.priceUsd !== null) {
+      updatePayload.price_usd = values.priceUsd;
+      updatePayload.base_unit_price = values.priceUsd;
+    }
     if (values.priceCase !== undefined) updatePayload.price_case = values.priceCase;
     if (values.priceHalfPallet !== undefined) updatePayload.price_half_pallet = values.priceHalfPallet;
     if (values.pricePallet !== undefined) updatePayload.price_pallet = values.pricePallet;
@@ -1067,13 +1207,15 @@ export async function updateProduct(id: string, values: Partial<ProductFormValue
     if (values.price12Rolls !== undefined) updatePayload.price_12_rolls = values.price12Rolls;
     if (values.price20Rolls !== undefined) updatePayload.price_20_rolls = values.price20Rolls;
     if (values.price40Rolls !== undefined) updatePayload.price_40_rolls = values.price40Rolls;
-    if (values.stockQuantity !== undefined) updatePayload.stock_quantity = values.stockQuantity;
+    if (values.stockQuantity !== undefined && values.stockQuantity !== null) {
+      updatePayload.stock_quantity = values.stockQuantity;
+      updatePayload.stock_qty = values.stockQuantity;
+    }
     if (values.isSoldOut !== undefined) updatePayload.is_sold_out = values.isSoldOut;
     if (values.isActive !== undefined) updatePayload.is_active = values.isActive;
     if (values.categorySlug !== undefined) {
-      updatePayload.category_id =
-        PRODUCT_CATEGORIES.find((c) => c.slug === values.categorySlug)?.id || values.categorySlug;
-      // GENESIS categories are always machine-application; every other category is hand-application
+      const categoryId = categoryIdForSlug(values.categorySlug);
+      if (categoryId) updatePayload.category_id = categoryId;
       updatePayload.application = getApplicationForCategory(values.categorySlug);
     }
     if (values.images !== undefined) {
@@ -1095,9 +1237,18 @@ export async function updateProduct(id: string, values: Partial<ProductFormValue
       return { success: false, error: error.message || "Failed to update product." };
     }
 
+    const variants = await syncBaseVariant(supabase, data.id, values);
     revalidateProductPaths(data.slug);
 
-    return { success: true, product: formatAdminProduct(data) };
+    return {
+      success: true,
+      product: formatAdminProduct({
+        ...data,
+        title: data.title || trimmedName,
+        categories: values.categorySlug ? { slug: values.categorySlug } : null,
+        product_variants: variants,
+      }),
+    };
   } catch (err: any) {
     console.error("updateProduct error:", err);
     return { success: false, error: err?.message || "Failed to update product." };

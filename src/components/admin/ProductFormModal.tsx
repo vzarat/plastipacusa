@@ -19,7 +19,7 @@ import {
   uploadProductImage,
 } from "@/actions/products";
 import { AdminProduct, GAUGE_OPTIONS, PACKAGE_TIER_DEFAULTS, ProductFormValues } from "@/types/product";
-import { PRODUCT_CATEGORIES, getApplicationForCategory } from "@/data/categories";
+import { PRODUCT_CATEGORIES, categorySlugFromRecord, getApplicationForCategory } from "@/data/categories";
 import { useLanguage } from "@/context/LanguageContext";
 
 interface ProductFormModalProps {
@@ -31,6 +31,65 @@ interface ProductFormModalProps {
 }
 
 const DEFAULT_CATEGORY_SLUG = PRODUCT_CATEGORIES[0]?.slug || "force-standard";
+
+function textValue(...values: unknown[]): string {
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    const text = String(value).trim();
+    if (text) return text;
+  }
+  return "";
+}
+
+function numberOrNull(...values: unknown[]): number | null {
+  for (const value of values) {
+    if (value === null || value === undefined || value === "") continue;
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function productToForm(product: AdminProduct): ProductFormValues {
+  const raw = product as AdminProduct & Record<string, unknown>;
+  const categorySlug = categorySlugFromRecord(
+    textValue(raw.category_id, raw.categoryId),
+    textValue(raw.categorySlug, raw.category_slug, raw.category)
+  );
+  const application =
+    raw.application === "machine" || raw.application === "hand"
+      ? raw.application
+      : getApplicationForCategory(categorySlug);
+
+  return {
+    id: product.id,
+    name: textValue(raw.name, raw.title, raw.product_title),
+    storefrontTitle: textValue(raw.storefrontTitle, raw.display_name, raw.displayName, raw.storefront_title),
+    partNumber: textValue(raw.partNumber, raw.part_number, raw.sku),
+    description: textValue(raw.description),
+    gauge: numberOrNull(raw.gauge),
+    priceUsd: numberOrNull(raw.priceUsd, raw.base_unit_price, raw.price_usd, raw.price),
+    priceCase: numberOrNull(raw.priceCase, raw.price_case),
+    priceHalfPallet: numberOrNull(raw.priceHalfPallet, raw.price_half_pallet),
+    pricePallet: numberOrNull(raw.pricePallet, raw.price_pallet),
+    price6Rolls: numberOrNull(raw.price6Rolls, raw.price_6_rolls) ?? PACKAGE_TIER_DEFAULTS.price6Rolls,
+    price12Rolls: numberOrNull(raw.price12Rolls, raw.price_12_rolls) ?? PACKAGE_TIER_DEFAULTS.price12Rolls,
+    price20Rolls: numberOrNull(raw.price20Rolls, raw.price_20_rolls) ?? PACKAGE_TIER_DEFAULTS.price20Rolls,
+    price40Rolls: numberOrNull(raw.price40Rolls, raw.price_40_rolls) ?? PACKAGE_TIER_DEFAULTS.price40Rolls,
+    stockQuantity: numberOrNull(raw.stockQuantity, raw.stock_quantity, raw.stock_qty) ?? 0,
+    isSoldOut: Boolean(raw.isSoldOut ?? raw.is_sold_out ?? false),
+    application,
+    categorySlug,
+    imageUrl: textValue(raw.imageUrl, raw.image_url),
+    images:
+      Array.isArray(raw.images) && raw.images.length
+        ? raw.images.map(String)
+        : textValue(raw.imageUrl, raw.image_url)
+          ? [textValue(raw.imageUrl, raw.image_url)]
+          : [],
+    isActive: raw.isActive !== false && raw.is_active !== false && raw.visible !== false,
+  };
+}
 
 const EMPTY_FORM: ProductFormValues = {
   name: "",
@@ -63,47 +122,23 @@ export function ProductFormModal({
   showToast,
 }: ProductFormModalProps) {
   const { t } = useLanguage();
+  const formSource = isOpen ? product?.id ?? "new" : "closed";
   const [form, setForm] = useState<ProductFormValues>(EMPTY_FORM);
+  const [loadedSource, setLoadedSource] = useState(formSource);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
+  if (loadedSource !== formSource) {
+    setLoadedSource(formSource);
+    setForm(isOpen && product ? productToForm(product) : EMPTY_FORM);
+  }
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    if (product) {
-      setForm({
-        id: product.id,
-        name: product.name,
-        storefrontTitle: product.storefrontTitle || "",
-        partNumber: product.partNumber || "",
-        description: product.description || "",
-        gauge: product.gauge,
-        priceUsd: product.priceUsd,
-        priceCase: product.priceCase,
-        priceHalfPallet: product.priceHalfPallet,
-        pricePallet: product.pricePallet,
-        price6Rolls: product.price6Rolls,
-        price12Rolls: product.price12Rolls,
-        price20Rolls: product.price20Rolls,
-        price40Rolls: product.price40Rolls,
-        stockQuantity: product.stockQuantity,
-        isSoldOut: Boolean(product.isSoldOut),
-        application: getApplicationForCategory(product.categorySlug),
-        categorySlug: product.categorySlug,
-        imageUrl: product.imageUrl,
-        images: product.images?.length ? product.images : product.imageUrl ? [product.imageUrl] : [],
-        isActive: product.isActive,
-      });
-    } else {
-      setForm(EMPTY_FORM);
-    }
-  }, [isOpen, product]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -284,14 +319,19 @@ export function ProductFormModal({
                 {t("products.gauge")}
               </label>
               <select
-                value={form.gauge ?? ""}
+                value={form.gauge === null || form.gauge === undefined ? "" : String(form.gauge)}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, gauge: e.target.value ? Number(e.target.value) : null }))
                 }
                 className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 cursor-pointer"
               >
-                {GAUGE_OPTIONS.map((g) => (
-                  <option key={g} value={g}>
+                {(form.gauge !== null &&
+                form.gauge !== undefined &&
+                !GAUGE_OPTIONS.includes(form.gauge as (typeof GAUGE_OPTIONS)[number])
+                  ? [form.gauge, ...GAUGE_OPTIONS]
+                  : GAUGE_OPTIONS
+                ).map((g) => (
+                  <option key={g} value={String(g)}>
                     {g} GA
                   </option>
                 ))}

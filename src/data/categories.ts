@@ -13,6 +13,43 @@ export interface CategoryItem {
   activeShadow: string;
 }
 
+/** Live `categories.id` values used by `products.category_id`. */
+export const CATEGORY_DB_IDS: Record<string, string> = {
+  "force-standard": "a0000000-0000-0000-0000-000000000001",
+  "force-elite": "b0000000-0000-0000-0000-000000000002",
+  "genesis-standard": "b0000000-0000-0000-0000-000000000003",
+  "genesis-high-performance": "fc93a79e-6549-4781-9a7d-009bc8bb27b0",
+  "machine-high-yield-film": "fc93a79e-6549-4781-9a7d-009bc8bb27b0",
+};
+
+export function categorySlugFromRecord(
+  categoryId: string | null | undefined,
+  joinedSlug?: string | null
+): string {
+  const slug = String(joinedSlug || "").trim();
+  if (slug === "machine-high-yield-film") return "genesis-high-performance";
+  if (PRODUCT_CATEGORIES.some((category) => category.slug === slug)) return slug;
+
+  const id = String(categoryId || "");
+  const fromUuid = Object.entries(CATEGORY_DB_IDS).find(([, uuid]) => uuid === id)?.[0];
+  if (fromUuid === "machine-high-yield-film") return "genesis-high-performance";
+  if (fromUuid && PRODUCT_CATEGORIES.some((category) => category.slug === fromUuid)) {
+    return fromUuid;
+  }
+
+  const match = PRODUCT_CATEGORIES.find(
+    (category) => category.id === id || category.slug === id
+  );
+  return match?.slug || "force-standard";
+}
+
+export function categoryIdForSlug(slug: string): string | null {
+  const mapped = CATEGORY_DB_IDS[slug];
+  if (mapped) return mapped;
+  const category = PRODUCT_CATEGORIES.find((item) => item.slug === slug);
+  return category?.id || null;
+}
+
 export const PRODUCT_CATEGORIES: CategoryItem[] = [
   {
     id: "force-standard",
