@@ -14,7 +14,7 @@ export const PACKAGE_TIER_DEFAULTS = {
 } as const;
 
 export interface AdminProduct {
-  id: number;
+  id: string;
   slug: string;
   name: string;
   storefrontTitle: string;
@@ -41,7 +41,7 @@ export interface AdminProduct {
 }
 
 export interface ProductFormValues {
-  id?: number;
+  id?: string;
   name: string;
   storefrontTitle: string;
   partNumber: string;

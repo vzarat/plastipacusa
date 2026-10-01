@@ -48,14 +48,14 @@ async function writeProductRow(
   supabase: Awaited<ReturnType<typeof getProductWriteClient>>,
   mode: "insert" | "update",
   payload: Record<string, unknown>,
-  id?: number
+  id?: string
 ) {
   let next = { ...payload };
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const query =
       mode === "insert"
         ? supabase.from("products").insert(next).select("*").single()
-        : supabase.from("products").update(next).eq("id", id as number).select("*").single();
+        : supabase.from("products").update(next).eq("id", id as string).select("*").single();
     const result = await query;
     if (!result.error) return result;
     const message = result.error.message || "";
@@ -70,7 +70,7 @@ async function writeProductRow(
     delete next[column];
     next = { ...next };
   }
-  return supabase.from("products").update(next).eq("id", id as number).select("*").single();
+  return supabase.from("products").update(next).eq("id", id as string).select("*").single();
 }
 
 function parsePositivePrice(...candidates: unknown[]): number | null {
@@ -833,7 +833,7 @@ function formatAdminProduct(raw: any): AdminProduct {
   );
 
   return {
-    id: Number(raw.id),
+    id: String(raw.id),
     slug: String(raw.slug),
     name: String(raw.name || ""),
     storefrontTitle: String(raw.storefront_title || raw.storefrontTitle || ""),
@@ -978,7 +978,7 @@ export async function createProduct(values: ProductFormValues) {
 /**
  * Update an existing product's details in Supabase `public.products`.
  */
-export async function updateProduct(id: number, values: Partial<ProductFormValues>) {
+export async function updateProduct(id: string, values: Partial<ProductFormValues>) {
   const { isAdmin } = await verifyAdmin();
   if (!isAdmin) {
     return { success: false, error: "Unauthorized." };
@@ -1045,18 +1045,18 @@ export async function updateProduct(id: number, values: Partial<ProductFormValue
 /**
  * Toggle a product's active/inactive visibility status.
  */
-export async function toggleProductActive(id: number, isActive: boolean) {
+export async function toggleProductActive(id: string, isActive: boolean) {
   return updateProduct(id, { isActive });
 }
 
-export async function toggleProductSoldOut(id: number, isSoldOut: boolean) {
+export async function toggleProductSoldOut(id: string, isSoldOut: boolean) {
   return updateProduct(id, { isSoldOut });
 }
 
 /**
  * Permanently delete a product (and its variants, via cascade) from Supabase.
  */
-export async function deleteProduct(id: number) {
+export async function deleteProduct(id: string) {
   const { isAdmin } = await verifyAdmin();
   if (!isAdmin) {
     return { success: false, error: "Unauthorized." };

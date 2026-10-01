@@ -81,7 +81,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
   const [isGaugeMenuOpen, setIsGaugeMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
-  const [busyId, setBusyId] = useState<number | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [localToast, setLocalToast] = useState<string | null>(null);
 
   const notify = (msg: string) => {
