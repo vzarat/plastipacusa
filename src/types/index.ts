@@ -2,13 +2,19 @@ import { Product as DbProduct, ProductVariant as DbProductVariant, Inquiry as Db
 
 export type ApplicationType = "hand" | "machine";
 
-export interface ProductVariant extends Omit<DbProductVariant, "id"> {
+export interface ProductVariant extends Omit<
+  DbProductVariant,
+  "id" | "rollWeightLbs" | "boxWeightLbs" | "palletWeightLbs"
+> {
   id: any;
   title?: string;
   rolls_count?: number;
   boxes_count?: number;
   rollsCount?: number;
   boxesCount?: number;
+  rollWeightLbs?: number | null;
+  boxWeightLbs?: number | null;
+  palletWeightLbs?: number | null;
 }
 
 export interface PackageOption {
