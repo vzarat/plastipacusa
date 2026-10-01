@@ -18,7 +18,13 @@ import {
   updateProduct,
   uploadProductImage,
 } from "@/actions/products";
-import { AdminProduct, GAUGE_OPTIONS, PACKAGE_TIER_DEFAULTS, ProductFormValues } from "@/types/product";
+import {
+  AdminPackageTier,
+  AdminProduct,
+  GAUGE_OPTIONS,
+  PACKAGE_TIER_DEFAULTS,
+  ProductFormValues,
+} from "@/types/product";
 import { PRODUCT_CATEGORIES, categorySlugFromRecord, getApplicationForCategory } from "@/data/categories";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -68,6 +74,12 @@ function productToForm(product: AdminProduct): ProductFormValues {
     partNumber: textValue(raw.partNumber, raw.part_number, raw.sku),
     description: textValue(raw.description),
     gauge: numberOrNull(raw.gauge),
+    widthInches: numberOrNull(raw.widthInches, raw.width_inches),
+    lengthFeet: numberOrNull(raw.lengthFeet, raw.length_feet),
+    rollsPerBox: numberOrNull(raw.rollsPerBox, raw.rolls_per_box),
+    rollWeightLbs: numberOrNull(raw.rollWeightLbs, raw.roll_weight_lbs),
+    palletWeightLbs: numberOrNull(raw.palletWeightLbs, raw.pallet_weight_lbs),
+    palletDimensions: textValue(raw.palletDimensions, raw.pallet_dimensions),
     priceUsd: numberOrNull(raw.priceUsd, raw.base_unit_price, raw.price_usd, raw.price),
     priceCase: numberOrNull(raw.priceCase, raw.price_case),
     priceHalfPallet: numberOrNull(raw.priceHalfPallet, raw.price_half_pallet),
@@ -76,6 +88,19 @@ function productToForm(product: AdminProduct): ProductFormValues {
     price12Rolls: numberOrNull(raw.price12Rolls, raw.price_12_rolls) ?? PACKAGE_TIER_DEFAULTS.price12Rolls,
     price20Rolls: numberOrNull(raw.price20Rolls, raw.price_20_rolls) ?? PACKAGE_TIER_DEFAULTS.price20Rolls,
     price40Rolls: numberOrNull(raw.price40Rolls, raw.price_40_rolls) ?? PACKAGE_TIER_DEFAULTS.price40Rolls,
+    packageTiers: Array.isArray(raw.packageTiers)
+      ? (raw.packageTiers as AdminPackageTier[]).map((tier) => ({
+          id: tier.id,
+          label: tier.label,
+          sku: tier.sku,
+          price: numberOrNull(tier.price),
+          boxesCount: tier.boxesCount ?? null,
+          rollsCount: tier.rollsCount ?? null,
+          rollWeightLbs: numberOrNull(tier.rollWeightLbs),
+          boxWeightLbs: numberOrNull(tier.boxWeightLbs),
+          palletWeightLbs: numberOrNull(tier.palletWeightLbs),
+        }))
+      : [],
     stockQuantity: numberOrNull(raw.stockQuantity, raw.stock_quantity, raw.stock_qty) ?? 0,
     isSoldOut: Boolean(raw.isSoldOut ?? raw.is_sold_out ?? false),
     application,
@@ -97,6 +122,12 @@ const EMPTY_FORM: ProductFormValues = {
   partNumber: "",
   description: "",
   gauge: GAUGE_OPTIONS[0],
+  widthInches: null,
+  lengthFeet: null,
+  rollsPerBox: null,
+  rollWeightLbs: null,
+  palletWeightLbs: null,
+  palletDimensions: "",
   priceUsd: null,
   priceCase: null,
   priceHalfPallet: null,
@@ -105,6 +136,7 @@ const EMPTY_FORM: ProductFormValues = {
   price12Rolls: PACKAGE_TIER_DEFAULTS.price12Rolls,
   price20Rolls: PACKAGE_TIER_DEFAULTS.price20Rolls,
   price40Rolls: PACKAGE_TIER_DEFAULTS.price40Rolls,
+  packageTiers: [],
   stockQuantity: 0,
   isSoldOut: false,
   application: getApplicationForCategory(DEFAULT_CATEGORY_SLUG),
@@ -382,6 +414,98 @@ export function ProductFormModal({
             </div>
           </div>
 
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">Width (in)</label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.widthInches ?? ""}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    widthInches: e.target.value === "" ? null : Number(e.target.value),
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">Length (ft)</label>
+              <Input
+                type="number"
+                step="1"
+                min="0"
+                value={form.lengthFeet ?? ""}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    lengthFeet: e.target.value === "" ? null : Number(e.target.value),
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">Rolls per Box</label>
+              <Input
+                type="number"
+                step="1"
+                min="0"
+                value={form.rollsPerBox ?? ""}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    rollsPerBox: e.target.value === "" ? null : Number(e.target.value),
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Weight per Roll (lbs)
+              </label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.rollWeightLbs ?? ""}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    rollWeightLbs: e.target.value === "" ? null : Number(e.target.value),
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Full Pallet Weight (lbs)
+              </label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.palletWeightLbs ?? ""}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    palletWeightLbs: e.target.value === "" ? null : Number(e.target.value),
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Pallet Dimensions
+              </label>
+              <Input
+                value={form.palletDimensions}
+                onChange={(e) => setForm((p) => ({ ...p, palletDimensions: e.target.value }))}
+                placeholder='48" x 48" x 78"'
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
@@ -462,106 +586,61 @@ export function ProductFormModal({
           </div>
 
           <div className="rounded-xl border border-slate-200 p-4 space-y-3">
-            <h3 className="text-sm font-black text-slate-900">{t("admin.pricingTiers")}</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  {t("admin.casePrice")}
-                </label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.priceCase ?? ""}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, priceCase: e.target.value ? Number(e.target.value) : null }))
-                  }
-                  placeholder="0.00"
-                />
-                <p className="text-[10px] text-slate-400 mt-1">e.g. 4-6 Rolls per Case/Box</p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  {t("admin.halfPalletPrice")}
-                </label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.priceHalfPallet ?? ""}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, priceHalfPallet: e.target.value ? Number(e.target.value) : null }))
-                  }
-                  placeholder="0.00"
-                />
-                <p className="text-[10px] text-slate-400 mt-1">e.g. 24 Rolls / Half Pallet</p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  {t("admin.fullPalletPrice")}
-                </label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.pricePallet ?? ""}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, pricePallet: e.target.value ? Number(e.target.value) : null }))
-                  }
-                  placeholder="0.00"
-                />
-                <p className="text-[10px] text-slate-400 mt-1">e.g. 48+ Rolls / Full Pallet</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 p-4 space-y-3">
             <div>
               <h3 className="text-sm font-black text-slate-900">{t("admin.packageOptionsTitle")}</h3>
               <p className="text-[10px] text-slate-400 mt-0.5">
-                Fixed roll-count packages shown on the public product page. SKUs are auto-generated from the
-                Part Number.
+                Prices for each package option. Saving writes these amounts to the product variants.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {(
-                [
-                  { key: "price6Rolls" as const, label: "6 ROLLS", suffix: "6R" },
-                  { key: "price12Rolls" as const, label: "12 ROLLS", suffix: "12R" },
-                  { key: "price20Rolls" as const, label: "20 ROLLS (HALF PALLET)", suffix: "20R" },
-                  { key: "price40Rolls" as const, label: "40 ROLLS (FULL PALLET)", suffix: "40R" },
-                ]
-              ).map((tier) => (
-                <div key={tier.key} className="rounded-lg bg-slate-50 border border-slate-200 p-3 space-y-2">
-                  <span className="text-xs font-bold text-slate-800">{tier.label}</span>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1">{t("admin.priceUsd")}</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={form[tier.key]}
-                        onChange={(e) =>
-                          setForm((p) => ({ ...p, [tier.key]: Number(e.target.value) || 0 }))
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1">SKU</label>
-                      <Input
-                        value={`${(form.partNumber || "SKU").toUpperCase()}-${tier.suffix}`}
-                        disabled
-                        className="bg-slate-100 text-slate-500 font-mono text-xs cursor-not-allowed"
-                      />
+            {form.packageTiers.length === 0 ? (
+              <p className="text-xs text-slate-500">
+                This product has no package variants yet.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {form.packageTiers.map((tier, index) => (
+                  <div
+                    key={tier.id || tier.sku || `${tier.label}-${index}`}
+                    className="rounded-lg bg-slate-50 border border-slate-200 p-3 space-y-2"
+                  >
+                    <span className="text-xs font-bold text-slate-800">{tier.label}</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                          {t("admin.priceUsd")}
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={tier.price ?? ""}
+                          onChange={(e) => {
+                            const nextPrice = e.target.value === "" ? null : Number(e.target.value);
+                            setForm((prev) => ({
+                              ...prev,
+                              packageTiers: prev.packageTiers.map((item, itemIndex) =>
+                                itemIndex === index
+                                  ? { ...item, price: Number.isFinite(nextPrice as number) ? nextPrice : null }
+                                  : item
+                              ),
+                            }));
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">SKU</label>
+                        <Input
+                          value={tier.sku}
+                          disabled
+                          className="bg-slate-100 text-slate-500 font-mono text-xs cursor-not-allowed"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>

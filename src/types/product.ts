@@ -13,6 +13,18 @@ export const PACKAGE_TIER_DEFAULTS = {
   price40Rolls: 1099.64,
 } as const;
 
+export interface AdminPackageTier {
+  id?: string;
+  label: string;
+  sku: string;
+  price: number | null;
+  boxesCount?: number | null;
+  rollsCount?: number | null;
+  rollWeightLbs?: number | null;
+  boxWeightLbs?: number | null;
+  palletWeightLbs?: number | null;
+}
+
 export interface AdminProduct {
   id: string;
   slug: string;
@@ -23,6 +35,10 @@ export interface AdminProduct {
   gauge: number | null;
   widthInches: number | null;
   lengthFeet: number | null;
+  rollsPerBox: number | null;
+  rollWeightLbs: number | null;
+  palletWeightLbs: number | null;
+  palletDimensions: string;
   priceUsd: number | null;
   priceCase: number | null;
   priceHalfPallet: number | null;
@@ -31,6 +47,7 @@ export interface AdminProduct {
   price12Rolls: number;
   price20Rolls: number;
   price40Rolls: number;
+  packageTiers: AdminPackageTier[];
   stockQuantity: number;
   isSoldOut: boolean;
   application: "hand" | "machine";
@@ -49,6 +66,12 @@ export interface ProductFormValues {
   partNumber: string;
   description: string;
   gauge: number | null;
+  widthInches: number | null;
+  lengthFeet: number | null;
+  rollsPerBox: number | null;
+  rollWeightLbs: number | null;
+  palletWeightLbs: number | null;
+  palletDimensions: string;
   priceUsd: number | null;
   priceCase: number | null;
   priceHalfPallet: number | null;
@@ -57,6 +80,7 @@ export interface ProductFormValues {
   price12Rolls: number;
   price20Rolls: number;
   price40Rolls: number;
+  packageTiers: AdminPackageTier[];
   stockQuantity: number;
   isSoldOut: boolean;
   application: "hand" | "machine";

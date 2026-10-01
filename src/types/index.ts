@@ -35,6 +35,12 @@ export interface ProductWithVariants
     | "price12Rolls"
     | "price20Rolls"
     | "price40Rolls"
+    | "widthInches"
+    | "lengthFeet"
+    | "rollsPerBox"
+    | "rollWeightLbs"
+    | "palletWeightLbs"
+    | "palletDimensions"
   > {
   title: string;
   name?: string;

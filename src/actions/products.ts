@@ -7,7 +7,7 @@ import {
   isServiceRoleConfigured,
 } from "@/lib/supabase/admin";
 import { ProductWithVariants, ProductVariant, PackageOption } from "@/types";
-import { AdminProduct, ProductFormValues, PACKAGE_TIER_DEFAULTS } from "@/types/product";
+import { AdminPackageTier, AdminProduct, ProductFormValues, PACKAGE_TIER_DEFAULTS } from "@/types/product";
 import {
   PRODUCT_CATEGORIES,
   categoryIdForSlug,
@@ -869,6 +869,15 @@ function readPositiveNumber(...candidates: unknown[]): number | null {
   return null;
 }
 
+function readNullableNumber(...candidates: unknown[]): number | null {
+  for (const candidate of candidates) {
+    if (candidate === null || candidate === undefined || candidate === "") continue;
+    const value = Number(candidate);
+    if (Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
 function extractWidthInches(text: string): number | null {
   const match = text.match(/(\d+(?:\.\d+)?)\s*(?:"|″|\bin\b)/i);
   return match ? Number(match[1]) : null;
@@ -911,6 +920,28 @@ function applicationFromRecord(raw: any, categorySlug: string): "hand" | "machin
   return getApplicationForCategory(categorySlug);
 }
 
+function mapPackageTiers(variants: any[] | null | undefined): AdminPackageTier[] {
+  const rows = Array.isArray(variants) ? variants : [];
+  return [...rows]
+    .sort((a, b) => {
+      const boxesA = Number(a.boxes_count ?? a.boxesCount ?? 0);
+      const boxesB = Number(b.boxes_count ?? b.boxesCount ?? 0);
+      if (boxesA !== boxesB) return boxesA - boxesB;
+      return Number(a.price ?? a.price_usd ?? 0) - Number(b.price ?? b.price_usd ?? 0);
+    })
+    .map((variant) => ({
+      id: variant.id ? String(variant.id) : undefined,
+      label: firstText(variant.title, variant.package_size, variant.packageSize, variant.sku) || "Package",
+      sku: firstText(variant.sku),
+      price: parsePositivePrice(variant.price, variant.price_usd, variant.priceUsd),
+      boxesCount: Number(variant.boxes_count ?? variant.boxesCount) || null,
+      rollsCount: Number(variant.rolls_count ?? variant.rollsCount) || null,
+      rollWeightLbs: readNullableNumber(variant.roll_weight_lbs, variant.rollWeightLbs),
+      boxWeightLbs: readNullableNumber(variant.box_weight_lbs, variant.boxWeightLbs),
+      palletWeightLbs: readNullableNumber(variant.pallet_weight_lbs, variant.palletWeightLbs),
+    }));
+}
+
 async function syncBaseVariant(
   supabase: Awaited<ReturnType<typeof getProductWriteClient>>,
   productId: string,
@@ -918,14 +949,37 @@ async function syncBaseVariant(
 ) {
   const { data } = await supabase
     .from("product_variants")
-    .select("id, product_id, sku, title, price, stock_quantity, boxes_count")
+    .select("id, product_id, sku, title, price, stock_quantity, boxes_count, rolls_count")
     .eq("product_id", productId);
   const variants = data || [];
+  const pricedTierIds = new Set(
+    (values.packageTiers || [])
+      .filter((tier) => tier.id && tier.price !== null && tier.price !== undefined && Number(tier.price) > 0)
+      .map((tier) => String(tier.id))
+  );
+
+  for (const tier of values.packageTiers || []) {
+    if (!tier.id || tier.price === null || tier.price === undefined || !(Number(tier.price) > 0)) continue;
+    const price = Number(Number(tier.price).toFixed(2));
+    await supabase
+      .from("product_variants")
+      .update({ price })
+      .eq("id", tier.id)
+      .eq("product_id", productId);
+    const match = variants.find((variant) => String(variant.id) === String(tier.id));
+    if (match) match.price = price;
+  }
+
   const base = pickBaseVariant(variants);
   if (!base) return variants;
 
   const patch: Record<string, unknown> = {};
-  if (values.priceUsd !== undefined && values.priceUsd !== null && Number(values.priceUsd) > 0) {
+  if (
+    values.priceUsd !== undefined &&
+    values.priceUsd !== null &&
+    Number(values.priceUsd) > 0 &&
+    !pricedTierIds.has(String(base.id))
+  ) {
     patch.price = Number(values.priceUsd);
   }
   if (values.stockQuantity !== undefined && values.stockQuantity !== null) {
@@ -987,6 +1041,10 @@ function formatAdminProduct(raw: any): AdminProduct {
     gauge,
     widthInches,
     lengthFeet,
+    rollsPerBox: readNullableNumber(raw.rolls_per_box, raw.rollsPerBox),
+    rollWeightLbs: readNullableNumber(raw.roll_weight_lbs, raw.rollWeightLbs),
+    palletWeightLbs: readNullableNumber(raw.pallet_weight_lbs, raw.palletWeightLbs),
+    palletDimensions: firstText(raw.pallet_dimensions, raw.palletDimensions),
     priceUsd,
     priceCase: raw.price_case === null || raw.price_case === undefined ? null : Number(raw.price_case),
     priceHalfPallet:
@@ -1017,6 +1075,7 @@ function formatAdminProduct(raw: any): AdminProduct {
     imageUrl: String(raw.image_url || raw.imageUrl || (Array.isArray(raw.images) && raw.images[0]) || ""),
     images: Array.isArray(raw.images) ? raw.images : [],
     isActive: readIsActive(raw),
+    packageTiers: mapPackageTiers(raw.product_variants || raw.variants),
     createdAt: raw.created_at || undefined,
     updatedAt: raw.updated_at || undefined,
   };
@@ -1050,7 +1109,7 @@ export async function getAdminProducts(): Promise<AdminProduct[]> {
       productIds.length
         ? supabase
             .from("product_variants")
-            .select("id, product_id, sku, title, price, stock_quantity, boxes_count")
+            .select("id, product_id, sku, title, price, stock_quantity, boxes_count, rolls_count, roll_weight_lbs, box_weight_lbs, pallet_weight_lbs")
             .in("product_id", productIds)
         : Promise.resolve({ data: [] as any[], error: null }),
       supabase.from("categories").select("id, slug, name"),
@@ -1124,6 +1183,12 @@ export async function createProduct(values: ProductFormValues) {
       short_description: (values.description || "").slice(0, 500),
       application: getApplicationForCategory(values.categorySlug),
       gauge: values.gauge ?? null,
+      width_inches: values.widthInches ?? null,
+      length_feet: values.lengthFeet ?? null,
+      rolls_per_box: values.rollsPerBox ?? null,
+      roll_weight_lbs: values.rollWeightLbs ?? null,
+      pallet_weight_lbs: values.palletWeightLbs ?? null,
+      pallet_dimensions: values.palletDimensions?.trim() || null,
       price_usd: values.priceUsd ?? null,
       price_case: values.priceCase ?? null,
       price_half_pallet: values.priceHalfPallet ?? null,
@@ -1196,6 +1261,24 @@ export async function updateProduct(id: string, values: Partial<ProductFormValue
     }
     if (values.application !== undefined) updatePayload.application = values.application;
     if (values.gauge !== undefined && values.gauge !== null) updatePayload.gauge = values.gauge;
+    if (values.widthInches !== undefined && values.widthInches !== null) {
+      updatePayload.width_inches = values.widthInches;
+    }
+    if (values.lengthFeet !== undefined && values.lengthFeet !== null) {
+      updatePayload.length_feet = values.lengthFeet;
+    }
+    if (values.rollsPerBox !== undefined && values.rollsPerBox !== null) {
+      updatePayload.rolls_per_box = values.rollsPerBox;
+    }
+    if (values.rollWeightLbs !== undefined && values.rollWeightLbs !== null) {
+      updatePayload.roll_weight_lbs = values.rollWeightLbs;
+    }
+    if (values.palletWeightLbs !== undefined && values.palletWeightLbs !== null) {
+      updatePayload.pallet_weight_lbs = values.palletWeightLbs;
+    }
+    if (values.palletDimensions !== undefined && values.palletDimensions.trim()) {
+      updatePayload.pallet_dimensions = values.palletDimensions.trim();
+    }
     if (values.priceUsd !== undefined && values.priceUsd !== null) {
       updatePayload.price_usd = values.priceUsd;
       updatePayload.base_unit_price = values.priceUsd;
