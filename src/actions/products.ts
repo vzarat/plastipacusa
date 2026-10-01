@@ -944,13 +944,35 @@ function mapPackageTiers(variants: any[] | null | undefined): AdminPackageTier[]
       id: variant.id ? String(variant.id) : undefined,
       label: firstText(variant.title, variant.package_size, variant.packageSize, variant.sku) || "Package",
       sku: firstText(variant.sku),
-      price: parsePositivePrice(variant.price, variant.price_usd, variant.priceUsd),
+      price: readNullableNumber(variant.price, variant.price_usd, variant.priceUsd) ?? 0,
       boxesCount: Number(variant.boxes_count ?? variant.boxesCount) || null,
       rollsCount: Number(variant.rolls_count ?? variant.rollsCount) || null,
       rollWeightLbs: readNullableNumber(variant.roll_weight_lbs, variant.rollWeightLbs),
       boxWeightLbs: readNullableNumber(variant.box_weight_lbs, variant.boxWeightLbs),
       palletWeightLbs: readNullableNumber(variant.pallet_weight_lbs, variant.palletWeightLbs),
     }));
+}
+
+async function insertPackageVariant(
+  supabase: Awaited<ReturnType<typeof getProductWriteClient>>,
+  payload: Record<string, unknown>
+) {
+  let next = { ...payload };
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const result = await supabase.from("product_variants").insert(next).select("*");
+    if (!result.error) return firstRow(result.data);
+    const message = result.error.message || "";
+    const missing =
+      message.match(/Could not find the ['"]([a-z0-9_]+)['"] column/i) ||
+      message.match(/column ["']?([a-z0-9_]+)["']?/i);
+    const unknownColumn = /does not exist/i.test(message) || /schema cache/i.test(message);
+    if (!missing || !unknownColumn || !(missing[1] in next)) {
+      throw new Error(message || "Failed to create package option.");
+    }
+    delete next[missing[1]];
+    next = { ...next };
+  }
+  throw new Error("Failed to create package option.");
 }
 
 async function syncBaseVariant(
@@ -963,22 +985,42 @@ async function syncBaseVariant(
     .select("id, product_id, sku, title, price, stock_quantity, boxes_count, rolls_count")
     .eq("product_id", productId);
   const variants = data || [];
-  const pricedTierIds = new Set(
-    (values.packageTiers || [])
-      .filter((tier) => tier.id && tier.price !== null && tier.price !== undefined && Number(tier.price) > 0)
-      .map((tier) => String(tier.id))
-  );
+  const pricedTierIds = new Set<string>();
 
   for (const tier of values.packageTiers || []) {
-    if (!tier.id || tier.price === null || tier.price === undefined || !(Number(tier.price) > 0)) continue;
+    if (tier.price === null || tier.price === undefined || !Number.isFinite(Number(tier.price))) continue;
+    if (Number(tier.price) < 0) continue;
     const price = Number(Number(tier.price).toFixed(2));
-    await supabase
-      .from("product_variants")
-      .update({ price })
-      .eq("id", tier.id)
-      .eq("product_id", productId);
-    const match = variants.find((variant) => String(variant.id) === String(tier.id));
-    if (match) match.price = price;
+
+    if (tier.id) {
+      await supabase
+        .from("product_variants")
+        .update({ price })
+        .eq("id", tier.id)
+        .eq("product_id", productId);
+      pricedTierIds.add(String(tier.id));
+      const match = variants.find((variant) => String(variant.id) === String(tier.id));
+      if (match) match.price = price;
+      continue;
+    }
+
+    const boxes = Number(tier.boxesCount) || 1;
+    const sku =
+      tier.sku?.trim() ||
+      `${String(productId).replace(/-/g, "").slice(0, 8)}-${boxes}B`;
+    const inserted = await insertPackageVariant(supabase, {
+      product_id: productId,
+      sku,
+      title: tier.label,
+      rolls_count: tier.rollsCount ?? null,
+      boxes_count: tier.boxesCount ?? null,
+      price,
+      stock_quantity: 0,
+    });
+    if (inserted) {
+      variants.push(inserted);
+      pricedTierIds.add(String(inserted.id));
+    }
   }
 
   const base = pickBaseVariant(variants);

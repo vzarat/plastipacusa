@@ -56,6 +56,36 @@ function numberOrNull(...values: unknown[]): number | null {
   return null;
 }
 
+const DEFAULT_PACKAGE_OPTIONS = [
+  { label: "1 BOX WITH 4 ROLLS", rollsCount: 4, boxesCount: 1, suffix: "1B" },
+  { label: "16 BOXES = 64 ROLLS", rollsCount: 64, boxesCount: 16, suffix: "16B" },
+  { label: "32 BOXES = 128 ROLLS (HALF PALLET)", rollsCount: 128, boxesCount: 32, suffix: "32B" },
+  { label: "64 BOXES = 256 ROLLS (FULL PALLET)", rollsCount: 256, boxesCount: 64, suffix: "64B" },
+] as const;
+
+function packageSku(baseSku: string, suffix: string): string {
+  const base = baseSku.trim();
+  return base ? `${base}-${suffix}` : "";
+}
+
+function defaultPackageTiers(baseSku: string): AdminPackageTier[] {
+  return DEFAULT_PACKAGE_OPTIONS.map((option) => ({
+    label: option.label,
+    sku: packageSku(baseSku, option.suffix),
+    price: 0,
+    boxesCount: option.boxesCount,
+    rollsCount: option.rollsCount,
+  }));
+}
+
+function withDefaultPackageTiers(
+  tiers: AdminPackageTier[] | undefined,
+  baseSku: string
+): AdminPackageTier[] {
+  if (Array.isArray(tiers) && tiers.length > 0) return tiers;
+  return defaultPackageTiers(baseSku);
+}
+
 function productToForm(product: AdminProduct): ProductFormValues {
   const raw = product as AdminProduct & Record<string, unknown>;
   const categorySlug = categorySlugFromRecord(
@@ -88,19 +118,22 @@ function productToForm(product: AdminProduct): ProductFormValues {
     price12Rolls: numberOrNull(raw.price12Rolls, raw.price_12_rolls) ?? PACKAGE_TIER_DEFAULTS.price12Rolls,
     price20Rolls: numberOrNull(raw.price20Rolls, raw.price_20_rolls) ?? PACKAGE_TIER_DEFAULTS.price20Rolls,
     price40Rolls: numberOrNull(raw.price40Rolls, raw.price_40_rolls) ?? PACKAGE_TIER_DEFAULTS.price40Rolls,
-    packageTiers: Array.isArray(raw.packageTiers)
-      ? (raw.packageTiers as AdminPackageTier[]).map((tier) => ({
-          id: tier.id,
-          label: tier.label,
-          sku: tier.sku,
-          price: numberOrNull(tier.price),
-          boxesCount: tier.boxesCount ?? null,
-          rollsCount: tier.rollsCount ?? null,
-          rollWeightLbs: numberOrNull(tier.rollWeightLbs),
-          boxWeightLbs: numberOrNull(tier.boxWeightLbs),
-          palletWeightLbs: numberOrNull(tier.palletWeightLbs),
-        }))
-      : [],
+    packageTiers: withDefaultPackageTiers(
+      Array.isArray(raw.packageTiers)
+        ? (raw.packageTiers as AdminPackageTier[]).map((tier) => ({
+            id: tier.id,
+            label: tier.label,
+            sku: tier.sku,
+            price: numberOrNull(tier.price) ?? 0,
+            boxesCount: tier.boxesCount ?? null,
+            rollsCount: tier.rollsCount ?? null,
+            rollWeightLbs: numberOrNull(tier.rollWeightLbs),
+            boxWeightLbs: numberOrNull(tier.boxWeightLbs),
+            palletWeightLbs: numberOrNull(tier.palletWeightLbs),
+          }))
+        : [],
+      textValue(raw.partNumber, raw.part_number, raw.sku)
+    ),
     stockQuantity: numberOrNull(raw.stockQuantity, raw.stock_quantity, raw.stock_qty) ?? 0,
     isSoldOut: Boolean(raw.isSoldOut ?? raw.is_sold_out ?? false),
     application,
@@ -136,7 +169,7 @@ const EMPTY_FORM: ProductFormValues = {
   price12Rolls: PACKAGE_TIER_DEFAULTS.price12Rolls,
   price20Rolls: PACKAGE_TIER_DEFAULTS.price20Rolls,
   price40Rolls: PACKAGE_TIER_DEFAULTS.price40Rolls,
-  packageTiers: [],
+  packageTiers: defaultPackageTiers(""),
   stockQuantity: 0,
   isSoldOut: false,
   application: getApplicationForCategory(DEFAULT_CATEGORY_SLUG),
@@ -312,7 +345,19 @@ export function ProductFormModal({
               </label>
               <Input
                 value={form.partNumber}
-                onChange={(e) => setForm((p) => ({ ...p, partNumber: e.target.value }))}
+                onChange={(e) => {
+                  const partNumber = e.target.value;
+                  setForm((prev) => ({
+                    ...prev,
+                    partNumber,
+                    packageTiers: prev.packageTiers.some((tier) => tier.id)
+                      ? prev.packageTiers
+                      : defaultPackageTiers(partNumber).map((tier, index) => ({
+                          ...tier,
+                          price: prev.packageTiers[index]?.price ?? 0,
+                        })),
+                  }));
+                }}
                 placeholder="e.g. FRC-1880-CS"
               />
             </div>
@@ -614,14 +659,14 @@ export function ProductFormModal({
                           type="number"
                           step="0.01"
                           min="0"
-                          value={tier.price ?? ""}
+                          value={tier.price ?? 0}
                           onChange={(e) => {
-                            const nextPrice = e.target.value === "" ? null : Number(e.target.value);
+                            const nextPrice = e.target.value === "" ? 0 : Number(e.target.value);
                             setForm((prev) => ({
                               ...prev,
                               packageTiers: prev.packageTiers.map((item, itemIndex) =>
                                 itemIndex === index
-                                  ? { ...item, price: Number.isFinite(nextPrice as number) ? nextPrice : null }
+                                  ? { ...item, price: Number.isFinite(nextPrice) ? nextPrice : 0 }
                                   : item
                               ),
                             }));
