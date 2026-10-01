@@ -16,6 +16,7 @@ export interface ProductRow {
   is_featured: boolean | null;
   part_number: string | null;
   is_sold_out: boolean | null;
+  is_active: boolean | null;
   roll_weight_lbs: number | null;
   pallet_weight_lbs: number | null;
   pallet_dimensions: string | null;
