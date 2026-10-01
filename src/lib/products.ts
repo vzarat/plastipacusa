@@ -11,8 +11,9 @@ export {
 
 import type { PackageOption, ProductVariant, ProductWithVariants } from "@/types";
 
-/** Neutral catalog image when a product has no image_url / images. */
-export const STRETCH_FILM_PLACEHOLDER = "/images/stretch-film-placeholder.png";
+/** Remote fallback when a product row has no image_url. Never stored in /public. */
+export const STRETCH_FILM_PLACEHOLDER =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png";
 
 export interface PackageOptionLike {
   rolls: number;
