@@ -11,17 +11,18 @@ import {
   Check,
   Pencil,
   Trash2,
-  Power,
   PackageX,
   Loader2,
   X,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminProduct } from "@/types/product";
 import { STRETCH_FILM_PLACEHOLDER } from "@/lib/products";
-import { deleteProduct, toggleProductActive, toggleProductSoldOut } from "@/actions/products";
+import { deleteProduct, toggleProductActive } from "@/actions/products";
 import { ProductFormModal } from "./ProductFormModal";
 
 interface AdminCatalogViewProps {
@@ -96,8 +97,10 @@ function ProductThumbnail({ src, alt }: { src: string; alt: string }) {
   );
 }
 
+const PAGE_SIZE = 12;
+
 export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogViewProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const router = useRouter();
   const [products, setProducts] = useState<AdminProduct[]>(initialProducts);
   const [search, setSearch] = useState("");
@@ -110,6 +113,8 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [localToast, setLocalToast] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = PAGE_SIZE;
 
   const notify = (msg: string) => {
     if (showToast) {
@@ -160,6 +165,18 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
     }).sort(compareProductsBySpecs);
   }, [products, search, filterApp, filterGauges, filterLength, filterStatus]);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const page = Math.min(currentPage, totalPages);
+  const pagedProducts = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterApp, filterGauges, filterLength, filterStatus]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
   const toggleGauge = (gauge: number) => {
     setFilterGauges((prev) =>
       prev.includes(gauge) ? prev.filter((g) => g !== gauge) : [...prev, gauge]
@@ -201,25 +218,6 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
         router.refresh();
       } else {
         notify(result.error || "Failed to update product status.");
-      }
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const handleToggleSoldOut = async (product: AdminProduct, isSoldOut: boolean) => {
-    if (product.isSoldOut === isSoldOut) return;
-    setBusyId(product.id);
-    try {
-      const result = await toggleProductSoldOut(product.id, isSoldOut);
-      if (result.success && result.product) {
-        setProducts((prev) => prev.map((p) => (p.id === product.id ? result.product! : p)));
-        notify(
-          `${product.name} is now ${isSoldOut ? "sold out" : "in stock"}.`
-        );
-        router.refresh();
-      } else {
-        notify(result.error || "Failed to update availability.");
       }
     } finally {
       setBusyId(null);
@@ -447,112 +445,97 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-4 sm:gap-6">
-          {filtered.map((item) => (
+        <div className="grid grid-cols-1 items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {pagedProducts.map((item) => (
             <div
               key={item.id}
-              className="flex flex-col rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden hover:shadow-md transition-shadow"
+              className="flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs transition-shadow hover:shadow-md"
             >
-              <div className="relative h-48 bg-slate-50 flex items-center justify-center p-4">
+              <div className="relative flex h-48 items-center justify-center bg-slate-50 p-4">
                 <ProductThumbnail src={resolveProductImage(item)} alt={item.name} />
 
                 <span className="absolute top-2.5 right-2.5">
                   {item.isActive ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
-                      <Check className="w-3 h-3 text-emerald-600" />
+                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                      <Check className="h-3 w-3 text-emerald-600" />
                       {t("admin.active")}
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-500 text-[10px] font-bold">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-500">
                       {t("admin.inactive")}
                     </span>
                   )}
                 </span>
               </div>
 
-              <div className="flex-1 flex flex-col p-4 gap-1.5">
-                <span className="text-xs text-gray-400 uppercase tracking-wide">
-                  {item.partNumber ? `#${item.partNumber}` : t("admin.noPartNumber")}
-                </span>
-                <h3 className="font-semibold text-gray-800 text-lg leading-snug">{item.name}</h3>
-                <p className="line-clamp-2 text-sm text-gray-500">
-                  {item.description || t("admin.noDescription")}
-                </p>
+              <div className="flex flex-1 flex-col justify-between p-4">
+                <div className="flex flex-col gap-1.5">
+                  <span className="truncate text-xs uppercase tracking-wide text-gray-400">
+                    {item.partNumber ? `#${item.partNumber}` : t("admin.noPartNumber")}
+                  </span>
+                  <h3 className="line-clamp-2 text-lg font-semibold leading-snug text-gray-800">
+                    {item.name}
+                  </h3>
+                  <p className="line-clamp-2 text-sm text-gray-500">
+                    {item.description || t("admin.noDescription")}
+                  </p>
 
-                <div className="flex flex-wrap gap-1.5 mt-1">
-                  {specBadgesFor(item, {
-                    hand: t("admin.specHand"),
-                    machine: t("admin.specMachine"),
-                  }).map((badge) => (
-                    <span
-                      key={badge}
-                      className="inline-flex items-center px-2 py-0.5 rounded-full bg-sky-50 border border-sky-200 text-sky-700 text-[10px] font-bold"
-                    >
-                      {badge}
+                  <div className="mt-1 flex max-h-6 flex-wrap gap-1.5 overflow-hidden">
+                    {specBadgesFor(item, {
+                      hand: t("admin.specHand"),
+                      machine: t("admin.specMachine"),
+                    }).map((badge) => (
+                      <span
+                        key={badge}
+                        className="inline-flex shrink-0 items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700"
+                      >
+                        {badge}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="font-bold text-slate-900">
+                      {item.priceUsd !== null ? `${formatCurrency(item.priceUsd)} USD` : "—"}
                     </span>
-                  ))}
+                    <span
+                      className={`text-xs font-bold ${
+                        item.isSoldOut ? "text-red-600" : "text-emerald-700"
+                      }`}
+                    >
+                      {item.isSoldOut ? t("admin.soldOut") : t("admin.inStock")}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between mt-2">
-                  <span className="font-bold text-slate-900">
-                    {item.priceUsd !== null ? `${formatCurrency(item.priceUsd)} USD` : "—"}
-                  </span>
-                  <span
-                    className={`text-xs font-bold ${
-                      item.isSoldOut ? "text-red-600" : "text-emerald-700"
-                    }`}
-                  >
-                    {item.isSoldOut ? t("admin.soldOut") : t("admin.inStock")}
-                  </span>
-                </div>
-
-                <div className="mt-2 grid grid-cols-2 gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
-                  <button
-                    type="button"
-                    disabled={busyId === item.id}
-                    onClick={() => handleToggleSoldOut(item, false)}
-                    className={`rounded-lg px-2 py-1.5 text-[10px] font-bold cursor-pointer disabled:opacity-50 ${
-                      !item.isSoldOut
-                        ? "bg-white text-emerald-800 shadow-sm"
-                        : "text-slate-500 hover:bg-white"
-                    }`}
-                  >
-                    {t("admin.available")}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busyId === item.id}
-                    onClick={() => handleToggleSoldOut(item, true)}
-                    className={`rounded-lg px-2 py-1.5 text-[10px] font-bold cursor-pointer disabled:opacity-50 ${
-                      item.isSoldOut
-                        ? "bg-rose-600 text-white shadow-sm"
-                        : "text-slate-500 hover:bg-white"
-                    }`}
-                  >
-                    {t("admin.soldOut")}
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
+                <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
                   <button
                     type="button"
                     onClick={() => handleEdit(item)}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg px-4 py-2 text-sm font-semibold cursor-pointer transition-colors"
+                    className="inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-600 transition-colors hover:bg-blue-100"
                   >
-                    <Pencil className="w-3.5 h-3.5" />
+                    <Pencil className="h-3.5 w-3.5" />
                     {t("admin.edit")}
                   </button>
                   <button
                     type="button"
+                    role="switch"
+                    aria-checked={item.isActive}
                     onClick={() => handleToggleActive(item)}
                     disabled={busyId === item.id}
                     title={item.isActive ? t("admin.deactivate") : t("admin.activate")}
-                    className="p-2 rounded-lg text-slate-500 hover:text-amber-700 hover:bg-amber-50 cursor-pointer disabled:opacity-50"
+                    className={`relative inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-full transition-colors disabled:opacity-50 ${
+                      item.isActive ? "bg-emerald-500" : "bg-slate-300"
+                    }`}
                   >
                     {busyId === item.id ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin text-white" />
                     ) : (
-                      <Power className="w-3.5 h-3.5" />
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                          item.isActive ? "translate-x-5" : "translate-x-1"
+                        }`}
+                      />
                     )}
                   </button>
                   <button
@@ -560,15 +543,63 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                     onClick={() => handleDelete(item)}
                     disabled={busyId === item.id}
                     title={t("admin.deleteProduct")}
-                    className="p-2 rounded-lg text-slate-500 hover:text-red-700 hover:bg-red-50 cursor-pointer disabled:opacity-50"
+                    className="cursor-pointer rounded-lg p-2 text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {filtered.length > 0 && (
+        <nav
+          className="flex flex-col items-center gap-3 pt-2"
+          aria-label={locale === "es" ? "Paginación del catálogo" : "Catalog pagination"}
+        >
+          <p className="text-xs font-semibold text-slate-500">
+            {locale === "es"
+              ? `Página ${page} de ${totalPages}`
+              : `Page ${page} of ${totalPages}`}
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setCurrentPage(Math.max(1, page - 1))}
+              disabled={page <= 1}
+              className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              {locale === "es" ? "Anterior" : "Previous"}
+            </button>
+            {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+              <button
+                key={pageNumber}
+                type="button"
+                onClick={() => setCurrentPage(pageNumber)}
+                aria-current={pageNumber === page ? "page" : undefined}
+                className={`h-8 min-w-8 cursor-pointer rounded-lg px-2 text-xs font-bold ${
+                  pageNumber === page
+                    ? "bg-slate-900 text-white"
+                    : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                {pageNumber}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setCurrentPage(Math.min(totalPages, page + 1))}
+              disabled={page >= totalPages}
+              className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {locale === "es" ? "Siguiente" : "Next"}
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </nav>
       )}
 
       <ProductFormModal
