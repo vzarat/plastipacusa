@@ -25,6 +25,10 @@ interface CheckoutRequestBody {
   companyName?: string;
   discountAmount?: number;
   couponCode?: string;
+  shippingAmount?: number;
+  shippingMethod?: string;
+  shippingAddressId?: string;
+  taxExemptRequested?: boolean;
 }
 
 function toCents(amount: number): number {
@@ -96,7 +100,7 @@ export async function POST(request: NextRequest) {
     const quote = calculateOrderTotal({
       subtotal,
       discount: Number(body.discountAmount || 0),
-      shipping: 0,
+      shipping: Number(body.shippingAmount || 0),
     });
     const discountAmount = quote.discount;
     const payable = Math.max(0, subtotal - discountAmount);
@@ -139,6 +143,19 @@ export async function POST(request: NextRequest) {
         };
       }
     );
+
+    if (quote.shipping > 0) {
+      line_items.push({
+        quantity: 1,
+        price_data: {
+          currency: "usd",
+          unit_amount: toCents(quote.shipping),
+          product_data: {
+            name: "Estimated Shipping",
+          },
+        },
+      });
+    }
 
     if (quote.tax > 0) {
       line_items.push({
@@ -185,6 +202,9 @@ export async function POST(request: NextRequest) {
         shipping_amount: quote.shipping.toFixed(2),
         tax_amount: quote.tax.toFixed(2),
         tax_rate: String(quote.taxRate),
+        shipping_method: String(body.shippingMethod || ""),
+        shipping_address_id: String(body.shippingAddressId || ""),
+        tax_exempt_requested: body.taxExemptRequested ? "true" : "false",
         order_total: quote.total.toFixed(2),
         cart_item_count: String(items.length),
         items_summary: items
@@ -202,9 +222,14 @@ export async function POST(request: NextRequest) {
           customer_email: customerEmail || "",
           company_name: String(body.companyName || ""),
           subtotal: quote.subtotal.toFixed(2),
+          discount_amount: String(discountAmount.toFixed(2)),
           shipping_amount: quote.shipping.toFixed(2),
+          shipping_method: String(body.shippingMethod || ""),
+          shipping_address_id: String(body.shippingAddressId || ""),
           tax_amount: quote.tax.toFixed(2),
           tax_rate: String(quote.taxRate),
+          tax_exempt_requested: body.taxExemptRequested ? "true" : "false",
+          total_amount: quote.total.toFixed(2),
           items_summary: items
             .map(
               (item) =>

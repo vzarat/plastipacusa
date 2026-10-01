@@ -20,9 +20,12 @@ import {
 } from "@/lib/shipping-address";
 import { getStripe } from "@/lib/stripe";
 import { BRAND_GRADIENT_CTA } from "@/lib/brand-styles";
+import { useRouter } from "next/navigation";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { calculateOrderTotal } from "@/lib/sales-tax";
 import { formatCurrency } from "@/lib/utils";
+import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
+import { deliveryMethodLabel } from "@/lib/shipping-method";
 
 const TEST_CARDS = [
   {
@@ -67,6 +70,7 @@ function StripeCheckoutFormInner({
   agreedToPolicies,
   onRequireAgreement,
 }: StripeCheckoutFormInnerProps) {
+  const router = useRouter();
   const stripe = useStripe();
   const elements = useElements();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -122,8 +126,9 @@ function StripeCheckoutFormInner({
     }
     try {
       const returnUrl = `${window.location.origin}/checkout/success`;
-      const { error } = await stripe.confirmPayment({
+      const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
+        redirect: "if_required",
         confirmParams: {
           return_url: returnUrl,
           receipt_email: customerEmail.trim(),
@@ -136,10 +141,25 @@ function StripeCheckoutFormInner({
       });
 
       if (error) {
-        setMessage(error.message || "Payment could not be completed.");
-        toast.error(error.message || "Payment could not be completed.");
+        const text = error.message || "Card authorization failed.";
+        setMessage(text);
+        toast.error(text);
+        return;
       }
-      // On success Stripe redirects to return_url — no further action here.
+
+      if (
+        paymentIntent?.status === "succeeded" ||
+        paymentIntent?.status === "processing"
+      ) {
+        router.push(
+          `/checkout/success?payment_intent=${encodeURIComponent(paymentIntent.id)}&redirect_status=succeeded`
+        );
+        return;
+      }
+
+      const text = "Card authorization failed. Please try another card.";
+      setMessage(text);
+      toast.error(text);
     } catch (err: unknown) {
       const text = err instanceof Error ? err.message : String(err);
       setMessage(text);
@@ -225,6 +245,7 @@ function StripeCheckoutFormInner({
 interface StripeEmbeddedCheckoutProps {
   customerEmail: string;
   shipping: CheckoutShippingAddress;
+  shippingAmount?: number;
   agreedToPolicies: boolean;
   onRequireAgreement: () => void;
 }
@@ -235,16 +256,18 @@ interface StripeEmbeddedCheckoutProps {
 export function StripeEmbeddedCheckout({
   customerEmail,
   shipping,
+  shippingAmount = 0,
   agreedToPolicies,
   onRequireAgreement,
 }: StripeEmbeddedCheckoutProps) {
   const items = useCartStore((s) => s.items);
+  const { selectedAddress, deliveryMethod, taxExemptRequested } = useCheckoutState();
   const subtotal = useCartStore((s) => s.getSubtotal());
   const discountAmount = useCartStore((s) => s.getDiscountAmount());
   const quote = calculateOrderTotal({
     subtotal,
     discount: discountAmount,
-    shipping: 0,
+    shipping: shippingAmount,
   });
   const amount = quote.total;
 
@@ -291,11 +314,22 @@ export function StripeEmbeddedCheckout({
 
       const result = await createPaymentIntent(amount, {
         customerEmail,
+        customerName: shipping.fullName,
+        companyName: selectedAddress?.companyName || shipping.line2,
         itemsSummary,
         productSlugs: items.map((item) => item.productSlug).filter(Boolean),
         subtotal: quote.subtotal,
         discountAmount: quote.discount,
         shippingAmount: quote.shipping,
+        shippingMethod: deliveryMethodLabel(deliveryMethod),
+        shippingAddressId: selectedAddress?.id,
+        taxExemptRequested,
+        lineItems: items.map((item) => ({
+          productName: item.productName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        })),
+        shipping,
       });
 
       if (cancelled) return;
@@ -315,9 +349,23 @@ export function StripeEmbeddedCheckout({
     return () => {
       cancelled = true;
     };
-    // Intentionally omit customerEmail from deps — receipt email is applied at confirmPayment.
+    // Receipt email is applied at confirmPayment.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [amount, items, itemsSummary, stripePromise]);
+  }, [
+    amount,
+    items,
+    itemsSummary,
+    stripePromise,
+    deliveryMethod,
+    taxExemptRequested,
+    selectedAddress?.id,
+    shipping.fullName,
+    shipping.line1,
+    shipping.city,
+    shipping.state,
+    shipping.postalCode,
+    shipping.phone,
+  ]);
 
   if (isPreparing) {
     return (

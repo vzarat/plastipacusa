@@ -144,7 +144,17 @@ export default function CheckoutSuccessPage() {
         setConfirmedTotal(
           chargedTotal > 0 ? chargedTotal : Number(getDiscountedTotal().toFixed(2))
         );
-        setOrderId(result.orderId || paymentIntentId);
+        const confirmedOrderId = result.orderId || paymentIntentId;
+        setOrderId(confirmedOrderId);
+        if (confirmedOrderId && params.get("order_id") !== confirmedOrderId) {
+          const next = new URLSearchParams(params.toString());
+          next.set("order_id", confirmedOrderId);
+          window.history.replaceState(
+            null,
+            "",
+            `/checkout/success?${next.toString()}`
+          );
+        }
         setStatus("success");
       } catch (error: unknown) {
         if (!active) return;

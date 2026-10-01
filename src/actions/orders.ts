@@ -11,7 +11,12 @@ import {
   getSenderEmail,
   notifyAdminPurchaseOrder,
   sendEmail,
+  sendOrderConfirmationEmail,
 } from "@/lib/email";
+import {
+  fetchPlastipacLogoForPdf,
+  generateInvoicePdf,
+} from "@/lib/invoice-pdf";
 import { fetchOrderConfirmationTemplate } from "@/lib/email-template-store";
 import { buildOrderConfirmationHtml } from "@/lib/order-confirmation-email";
 import { calculateOrderTotal, roundMoney } from "@/lib/sales-tax";
@@ -250,8 +255,24 @@ export async function createOrderFromCheckout(
       guest_checkout: !resolvedUserId,
       subtotal: subtotalAmount,
       shipping_amount: shippingAmount,
+      shipping_cost: shippingAmount,
       tax_amount: taxAmount,
       tax_rate: 0.0825,
+      discount_amount: roundMoney(metaDiscount),
+      shipping_method:
+        paymentIntentDetails?.metadata?.shipping_method ||
+        shippingDetails?.shipping_method ||
+        null,
+      shipping_address_id:
+        paymentIntentDetails?.metadata?.shipping_address_id ||
+        shippingDetails?.shipping_address_id ||
+        null,
+      tax_exempt_requested:
+        String(
+          paymentIntentDetails?.metadata?.tax_exempt_requested ||
+            shippingDetails?.tax_exempt_requested ||
+            ""
+        ) === "true" || shippingDetails?.taxExemptRequested === true,
     };
 
     const metaShippingRaw = paymentIntentDetails?.metadata?.shipping_address;
@@ -277,12 +298,26 @@ export async function createOrderFromCheckout(
       }
     }
 
+    const orderTotal = Number(total.toFixed(2));
+    const shippingMethod = shippingAddress.shipping_method || null;
+    const shippingAddressId = shippingAddress.shipping_address_id || null;
+    const taxExemptRequested = Boolean(shippingAddress.tax_exempt_requested);
+
     const payload: Record<string, unknown> = {
       status: "paid",
+      payment_intent_id: paymentIntentId,
+      user_id: resolvedUserId || null,
       subtotal: subtotalAmount,
       shipping: shippingAmount,
+      shipping_cost: shippingAmount,
+      shipping_method: shippingMethod,
+      shipping_address_id: shippingAddressId || null,
       tax: taxAmount,
-      total: Number(total.toFixed(2)),
+      tax_amount: taxAmount,
+      discount_amount: roundMoney(metaDiscount),
+      tax_exempt_requested: taxExemptRequested,
+      total: orderTotal,
+      total_amount: orderTotal,
       items: cartItems?.length
         ? cartItems
         : [
@@ -299,9 +334,18 @@ export async function createOrderFromCheckout(
       created_at: new Date().toISOString(),
     };
 
-    if (resolvedUserId) {
-      payload.user_id = resolvedUserId;
+    if (!resolvedUserId) {
+      delete payload.user_id;
     }
+    if (!shippingAddressId) {
+      delete payload.shipping_address_id;
+    }
+
+    const { data: existingByIntent } = await supabase
+      .from("orders")
+      .select("id, shipping_address")
+      .eq("payment_intent_id", paymentIntentId)
+      .maybeSingle();
 
     const { data: existingOrders, error: existingError } = await supabase
       .from("orders")
@@ -314,19 +358,29 @@ export async function createOrderFromCheckout(
       );
     }
 
-    const existingOrder = existingOrders?.find(
-      (order: any) =>
-        order.shipping_address?.stripe_payment_intent_id === paymentIntentId
-    );
+    const existingOrder =
+      existingByIntent ||
+      existingOrders?.find(
+        (order: any) =>
+          order.shipping_address?.stripe_payment_intent_id === paymentIntentId
+      );
 
     if (existingOrder) {
       await supabase
         .from("orders")
         .update({
+          payment_intent_id: paymentIntentId,
           subtotal: subtotalAmount,
           shipping: shippingAmount,
+          shipping_cost: shippingAmount,
+          shipping_method: shippingMethod,
+          ...(shippingAddressId ? { shipping_address_id: shippingAddressId } : {}),
           tax: taxAmount,
-          total: Number(total.toFixed(2)),
+          tax_amount: taxAmount,
+          discount_amount: roundMoney(metaDiscount),
+          tax_exempt_requested: taxExemptRequested,
+          total: orderTotal,
+          total_amount: orderTotal,
           shipping_address: {
             ...(existingOrder.shipping_address || {}),
             ...shippingAddress,
@@ -450,15 +504,78 @@ export async function createOrderFromCheckout(
         })),
       });
 
+      let pdfBytes: Uint8Array | null = null;
+      try {
+        const logo = await fetchPlastipacLogoForPdf();
+        const idDigits = String(insertedOrder?.id || paymentIntentId)
+          .replace(/[^0-9a-f]/gi, "")
+          .slice(-4)
+          .toUpperCase();
+        pdfBytes = generateInvoicePdf({
+          invoiceNumber: `INV-${new Date(orderDate).getFullYear()}-${idDigits || "0000"}`,
+          orderPoRef: createdOrderId,
+          issueDate: new Date(orderDate).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
+          paymentStatus: "Paid & Cleared",
+          customerName,
+          customerCompany: companyName,
+          customerEmail,
+          items: orderItems.map((item) => ({
+            description: item.productName,
+            quantity: item.quantity,
+            unitPrice: item.quantity
+              ? Number((item.linePrice / item.quantity).toFixed(2))
+              : item.linePrice,
+            total: item.linePrice,
+          })),
+          totalUsd: totalAmount,
+          logo,
+        });
+      } catch (pdfError) {
+        console.error("Invoice PDF generation error:", pdfError);
+      }
+
       await Promise.allSettled([
-        sendEmail({
-          from: rendered.from || `Plastipac USA <${getSenderEmail("orders@plastipacusa.com")}>`,
-          to: customerEmail,
-          subject: rendered.subject,
-          text: rendered.text,
-          html: rendered.html,
-          replyTo: template.footerSalesEmail,
-        }),
+        pdfBytes
+          ? sendOrderConfirmationEmail({
+              orderId: createdOrderId,
+              customerName,
+              customerEmail,
+              customerCompany: companyName,
+              totalAmountUsd: totalAmount,
+              itemsSummary,
+              itemCount: orderItems.length,
+              shippingAddressSummary,
+              shippingAddress: {
+                fullName: shippingAddress.full_name || customerName,
+                line1: shippingAddress.line1 || undefined,
+                line2: shippingAddress.line2 || undefined,
+                city: shippingCity || undefined,
+                state: shippingState || undefined,
+                postalCode: shippingAddress.postal_code || undefined,
+                phone: shippingAddress.phone || undefined,
+              },
+              orderDate,
+              lineItems: orderItems.map((item) => ({
+                description: item.productName,
+                quantity: item.quantity,
+                total: item.linePrice,
+              })),
+              pdfBytes,
+            })
+          : sendEmail({
+              from:
+                rendered.from ||
+                `Plastipac USA <${getSenderEmail("orders@plastipacusa.com")}>`,
+              to: customerEmail,
+              subject: rendered.subject,
+              text: rendered.text,
+              html: rendered.html,
+              replyTo: template.footerSalesEmail,
+            }),
         notifyAdminPurchaseOrder({
           orderId: createdOrderId,
           customerName,

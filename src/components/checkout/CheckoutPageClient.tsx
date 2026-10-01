@@ -2,22 +2,50 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, Lock, LogIn, UserPlus } from "lucide-react";
-import { CheckoutForm } from "@/components/checkout/CheckoutForm";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { CheckoutCartStep } from "@/components/checkout/CheckoutCartStep";
+import { CheckoutPaymentStep } from "@/components/checkout/CheckoutPaymentStep";
+import { CheckoutAddressStep } from "@/components/checkout/CheckoutAddressStep";
+import { CheckoutShippingMethodStep } from "@/components/checkout/CheckoutShippingMethodStep";
+import {
+  CheckoutStateProvider,
+  useCheckoutState,
+} from "@/components/checkout/CheckoutStateContext";
+import {
+  CheckoutStepper,
+  type CheckoutStepId,
+} from "@/components/checkout/CheckoutStepper";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { calculateOrderTotal } from "@/lib/sales-tax";
 import { formatCurrency } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/context/LanguageContext";
+import { savedAddressToCheckout } from "@/lib/saved-shipping-address";
+import { estimateShippingCost } from "@/lib/shipping-method";
 import {
   EMPTY_CHECKOUT_SHIPPING,
+  persistCheckoutShipping,
+  validateCheckoutShipping,
   type CheckoutShippingAddress,
 } from "@/lib/shipping-address";
 
 export function CheckoutPageClient() {
+  return (
+    <CheckoutStateProvider>
+      <CheckoutPageInner />
+    </CheckoutStateProvider>
+  );
+}
+
+function CheckoutPageInner() {
+  const router = useRouter();
   const { locale } = useLanguage();
   const isEs = locale === "es";
+  const [step, setStep] = useState<CheckoutStepId>(1);
+  const [furthestStep, setFurthestStep] = useState<CheckoutStepId>(1);
 
   const items = useCartStore((state) => state.items);
   const getSubtotal = useCartStore((state) => state.getSubtotal);
@@ -33,6 +61,7 @@ export function CheckoutPageClient() {
   );
   const [authChecking, setAuthChecking] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { selectedAddress, deliveryMethod, taxExemptRequested } = useCheckoutState();
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +83,7 @@ export function CheckoutPageClient() {
           }
         } else {
           setIsAuthenticated(false);
+          router.replace("/login?redirect=/checkout");
         }
       } catch {
         if (!cancelled) setIsAuthenticated(false);
@@ -66,98 +96,80 @@ export function CheckoutPageClient() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [router]);
 
   const subtotal = getSubtotal();
   const discountAmount = getDiscountAmount();
+  const totalWeight = getTotalWeight();
+  const shippingEstimate =
+    furthestStep >= 3 ? estimateShippingCost(deliveryMethod, totalWeight) : 0;
   const quote = calculateOrderTotal({
     subtotal,
     discount: discountAmount,
-    shipping: 0,
+    shipping: shippingEstimate,
   });
   const total = quote.total;
-  const totalWeight = getTotalWeight();
 
-  if (items.length === 0) {
-    return (
-      <main className="mx-auto flex min-h-[60vh] max-w-4xl items-center justify-center px-6 py-16">
-        <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-          <p className="text-sm font-bold uppercase tracking-[0.2em] text-sky-700">
-            Checkout
-          </p>
-          <h1 className="mt-4 text-3xl font-black text-slate-900">
-            Your cart is empty
-          </h1>
-          <p className="mt-3 text-sm text-slate-600">
-            Add products to your cart before continuing to secure checkout.
-          </p>
-          <Button asChild variant="gradient" className="mt-8">
-            <Link href="/products">Continue shopping</Link>
-          </Button>
-        </div>
-      </main>
-    );
-  }
+  const goToStep = (next: CheckoutStepId) => {
+    if (next > furthestStep) return;
+    if (next >= 3 && !selectedAddress) {
+      toast.error("Select or add a shipping address before continuing.");
+      setStep(2);
+      return;
+    }
+    if (next >= 3 && selectedAddress) {
+      const mapped = savedAddressToCheckout(selectedAddress);
+      const shippingError = validateCheckoutShipping(mapped);
+      if (shippingError) {
+        toast.error(shippingError);
+        setStep(2);
+        return;
+      }
+      setShipping(mapped);
+      persistCheckoutShipping(mapped);
+    }
+    setStep(next);
+  };
 
-  if (authChecking) {
+  const proceedToShipping = () => {
+    if (items.length === 0) return;
+    setFurthestStep((current) => (current < 2 ? 2 : current));
+    setStep(2);
+  };
+
+  const proceedToShippingMethod = () => {
+    if (!selectedAddress) {
+      toast.error("Select or add a shipping address before continuing.");
+      return;
+    }
+    const mapped = savedAddressToCheckout(selectedAddress);
+    const shippingError = validateCheckoutShipping(mapped);
+    if (shippingError) {
+      toast.error(shippingError);
+      return;
+    }
+    setShipping(mapped);
+    persistCheckoutShipping(mapped);
+    setFurthestStep((current) => (current < 3 ? 3 : current));
+    setStep(3);
+  };
+
+  const proceedToPayment = () => {
+    if (!selectedAddress) {
+      toast.error("Select a shipping address before payment.");
+      setStep(2);
+      return;
+    }
+    setFurthestStep((current) => (current < 4 ? 4 : current));
+    setStep(4);
+  };
+
+  if (authChecking || !isAuthenticated) {
     return (
       <main className="mx-auto flex min-h-[50vh] max-w-4xl items-center justify-center px-6 py-16">
         <div className="flex items-center gap-2 text-sm text-slate-600">
           <Loader2 className="h-4 w-4 animate-spin text-sky-600" />
           {isEs ? "Verificando sesión…" : "Verifying session…"}
-        </div>
-      </main>
-    );
-  }
-
-  if (!isAuthenticated) {
-    const redirect = encodeURIComponent("/checkout");
-    return (
-      <main className="mx-auto flex min-h-[60vh] max-w-4xl items-center justify-center px-6 py-16">
-        <div className="w-full max-w-xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-800 px-8 py-6 text-white">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/25 bg-white/10">
-                <Lock className="h-5 w-5 text-sky-100" aria-hidden />
-              </div>
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-sky-100/90">
-                  {isEs ? "Cuenta B2B requerida" : "B2B account required"}
-                </p>
-                <h1 className="text-xl font-black">
-                  {isEs ? "Inicia sesión para pagar" : "Sign in to checkout"}
-                </h1>
-              </div>
-            </div>
-          </div>
-          <div className="space-y-4 px-8 py-7">
-            <p className="text-sm leading-relaxed text-slate-600">
-              {isEs
-                ? "Debes iniciar sesión o crear una cuenta B2B para completar tu pedido."
-                : "You must sign in or create a B2B account to complete your order."}
-            </p>
-            <p className="text-xs text-slate-500">
-              {isEs
-                ? "You must sign in or create a B2B account to complete your order."
-                : "Debes iniciar sesión o crear una cuenta B2B para completar tu pedido."}
-            </p>
-            <div className="flex flex-col gap-2.5 pt-2 sm:flex-row">
-              <Link
-                href={`/login?redirect=${redirect}`}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 px-4 py-3 text-sm font-bold text-white shadow-md"
-              >
-                <LogIn className="h-4 w-4" aria-hidden />
-                {isEs ? "Iniciar sesión" : "Sign In"}
-              </Link>
-              <Link
-                href={`/register?redirect=${redirect}`}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 hover:bg-slate-50"
-              >
-                <UserPlus className="h-4 w-4" aria-hidden />
-                {isEs ? "Crear cuenta" : "Register"}
-              </Link>
-            </div>
-          </div>
         </div>
       </main>
     );
@@ -180,16 +192,48 @@ export function CheckoutPageClient() {
         </Button>
       </div>
 
+      <div className="mb-8 rounded-3xl border border-slate-200 bg-white px-4 py-5 shadow-sm sm:px-6">
+        <CheckoutStepper
+          currentStep={step}
+          furthestStep={furthestStep}
+          onStepChange={goToStep}
+        />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7 rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm">
-          <CheckoutForm
-            agreedToPolicies={agreedToPolicies}
-            onAgreedToPoliciesChange={setAgreedToPolicies}
-            checkoutEmail={checkoutEmail}
-            onCheckoutEmailChange={setCheckoutEmail}
-            shipping={shipping}
-            onShippingChange={setShipping}
-          />
+          {step === 1 && (
+            <CheckoutCartStep
+              checkoutEmail={checkoutEmail}
+              onProceed={proceedToShipping}
+            />
+          )}
+          {step === 2 && (
+            <CheckoutAddressStep
+              onBack={() => setStep(1)}
+              onProceed={proceedToShippingMethod}
+            />
+          )}
+          {step === 3 && (
+            <CheckoutShippingMethodStep
+              checkoutEmail={checkoutEmail}
+              onBack={() => setStep(2)}
+              onProceed={proceedToPayment}
+            />
+          )}
+          {step === 4 && (
+            <CheckoutPaymentStep
+              agreedToPolicies={agreedToPolicies}
+              onAgreedToPoliciesChange={setAgreedToPolicies}
+              checkoutEmail={checkoutEmail}
+              onCheckoutEmailChange={setCheckoutEmail}
+              shipping={shipping}
+              shippingAmount={shippingEstimate}
+              onBack={() => setStep(3)}
+              onEditAddress={() => setStep(2)}
+              onEditMethod={() => setStep(3)}
+            />
+          )}
         </div>
 
         <aside className="lg:col-span-5 rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-6 shadow-sm h-fit lg:sticky lg:top-6">
@@ -247,11 +291,16 @@ export function CheckoutPageClient() {
             )}
             {quote.shipping > 0 && (
               <div className="flex items-center justify-between text-slate-600">
-                <span>Shipping</span>
+                <span>Estimated shipping</span>
                 <span className="font-semibold text-slate-800">
                   {formatCurrency(quote.shipping)}
                 </span>
               </div>
+            )}
+            {taxExemptRequested && (
+              <p className="text-xs font-semibold text-emerald-700">
+                Tax exemption requested. Tax remains until verification.
+              </p>
             )}
             <div className="flex items-center justify-between text-slate-600">
               <span>Estimated Tax (8.25%)</span>

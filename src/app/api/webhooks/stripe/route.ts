@@ -710,31 +710,313 @@ async function handleCheckoutSessionCompleted(
   );
 }
 
+function paymentIntentLineItems(paymentIntent: Stripe.PaymentIntent) {
+  try {
+    const parsed = JSON.parse(String(paymentIntent.metadata?.line_items || "[]"));
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    return parsed.map((item) => {
+      const quantity = Math.max(1, Number(item.q || item.quantity || 1));
+      const unitPrice = Number(item.u || item.unitPrice || 0);
+      return {
+        productName: String(item.n || item.productName || "Plastipac Product"),
+        quantity,
+        unitPrice,
+        totalPrice: Number((unitPrice * quantity).toFixed(2)),
+      };
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function ensurePaidOrderForPaymentIntent(
+  paymentIntent: Stripe.PaymentIntent
+): Promise<OrderRow> {
+  const supabase = getAdminSupabase();
+  const meta = paymentIntent.metadata || {};
+  const totalAmount = centsToUsd(
+    paymentIntent.amount_received || paymentIntent.amount
+  );
+  const subtotalAmount = roundMoney(Number(meta.subtotal || 0));
+  const shippingAmount = roundMoney(
+    Number(meta.shipping_amount || meta.shipping_cost || 0)
+  );
+  const taxAmount = roundMoney(Number(meta.tax_amount || 0));
+  const discountAmount = roundMoney(Number(meta.discount_amount || 0));
+  const userId = String(meta.user_id || meta.userId || "").trim();
+  let parsedAddress: Record<string, unknown> = {};
+  try {
+    parsedAddress = JSON.parse(String(meta.shipping_address || "{}"));
+  } catch {
+    parsedAddress = {};
+  }
+
+  const shippingAddress = {
+    ...parsedAddress,
+    full_name:
+      paymentIntent.shipping?.name ||
+      parsedAddress.full_name ||
+      meta.customer_name ||
+      null,
+    email: paymentIntent.receipt_email || meta.customer_email || null,
+    line1: paymentIntent.shipping?.address?.line1 || parsedAddress.line1 || null,
+    line2: paymentIntent.shipping?.address?.line2 || parsedAddress.line2 || null,
+    city: paymentIntent.shipping?.address?.city || parsedAddress.city || null,
+    state: paymentIntent.shipping?.address?.state || parsedAddress.state || null,
+    postal_code:
+      paymentIntent.shipping?.address?.postal_code ||
+      parsedAddress.postal_code ||
+      null,
+    phone: paymentIntent.shipping?.phone || meta.shipping_phone || null,
+    country: paymentIntent.shipping?.address?.country || "US",
+    stripe_payment_intent_id: paymentIntent.id,
+    shipping_method: meta.shipping_method || null,
+    shipping_address_id: meta.shipping_address_id || null,
+    shipping_cost: shippingAmount,
+    tax_amount: taxAmount,
+    tax_rate: Number(meta.tax_rate || 0.0825),
+    discount_amount: discountAmount,
+    subtotal: subtotalAmount,
+    tax_exempt_requested: meta.tax_exempt_requested === "true",
+    metadata: {
+      taxExemptRequested: meta.tax_exempt_requested === "true",
+    },
+  };
+
+  const payload: Record<string, unknown> = {
+    status: PAID_STATUS,
+    payment_status: PAID_CLEARED_LABEL,
+    payment_intent_id: paymentIntent.id,
+    subtotal: subtotalAmount,
+    shipping: shippingAmount,
+    shipping_cost: shippingAmount,
+    shipping_method: meta.shipping_method || null,
+    tax: taxAmount,
+    tax_amount: taxAmount,
+    discount_amount: discountAmount,
+    tax_exempt_requested: meta.tax_exempt_requested === "true",
+    total: totalAmount,
+    total_amount: totalAmount,
+    items: paymentIntentLineItems(paymentIntent) || [
+      {
+        productName: meta.items_summary || "Plastipac Order",
+        quantity: 1,
+        unitPrice: totalAmount,
+        totalPrice: totalAmount,
+      },
+    ],
+    shipping_address: shippingAddress,
+    created_at: new Date().toISOString(),
+  };
+  if (userId) payload.user_id = userId;
+  if (meta.shipping_address_id) {
+    payload.shipping_address_id = meta.shipping_address_id;
+  }
+
+  let nextPayload = { ...payload };
+  let insert = await supabase.from("orders").insert(nextPayload).select("*").maybeSingle();
+  for (let attempt = 0; attempt < 8 && insert.error; attempt += 1) {
+    const message = String(insert.error.message || "");
+    const missing =
+      message.match(/Could not find the ['"]([a-z0-9_]+)['"] column/i) ||
+      message.match(/column ["']?([a-z0-9_]+)["']?/i);
+    const column = missing?.[1];
+    const unknownColumn =
+      /does not exist/i.test(message) || /schema cache/i.test(message);
+    if (!column || !unknownColumn || !(column in nextPayload)) break;
+    delete nextPayload[column];
+    nextPayload = { ...nextPayload };
+    insert = await supabase.from("orders").insert(nextPayload).select("*").maybeSingle();
+  }
+
+  if (insert.error || !insert.data) {
+    throw new Error(
+      `Failed to create paid order: ${insert.error?.message || "no row returned"}`
+    );
+  }
+
+  return insert.data as OrderRow;
+}
+
+async function notifyPaidPaymentIntent(
+  order: OrderRow,
+  paymentIntent: Stripe.PaymentIntent
+) {
+  const meta = paymentIntent.metadata || {};
+  const customerEmail =
+    paymentIntent.receipt_email ||
+    String(meta.customer_email || "") ||
+    String(order.shipping_address?.email || "");
+  const customerName =
+    paymentIntent.shipping?.name ||
+    String(meta.customer_name || "") ||
+    String(order.shipping_address?.full_name || "Customer");
+  const customerCompany =
+    String(meta.company_name || order.shipping_address?.line2 || "") ||
+    "Plastipac USA Customer";
+  const totalAmount = centsToUsd(
+    paymentIntent.amount_received || paymentIntent.amount
+  );
+  const address = order.shipping_address || {};
+  const shippingAddressSummary = [
+    customerName,
+    [address.line1, address.line2].filter(Boolean).join(", "),
+    [address.city, address.state, address.postal_code].filter(Boolean).join(", "),
+    address.phone ? `Phone: ${address.phone}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  const items = Array.isArray(order.items) ? order.items : [];
+  const itemsSummary =
+    items
+      .map(
+        (item) =>
+          `${item.quantity || 1}× ${item.productName || item.name || "Product"}`
+      )
+      .join("; ") ||
+    String(meta.items_summary || "Plastipac Order");
+  const poReference = formatOrderId({
+    id: order.id,
+    createdAt: order.created_at || new Date().toISOString(),
+    items,
+  });
+
+  const pdfBytes = await generateOrderSummaryPdf(order);
+  await sendOrderConfirmationEmail({
+    orderId: poReference,
+    customerName,
+    customerEmail,
+    customerCompany,
+    totalAmountUsd: totalAmount,
+    itemsSummary,
+    itemCount: items.length || 1,
+    shippingAddressSummary,
+    shippingAddress: {
+      fullName: customerName,
+      line1: String(address.line1 || "") || undefined,
+      line2: String(address.line2 || "") || undefined,
+      city: String(address.city || "") || undefined,
+      state: String(address.state || "") || undefined,
+      postalCode: String(address.postal_code || "") || undefined,
+      phone: String(address.phone || "") || undefined,
+    },
+    orderDate: order.created_at || new Date().toISOString(),
+    lineItems: mapOrderItems(items, totalAmount),
+    pdfBytes,
+  });
+  await dispatchAdminPoEmail({
+    orderId: poReference,
+    customerName,
+    customerEmail,
+    customerCompany,
+    totalAmount,
+    shippingState: String(address.state || "") || undefined,
+    shippingCity: String(address.city || "") || undefined,
+    shippingAddressSummary,
+    shippingPhone: String(address.phone || "") || undefined,
+    itemCount: items.length || 1,
+    itemsSummary,
+    orderDate: order.created_at || new Date().toISOString(),
+  });
+}
+
 async function handlePaymentIntentSucceeded(
   paymentIntent: Stripe.PaymentIntent
 ) {
   const supabase = getAdminSupabase();
-  const { data: rows, error } = await supabase
+  const { data: matched } = await supabase
     .from("orders")
     .select("*")
-    .order("created_at", { ascending: false })
-    .limit(200);
+    .eq("payment_intent_id", paymentIntent.id)
+    .maybeSingle();
 
-  if (error) {
-    throw new Error(`Order lookup failed: ${error.message}`);
-  }
-
-  const order = (rows || []).find(
-    (row: OrderRow) =>
-      row.shipping_address?.stripe_payment_intent_id === paymentIntent.id
-  ) as OrderRow | undefined;
+  let order = (matched || null) as OrderRow | null;
 
   if (!order) {
+    const { data: rows, error } = await supabase
+      .from("orders")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200);
+
+    if (error) {
+      throw new Error(`Order lookup failed: ${error.message}`);
+    }
+
+    order =
+      ((rows || []).find(
+        (row: OrderRow) =>
+          row.shipping_address?.stripe_payment_intent_id === paymentIntent.id
+      ) as OrderRow | undefined) || null;
+  }
+
+  if (!order) {
+    order = await ensurePaidOrderForPaymentIntent(paymentIntent);
+    try {
+      await notifyPaidPaymentIntent(order, paymentIntent);
+    } catch (notifyError: unknown) {
+      const message =
+        notifyError instanceof Error ? notifyError.message : String(notifyError);
+      console.error(
+        "[stripe webhook] payment confirmation email/PDF failed:",
+        message
+      );
+    }
     console.log(
-      "[stripe webhook] payment_intent.succeeded — no local order matched:",
-      paymentIntent.id
+      `[stripe webhook] payment_intent.succeeded created order ${order.id}`
     );
     return;
+  }
+
+  const meta = paymentIntent.metadata || {};
+  const totalAmount = centsToUsd(
+    paymentIntent.amount_received || paymentIntent.amount
+  );
+  const patch: Record<string, unknown> = {
+    payment_intent_id: paymentIntent.id,
+    subtotal: roundMoney(Number(meta.subtotal || 0)),
+    shipping: roundMoney(Number(meta.shipping_amount || meta.shipping_cost || 0)),
+    shipping_cost: roundMoney(
+      Number(meta.shipping_amount || meta.shipping_cost || 0)
+    ),
+    shipping_method: meta.shipping_method || null,
+    tax: roundMoney(Number(meta.tax_amount || 0)),
+    tax_amount: roundMoney(Number(meta.tax_amount || 0)),
+    discount_amount: roundMoney(Number(meta.discount_amount || 0)),
+    tax_exempt_requested: meta.tax_exempt_requested === "true",
+    total: totalAmount,
+    total_amount: totalAmount,
+    shipping_address: {
+      ...(order.shipping_address || {}),
+      stripe_payment_intent_id: paymentIntent.id,
+      shipping_method: meta.shipping_method || null,
+      shipping_address_id: meta.shipping_address_id || null,
+      tax_exempt_requested: meta.tax_exempt_requested === "true",
+      metadata: {
+        taxExemptRequested: meta.tax_exempt_requested === "true",
+      },
+    },
+  };
+  if (meta.shipping_address_id) {
+    patch.shipping_address_id = meta.shipping_address_id;
+  }
+  const userId = String(meta.user_id || meta.userId || "").trim();
+  if (userId) patch.user_id = userId;
+
+  let nextPatch = { ...patch };
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const result = await supabase.from("orders").update(nextPatch).eq("id", order.id);
+    if (!result.error) break;
+    const message = String(result.error.message || "");
+    const missing =
+      message.match(/Could not find the ['"]([a-z0-9_]+)['"] column/i) ||
+      message.match(/column ["']?([a-z0-9_]+)["']?/i);
+    const column = missing?.[1];
+    const unknownColumn =
+      /does not exist/i.test(message) || /schema cache/i.test(message);
+    if (!column || !unknownColumn || !(column in nextPatch)) break;
+    delete nextPatch[column];
+    nextPatch = { ...nextPatch };
   }
 
   await markOrderPaidAndCleared(order, {

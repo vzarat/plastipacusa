@@ -173,6 +173,58 @@ export async function notifyAdminCreditApplication(
   });
 }
 
+export interface TaxExemptionNotifyInput {
+  companyName: string;
+  taxId: string;
+  registrationState: string;
+  note?: string;
+  customerEmail?: string;
+  customerName?: string;
+  shippingSummary?: string;
+  attachmentName?: string;
+}
+
+/**
+ * Admin alert when a checkout customer requests tax-exempt status.
+ */
+export async function notifyAdminTaxExemption(
+  payload: TaxExemptionNotifyInput,
+  attachment?: EmailAttachmentInput
+): Promise<SendEmailResult> {
+  const adminEmail = getAdminNotificationEmail();
+  if (!adminEmail) {
+    console.warn(
+      "[email] ADMIN_NOTIFICATION_EMAIL is not set — tax exemption alert skipped."
+    );
+    console.log("[email] tax exemption payload:", payload);
+    return { success: false, skipped: true, error: "ADMIN_NOTIFICATION_EMAIL missing." };
+  }
+
+  const lines = [
+    "Tax exemption verification requested during checkout",
+    "",
+    `Company Name: ${payload.companyName}`,
+    `Tax ID / Resale Certificate: ${payload.taxId}`,
+    `State of Registration: ${payload.registrationState}`,
+    payload.customerName ? `Customer: ${payload.customerName}` : null,
+    payload.customerEmail ? `Email: ${payload.customerEmail}` : null,
+    payload.shippingSummary ? `Ship to: ${payload.shippingSummary}` : null,
+    payload.note ? `Note: ${payload.note}` : null,
+    payload.attachmentName ? `Certificate file: ${payload.attachmentName}` : null,
+    "",
+    "Please verify this certificate before removing sales tax from the order.",
+  ].filter(Boolean) as string[];
+
+  return sendEmail({
+    to: adminEmail,
+    subject: `Tax exemption request — ${payload.companyName}`,
+    text: lines.join("\n"),
+    replyTo: payload.customerEmail,
+    from: `Plastipac Tax <${getSenderEmail("onboarding@resend.dev")}>`,
+    attachments: attachment ? [attachment] : undefined,
+  });
+}
+
 export interface PurchaseOrderNotifyInput {
   orderId: string;
   customerName: string;

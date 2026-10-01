@@ -15,6 +15,7 @@ interface CheckoutFormProps {
   onCheckoutEmailChange: (email: string) => void;
   shipping: CheckoutShippingAddress;
   onShippingChange: (shipping: CheckoutShippingAddress) => void;
+  shippingAmount?: number;
 }
 
 const fieldClass =
@@ -47,6 +48,7 @@ export function CheckoutForm({
   onCheckoutEmailChange,
   shipping,
   onShippingChange,
+  shippingAmount = 0,
 }: CheckoutFormProps) {
   const setShip = (key: keyof CheckoutShippingAddress, value: string) => {
     onShippingChange({ ...shipping, [key]: value });
@@ -242,6 +244,7 @@ export function CheckoutForm({
       <StripeEmbeddedCheckout
         customerEmail={checkoutEmail}
         shipping={shipping}
+        shippingAmount={shippingAmount}
         agreedToPolicies={agreedToPolicies}
         onRequireAgreement={() => {
           toast.error(

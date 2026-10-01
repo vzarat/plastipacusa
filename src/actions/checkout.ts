@@ -14,6 +14,14 @@ export interface CreatePaymentIntentOptions {
   subtotal?: number;
   discountAmount?: number;
   shippingAmount?: number;
+  shippingMethod?: string;
+  shippingAddressId?: string;
+  taxExemptRequested?: boolean;
+  lineItems?: Array<{
+    productName?: string;
+    quantity?: number;
+    unitPrice?: number;
+  }>;
   shipping?: {
     fullName?: string;
     line1?: string;
@@ -120,6 +128,20 @@ export async function createPaymentIntent(
         }).slice(0, 500)
       : "";
 
+    const lineItems = (options.lineItems || [])
+      .map((item) => ({
+        n: String(item.productName || "Product").slice(0, 40),
+        q: Math.max(1, Number(item.quantity || 1)),
+        u: Number(item.unitPrice || 0),
+      }))
+      .filter((item) => item.n);
+    let lineItemsMeta = JSON.stringify(lineItems);
+    while (lineItemsMeta.length > 500 && lineItems.length > 1) {
+      lineItems.pop();
+      lineItemsMeta = JSON.stringify(lineItems);
+    }
+    if (lineItemsMeta.length > 500) lineItemsMeta = "[]";
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: normalizedAmount,
       currency: "usd",
@@ -153,8 +175,14 @@ export async function createPaymentIntent(
         subtotal: quote.subtotal.toFixed(2),
         discount_amount: quote.discount.toFixed(2),
         shipping_amount: quote.shipping.toFixed(2),
+        shipping_cost: quote.shipping.toFixed(2),
+        shipping_method: String(options.shippingMethod || "").slice(0, 80),
+        shipping_address_id: String(options.shippingAddressId || ""),
         tax_amount: quote.tax.toFixed(2),
         tax_rate: String(quote.taxRate),
+        total_amount: quote.total.toFixed(2),
+        tax_exempt_requested: options.taxExemptRequested ? "true" : "false",
+        line_items: lineItemsMeta,
         shipping_address: shippingMeta,
         shipping_phone: String(options.shipping?.phone || "").slice(0, 40),
       },
