@@ -2,6 +2,7 @@
 
 import Stripe from "stripe";
 import { createServerClient } from "@/lib/supabase/server";
+import { calculateOrderTotal } from "@/lib/sales-tax";
 
 export interface CreatePaymentIntentOptions {
   customerEmail?: string;
@@ -9,6 +10,10 @@ export interface CreatePaymentIntentOptions {
   companyName?: string;
   itemsSummary?: string;
   productSlugs?: string[];
+  /** Merchandise subtotal before tax. Tax is calculated on the server. */
+  subtotal?: number;
+  discountAmount?: number;
+  shippingAmount?: number;
   shipping?: {
     fullName?: string;
     line1?: string;
@@ -41,7 +46,12 @@ export async function createPaymentIntent(
       };
     }
 
-    const normalizedAmount = Math.round(Number(amount || 0) * 100);
+    const quote = calculateOrderTotal({
+      subtotal: Number(options.subtotal ?? amount ?? 0),
+      discount: Number(options.discountAmount || 0),
+      shipping: Number(options.shippingAmount || 0),
+    });
+    const normalizedAmount = Math.round(quote.total * 100);
     if (!Number.isFinite(normalizedAmount) || normalizedAmount < 50) {
       return {
         success: false,
@@ -140,6 +150,11 @@ export async function createPaymentIntent(
         ),
         company_name: String(options.companyName || ""),
         items_summary: String(options.itemsSummary || "").slice(0, 450),
+        subtotal: quote.subtotal.toFixed(2),
+        discount_amount: quote.discount.toFixed(2),
+        shipping_amount: quote.shipping.toFixed(2),
+        tax_amount: quote.tax.toFixed(2),
+        tax_rate: String(quote.taxRate),
         shipping_address: shippingMeta,
         shipping_phone: String(options.shipping?.phone || "").slice(0, 40),
       },

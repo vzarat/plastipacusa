@@ -109,7 +109,9 @@ export default function CheckoutSuccessPage() {
 
         // Do NOT require a Supabase session — paid PaymentIntent is sufficient.
         const snapshotItems = [...cartItems];
-        const snapshotTotal = getDiscountedTotal();
+        const chargedTotal = Number(
+          ((verification.paymentIntent.amount || 0) / 100).toFixed(2)
+        );
         const storedShipping = readCheckoutShipping();
         const storedPayload = storedShipping
           ? toOrderShippingAddress(storedShipping)
@@ -140,9 +142,7 @@ export default function CheckoutSuccessPage() {
         clearCart();
         clearCheckoutShipping();
         setConfirmedTotal(
-          snapshotTotal > 0
-            ? snapshotTotal
-            : Number(((verification.paymentIntent.amount || 0) / 100).toFixed(2))
+          chargedTotal > 0 ? chargedTotal : Number(getDiscountedTotal().toFixed(2))
         );
         setOrderId(result.orderId || paymentIntentId);
         setStatus("success");

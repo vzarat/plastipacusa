@@ -14,6 +14,31 @@ import {
 } from "@/lib/email";
 import { fetchOrderConfirmationTemplate } from "@/lib/email-template-store";
 import { buildOrderConfirmationHtml } from "@/lib/order-confirmation-email";
+import { calculateOrderTotal, roundMoney } from "@/lib/sales-tax";
+
+async function insertOrderDroppingUnknownColumns(
+  supabase: { from: (table: string) => any },
+  payload: Record<string, unknown>
+) {
+  let next = { ...payload };
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const result = await supabase
+      .from("orders")
+      .insert(next)
+      .select("id, status");
+    if (!result.error) return result;
+    const message = String(result.error.message || "");
+    const missing =
+      message.match(/Could not find the ['"]([a-z0-9_]+)['"] column/i) ||
+      message.match(/column ["']?([a-z0-9_]+)["']?/i);
+    const unknownColumn =
+      /does not exist/i.test(message) || /schema cache/i.test(message);
+    if (!missing || !unknownColumn || !(missing[1] in next)) return result;
+    delete next[missing[1]];
+    next = { ...next };
+  }
+  return supabase.from("orders").insert(next).select("id, status");
+}
 
 export async function verifyPaymentIntent(paymentIntentId: string) {
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -113,16 +138,38 @@ export async function createOrderFromCheckout(
       return sum + unitPrice * quantity;
     }, 0);
 
-    total =
-      cartTotal > 0
-        ? cartTotal
-        : Number(
-            (
-              (paymentIntentDetails?.amount_received ||
-                paymentIntentDetails?.amount ||
-                0) / 100
-            ).toFixed(2)
-          );
+    const chargedUsd = roundMoney(
+      (paymentIntentDetails?.amount_received ||
+        paymentIntentDetails?.amount ||
+        0) / 100
+    );
+    const metaSubtotal = Number(
+      paymentIntentDetails?.metadata?.subtotal || shippingDetails?.subtotal || 0
+    );
+    const metaDiscount = Number(
+      paymentIntentDetails?.metadata?.discount_amount ||
+        shippingDetails?.discount ||
+        0
+    );
+    const metaShipping = Number(
+      paymentIntentDetails?.metadata?.shipping_amount ||
+        shippingDetails?.shipping ||
+        0
+    );
+    const metaTax = Number(
+      paymentIntentDetails?.metadata?.tax_amount || shippingDetails?.tax || 0
+    );
+    const merchandise = metaSubtotal > 0 ? metaSubtotal : cartTotal;
+    const quote = calculateOrderTotal({
+      subtotal: merchandise,
+      discount: metaDiscount,
+      shipping: metaShipping,
+    });
+    const taxAmount = metaTax > 0 ? roundMoney(metaTax) : quote.tax;
+    const subtotalAmount = quote.subtotal;
+    const shippingAmount = quote.shipping;
+
+    total = chargedUsd > 0 ? chargedUsd : quote.total;
 
     const metaUserId =
       paymentIntentDetails?.metadata?.userId ||
@@ -201,6 +248,10 @@ export async function createOrderFromCheckout(
         null,
       stripe_payment_intent_id: paymentIntentId,
       guest_checkout: !resolvedUserId,
+      subtotal: subtotalAmount,
+      shipping_amount: shippingAmount,
+      tax_amount: taxAmount,
+      tax_rate: 0.0825,
     };
 
     const metaShippingRaw = paymentIntentDetails?.metadata?.shipping_address;
@@ -228,6 +279,9 @@ export async function createOrderFromCheckout(
 
     const payload: Record<string, unknown> = {
       status: "paid",
+      subtotal: subtotalAmount,
+      shipping: shippingAmount,
+      tax: taxAmount,
       total: Number(total.toFixed(2)),
       items: cartItems?.length
         ? cartItems
@@ -269,6 +323,10 @@ export async function createOrderFromCheckout(
       await supabase
         .from("orders")
         .update({
+          subtotal: subtotalAmount,
+          shipping: shippingAmount,
+          tax: taxAmount,
+          total: Number(total.toFixed(2)),
           shipping_address: {
             ...(existingOrder.shipping_address || {}),
             ...shippingAddress,
@@ -286,10 +344,7 @@ export async function createOrderFromCheckout(
       };
     }
 
-    let insertResult = await supabase
-      .from("orders")
-      .insert(payload)
-      .select("id, status");
+    let insertResult = await insertOrderDroppingUnknownColumns(supabase, payload);
 
     // If user_id column rejects null guests, retry without user_id.
     if (

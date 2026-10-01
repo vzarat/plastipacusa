@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createServerClient } from "@/lib/supabase/server";
 import { getAppBaseUrl } from "@/lib/email";
+import { calculateOrderTotal } from "@/lib/sales-tax";
 
 interface CheckoutLineItemInput {
   productName?: string;
@@ -92,10 +93,12 @@ export async function POST(request: NextRequest) {
       return sum + line;
     }, 0);
 
-    const discountAmount = Math.min(
-      Math.max(0, Number(body.discountAmount || 0)),
-      subtotal
-    );
+    const quote = calculateOrderTotal({
+      subtotal,
+      discount: Number(body.discountAmount || 0),
+      shipping: 0,
+    });
+    const discountAmount = quote.discount;
     const payable = Math.max(0, subtotal - discountAmount);
     if (payable <= 0) {
       return NextResponse.json(
@@ -137,6 +140,19 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    if (quote.tax > 0) {
+      line_items.push({
+        quantity: 1,
+        price_data: {
+          currency: "usd",
+          unit_amount: toCents(quote.tax),
+          product_data: {
+            name: "Estimated Tax (8.25%)",
+          },
+        },
+      });
+    }
+
     const baseUrl = getAppBaseUrl();
     const customerEmail =
       (body.customerEmail || authenticatedEmail || "").trim().toLowerCase() ||
@@ -165,6 +181,11 @@ export async function POST(request: NextRequest) {
         company_name: String(body.companyName || ""),
         coupon_code: String(body.couponCode || ""),
         discount_amount: String(discountAmount.toFixed(2)),
+        subtotal: quote.subtotal.toFixed(2),
+        shipping_amount: quote.shipping.toFixed(2),
+        tax_amount: quote.tax.toFixed(2),
+        tax_rate: String(quote.taxRate),
+        order_total: quote.total.toFixed(2),
         cart_item_count: String(items.length),
         items_summary: items
           .map(
@@ -180,6 +201,10 @@ export async function POST(request: NextRequest) {
           user_id: authenticatedUserId,
           customer_email: customerEmail || "",
           company_name: String(body.companyName || ""),
+          subtotal: quote.subtotal.toFixed(2),
+          shipping_amount: quote.shipping.toFixed(2),
+          tax_amount: quote.tax.toFixed(2),
+          tax_rate: String(quote.taxRate),
           items_summary: items
             .map(
               (item) =>

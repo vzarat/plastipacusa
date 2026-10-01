@@ -46,6 +46,19 @@ function formatSpecInches(value: number): string {
   return Number.isInteger(value) ? String(value) : String(value);
 }
 
+function specNumber(value: number | null | undefined): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+}
+
+function compareProductsBySpecs(a: AdminProduct, b: AdminProduct): number {
+  return (
+    specNumber(a.widthInches) - specNumber(b.widthInches) ||
+    specNumber(a.gauge) - specNumber(b.gauge) ||
+    specNumber(a.lengthFeet) - specNumber(b.lengthFeet)
+  );
+}
+
 function specBadgesFor(item: AdminProduct, labels: { hand: string; machine: string }): string[] {
   const badges: string[] = [];
   if (item.widthInches) badges.push(`${formatSpecInches(item.widthInches)} IN`);
@@ -144,7 +157,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
         if (!matches) return false;
       }
       return true;
-    });
+    }).sort(compareProductsBySpecs);
   }, [products, search, filterApp, filterGauges, filterLength, filterStatus]);
 
   const toggleGauge = (gauge: number) => {

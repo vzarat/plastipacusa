@@ -14,6 +14,7 @@ import {
   generateInvoicePdf,
   type InvoicePdfItem,
 } from "@/lib/invoice-pdf";
+import { roundMoney } from "@/lib/sales-tax";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -276,6 +277,12 @@ async function ensurePaidOrderForSession(input: {
     (input.session.created || Date.now() / 1000) * 1000
   ).toISOString();
 
+  const taxAmount = roundMoney(Number(input.session.metadata?.tax_amount || 0));
+  const subtotalAmount = roundMoney(Number(input.session.metadata?.subtotal || 0));
+  const shippingAmount = roundMoney(
+    Number(input.session.metadata?.shipping_amount || 0)
+  );
+
   const shipping_address = {
     ...input.shippingAddress,
     email: input.customerEmail,
@@ -283,12 +290,19 @@ async function ensurePaidOrderForSession(input: {
     stripe_payment_intent_id: input.paymentIntentId,
     stripe_checkout_session_id: input.session.id,
     payment_status: PAID_CLEARED_LABEL,
+    subtotal: subtotalAmount,
+    shipping_amount: shippingAmount,
+    tax_amount: taxAmount,
+    tax_rate: 0.0825,
   };
 
   const payload: Record<string, unknown> = {
     user_id: input.userId,
     status: PAID_STATUS,
     payment_status: PAID_CLEARED_LABEL,
+    subtotal: subtotalAmount,
+    shipping: shippingAmount,
+    tax: taxAmount,
     total: input.totalAmount,
     items: [
       {
@@ -302,17 +316,25 @@ async function ensurePaidOrderForSession(input: {
     created_at: createdAt,
   };
 
-  let insert = await supabase.from("orders").insert(payload).select("*").maybeSingle();
+  let nextPayload = { ...payload };
+  let insert = await supabase.from("orders").insert(nextPayload).select("*").maybeSingle();
 
-  if (insert.error && /payment_status/i.test(insert.error.message || "")) {
-    const { payment_status: _unusedPaymentStatus, ...withoutPaymentStatus } =
-      payload;
-    void _unusedPaymentStatus;
-    insert = await supabase
-      .from("orders")
-      .insert(withoutPaymentStatus)
-      .select("*")
-      .maybeSingle();
+  for (let attempt = 0; attempt < 6 && insert.error; attempt += 1) {
+    const message = String(insert.error.message || "");
+    const missing =
+      message.match(/Could not find the ['"]([a-z0-9_]+)['"] column/i) ||
+      message.match(/column ["']?([a-z0-9_]+)["']?/i);
+    const column =
+      missing?.[1] ||
+      (/payment_status/i.test(message) ? "payment_status" : null);
+    const unknownColumn =
+      /does not exist/i.test(message) ||
+      /schema cache/i.test(message) ||
+      /payment_status/i.test(message);
+    if (!column || !unknownColumn || !(column in nextPayload)) break;
+    delete nextPayload[column];
+    nextPayload = { ...nextPayload };
+    insert = await supabase.from("orders").insert(nextPayload).select("*").maybeSingle();
   }
 
   if (insert.error || !insert.data) {

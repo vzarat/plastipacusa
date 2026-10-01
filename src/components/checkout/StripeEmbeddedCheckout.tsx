@@ -21,6 +21,7 @@ import {
 import { getStripe } from "@/lib/stripe";
 import { BRAND_GRADIENT_CTA } from "@/lib/brand-styles";
 import { useCartStore } from "@/lib/store/useCartStore";
+import { calculateOrderTotal } from "@/lib/sales-tax";
 import { formatCurrency } from "@/lib/utils";
 
 const TEST_CARDS = [
@@ -238,8 +239,14 @@ export function StripeEmbeddedCheckout({
   onRequireAgreement,
 }: StripeEmbeddedCheckoutProps) {
   const items = useCartStore((s) => s.items);
-  const getDiscountedTotal = useCartStore((s) => s.getDiscountedTotal);
-  const amount = getDiscountedTotal();
+  const subtotal = useCartStore((s) => s.getSubtotal());
+  const discountAmount = useCartStore((s) => s.getDiscountAmount());
+  const quote = calculateOrderTotal({
+    subtotal,
+    discount: discountAmount,
+    shipping: 0,
+  });
+  const amount = quote.total;
 
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
@@ -286,6 +293,9 @@ export function StripeEmbeddedCheckout({
         customerEmail,
         itemsSummary,
         productSlugs: items.map((item) => item.productSlug).filter(Boolean),
+        subtotal: quote.subtotal,
+        discountAmount: quote.discount,
+        shippingAmount: quote.shipping,
       });
 
       if (cancelled) return;

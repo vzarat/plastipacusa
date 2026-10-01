@@ -6,6 +6,7 @@ import { Loader2, Lock, LogIn, UserPlus } from "lucide-react";
 import { CheckoutForm } from "@/components/checkout/CheckoutForm";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/lib/store/useCartStore";
+import { calculateOrderTotal } from "@/lib/sales-tax";
 import { formatCurrency } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/context/LanguageContext";
@@ -21,7 +22,6 @@ export function CheckoutPageClient() {
   const items = useCartStore((state) => state.items);
   const getSubtotal = useCartStore((state) => state.getSubtotal);
   const getDiscountAmount = useCartStore((state) => state.getDiscountAmount);
-  const getDiscountedTotal = useCartStore((state) => state.getDiscountedTotal);
   const appliedCoupon = useCartStore((state) => state.appliedCoupon);
   const getTotalWeight = useCartStore((state) => state.getTotalWeight);
   const clearCart = useCartStore((state) => state.clearCart);
@@ -70,7 +70,12 @@ export function CheckoutPageClient() {
 
   const subtotal = getSubtotal();
   const discountAmount = getDiscountAmount();
-  const total = getDiscountedTotal();
+  const quote = calculateOrderTotal({
+    subtotal,
+    discount: discountAmount,
+    shipping: 0,
+  });
+  const total = quote.total;
   const totalWeight = getTotalWeight();
 
   if (items.length === 0) {
@@ -240,6 +245,20 @@ export function CheckoutPageClient() {
                 </div>
               </>
             )}
+            {quote.shipping > 0 && (
+              <div className="flex items-center justify-between text-slate-600">
+                <span>Shipping</span>
+                <span className="font-semibold text-slate-800">
+                  {formatCurrency(quote.shipping)}
+                </span>
+              </div>
+            )}
+            <div className="flex items-center justify-between text-slate-600">
+              <span>Estimated Tax (8.25%)</span>
+              <span className="font-semibold text-slate-800">
+                {formatCurrency(quote.tax)}
+              </span>
+            </div>
             <div className="flex items-center justify-between text-lg font-black text-slate-900">
               <span>Total</span>
               <span>{formatCurrency(total)}</span>
