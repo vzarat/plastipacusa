@@ -12,6 +12,7 @@ import { DirectCheckoutButton } from "@/components/checkout/DirectCheckoutButton
 import { ProductDiscountInput } from "@/components/products/ProductDiscountInput";
 import type { AppliedDiscount } from "@/types/discount";
 import { applyDiscountToPrice, formatDiscountAppliedBadge } from "@/lib/discounts";
+import { usesCompact1880Pallets } from "@/lib/palletizing";
 import {
   HAND_FULL_PALLET,
   isMachineFilm as detectMachineFilm,
@@ -52,6 +53,16 @@ function getBoxesCount(variant: any, isMachine: boolean): number {
   return Math.round(rolls / 4);
 }
 
+function isCompact1880Package(variant: any): boolean {
+  return usesCompact1880Pallets({
+    widthInches: variant?.widthInches || variant?.width_inches,
+    gauge: variant?.gauge,
+    lengthFeet: variant?.lengthFeet || variant?.length_feet,
+    slug: variant?.slug,
+    name: variant?.title || variant?.name,
+  });
+}
+
 /** Classify package option into business-rule tiers. */
 function getPackageTierKind(variant: any, isMachine: boolean): PackageTierKind {
   if (!variant) return "other";
@@ -59,6 +70,15 @@ function getPackageTierKind(variant: any, isMachine: boolean): PackageTierKind {
   const label = getVariantLabel(variant);
   const rolls = getRollsCount(variant);
   const boxes = getBoxesCount(variant, isMachine);
+
+  if (!isMachine && isCompact1880Package(variant)) {
+    if (label.includes("24 BOXES") || boxes === 24) return "full_pallet";
+    if (label.includes("HALF PALLET") || label.includes("12 BOXES") || boxes === 12) {
+      return "fixed_half";
+    }
+    if (label.includes("1 BOX") || boxes === 1 || rolls <= 4) return "single_unit";
+    return "other";
+  }
 
   if (isMachine) {
     if (label.includes("FULL PALLET") || rolls === 40) return "full_pallet";
@@ -162,9 +182,10 @@ function displayPackageTitle(variant: any, isMachine: boolean): string {
   }
   const upper = raw.toUpperCase();
   if (
-    upper.includes("FULL PALLET") ||
-    upper.includes("64 BOXES") ||
-    getRollsCount(variant) === 256
+    !isCompact1880Package(variant) &&
+    (upper.includes("FULL PALLET") ||
+      upper.includes("64 BOXES") ||
+      getRollsCount(variant) === 256)
   ) {
     return HAND_FULL_PALLET.label;
   }
@@ -199,10 +220,18 @@ export function VariantSelector({
             const price = Number(opt?.price);
             if (!Number.isFinite(price) || price <= 0) return null;
             const rolls = Number(opt?.rolls) || 1;
+            const keepStoredLabel = usesCompact1880Pallets({
+              widthInches: product?.width_inches || product?.widthInches,
+              gauge: product?.gauge,
+              lengthFeet: product?.length_feet || product?.lengthFeet,
+              slug: product?.slug,
+              name: product?.title || product?.name,
+            });
             const label = isMachineFilm
               ? normalizeMachinePackageLabel(rolls, opt?.label)
-              : rolls === HAND_FULL_PALLET.rolls ||
-                  String(opt?.label || "").toUpperCase().includes("FULL PALLET")
+              : !keepStoredLabel &&
+                  (rolls === HAND_FULL_PALLET.rolls ||
+                    String(opt?.label || "").toUpperCase().includes("FULL PALLET"))
                 ? HAND_FULL_PALLET.label
                 : opt?.label;
             return {
@@ -226,11 +255,13 @@ export function VariantSelector({
               rolls_count: rolls,
               boxes_count: isMachineFilm
                 ? 0
-                : rolls <= 4
-                  ? 1
-                  : rolls === HAND_FULL_PALLET.rolls
-                    ? HAND_FULL_PALLET.boxes
-                    : Math.round(rolls / 4),
+                : keepStoredLabel
+                  ? Math.max(1, Math.round(rolls / 4))
+                  : rolls <= 4
+                    ? 1
+                    : rolls === HAND_FULL_PALLET.rolls
+                      ? HAND_FULL_PALLET.boxes
+                      : Math.round(rolls / 4),
             };
           })
           .filter(Boolean);
@@ -243,9 +274,17 @@ export function VariantSelector({
         .map((v: any) => {
           if (!isMachineFilm) {
             const rolls = getRollsCount(v);
+            const keepStoredLabel = usesCompact1880Pallets({
+              widthInches: product?.width_inches || product?.widthInches || v.widthInches,
+              gauge: product?.gauge || v.gauge,
+              lengthFeet: product?.length_feet || product?.lengthFeet || v.lengthFeet,
+              slug: product?.slug,
+              name: product?.title || product?.name,
+            });
             if (
-              String(v.packageSize || v.title || "").toUpperCase().includes("FULL PALLET") ||
-              rolls === 256
+              !keepStoredLabel &&
+              (String(v.packageSize || v.title || "").toUpperCase().includes("FULL PALLET") ||
+                rolls === 256)
             ) {
               return {
                 ...v,
@@ -620,7 +659,7 @@ export function VariantSelector({
                 }
                 type="button"
                 onClick={() => handlePackageSelect(variant)}
-                className={`relative p-3.5 sm:p-4 rounded-2xl border text-left transition-all flex flex-col gap-2.5 group cursor-pointer ${
+                className={`relative w-full p-3.5 sm:p-4 rounded-2xl border text-left transition-all flex flex-col gap-2.5 group cursor-pointer ${
                   isBestValue
                     ? isSelected
                       ? "border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-500/25 shadow-sm"
@@ -636,8 +675,12 @@ export function VariantSelector({
                   </div>
                 )}
 
-                <div className={`flex items-center justify-between gap-3 ${isBestValue ? "pt-1" : ""}`}>
-                  <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 ${
+                    isBestValue ? "pt-1" : ""
+                  }`}
+                >
+                  <div className="flex min-w-0 items-center gap-3">
                     <div
                       className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
                         isSelected
@@ -682,14 +725,14 @@ export function VariantSelector({
                     </div>
                   </div>
 
-                  <div className="text-right shrink-0">
+                  <div className="ml-auto shrink-0 text-right">
                     {showDiscountStrike && (
-                      <span className="text-xs font-semibold text-slate-400 line-through block">
-                        {formatCurrency(originalPrice)}
+                      <span className="block text-xs font-semibold text-slate-400 line-through">
+                        {formatCurrency(originalPrice)} USD
                       </span>
                     )}
-                    <span
-                      className={`text-sm sm:text-base font-extrabold ${
+                    <p
+                      className={`text-sm sm:text-base font-extrabold whitespace-nowrap ${
                         showDiscountStrike
                           ? "text-emerald-700"
                           : isSelected
@@ -699,11 +742,10 @@ export function VariantSelector({
                             : "text-slate-900"
                       }`}
                     >
-                      {formatCurrency(price)}
-                    </span>
-                    <span className="text-[10px] text-slate-400 block font-semibold">USD</span>
+                      {formatCurrency(price)} USD
+                    </p>
                     {unitCount > 1 && (
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="mt-0.5 whitespace-nowrap text-xs text-slate-500">
                         ${discountedPerUnit} USD / {unitLabel.toLowerCase()}
                       </p>
                     )}

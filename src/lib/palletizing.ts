@@ -40,6 +40,24 @@ function resolveWidth(input: PalletizingInput): number {
   return 18;
 }
 
+/** 18" × 80 GA @ 1000 FT and 1500 FT use a smaller pallet than other 18" films. */
+export function usesCompact1880Pallets(input: PalletizingInput): boolean {
+  const width = resolveWidth(input);
+  const gauge = Math.round(toNumber(input.gauge));
+  const length = Math.round(toNumber(input.lengthFeet));
+  const haystack = `${input.slug || ""} ${input.name || ""}`.toLowerCase();
+  const is1880 =
+    width === 18 &&
+    gauge === 80 &&
+    (length === 1000 ||
+      length === 1500 ||
+      haystack.includes("80-ga-x-1000") ||
+      haystack.includes("80-ga-x-1500") ||
+      haystack.includes("80 ga x 1000") ||
+      haystack.includes("80 ga x 1500"));
+  return is1880;
+}
+
 /** 15" × 80 GA variants are excluded from the active catalog when flagged. */
 export function isExcludedFifteenInchEightyGauge(input: PalletizingInput): boolean {
   const width = resolveWidth(input);
@@ -90,7 +108,20 @@ export function resolvePalletizingSpecs(input: PalletizingInput): PalletizingSpe
     };
   }
 
-  // 18" Width Films — 60/70/80 GA @ 1000 FT & 1500 FT
+  // 18" × 80 GA @ 1000 FT and 1500 FT — half pallet 12 boxes, full pallet 24 boxes
+  if (usesCompact1880Pallets({ ...input, widthInches: width, gauge, lengthFeet: length })) {
+    return {
+      fullPalletRolls: 96,
+      palletLayers: 2,
+      rollsPerLayer: 48,
+      rollsPerBox: 4,
+      boxesPerFullPallet: 24,
+      packOutSummary: "96 rolls / full pallet · 24 boxes · 4 rolls/box",
+      familyLabel: '18" 80 GA Hand Stretch Film',
+    };
+  }
+
+  // 18" Width Films — 60/70 GA @ 1000 FT & 1500 FT
   // Default / FORCE standard hand film
   return {
     fullPalletRolls: 192,

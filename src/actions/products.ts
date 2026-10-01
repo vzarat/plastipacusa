@@ -13,6 +13,7 @@ import { verifyAdmin } from "./admin";
 import {
   isExcludedFifteenInchEightyGauge,
   resolvePalletizingSpecs,
+  usesCompact1880Pallets,
 } from "@/lib/palletizing";
 import {
   HAND_FULL_PALLET,
@@ -312,11 +313,19 @@ function formatProduct(raw: any): ProductWithVariants {
       const label = String((v as any).title || v.packageSize || "").toUpperCase();
       const rolls = Number(v.rollsPerBox || (v as any).rolls_count || 0);
       const boxes = Number((v as any).boxes_count || (v as any).boxesCount || 0);
+      const keepStoredPackageLabel = usesCompact1880Pallets({
+        widthInches: resolvedWidth,
+        gauge: gaugeNum,
+        lengthFeet: lengthNum,
+        slug: slugStr,
+        name: nameStr,
+      });
       const isFullPalletLabel =
-        label.includes("FULL PALLET") ||
-        rolls === 256 ||
-        boxes === 64 ||
-        (palletizing.fullPalletRolls === 40 && (rolls === 40 || label.includes("40 ROLLS")));
+        !keepStoredPackageLabel &&
+        (label.includes("FULL PALLET") ||
+          rolls === 256 ||
+          boxes === 64 ||
+          (palletizing.fullPalletRolls === 40 && (rolls === 40 || label.includes("40 ROLLS"))));
 
       if (isFullPalletLabel) {
         const fullLabel = isGenesis
@@ -467,8 +476,16 @@ function formatProduct(raw: any): ProductWithVariants {
     packageOptions = warehouseVariants.map((v) => {
       const rolls = Number(v.rollsPerBox || (v as any).rollsCount || 4);
       const label = String((v as any).title || v.packageSize || v.sku);
+      const keepStoredPackageLabel = usesCompact1880Pallets({
+        widthInches: resolvedWidth,
+        gauge: gaugeNum,
+        lengthFeet: lengthNum,
+        slug: slugStr,
+        name: nameStr,
+      });
       const normalizedLabel =
-        label.toUpperCase().includes("FULL PALLET") || rolls === 256 || rolls === 192
+        !keepStoredPackageLabel &&
+        (label.toUpperCase().includes("FULL PALLET") || rolls === 256 || rolls === 192)
           ? HAND_FULL_PALLET.label
           : label;
       return {
