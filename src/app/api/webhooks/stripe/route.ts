@@ -417,6 +417,7 @@ async function dispatchAdminPoEmail(payload: {
   shippingState?: string;
   shippingCity?: string;
   shippingAddressSummary?: string;
+  shippingPhone?: string;
   itemCount?: number;
   itemsSummary?: string;
   orderDate?: string;

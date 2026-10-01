@@ -221,10 +221,18 @@ export async function notifyAdminPurchaseOrder(
       ? `Shipping State: ${payload.shippingState}`
       : null,
     payload.shippingCity ? `Shipping City: ${payload.shippingCity}` : null,
-    payload.shippingAddressSummary
-      ? `SHIPPING ADDRESS\n${payload.shippingAddressSummary}`
+    payload.shippingAddressSummary || payload.shippingPhone
+      ? [
+          "SHIPPING ADDRESS",
+          payload.shippingAddressSummary,
+          payload.shippingPhone &&
+          !payload.shippingAddressSummary?.includes(payload.shippingPhone)
+            ? `Phone: ${payload.shippingPhone}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join("\n")
       : null,
-    payload.shippingPhone ? `Phone: ${payload.shippingPhone}` : null,
     payload.itemCount != null ? `Line Items: ${payload.itemCount}` : null,
     payload.itemsSummary ? `Items: ${payload.itemsSummary}` : null,
     payload.orderDate ? `Order Date: ${payload.orderDate}` : null,
