@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Lock, LogIn, UserPlus, X } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
@@ -23,15 +24,15 @@ export function CheckoutAuthRequiredModal({
   const { locale } = useLanguage();
   const isEs = locale === "es";
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
   const redirect = encodeURIComponent(redirectTo);
   const loginHref = `/login?redirect=${redirect}`;
   const registerHref = `/register?redirect=${redirect}`;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/50 p-4 sm:items-center"
+      className="fixed inset-0 z-[120] flex items-end justify-center bg-slate-950/50 p-4 sm:items-center"
       role="dialog"
       aria-modal="true"
       aria-labelledby="checkout-auth-title"
@@ -101,6 +102,7 @@ export function CheckoutAuthRequiredModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

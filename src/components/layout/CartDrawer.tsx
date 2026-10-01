@@ -15,6 +15,7 @@ import {
   Weight,
   Send,
   CheckCircle,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,9 +49,18 @@ export function CartDrawer() {
   const [company, setCompany] = useState("");
   const [phone, setPhone] = useState("");
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isOpeningCheckout, setIsOpeningCheckout] = useState(false);
 
   const goToCheckoutIfAuthenticated = async () => {
+    if (isOpeningCheckout) return;
+    setIsOpeningCheckout(true);
     try {
+      if (!useCartStore.persist.hasHydrated()) {
+        await useCartStore.persist.rehydrate();
+      }
+      const latestItems = useCartStore.getState().items;
+      if (!latestItems.length) return;
+
       const supabase = createClient();
       const {
         data: { user },
@@ -61,10 +71,12 @@ export function CartDrawer() {
         return;
       }
 
-      closeDrawer();
       router.push("/checkout");
+      closeDrawer();
     } catch {
       setShowAuthModal(true);
+    } finally {
+      setIsOpeningCheckout(false);
     }
   };
 
@@ -364,9 +376,7 @@ export function CartDrawer() {
               <div className="space-y-2" data-tour="cart-quick-actions">
                 <DirectCheckoutButton
                   label="Proceed to Checkout"
-                  onBeforeNavigate={() => {
-                    closeDrawer();
-                  }}
+                  onNavigate={closeDrawer}
                 />
                 <Button
                   onClick={() => setShowQuoteForm(true)}
@@ -379,8 +389,12 @@ export function CartDrawer() {
                 <Button
                   onClick={() => void goToCheckoutIfAuthenticated()}
                   variant="outline"
+                  disabled={isOpeningCheckout}
                   className="w-full text-xs font-semibold border-slate-200 hover:bg-slate-100"
                 >
+                  {isOpeningCheckout ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                  ) : null}
                   Review Order ({formatCurrency(discountedTotal)})
                 </Button>
                 <button

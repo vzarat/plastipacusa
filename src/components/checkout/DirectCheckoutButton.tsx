@@ -14,6 +14,8 @@ interface DirectCheckoutButtonProps {
   disabled?: boolean;
   /** Return false to cancel navigation */
   onBeforeNavigate?: () => boolean | void;
+  /** Runs after a signed-in shopper is sent to checkout. */
+  onNavigate?: () => void;
 }
 
 /**
@@ -25,6 +27,7 @@ export function DirectCheckoutButton({
   className = "",
   disabled = false,
   onBeforeNavigate,
+  onNavigate,
 }: DirectCheckoutButtonProps) {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(false);
@@ -36,15 +39,17 @@ export function DirectCheckoutButton({
     const shouldContinue = onBeforeNavigate?.();
     if (shouldContinue === false) return;
 
-    // Re-read cart after onBeforeNavigate (e.g. add-to-cart on product page).
-    const latestItems = useCartStore.getState().items;
-    if (!latestItems.length) {
-      router.push("/products");
-      return;
-    }
-
     setIsChecking(true);
     try {
+      if (!useCartStore.persist.hasHydrated()) {
+        await useCartStore.persist.rehydrate();
+      }
+      const latestItems = useCartStore.getState().items;
+      if (!latestItems.length) {
+        router.push("/products");
+        return;
+      }
+
       const supabase = createClient();
       const {
         data: { user },
@@ -56,6 +61,7 @@ export function DirectCheckoutButton({
       }
 
       router.push("/checkout");
+      onNavigate?.();
     } catch {
       setShowAuthModal(true);
     } finally {

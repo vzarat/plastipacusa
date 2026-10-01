@@ -20,7 +20,7 @@ import {
 } from "@/components/checkout/CheckoutStepper";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/lib/store/useCartStore";
-import { calculateOrderTotal } from "@/lib/sales-tax";
+import { calculateOrderTotal, roundMoney } from "@/lib/sales-tax";
 import { formatCurrency } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/context/LanguageContext";
@@ -130,7 +130,10 @@ function CheckoutPageInner() {
     discount: discountAmount,
     shipping: shippingEstimate,
   });
-  const total = quote.total;
+  const showTax = step === 4;
+  const total = showTax
+    ? quote.total
+    : roundMoney(quote.subtotal - quote.discount + quote.shipping);
 
   const goToStep = (next: CheckoutStepId) => {
     if (next > furthestStep) return;
@@ -321,17 +324,21 @@ function CheckoutPageInner() {
                 </span>
               </div>
             )}
-            {taxExemptRequested && (
-              <p className="text-xs font-semibold text-emerald-700">
-                Tax exemption requested. Tax remains until verification.
-              </p>
+            {showTax && (
+              <>
+                {taxExemptRequested && (
+                  <p className="text-xs font-semibold text-emerald-700">
+                    Tax exemption requested. Tax remains until verification.
+                  </p>
+                )}
+                <div className="flex items-center justify-between text-slate-600">
+                  <span>Estimated Tax</span>
+                  <span className="font-semibold text-slate-800">
+                    {formatCurrency(quote.tax)}
+                  </span>
+                </div>
+              </>
             )}
-            <div className="flex items-center justify-between text-slate-600">
-              <span>Estimated Tax</span>
-              <span className="font-semibold text-slate-800">
-                {formatCurrency(quote.tax)}
-              </span>
-            </div>
             <div className="flex items-center justify-between text-lg font-black text-slate-900">
               <span>Total</span>
               <span>{formatCurrency(total)}</span>
