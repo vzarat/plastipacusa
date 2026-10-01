@@ -9,6 +9,10 @@ import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/context/LanguageContext";
+import {
+  EMPTY_CHECKOUT_SHIPPING,
+  type CheckoutShippingAddress,
+} from "@/lib/shipping-address";
 
 export function CheckoutPageClient() {
   const { locale } = useLanguage();
@@ -24,6 +28,9 @@ export function CheckoutPageClient() {
 
   const [agreedToPolicies, setAgreedToPolicies] = useState(false);
   const [checkoutEmail, setCheckoutEmail] = useState("");
+  const [shipping, setShipping] = useState<CheckoutShippingAddress>(
+    EMPTY_CHECKOUT_SHIPPING
+  );
   const [authChecking, setAuthChecking] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -175,6 +182,8 @@ export function CheckoutPageClient() {
             onAgreedToPoliciesChange={setAgreedToPolicies}
             checkoutEmail={checkoutEmail}
             onCheckoutEmailChange={setCheckoutEmail}
+            shipping={shipping}
+            onShippingChange={setShipping}
           />
         </div>
 

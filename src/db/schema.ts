@@ -27,6 +27,7 @@ export const products = pgTable("products", {
   price20Rolls: numeric("price_20_rolls", { precision: 10, scale: 2 }).notNull().default("580.36"),
   price40Rolls: numeric("price_40_rolls", { precision: 10, scale: 2 }).notNull().default("1099.64"),
   stockQuantity: integer("stock_quantity").notNull().default(0),
+  isSoldOut: boolean("is_sold_out").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
   features: jsonb("features").$type<string[]>().notNull().default([]),
   techSheetUrl: text("tech_sheet_url"),

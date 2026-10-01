@@ -782,13 +782,41 @@ export function AdminOrdersTable({
                       <Mail className="w-3.5 h-3.5 text-slate-400" />
                       <span>{inspectOrder.customerEmail}</span>
                     </p>
-                    <p className="flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                      <span>
-                        {inspectOrder.shippingAddress?.street || "—"},{" "}
-                        {inspectOrder.shippingAddress?.city || "—"}, {inspectOrder.shippingAddress?.state || "—"}
-                      </span>
-                    </p>
+                    <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-1">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Shipping Details
+                      </p>
+                      <p className="font-semibold text-slate-900">
+                        {inspectOrder.shippingAddress?.full_name ||
+                          inspectOrder.shippingAddress?.name ||
+                          inspectOrder.customerName}
+                      </p>
+                      <p>
+                        {[
+                          inspectOrder.shippingAddress?.street ||
+                            inspectOrder.shippingAddress?.line1,
+                          inspectOrder.shippingAddress?.line2,
+                        ]
+                          .filter(Boolean)
+                          .join(", ") || "—"}
+                      </p>
+                      <p>
+                        {[
+                          inspectOrder.shippingAddress?.city,
+                          inspectOrder.shippingAddress?.state,
+                          inspectOrder.shippingAddress?.postal_code ||
+                            inspectOrder.shippingAddress?.zip,
+                        ]
+                          .filter(Boolean)
+                          .join(", ") || "—"}
+                      </p>
+                      <p className="flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-slate-400" />
+                        {inspectOrder.shippingAddress?.phone ||
+                          inspectOrder.customerPhone ||
+                          "—"}
+                      </p>
+                    </div>
                   </div>
                 </div>
 

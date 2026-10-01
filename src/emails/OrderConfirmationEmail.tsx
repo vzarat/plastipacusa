@@ -28,6 +28,7 @@ interface OrderConfirmationEmailProps {
   shippingAddress?: {
     full_name?: string | null;
     email?: string | null;
+    phone?: string | null;
     line1?: string | null;
     line2?: string | null;
     city?: string | null;
@@ -98,12 +99,13 @@ export function OrderConfirmationEmail({
 }: OrderConfirmationEmailProps) {
   const text = copy[locale];
   const shippingLines = [
-    shippingAddress?.line1,
-    shippingAddress?.line2,
+    "SHIPPING ADDRESS",
+    shippingAddress?.full_name,
+    [shippingAddress?.line1, shippingAddress?.line2].filter(Boolean).join(", "),
     [shippingAddress?.city, shippingAddress?.state, shippingAddress?.postal_code]
       .filter(Boolean)
       .join(", "),
-    shippingAddress?.country,
+    shippingAddress?.phone ? `Phone: ${shippingAddress.phone}` : null,
   ].filter(Boolean);
 
   return (
@@ -190,13 +192,13 @@ export function OrderConfirmationEmail({
               ))}
             </Section>
 
-            {shippingLines.length > 0 && (
+            {(shippingAddress?.line1 || shippingAddress?.full_name) && (
               <Section style={{ marginBottom: 24 }}>
                 <Heading as="h3" style={{ fontSize: 18, margin: "0 0 16px", color: "#0f172a" }}>
-                  Shipping Details
+                  SHIPPING ADDRESS
                 </Heading>
-                <Text style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "#334155" }}>
-                  {shippingLines.join("\n")}
+                <Text style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "#334155", whiteSpace: "pre-line" }}>
+                  {shippingLines.slice(1).join("\n")}
                 </Text>
               </Section>
             )}

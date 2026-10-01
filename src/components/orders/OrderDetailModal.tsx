@@ -150,7 +150,7 @@ export default function OrderDetailModal({ open, order, onClose }: OrderDetailMo
   const streetAddress = shipping.street || shipping.line1 || "—";
   const addressLine2 = shipping.line2 || "";
   const city = shipping.city || "—";
-  const state = shipping.state || shipping.postal_code || "—";
+  const state = shipping.state || "—";
   const postalCode = shipping.postal_code || shipping.zip || "—";
   const country = shipping.country || "United States";
 

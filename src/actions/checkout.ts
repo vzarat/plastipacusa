@@ -8,6 +8,17 @@ export interface CreatePaymentIntentOptions {
   customerName?: string;
   companyName?: string;
   itemsSummary?: string;
+  productSlugs?: string[];
+  shipping?: {
+    fullName?: string;
+    line1?: string;
+    line2?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    phone?: string;
+    country?: string;
+  };
 }
 
 export async function createPaymentIntent(
@@ -40,8 +51,9 @@ export async function createPaymentIntent(
 
     let userId = "";
     let sessionEmail = "";
+    let supabase;
     try {
-      const supabase = await createServerClient();
+      supabase = await createServerClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -65,9 +77,38 @@ export async function createPaymentIntent(
       (options.customerEmail || sessionEmail || "").trim().toLowerCase() ||
       undefined;
 
+    const slugs = (options.productSlugs || []).map((slug) => slug.trim()).filter(Boolean);
+    if (slugs.length > 0) {
+      const { data: soldOutRows, error: soldOutError } = await supabase
+        .from("products")
+        .select("slug, is_sold_out")
+        .in("slug", slugs)
+        .eq("is_sold_out", true);
+
+      if (!soldOutError && soldOutRows && soldOutRows.length > 0) {
+        return {
+          success: false,
+          error: "One or more products in your cart are sold out.",
+        };
+      }
+    }
+
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2026-08-26.dahlia" as any,
     });
+
+    const shippingMeta = options.shipping
+      ? JSON.stringify({
+          full_name: options.shipping.fullName || "",
+          line1: options.shipping.line1 || "",
+          line2: options.shipping.line2 || "",
+          city: options.shipping.city || "",
+          state: options.shipping.state || "",
+          postal_code: options.shipping.postalCode || "",
+          phone: options.shipping.phone || "",
+          country: options.shipping.country || "US",
+        }).slice(0, 500)
+      : "";
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: normalizedAmount,
@@ -76,13 +117,31 @@ export async function createPaymentIntent(
         enabled: true,
       },
       receipt_email: customerEmail,
+      shipping: options.shipping?.line1
+        ? {
+            name: options.shipping.fullName || options.customerName || "Customer",
+            phone: options.shipping.phone || undefined,
+            address: {
+              line1: options.shipping.line1,
+              line2: options.shipping.line2 || undefined,
+              city: options.shipping.city || undefined,
+              state: options.shipping.state || undefined,
+              postal_code: options.shipping.postalCode || undefined,
+              country: options.shipping.country || "US",
+            },
+          }
+        : undefined,
       metadata: {
         userId: userId || "",
         user_id: userId || "",
         customer_email: customerEmail || "",
-        customer_name: String(options.customerName || ""),
+        customer_name: String(
+          options.shipping?.fullName || options.customerName || ""
+        ),
         company_name: String(options.companyName || ""),
         items_summary: String(options.itemsSummary || "").slice(0, 450),
+        shipping_address: shippingMeta,
+        shipping_phone: String(options.shipping?.phone || "").slice(0, 40),
       },
     });
 
@@ -105,6 +164,62 @@ export async function createPaymentIntent(
       success: false,
       error: message || "Stripe secret key is missing or payment intent failed",
     };
+  }
+}
+
+/** Attach the checkout shipping form to an existing PaymentIntent before confirm. */
+export async function updatePaymentIntentShipping(
+  paymentIntentId: string,
+  shipping: NonNullable<CreatePaymentIntentOptions["shipping"]>
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeSecretKey || stripeSecretKey.startsWith("pk_")) {
+      return { success: false, error: "Stripe is not configured." };
+    }
+    if (!paymentIntentId) {
+      return { success: false, error: "Missing payment intent." };
+    }
+
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: "2026-08-26.dahlia" as any,
+    });
+
+    const shippingMeta = JSON.stringify({
+      full_name: shipping.fullName || "",
+      line1: shipping.line1 || "",
+      line2: shipping.line2 || "",
+      city: shipping.city || "",
+      state: shipping.state || "",
+      postal_code: shipping.postalCode || "",
+      phone: shipping.phone || "",
+      country: shipping.country || "US",
+    }).slice(0, 500);
+
+    await stripe.paymentIntents.update(paymentIntentId, {
+      shipping: {
+        name: shipping.fullName || "Customer",
+        phone: shipping.phone || undefined,
+        address: {
+          line1: shipping.line1 || "",
+          line2: shipping.line2 || undefined,
+          city: shipping.city || undefined,
+          state: shipping.state || undefined,
+          postal_code: shipping.postalCode || undefined,
+          country: shipping.country || "US",
+        },
+      },
+      metadata: {
+        customer_name: shipping.fullName || "",
+        shipping_address: shippingMeta,
+        shipping_phone: String(shipping.phone || "").slice(0, 40),
+      },
+    });
+
+    return { success: true };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { success: false, error: message };
   }
 }
 

@@ -3,6 +3,7 @@
 import React from "react";
 import { getCurrentUser } from "./auth";
 import { createServerClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { formatOrderId } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { OrderConfirmationEmail } from "@/emails/OrderConfirmationEmail";
@@ -42,10 +43,16 @@ export interface AdminOrder {
   isGuest?: boolean;
   customerPhone?: string;
   shippingAddress: {
+    full_name?: string;
+    name?: string;
+    phone?: string;
     street?: string;
+    line1?: string;
+    line2?: string;
     city?: string;
     state?: string;
     zip?: string;
+    postal_code?: string;
     country?: string;
     error_details?: string;
     attempted_at?: string;
@@ -142,12 +149,17 @@ export async function createOrder(order: AdminOrder) {
     const shippingState = shipping.state ? String(shipping.state) : "";
     const shippingCity = shipping.city ? String(shipping.city) : "";
     const shippingAddressSummary = [
-      shipping.street,
-      [shippingCity, shippingState, shipping.zip].filter(Boolean).join(", "),
-      shipping.country,
+      shipping.full_name || order.customerName,
+      [shipping.street || shipping.line1, shipping.line2].filter(Boolean).join(", "),
+      [shippingCity, shippingState, shipping.postal_code || shipping.zip]
+        .filter(Boolean)
+        .join(", "),
+      shipping.phone || order.customerPhone
+        ? `Phone: ${shipping.phone || order.customerPhone}`
+        : null,
     ]
       .filter(Boolean)
-      .join(" · ");
+      .join("\n");
 
     try {
       const items = Array.isArray(order.items) ? order.items : [];
@@ -181,6 +193,15 @@ export async function createOrder(order: AdminOrder) {
               linePrice: Number((item.unitPrice || 0) * (item.quantity || 1)),
             })),
             locale,
+            shippingAddress: {
+              full_name: shipping.full_name || order.customerName,
+              line1: shipping.line1 || shipping.street,
+              line2: shipping.line2,
+              city: shipping.city,
+              state: shipping.state,
+              postal_code: shipping.postal_code || shipping.zip,
+              phone: shipping.phone || order.customerPhone,
+            },
           }),
         }),
         notifyAdminPurchaseOrder({
@@ -192,6 +213,7 @@ export async function createOrder(order: AdminOrder) {
           shippingState,
           shippingCity,
           shippingAddressSummary,
+          shippingPhone: shipping.phone || order.customerPhone,
           itemCount: items.length,
           itemsSummary,
           orderDate: order.createdAt || createdAt,
@@ -213,17 +235,18 @@ export async function createOrder(order: AdminOrder) {
 
 export async function getAdminCustomers(): Promise<AdminCustomer[]> {
   try {
-    const supabase = await createServerClient();
+    const supabase = createServiceRoleClient();
 
     const { data: profiles, error } = await supabase
       .from("profiles")
-      .select(
-        "id, full_name, company_name, email, phone, role, created_at, tax_id, is_tax_exempt, tax_exempt_verified, tax_certificate_url, credit_application_status, credit_limit, credit_terms"
-      )
+      .select("*")
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("getAdminCustomers query failed:", error);
+      console.error(
+        "getAdminCustomers query failed:",
+        error.message || JSON.stringify(error, null, 2)
+      );
       return [];
     }
 
@@ -239,8 +262,7 @@ export async function getAdminCustomers(): Promise<AdminCustomer[]> {
       }
 
       const taxExempt = Boolean(
-        profile.tax_exempt_verified ||
-          (profile.is_tax_exempt && profile.tax_certificate_url)
+        profile.is_tax_exempt && profile.tax_certificate_url
       );
 
       return {
@@ -264,8 +286,12 @@ export async function getAdminCustomers(): Promise<AdminCustomer[]> {
         createdAt: profile.created_at,
       };
     });
-  } catch (err) {
-    console.warn("Notice: profiles query failed:", err);
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : JSON.stringify(error, null, 2);
+    console.error("getAdminCustomers query failed:", message);
     return [];
   }
 }
@@ -362,14 +388,11 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
         customerCompany:
           profile.company_name || row.company_name || "Industrial Partner",
         isGuest,
-        customerPhone: row.phone || "(956) 400 36 83",
-        shippingAddress: row.shipping_address || {
-          street: "1000 Commercial Parkway",
-          city: "Dallas",
-          state: "TX",
-          zip: "75201",
-          country: "United States",
-        },
+        customerPhone:
+          row.phone ||
+          row.shipping_address?.phone ||
+          undefined,
+        shippingAddress: row.shipping_address || {},
         totalUsd: Number(row.total_usd || row.total_amount || row.total || 0),
         paymentStatus,
         fulfillmentStatus,

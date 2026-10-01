@@ -182,6 +182,7 @@ export interface PurchaseOrderNotifyInput {
   shippingState?: string;
   shippingCity?: string;
   shippingAddressSummary?: string;
+  shippingPhone?: string;
   itemCount?: number;
   itemsSummary?: string;
   orderDate?: string;
@@ -221,8 +222,9 @@ export async function notifyAdminPurchaseOrder(
       : null,
     payload.shippingCity ? `Shipping City: ${payload.shippingCity}` : null,
     payload.shippingAddressSummary
-      ? `Ship To: ${payload.shippingAddressSummary}`
+      ? `SHIPPING ADDRESS\n${payload.shippingAddressSummary}`
       : null,
+    payload.shippingPhone ? `Phone: ${payload.shippingPhone}` : null,
     payload.itemCount != null ? `Line Items: ${payload.itemCount}` : null,
     payload.itemsSummary ? `Items: ${payload.itemsSummary}` : null,
     payload.orderDate ? `Order Date: ${payload.orderDate}` : null,
@@ -253,6 +255,7 @@ export interface OrderConfirmationEmailInput {
   itemsSummary: string;
   itemCount?: number;
   shippingAddressSummary?: string;
+  shippingAddress?: import("@/lib/order-confirmation-email").OrderConfirmationContent["shippingAddress"];
   orderDate?: string;
   lineItems?: import("@/lib/order-confirmation-email").OrderConfirmationLineItem[];
   pdfBytes: Uint8Array;
@@ -295,6 +298,7 @@ export async function sendOrderConfirmationEmail(
       itemsSummary: payload.itemsSummary,
       itemCount: payload.itemCount,
       shippingAddressSummary: payload.shippingAddressSummary,
+      shippingAddress: payload.shippingAddress,
       orderDate: payload.orderDate,
       lineItems: payload.lineItems,
     });

@@ -9,6 +9,11 @@ import { createOrderFromCheckout, verifyPaymentIntent } from "@/actions/orders";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency, formatOrderId } from "@/lib/utils";
+import {
+  clearCheckoutShipping,
+  readCheckoutShipping,
+  toOrderShippingAddress,
+} from "@/lib/shipping-address";
 
 export default function CheckoutSuccessPage() {
   const searchParams = useSearchParams();
@@ -105,6 +110,10 @@ export default function CheckoutSuccessPage() {
         // Do NOT require a Supabase session — paid PaymentIntent is sufficient.
         const snapshotItems = [...cartItems];
         const snapshotTotal = getDiscountedTotal();
+        const storedShipping = readCheckoutShipping();
+        const storedPayload = storedShipping
+          ? toOrderShippingAddress(storedShipping)
+          : {};
 
         const result = await createOrderFromCheckout(
           paymentIntentId,
@@ -114,6 +123,7 @@ export default function CheckoutSuccessPage() {
             items_count: snapshotItems.length,
             subtotal: Number(getSubtotal().toFixed(2)),
             ...shippingFromSession,
+            ...storedPayload,
           }
         );
 
@@ -128,6 +138,7 @@ export default function CheckoutSuccessPage() {
         }
 
         clearCart();
+        clearCheckoutShipping();
         setConfirmedTotal(
           snapshotTotal > 0
             ? snapshotTotal

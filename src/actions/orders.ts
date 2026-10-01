@@ -1,6 +1,5 @@
 "use server";
 
-import React from "react";
 import Stripe from "stripe";
 import { createServerClient } from "@/lib/supabase/server";
 import {
@@ -13,7 +12,8 @@ import {
   notifyAdminPurchaseOrder,
   sendEmail,
 } from "@/lib/email";
-import { OrderConfirmationEmail } from "@/emails/OrderConfirmationEmail";
+import { fetchOrderConfirmationTemplate } from "@/lib/email-template-store";
+import { buildOrderConfirmationHtml } from "@/lib/order-confirmation-email";
 
 export async function verifyPaymentIntent(paymentIntentId: string) {
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -183,10 +183,48 @@ export async function createOrderFromCheckout(
       country:
         paymentIntentDetails?.shipping?.address?.country ||
         shippingDetails?.country ||
+        "US",
+      phone:
+        paymentIntentDetails?.shipping?.phone ||
+        shippingDetails?.phone ||
+        paymentIntentDetails?.metadata?.shipping_phone ||
+        null,
+      street:
+        paymentIntentDetails?.shipping?.address?.line1 ||
+        shippingDetails?.line1 ||
+        shippingDetails?.street ||
+        null,
+      zip:
+        paymentIntentDetails?.shipping?.address?.postal_code ||
+        shippingDetails?.postal_code ||
+        shippingDetails?.zip ||
         null,
       stripe_payment_intent_id: paymentIntentId,
       guest_checkout: !resolvedUserId,
     };
+
+    const metaShippingRaw = paymentIntentDetails?.metadata?.shipping_address;
+    if (metaShippingRaw) {
+      try {
+        const parsed = JSON.parse(String(metaShippingRaw));
+        shippingAddress = {
+          ...parsed,
+          ...Object.fromEntries(
+            Object.entries(shippingAddress).filter(([, value]) => value)
+          ),
+          stripe_payment_intent_id: paymentIntentId,
+        };
+        if (!shippingAddress.street && shippingAddress.line1) {
+          shippingAddress.street = shippingAddress.line1;
+        }
+        if (!shippingAddress.zip && shippingAddress.postal_code) {
+          shippingAddress.zip = shippingAddress.postal_code;
+        }
+        shippingAddress.guest_checkout = !resolvedUserId;
+      } catch {
+        // Keep the structured address already built above.
+      }
+    }
 
     const payload: Record<string, unknown> = {
       status: "paid",
@@ -228,6 +266,16 @@ export async function createOrderFromCheckout(
     );
 
     if (existingOrder) {
+      await supabase
+        .from("orders")
+        .update({
+          shipping_address: {
+            ...(existingOrder.shipping_address || {}),
+            ...shippingAddress,
+          },
+        })
+        .eq("id", existingOrder.id);
+
       return {
         success: true,
         orderId: formatOrderId({
@@ -304,15 +352,15 @@ export async function createOrderFromCheckout(
         ? String(shippingAddress.city)
         : "";
       const shippingAddressSummary = [
-        shippingAddress.line1,
-        shippingAddress.line2,
+        shippingAddress.full_name,
+        [shippingAddress.line1, shippingAddress.line2].filter(Boolean).join(", "),
         [shippingCity, shippingState, shippingAddress.postal_code]
           .filter(Boolean)
           .join(", "),
-        shippingAddress.country,
+        shippingAddress.phone ? `Phone: ${shippingAddress.phone}` : null,
       ]
         .filter(Boolean)
-        .join(" · ");
+        .join("\n");
       const itemsSummary = orderItems
         .map(
           (item: { quantity: number; productName: string }) =>
@@ -320,28 +368,41 @@ export async function createOrderFromCheckout(
         )
         .join("; ");
 
-      const sender = getSenderEmail("orders@plastipacusa.com");
+      const template = await fetchOrderConfirmationTemplate();
+      const rendered = buildOrderConfirmationHtml(template, {
+        orderId: createdOrderId,
+        customerName,
+        customerEmail,
+        customerCompany: companyName,
+        totalAmountUsd: totalAmount,
+        itemsSummary,
+        itemCount: orderItems.length,
+        shippingAddressSummary,
+        shippingAddress: {
+          fullName: shippingAddress.full_name || customerName,
+          line1: shippingAddress.line1 || undefined,
+          line2: shippingAddress.line2 || undefined,
+          city: shippingCity || undefined,
+          state: shippingState || undefined,
+          postalCode: shippingAddress.postal_code || undefined,
+          phone: shippingAddress.phone || undefined,
+        },
+        orderDate,
+        lineItems: orderItems.map((item) => ({
+          description: item.productName,
+          quantity: item.quantity,
+          total: item.linePrice,
+        })),
+      });
 
       await Promise.allSettled([
         sendEmail({
-          from: `Plastipac USA <${sender}>`,
+          from: rendered.from || `Plastipac USA <${getSenderEmail("orders@plastipacusa.com")}>`,
           to: customerEmail,
-          subject: `Order Confirmation - Order #${createdOrderId}`,
-          text: [
-            `Thank you for your order.`,
-            `PO Reference: ${createdOrderId}`,
-            `Total: $${totalAmount.toFixed(2)}`,
-          ].join("\n"),
-          react: React.createElement(OrderConfirmationEmail, {
-            orderId: createdOrderId,
-            customerName,
-            companyName,
-            orderDate,
-            totalAmount,
-            items: orderItems,
-            locale: "en",
-            shippingAddress,
-          }),
+          subject: rendered.subject,
+          text: rendered.text,
+          html: rendered.html,
+          replyTo: template.footerSalesEmail,
         }),
         notifyAdminPurchaseOrder({
           orderId: createdOrderId,
@@ -352,6 +413,7 @@ export async function createOrderFromCheckout(
           shippingState,
           shippingCity,
           shippingAddressSummary,
+          shippingPhone: shippingAddress.phone || undefined,
           itemCount: orderItems.length,
           itemsSummary,
           orderDate,

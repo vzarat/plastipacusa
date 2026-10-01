@@ -197,6 +197,8 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   if (product.pricePallet !== null && product.pricePallet !== undefined) {
     availableTiers.push("Pallet");
   }
+  const isSoldOut = Boolean(product.isSoldOut);
+
   const volumeTierLabel =
     availableTiers.length > 0
       ? `Volume tiers: ${availableTiers.join(" & ")}`
@@ -210,6 +212,12 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         {/* 1. Clean Product Image Area (Completely free of floating dark pills and text overlays) */}
         <div className="relative aspect-[4/3] w-full bg-slate-50/50 overflow-hidden border-b border-slate-100 flex items-center justify-center">
           {/* Official Category Brand Logo Badge */}
+          {isSoldOut && (
+            <div className="absolute top-3.5 right-3.5 z-10 rounded-full border border-rose-200 bg-rose-600 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
+              Sold Out
+            </div>
+          )}
+
           <div className="absolute top-3.5 left-3.5 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-800 shadow-sm flex items-center justify-center">
             <Image
               src={categoryLogo.src}
@@ -287,7 +295,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               </div>
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className={`w-3.5 h-3.5 ${catStyles.iconColor} flex-shrink-0`} />
-                <span>Ready to Ship</span>
+                <span>{isSoldOut ? "Sold Out" : "Ready to Ship"}</span>
               </div>
             </div>
           </div>
@@ -323,14 +331,24 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         </div>
 
         {/* High-Conversion "BUY NOW" Button */}
-        <Link
-          href={`/products/${product?.slug || "stretch-film-18-x-60-ga-x-1000ft"}`}
-          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 text-white font-extrabold text-sm shadow-md shadow-sky-500/20 hover:opacity-95 hover:shadow-lg hover:shadow-sky-500/30 transition-all duration-200 active:scale-[0.99] group/btn"
-        >
-          <ShoppingCart className="w-4 h-4 text-white group-hover/btn:scale-110 transition-transform" />
-          <span>BUY NOW</span>
-          <ArrowRight className="w-4 h-4 text-sky-200 group-hover/btn:translate-x-0.5 transition-transform" />
-        </Link>
+        {isSoldOut ? (
+          <button
+            type="button"
+            disabled
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-slate-200 text-slate-500 font-extrabold text-sm cursor-not-allowed"
+          >
+            Sold Out
+          </button>
+        ) : (
+          <Link
+            href={`/products/${product?.slug || "stretch-film-18-x-60-ga-x-1000ft"}`}
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 text-white font-extrabold text-sm shadow-md shadow-sky-500/20 hover:opacity-95 hover:shadow-lg hover:shadow-sky-500/30 transition-all duration-200 active:scale-[0.99] group/btn"
+          >
+            <ShoppingCart className="w-4 h-4 text-white group-hover/btn:scale-110 transition-transform" />
+            <span>BUY NOW</span>
+            <ArrowRight className="w-4 h-4 text-sky-200 group-hover/btn:translate-x-0.5 transition-transform" />
+          </Link>
+        )}
 
         <RequestSampleButton
           productSlug={product?.slug}

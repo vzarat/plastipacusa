@@ -9,7 +9,15 @@ import {
 } from "@stripe/react-stripe-js";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { createPaymentIntent } from "@/actions/checkout";
+import {
+  createPaymentIntent,
+  updatePaymentIntentShipping,
+} from "@/actions/checkout";
+import {
+  persistCheckoutShipping,
+  validateCheckoutShipping,
+  type CheckoutShippingAddress,
+} from "@/lib/shipping-address";
 import { getStripe } from "@/lib/stripe";
 import { BRAND_GRADIENT_CTA } from "@/lib/brand-styles";
 import { useCartStore } from "@/lib/store/useCartStore";
@@ -44,6 +52,8 @@ function isStripeTestMode(): boolean {
 interface StripeCheckoutFormInnerProps {
   amount: number;
   customerEmail: string;
+  shipping: CheckoutShippingAddress;
+  paymentIntentId: string | null;
   agreedToPolicies: boolean;
   onRequireAgreement: () => void;
 }
@@ -51,6 +61,8 @@ interface StripeCheckoutFormInnerProps {
 function StripeCheckoutFormInner({
   amount,
   customerEmail,
+  shipping,
+  paymentIntentId,
   agreedToPolicies,
   onRequireAgreement,
 }: StripeCheckoutFormInnerProps) {
@@ -87,7 +99,26 @@ function StripeCheckoutFormInner({
       return;
     }
 
+    const shippingError = validateCheckoutShipping(shipping);
+    if (shippingError) {
+      toast.error(shippingError);
+      document.getElementById("checkout-shipping")?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
+    persistCheckoutShipping(shipping);
+    if (paymentIntentId) {
+      const attached = await updatePaymentIntentShipping(paymentIntentId, shipping);
+      if (!attached.success) {
+        toast.error(attached.error || "Could not save the shipping address.");
+        setIsSubmitting(false);
+        return;
+      }
+    }
     try {
       const returnUrl = `${window.location.origin}/checkout/success`;
       const { error } = await stripe.confirmPayment({
@@ -192,6 +223,7 @@ function StripeCheckoutFormInner({
 
 interface StripeEmbeddedCheckoutProps {
   customerEmail: string;
+  shipping: CheckoutShippingAddress;
   agreedToPolicies: boolean;
   onRequireAgreement: () => void;
 }
@@ -201,6 +233,7 @@ interface StripeEmbeddedCheckoutProps {
  */
 export function StripeEmbeddedCheckout({
   customerEmail,
+  shipping,
   agreedToPolicies,
   onRequireAgreement,
 }: StripeEmbeddedCheckoutProps) {
@@ -209,6 +242,7 @@ export function StripeEmbeddedCheckout({
   const amount = getDiscountedTotal();
 
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
   const [isPreparing, setIsPreparing] = useState(true);
 
@@ -251,6 +285,7 @@ export function StripeEmbeddedCheckout({
       const result = await createPaymentIntent(amount, {
         customerEmail,
         itemsSummary,
+        productSlugs: items.map((item) => item.productSlug).filter(Boolean),
       });
 
       if (cancelled) return;
@@ -262,6 +297,7 @@ export function StripeEmbeddedCheckout({
       }
 
       setClientSecret(result.clientSecret);
+      setPaymentIntentId(result.paymentIntentId || null);
       setIsPreparing(false);
     };
 
@@ -271,7 +307,7 @@ export function StripeEmbeddedCheckout({
     };
     // Intentionally omit customerEmail from deps — receipt email is applied at confirmPayment.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [amount, itemsSummary, stripePromise]);
+  }, [amount, items, itemsSummary, stripePromise]);
 
   if (isPreparing) {
     return (
@@ -307,6 +343,8 @@ export function StripeEmbeddedCheckout({
       <StripeCheckoutFormInner
         amount={amount}
         customerEmail={customerEmail}
+        shipping={shipping}
+        paymentIntentId={paymentIntentId}
         agreedToPolicies={agreedToPolicies}
         onRequireAgreement={onRequireAgreement}
       />

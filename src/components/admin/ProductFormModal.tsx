@@ -46,6 +46,7 @@ const EMPTY_FORM: ProductFormValues = {
   price20Rolls: PACKAGE_TIER_DEFAULTS.price20Rolls,
   price40Rolls: PACKAGE_TIER_DEFAULTS.price40Rolls,
   stockQuantity: 0,
+  isSoldOut: false,
   application: getApplicationForCategory(DEFAULT_CATEGORY_SLUG),
   categorySlug: DEFAULT_CATEGORY_SLUG,
   imageUrl: "",
@@ -90,6 +91,7 @@ export function ProductFormModal({
         price20Rolls: product.price20Rolls,
         price40Rolls: product.price40Rolls,
         stockQuantity: product.stockQuantity,
+        isSoldOut: Boolean(product.isSoldOut),
         application: getApplicationForCategory(product.categorySlug),
         categorySlug: product.categorySlug,
         imageUrl: product.imageUrl,
@@ -371,6 +373,48 @@ export function ProductFormModal({
                   className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
                 />
                 <span className="text-xs font-bold text-slate-700">Active / Visible in store</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 p-4 space-y-2">
+            <p className="text-xs font-bold text-slate-700">Disponibilidad</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <label
+                className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 cursor-pointer ${
+                  !form.isSoldOut
+                    ? "border-emerald-300 bg-emerald-50"
+                    : "border-slate-200 bg-white"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="availability"
+                  checked={!form.isSoldOut}
+                  onChange={() => setForm((p) => ({ ...p, isSoldOut: false }))}
+                  className="h-4 w-4 text-emerald-600"
+                />
+                <span className="text-sm font-semibold text-slate-800">
+                  Disponible (In Stock)
+                </span>
+              </label>
+              <label
+                className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 cursor-pointer ${
+                  form.isSoldOut
+                    ? "border-rose-300 bg-rose-50"
+                    : "border-slate-200 bg-white"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="availability"
+                  checked={form.isSoldOut}
+                  onChange={() => setForm((p) => ({ ...p, isSoldOut: true }))}
+                  className="h-4 w-4 text-rose-600"
+                />
+                <span className="text-sm font-semibold text-slate-800">
+                  Agotado (Sold Out)
+                </span>
               </label>
             </div>
           </div>

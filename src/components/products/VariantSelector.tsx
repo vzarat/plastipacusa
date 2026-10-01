@@ -462,7 +462,10 @@ export function VariantSelector({
     setTierHint(null);
   };
 
+  const isSoldOut = Boolean(product?.isSoldOut);
+
   const handleAddToCart = () => {
+    if (isSoldOut) return;
     if (!product || !selectedVariant || baseUnitPriceRaw <= 0) return;
     const rolls = getRollsCount(selectedVariant);
 
@@ -906,18 +909,29 @@ export function VariantSelector({
           <Button
             type="button"
             onClick={handleAddToCart}
-            variant="gradient"
+            variant={isSoldOut ? "secondary" : "gradient"}
             size="lg"
-            disabled={baseUnitPriceRaw <= 0}
-            className="w-full flex items-center justify-center gap-2 text-sm font-bold shadow-lg shadow-sky-500/20 py-6 rounded-2xl"
+            disabled={isSoldOut || baseUnitPriceRaw <= 0}
+            className={`w-full flex items-center justify-center gap-2 text-sm font-bold py-6 rounded-2xl ${
+              isSoldOut
+                ? "bg-slate-300 text-slate-500 shadow-none cursor-not-allowed hover:bg-slate-300"
+                : "shadow-lg shadow-sky-500/20"
+            }`}
           >
             <ShoppingCart className="w-4 h-4" />
-            <span>{t("products.addToCart")}</span>
+            <span>{isSoldOut ? "Sold Out" : t("products.addToCart")}</span>
           </Button>
 
           <DirectCheckoutButton
-            label={t("products.directCheckout")}
+            label={isSoldOut ? "Sold Out" : t("products.directCheckout")}
+            disabled={isSoldOut}
+            className={
+              isSoldOut
+                ? "!bg-slate-300 !bg-none !text-slate-500 !shadow-none cursor-not-allowed"
+                : undefined
+            }
             onBeforeNavigate={() => {
+              if (isSoldOut) return false;
               handleAddToCart();
             }}
           />

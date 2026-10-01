@@ -528,6 +528,7 @@ function formatProduct(raw: any): ProductWithVariants {
     palletizingFamily: palletizing.familyLabel,
     partNumber: raw.part_number || raw.partNumber || null,
     stockQuantity: Number(raw.stock_quantity ?? raw.stockQuantity ?? 0),
+    isSoldOut: Boolean(raw.is_sold_out ?? raw.isSoldOut ?? false),
     isActive: raw.is_active === undefined && raw.isActive === undefined ? true : Boolean(raw.is_active ?? raw.isActive),
     storefrontTitle: raw.storefront_title || raw.storefrontTitle || null,
     priceCase: raw.price_case === null || raw.price_case === undefined ? null : Number(raw.price_case),
@@ -815,6 +816,7 @@ function formatAdminProduct(raw: any): AdminProduct {
         ? PACKAGE_TIER_DEFAULTS.price40Rolls
         : Number(raw.price_40_rolls),
     stockQuantity: Number(raw.stock_quantity ?? 0),
+    isSoldOut: Boolean(raw.is_sold_out ?? raw.isSoldOut ?? false),
     // GENESIS categories are always machine-application; every other category is hand-application
     application: getApplicationForCategory(categorySlug),
     categorySlug,
@@ -904,6 +906,7 @@ export async function createProduct(values: ProductFormValues) {
       price_20_rolls: values.price20Rolls ?? PACKAGE_TIER_DEFAULTS.price20Rolls,
       price_40_rolls: values.price40Rolls ?? PACKAGE_TIER_DEFAULTS.price40Rolls,
       stock_quantity: values.stockQuantity ?? 0,
+      is_sold_out: values.isSoldOut ?? false,
       is_active: values.isActive ?? true,
       image_url: values.imageUrl || values.images?.[0] || "",
       images: values.images || [],
@@ -962,6 +965,7 @@ export async function updateProduct(id: number, values: Partial<ProductFormValue
     if (values.price20Rolls !== undefined) updatePayload.price_20_rolls = values.price20Rolls;
     if (values.price40Rolls !== undefined) updatePayload.price_40_rolls = values.price40Rolls;
     if (values.stockQuantity !== undefined) updatePayload.stock_quantity = values.stockQuantity;
+    if (values.isSoldOut !== undefined) updatePayload.is_sold_out = values.isSoldOut;
     if (values.isActive !== undefined) updatePayload.is_active = values.isActive;
     if (values.categorySlug !== undefined) {
       updatePayload.category_id =
@@ -1004,6 +1008,10 @@ export async function updateProduct(id: number, values: Partial<ProductFormValue
  */
 export async function toggleProductActive(id: number, isActive: boolean) {
   return updateProduct(id, { isActive });
+}
+
+export async function toggleProductSoldOut(id: number, isSoldOut: boolean) {
+  return updateProduct(id, { isSoldOut });
 }
 
 /**

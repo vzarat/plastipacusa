@@ -58,6 +58,7 @@ export interface ProductWithVariants
   partNumber?: string | null;
   priceUsd?: number | null;
   stockQuantity?: number;
+  isSoldOut?: boolean;
   isActive?: boolean;
   storefrontTitle?: string | null;
   priceCase?: number | null;

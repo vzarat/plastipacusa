@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminProduct } from "@/types/product";
-import { deleteProduct, toggleProductActive } from "@/actions/products";
+import { deleteProduct, toggleProductActive, toggleProductSoldOut } from "@/actions/products";
 import { ProductFormModal } from "./ProductFormModal";
 
 interface AdminCatalogViewProps {
@@ -170,6 +170,24 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
         notify(`${product.name} is now ${!product.isActive ? "active" : "inactive"}.`);
       } else {
         notify(result.error || "Failed to update product status.");
+      }
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleToggleSoldOut = async (product: AdminProduct, isSoldOut: boolean) => {
+    if (product.isSoldOut === isSoldOut) return;
+    setBusyId(product.id);
+    try {
+      const result = await toggleProductSoldOut(product.id, isSoldOut);
+      if (result.success && result.product) {
+        setProducts((prev) => prev.map((p) => (p.id === product.id ? result.product! : p)));
+        notify(
+          `${product.name} is now ${isSoldOut ? "sold out" : "in stock"}.`
+        );
+      } else {
+        notify(result.error || "Failed to update availability.");
       }
     } finally {
       setBusyId(null);
@@ -441,11 +459,38 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                   </span>
                   <span
                     className={`text-xs font-bold ${
-                      item.stockQuantity <= 0 ? "text-red-600" : "text-slate-600"
+                      item.isSoldOut ? "text-red-600" : "text-emerald-700"
                     }`}
                   >
-                    {item.stockQuantity <= 0 ? "Out of stock" : `${item.stockQuantity} in stock`}
+                    {item.isSoldOut ? "Sold Out" : "In Stock"}
                   </span>
+                </div>
+
+                <div className="mt-2 grid grid-cols-2 gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
+                  <button
+                    type="button"
+                    disabled={busyId === item.id}
+                    onClick={() => handleToggleSoldOut(item, false)}
+                    className={`rounded-lg px-2 py-1.5 text-[10px] font-bold cursor-pointer disabled:opacity-50 ${
+                      !item.isSoldOut
+                        ? "bg-white text-emerald-800 shadow-sm"
+                        : "text-slate-500 hover:bg-white"
+                    }`}
+                  >
+                    Disponible
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busyId === item.id}
+                    onClick={() => handleToggleSoldOut(item, true)}
+                    className={`rounded-lg px-2 py-1.5 text-[10px] font-bold cursor-pointer disabled:opacity-50 ${
+                      item.isSoldOut
+                        ? "bg-rose-600 text-white shadow-sm"
+                        : "text-slate-500 hover:bg-white"
+                    }`}
+                  >
+                    Agotado
+                  </button>
                 </div>
 
                 <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">

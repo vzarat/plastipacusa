@@ -526,16 +526,42 @@ async function handleCheckoutSessionCompleted(
     shippingDetails?.city ||
     String(session.metadata?.shipping_city || "") ||
     undefined;
+  let metaShip: Record<string, string> = {};
+  try {
+    metaShip = JSON.parse(String(session.metadata?.shipping_address || "{}"));
+  } catch {
+    metaShip = {};
+  }
+
+  const shippingPhone =
+    session.customer_details?.phone ||
+    metaShip.phone ||
+    String(session.metadata?.shipping_phone || "") ||
+    undefined;
+
+  const structuredShipping = {
+    fullName: customerName || metaShip.full_name || undefined,
+    line1: shippingDetails?.line1 || metaShip.line1 || undefined,
+    line2: shippingDetails?.line2 || metaShip.line2 || undefined,
+    city: shippingCity || metaShip.city || undefined,
+    state: shippingState || metaShip.state || undefined,
+    postalCode:
+      shippingDetails?.postal_code || metaShip.postal_code || undefined,
+    phone: shippingPhone,
+  };
+
   const shippingAddressSummary = [
-    shippingDetails?.line1,
-    shippingDetails?.line2,
-    [shippingCity, shippingState, shippingDetails?.postal_code]
+    structuredShipping.fullName,
+    [structuredShipping.line1, structuredShipping.line2]
       .filter(Boolean)
       .join(", "),
-    shippingDetails?.country,
+    [structuredShipping.city, structuredShipping.state, structuredShipping.postalCode]
+      .filter(Boolean)
+      .join(", "),
+    structuredShipping.phone ? `Phone: ${structuredShipping.phone}` : null,
   ]
     .filter(Boolean)
-    .join(" · ");
+    .join("\n");
 
   const totalAmount = centsToUsd(session.amount_total);
 
@@ -559,12 +585,16 @@ async function handleCheckoutSessionCompleted(
       customerEmail,
       customerName,
       shippingAddress: {
-        line1: shippingDetails?.line1 || null,
-        line2: shippingDetails?.line2 || null,
-        city: shippingCity || null,
-        state: shippingState || null,
-        postal_code: shippingDetails?.postal_code || null,
-        country: shippingDetails?.country || null,
+        full_name: structuredShipping.fullName || null,
+        line1: structuredShipping.line1 || null,
+        street: structuredShipping.line1 || null,
+        line2: structuredShipping.line2 || null,
+        city: structuredShipping.city || null,
+        state: structuredShipping.state || null,
+        postal_code: structuredShipping.postalCode || null,
+        zip: structuredShipping.postalCode || null,
+        phone: structuredShipping.phone || null,
+        country: shippingDetails?.country || metaShip.country || "US",
       },
       itemsSummary,
       totalAmount,
@@ -610,6 +640,7 @@ async function handleCheckoutSessionCompleted(
       itemsSummary,
       itemCount,
       shippingAddressSummary: shippingAddressSummary || undefined,
+      shippingAddress: structuredShipping,
       orderDate: new Date(
         (session.created || Date.now() / 1000) * 1000
       ).toISOString(),
@@ -635,6 +666,7 @@ async function handleCheckoutSessionCompleted(
       shippingState,
       shippingCity,
       shippingAddressSummary: shippingAddressSummary || undefined,
+      shippingPhone,
       itemCount,
       itemsSummary,
       orderDate: new Date(

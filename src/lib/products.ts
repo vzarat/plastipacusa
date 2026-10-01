@@ -246,6 +246,7 @@ function buildGenesisMachineProduct(input: {
     palletizingFamily: '20" Automatic Machine Film',
     partNumber: input.baseSku,
     stockQuantity: 100,
+    isSoldOut: false,
     isActive: true,
     packageOptions,
   };

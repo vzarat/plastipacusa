@@ -76,6 +76,15 @@ export interface OrderConfirmationContent {
   itemsSummary?: string;
   itemCount?: number;
   shippingAddressSummary?: string;
+  shippingAddress?: {
+    fullName?: string;
+    line1?: string;
+    line2?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    phone?: string;
+  };
   orderDate?: string;
   lineItems?: OrderConfirmationLineItem[];
 }
@@ -235,10 +244,26 @@ export function buildOrderConfirmationHtml(
        </tr>`
     : "";
 
-  const shippingBlock = content.shippingAddressSummary
-    ? `<p style="margin:0 0 4px;color:${template.mutedColor};font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Shipping Address</p>
-       <p style="margin:0;color:${template.textColor};font-size:14px;line-height:1.55;">${escapeHtml(content.shippingAddressSummary)}</p>`
-    : `<p style="margin:0;color:${template.mutedColor};font-size:14px;line-height:1.55;">Shipping address will be confirmed by our logistics team.</p>`;
+  const ship = content.shippingAddress;
+  const streetLine = [ship?.line1, ship?.line2].filter(Boolean).join(", ");
+  const cityLine = [ship?.city, ship?.state, ship?.postalCode]
+    .filter(Boolean)
+    .join(", ");
+  const hasStructuredShipping = Boolean(
+    ship?.fullName || streetLine || cityLine || ship?.phone
+  );
+  const shippingBlock = hasStructuredShipping
+    ? `<p style="margin:0 0 8px;color:${template.mutedColor};font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Shipping Address</p>
+       <p style="margin:0;color:${template.textColor};font-size:14px;line-height:1.6;">
+         ${ship?.fullName ? `${escapeHtml(ship.fullName)}<br/>` : ""}
+         ${streetLine ? `${escapeHtml(streetLine)}<br/>` : ""}
+         ${cityLine ? `${escapeHtml(cityLine)}<br/>` : ""}
+         ${ship?.phone ? `Phone: ${escapeHtml(ship.phone)}` : ""}
+       </p>`
+    : content.shippingAddressSummary
+      ? `<p style="margin:0 0 8px;color:${template.mutedColor};font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Shipping Address</p>
+         <p style="margin:0;color:${template.textColor};font-size:14px;line-height:1.55;white-space:pre-line;">${escapeHtml(content.shippingAddressSummary)}</p>`
+      : `<p style="margin:0;color:${template.mutedColor};font-size:14px;line-height:1.55;">Shipping address will be confirmed by our logistics team.</p>`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -396,9 +421,19 @@ export function buildOrderConfirmationHtml(
     }),
     "",
     `Total Paid: ${totalFormatted} USD`,
-    content.shippingAddressSummary
-      ? `Shipping Address: ${content.shippingAddressSummary}`
-      : null,
+    hasStructuredShipping
+      ? [
+          "SHIPPING ADDRESS",
+          ship?.fullName || null,
+          streetLine || null,
+          cityLine || null,
+          ship?.phone ? `Phone: ${ship.phone}` : null,
+        ]
+          .filter(Boolean)
+          .join("\n")
+      : content.shippingAddressSummary
+        ? `SHIPPING ADDRESS\n${content.shippingAddressSummary}`
+        : null,
     "",
     "Support:",
     template.footerSalesEmail,
@@ -427,7 +462,16 @@ export const SAMPLE_ORDER_CONTENT: OrderConfirmationContent = {
   totalAmountUsd: 1847.5,
   orderDate: new Date().toISOString(),
   shippingAddressSummary:
-    "1200 Industrial Blvd · McAllen, TX 78501 · United States",
+    "Carlos Mendoza\n1200 Industrial Blvd, Suite 4\nMcAllen, TX, 78501\nPhone: +1 (956) 555-0142",
+  shippingAddress: {
+    fullName: "Carlos Mendoza",
+    line1: "1200 Industrial Blvd",
+    line2: "Suite 4",
+    city: "McAllen",
+    state: "TX",
+    postalCode: "78501",
+    phone: "+1 (956) 555-0142",
+  },
   lineItems: [
     {
       description: 'FORCE Hand Film 18" × 80 Ga × 1500 ft',

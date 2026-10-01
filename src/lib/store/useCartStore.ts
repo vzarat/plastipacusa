@@ -32,6 +32,7 @@ export const useCartStore = create<CartState>()(
       appliedCoupon: null,
 
       addItem: (itemData) => {
+        if ((itemData as { isSoldOut?: boolean }).isSoldOut) return;
         const id = `${itemData.productId}-${itemData.variantId}-${itemData.pricingTier}`;
         const currentItems = get().items;
         const existingIndex = currentItems.findIndex((item) => item.id === id);

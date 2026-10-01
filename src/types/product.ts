@@ -30,6 +30,7 @@ export interface AdminProduct {
   price20Rolls: number;
   price40Rolls: number;
   stockQuantity: number;
+  isSoldOut: boolean;
   application: "hand" | "machine";
   categorySlug: string;
   imageUrl: string;
@@ -55,6 +56,7 @@ export interface ProductFormValues {
   price20Rolls: number;
   price40Rolls: number;
   stockQuantity: number;
+  isSoldOut: boolean;
   application: "hand" | "machine";
   categorySlug: string;
   imageUrl: string;

@@ -69,7 +69,11 @@ export function DirectCheckoutButton({
         type="button"
         onClick={() => void handleClick()}
         disabled={disabled || isChecking}
-        className={`${BRAND_GRADIENT_CTA} py-3 px-6 rounded-lg w-full flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50 ${className}`}
+        className={`${
+          disabled
+            ? "bg-slate-300 text-slate-500 shadow-none"
+            : BRAND_GRADIENT_CTA
+        } py-3 px-6 rounded-lg w-full flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed ${className || ""}`}
       >
         {isChecking ? (
           <>

@@ -1,16 +1,43 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
-import { CreditCard, Building2 } from "lucide-react";
+import { CreditCard, Building2, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { PromoCodeInput } from "@/components/cart/PromoCodeInput";
 import { StripeEmbeddedCheckout } from "@/components/checkout/StripeEmbeddedCheckout";
+import type { CheckoutShippingAddress } from "@/lib/shipping-address";
 
 interface CheckoutFormProps {
   agreedToPolicies: boolean;
   onAgreedToPoliciesChange: (agreed: boolean) => void;
   checkoutEmail: string;
   onCheckoutEmailChange: (email: string) => void;
+  shipping: CheckoutShippingAddress;
+  onShippingChange: (shipping: CheckoutShippingAddress) => void;
+}
+
+const fieldClass =
+  "w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400";
+
+function ShippingField({
+  label,
+  required,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="space-y-1.5 block">
+      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+        {label}
+        {required ? " *" : ""}
+      </span>
+      {children}
+    </label>
+  );
 }
 
 export function CheckoutForm({
@@ -18,7 +45,12 @@ export function CheckoutForm({
   onAgreedToPoliciesChange,
   checkoutEmail,
   onCheckoutEmailChange,
+  shipping,
+  onShippingChange,
 }: CheckoutFormProps) {
+  const setShip = (key: keyof CheckoutShippingAddress, value: string) => {
+    onShippingChange({ ...shipping, [key]: value });
+  };
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 space-y-2">
@@ -85,6 +117,91 @@ export function CheckoutForm({
         <PromoCodeInput userEmail={checkoutEmail || null} showBreakdown={false} />
       </div>
 
+      <section
+        id="checkout-shipping"
+        className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-4"
+      >
+        <div className="flex items-start gap-2">
+          <Truck className="mt-0.5 h-4 w-4 text-sky-700" />
+          <div>
+            <h3 className="text-sm font-black text-slate-900">
+              Shipping Address
+            </h3>
+            <p className="text-xs text-slate-500">
+              Required before payment. Used for delivery and order confirmation.
+            </p>
+          </div>
+        </div>
+
+        <ShippingField label="Full Name / Recibe" required>
+          <input
+            className={fieldClass}
+            value={shipping.fullName}
+            onChange={(e) => setShip("fullName", e.target.value)}
+            autoComplete="name"
+            required
+          />
+        </ShippingField>
+        <ShippingField label="Street Address" required>
+          <input
+            className={fieldClass}
+            value={shipping.line1}
+            onChange={(e) => setShip("line1", e.target.value)}
+            autoComplete="address-line1"
+            required
+          />
+        </ShippingField>
+        <ShippingField label="Apartment / Suite / Unit">
+          <input
+            className={fieldClass}
+            value={shipping.line2}
+            onChange={(e) => setShip("line2", e.target.value)}
+            autoComplete="address-line2"
+          />
+        </ShippingField>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <ShippingField label="City" required>
+            <input
+              className={fieldClass}
+              value={shipping.city}
+              onChange={(e) => setShip("city", e.target.value)}
+              autoComplete="address-level2"
+              required
+            />
+          </ShippingField>
+          <ShippingField label="State / Region" required>
+            <input
+              className={fieldClass}
+              value={shipping.state}
+              onChange={(e) => setShip("state", e.target.value)}
+              autoComplete="address-level1"
+              required
+            />
+          </ShippingField>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <ShippingField label="Postal Code" required>
+            <input
+              className={fieldClass}
+              value={shipping.postalCode}
+              onChange={(e) => setShip("postalCode", e.target.value)}
+              autoComplete="postal-code"
+              required
+            />
+          </ShippingField>
+          <ShippingField label="Phone Number" required>
+            <input
+              type="tel"
+              className={fieldClass}
+              value={shipping.phone}
+              onChange={(e) => setShip("phone", e.target.value)}
+              autoComplete="tel"
+              required
+            />
+          </ShippingField>
+        </div>
+      </section>
+
       <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 cursor-pointer select-none">
         <input
           type="checkbox"
@@ -124,6 +241,7 @@ export function CheckoutForm({
 
       <StripeEmbeddedCheckout
         customerEmail={checkoutEmail}
+        shipping={shipping}
         agreedToPolicies={agreedToPolicies}
         onRequireAgreement={() => {
           toast.error(
