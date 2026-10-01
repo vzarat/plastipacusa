@@ -327,8 +327,25 @@ export function VariantSelector({
         });
     })();
 
-    if (!isMachineFilm) return mapped;
-    return [...mapped].sort((a: any, b: any) => getRollsCount(a) - getRollsCount(b));
+    const visible = isMachineFilm
+      ? mapped
+      : mapped.filter((variant: any) => {
+          const compact = usesCompact1880Pallets({
+            widthInches:
+              product?.width_inches || product?.widthInches || variant?.widthInches,
+            gauge: product?.gauge || variant?.gauge,
+            lengthFeet:
+              product?.length_feet || product?.lengthFeet || variant?.lengthFeet,
+            slug: product?.slug,
+            name: product?.title || product?.name,
+          });
+          if (!compact) return true;
+          const boxes = getBoxesCount(variant, false);
+          return boxes === 1 || boxes === 12 || boxes === 24;
+        });
+
+    if (!isMachineFilm) return visible;
+    return [...visible].sort((a: any, b: any) => getRollsCount(a) - getRollsCount(b));
   }, [product, isMachineFilm]);
 
   const addItem = useCartStore((state) => state.addItem);
@@ -644,8 +661,11 @@ export function VariantSelector({
               baseUnitPrice,
               isMachineFilm
             );
+            const pricedUnitCount = isMachineFilm
+              ? Math.max(1, rollsCount)
+              : Math.max(1, boxesCount);
             const discountedPerUnit =
-              unitCount > 0 ? (price / unitCount).toFixed(2) : perUnitPrice;
+              pricedUnitCount > 0 ? (price / pricedUnitCount).toFixed(2) : perUnitPrice;
             const showSavings = savingsPercent > 0 && unitCount > 1;
             const showDiscountStrike =
               Boolean(appliedDiscount) && originalPrice > 0 && price < originalPrice;
@@ -744,7 +764,7 @@ export function VariantSelector({
                     >
                       {formatCurrency(price)} USD
                     </p>
-                    {unitCount > 1 && (
+                    {price > 0 && pricedUnitCount > 0 && (
                       <p className="mt-0.5 whitespace-nowrap text-xs text-slate-500">
                         ${discountedPerUnit} USD / {unitLabel.toLowerCase()}
                       </p>

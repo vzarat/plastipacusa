@@ -473,7 +473,20 @@ function formatProduct(raw: any): ProductWithVariants {
       }));
   } else if (warehouseVariants.length > 0) {
     // Prefer unique per-SKU variant prices from product_variants
-    packageOptions = warehouseVariants.map((v) => {
+    packageOptions = warehouseVariants
+      .filter((v) => {
+        const keepCompactLadder = usesCompact1880Pallets({
+          widthInches: resolvedWidth,
+          gauge: gaugeNum,
+          lengthFeet: lengthNum,
+          slug: slugStr,
+          name: nameStr,
+        });
+        if (!keepCompactLadder) return true;
+        const boxes = Number((v as any).boxes_count || (v as any).boxesCount || 0);
+        return boxes === 1 || boxes === 12 || boxes === 24;
+      })
+      .map((v) => {
       const rolls = Number(v.rollsPerBox || (v as any).rollsCount || 4);
       const label = String((v as any).title || v.packageSize || v.sku);
       const keepStoredPackageLabel = usesCompact1880Pallets({

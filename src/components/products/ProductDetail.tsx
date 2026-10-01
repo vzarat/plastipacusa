@@ -3,7 +3,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { ProductWithVariants, ProductVariant } from "@/types";
 import { VariantSelector } from "@/components/products/VariantSelector";
-import { RequestSampleButton } from "@/components/products/RequestSampleButton";
 import { PhoneCall } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -125,12 +124,6 @@ export function ProductDetail({ product }: ProductDetailProps) {
         product={product}
         selectedVariant={selectedVariant}
         onVariantChange={setSelectedVariant}
-      />
-
-      <RequestSampleButton
-        productSlug={product?.slug}
-        productName={title}
-        variant="detail"
       />
 
       {/* Direct Tech Support CTA */}

@@ -47,6 +47,7 @@ export function DirectCheckoutButton({
       const latestItems = useCartStore.getState().items;
       if (!latestItems.length) {
         router.push("/products");
+        setIsChecking(false);
         return;
       }
 
@@ -57,6 +58,7 @@ export function DirectCheckoutButton({
 
       if (!user?.id) {
         setShowAuthModal(true);
+        setIsChecking(false);
         return;
       }
 
@@ -64,7 +66,6 @@ export function DirectCheckoutButton({
       onNavigate?.();
     } catch {
       setShowAuthModal(true);
-    } finally {
       setIsChecking(false);
     }
   };

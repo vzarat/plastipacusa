@@ -14,8 +14,6 @@ import {
   SERIES_GENESIS_STANDARD,
   STRETCH_FILM_PLACEHOLDER,
 } from "@/lib/products";
-import { RequestSampleButton } from "@/components/products/RequestSampleButton";
-
 interface ProductCardProps {
   product: ProductWithVariants;
   priority?: boolean;
@@ -362,11 +360,6 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           </Link>
         )}
 
-        <RequestSampleButton
-          productSlug={product?.slug}
-          productName={title}
-          variant="card"
-        />
       </div>
     </div>
   );

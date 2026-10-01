@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency, formatRollDimensions } from "@/lib/utils";
 import {
@@ -13,13 +13,10 @@ import {
   ShoppingCart,
   Package,
   Weight,
-  Send,
-  CheckCircle,
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { submitInquiry } from "@/actions/inquiries";
 import { DirectCheckoutButton } from "@/components/checkout/DirectCheckoutButton";
 import { CheckoutAuthRequiredModal } from "@/components/checkout/CheckoutAuthRequiredModal";
 import { PromoCodeInput } from "@/components/cart/PromoCodeInput";
@@ -27,6 +24,7 @@ import { createClient } from "@/lib/supabase/client";
 
 export function CartDrawer() {
   const router = useRouter();
+  const pathname = usePathname();
 
   const {
     items,
@@ -42,14 +40,9 @@ export function CartDrawer() {
     getTotalWeight,
   } = useCartStore();
 
-  const [isSubmittingQuote, setIsSubmittingQuote] = useState(false);
-  const [quoteSuccess, setQuoteSuccess] = useState(false);
-  const [showQuoteForm, setShowQuoteForm] = useState(false);
-  const [email, setEmail] = useState("");
-  const [company, setCompany] = useState("");
-  const [phone, setPhone] = useState("");
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isOpeningCheckout, setIsOpeningCheckout] = useState(false);
+  const [awaitingCheckout, setAwaitingCheckout] = useState(false);
 
   const goToCheckoutIfAuthenticated = async () => {
     if (isOpeningCheckout) return;
@@ -59,7 +52,10 @@ export function CartDrawer() {
         await useCartStore.persist.rehydrate();
       }
       const latestItems = useCartStore.getState().items;
-      if (!latestItems.length) return;
+      if (!latestItems.length) {
+        setIsOpeningCheckout(false);
+        return;
+      }
 
       const supabase = createClient();
       const {
@@ -68,17 +64,37 @@ export function CartDrawer() {
 
       if (!user?.id) {
         setShowAuthModal(true);
+        setIsOpeningCheckout(false);
         return;
       }
 
       router.push("/checkout");
-      closeDrawer();
+      if (pathname === "/checkout") {
+        setIsOpeningCheckout(false);
+        closeDrawer();
+      } else {
+        setAwaitingCheckout(true);
+      }
     } catch {
       setShowAuthModal(true);
-    } finally {
       setIsOpeningCheckout(false);
     }
   };
+
+  useEffect(() => {
+    if (isDrawerOpen) return;
+    setIsOpeningCheckout(false);
+    setAwaitingCheckout(false);
+  }, [isDrawerOpen]);
+
+  useEffect(() => {
+    if (!awaitingCheckout) return;
+    if (pathname === "/checkout" || pathname.startsWith("/checkout/")) {
+      setAwaitingCheckout(false);
+      setIsOpeningCheckout(false);
+      closeDrawer();
+    }
+  }, [awaitingCheckout, pathname, closeDrawer]);
 
   useEffect(() => {
     if (!isDrawerOpen || typeof document === "undefined") return;
@@ -101,38 +117,6 @@ export function CartDrawer() {
   const discountAmount = getDiscountAmount();
   const discountedTotal = getDiscountedTotal();
   const totalWeight = getTotalWeight();
-
-  const handleQuickQuote = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmittingQuote(true);
-
-    const itemsSummary = items
-      .map(
-        (it) =>
-          `${it.quantity}x ${it.productName} (${it.sku}) [${it.widthInches}" x ${it.gauge}Ga x ${it.lengthFeet}ft - Tier: ${it.pricingTier}]`
-      )
-      .join("\n");
-
-    const result = await submitInquiry({
-      companyName: company || "Direct Cart Quote Request",
-      contactName: "Cart Purchaser",
-      email: email,
-      phone: phone || "N/A",
-      monthlyPalletVolume: "Cart Quote",
-      productInterest: "Commercial Cart Quote",
-      message: `Items requested:\n${itemsSummary}\nEstimated Subtotal: $${subtotal}\nTotal Weight: ${totalWeight} lbs`,
-    });
-
-    setIsSubmittingQuote(false);
-    if (result.success) {
-      setQuoteSuccess(true);
-      setTimeout(() => {
-        setQuoteSuccess(false);
-        setShowQuoteForm(false);
-        closeDrawer();
-      }, 3500);
-    }
-  };
 
   return (
     <div
@@ -276,7 +260,7 @@ export function CartDrawer() {
         {/* Footer Summary & Actions */}
         {items.length > 0 && (
           <div className="p-6 border-t border-slate-100 bg-slate-50/60 space-y-4 shrink-0">
-            <PromoCodeInput compact userEmail={email || null} />
+            <PromoCodeInput compact />
 
             <div className="space-y-2 text-xs">
               <div className="flex justify-between text-slate-500">
@@ -318,94 +302,37 @@ export function CartDrawer() {
               </p>
             </div>
 
-            {showQuoteForm ? (
-              <form onSubmit={handleQuickQuote} className="space-y-3 pt-2">
-                <div className="text-xs font-bold text-sky-700">
-                  Instant Commercial Quote Request:
-                </div>
-                <input
-                  type="text"
-                  required
-                  placeholder="Company Name"
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
-                <input
-                  type="email"
-                  required
-                  placeholder="Work Email (for official quote PDF)"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
-                <input
-                  type="tel"
-                  placeholder="Phone Number (optional)"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
-                {quoteSuccess ? (
-                  <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2 font-semibold">
-                    <CheckCircle className="w-4 h-4 text-emerald-600" />
-                    Quote request dispatched to Plastipac desk!
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <Button
-                      type="submit"
-                      disabled={isSubmittingQuote}
-                      variant="gradient"
-                      className="flex-1 text-xs font-bold shadow-sm"
-                    >
-                      {isSubmittingQuote ? "Submitting..." : "Send Request"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setShowQuoteForm(false)}
-                      className="text-xs"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                )}
-              </form>
-            ) : (
-              <div className="space-y-2" data-tour="cart-quick-actions">
-                <DirectCheckoutButton
-                  label="Proceed to Checkout"
-                  onNavigate={closeDrawer}
-                />
-                <Button
-                  onClick={() => setShowQuoteForm(true)}
-                  variant="outline"
-                  className="w-full flex items-center justify-center gap-2 text-xs font-semibold border-slate-200 hover:bg-slate-100"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  Request Official Quote
-                </Button>
-                <Button
-                  onClick={() => void goToCheckoutIfAuthenticated()}
-                  variant="outline"
-                  disabled={isOpeningCheckout}
-                  className="w-full text-xs font-semibold border-slate-200 hover:bg-slate-100"
-                >
-                  {isOpeningCheckout ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                  ) : null}
-                  Review Order ({formatCurrency(discountedTotal)})
-                </Button>
-                <button
-                  type="button"
-                  onClick={clearCart}
-                  className="w-full text-center text-[11px] text-slate-400 hover:text-slate-600 transition-colors pt-1 cursor-pointer"
-                >
-                  Clear Cart
-                </button>
-              </div>
-            )}
+            <div className="space-y-2" data-tour="cart-quick-actions">
+              <DirectCheckoutButton
+                key={isDrawerOpen ? "checkout-open" : "checkout-closed"}
+                label="Proceed to Checkout"
+                onNavigate={() => {
+                  if (pathname === "/checkout") {
+                    closeDrawer();
+                  } else {
+                    setAwaitingCheckout(true);
+                  }
+                }}
+              />
+              <Button
+                onClick={() => void goToCheckoutIfAuthenticated()}
+                variant="outline"
+                disabled={isOpeningCheckout}
+                className="w-full text-xs font-semibold border-slate-200 hover:bg-slate-100"
+              >
+                {isOpeningCheckout ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                ) : null}
+                Review Order ({formatCurrency(discountedTotal)})
+              </Button>
+              <button
+                type="button"
+                onClick={clearCart}
+                className="w-full text-center text-[11px] text-slate-400 hover:text-slate-600 transition-colors pt-1 cursor-pointer"
+              >
+                Clear Cart
+              </button>
+            </div>
           </div>
         )}
       </aside>

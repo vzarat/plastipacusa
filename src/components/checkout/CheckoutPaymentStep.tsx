@@ -93,7 +93,7 @@ export function CheckoutPaymentStep({
           <div className="flex items-center justify-between text-slate-600">
             <dt>Estimated shipping</dt>
             <dd className="font-semibold text-slate-900">
-              {formatCurrency(quote.shipping)}
+              {quote.shipping > 0 ? formatCurrency(quote.shipping) : "FREE"}
             </dd>
           </div>
           <div className="flex items-center justify-between text-slate-600">
@@ -156,7 +156,7 @@ export function CheckoutPaymentStep({
             {deliveryMethodLabel(deliveryMethod)}
           </p>
           <p className="mt-1 text-sm text-slate-600">
-            {formatCurrency(quote.shipping)}
+            {quote.shipping > 0 ? formatCurrency(quote.shipping) : "FREE"}
           </p>
         </div>
       </section>

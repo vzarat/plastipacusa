@@ -25,7 +25,12 @@ import { formatCurrency } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/context/LanguageContext";
 import { savedAddressToCheckout } from "@/lib/saved-shipping-address";
-import { estimateShippingCost } from "@/lib/shipping-method";
+import {
+  activeShippingMethod,
+  buildShippingOffer,
+  countCartBoxes,
+  estimateShippingCost,
+} from "@/lib/shipping-method";
 import {
   EMPTY_CHECKOUT_SHIPPING,
   persistCheckoutShipping,
@@ -66,7 +71,12 @@ function CheckoutPageInner() {
     () => useCartStore.persist.hasHydrated()
   );
   const emptyCartRedirected = useRef(false);
-  const { selectedAddress, deliveryMethod, taxExemptRequested } = useCheckoutState();
+  const {
+    selectedAddress,
+    deliveryMethod,
+    setDeliveryMethod,
+    taxExemptRequested,
+  } = useCheckoutState();
 
   useEffect(() => {
     if (useCartStore.persist.hasHydrated()) {
@@ -123,8 +133,25 @@ function CheckoutPageInner() {
   const subtotal = getSubtotal();
   const discountAmount = getDiscountAmount();
   const totalWeight = getTotalWeight();
+  const boxCount = countCartBoxes(items);
+  const shippingOffer = buildShippingOffer({
+    city: selectedAddress?.city,
+    state: selectedAddress?.state,
+    postalCode: selectedAddress?.postalCode,
+    boxCount,
+    weightLbs: totalWeight,
+  });
+  const activeMethod = activeShippingMethod(deliveryMethod, shippingOffer);
   const shippingEstimate =
-    furthestStep >= 3 ? estimateShippingCost(deliveryMethod, totalWeight) : 0;
+    furthestStep >= 3
+      ? estimateShippingCost(activeMethod, totalWeight, boxCount)
+      : 0;
+
+  useEffect(() => {
+    if (deliveryMethod !== activeMethod) {
+      setDeliveryMethod(activeMethod);
+    }
+  }, [activeMethod, deliveryMethod, setDeliveryMethod]);
   const quote = calculateOrderTotal({
     subtotal,
     discount: discountAmount,
@@ -316,11 +343,11 @@ function CheckoutPageInner() {
                 </div>
               </>
             )}
-            {quote.shipping > 0 && (
+            {furthestStep >= 3 && (
               <div className="flex items-center justify-between text-slate-600">
                 <span>Estimated shipping</span>
                 <span className="font-semibold text-slate-800">
-                  {formatCurrency(quote.shipping)}
+                  {quote.shipping > 0 ? formatCurrency(quote.shipping) : "FREE"}
                 </span>
               </div>
             )}

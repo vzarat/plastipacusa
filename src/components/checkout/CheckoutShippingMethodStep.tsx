@@ -9,9 +9,11 @@ import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency } from "@/lib/utils";
 import {
-  DELIVERY_METHODS,
   WAREHOUSE_ORIGIN,
+  activeShippingMethod,
+  buildShippingOffer,
   buildShippingSchedule,
+  countCartBoxes,
   estimateShippingCost,
   type DeliveryMethodId,
   type ShippingSchedule,
@@ -64,7 +66,27 @@ export function CheckoutShippingMethodStep({
     () => items.reduce((total, item) => total + item.quantity, 0),
     [items]
   );
-  const shippingCost = estimateShippingCost(deliveryMethod, totalWeight);
+  const boxCount = useMemo(() => countCartBoxes(items), [items]);
+  const shippingOffer = useMemo(
+    () =>
+      buildShippingOffer({
+        city: selectedAddress?.city,
+        state: selectedAddress?.state,
+        postalCode: selectedAddress?.postalCode,
+        boxCount,
+        weightLbs: totalWeight,
+      }),
+    [selectedAddress, boxCount, totalWeight]
+  );
+  const activeMethod = activeShippingMethod(deliveryMethod, shippingOffer);
+
+  useEffect(() => {
+    if (deliveryMethod !== activeMethod) {
+      setDeliveryMethod(activeMethod);
+    }
+  }, [activeMethod, deliveryMethod, setDeliveryMethod]);
+
+  const shippingCost = estimateShippingCost(activeMethod, totalWeight, boxCount);
 
   const submitExemption = async () => {
     const formData = new FormData();
@@ -180,9 +202,9 @@ export function CheckoutShippingMethodStep({
           Delivery method
         </p>
         <ul className="space-y-3">
-          {DELIVERY_METHODS.map((method) => {
-            const selected = deliveryMethod === method.id;
-            const cost = estimateShippingCost(method.id, totalWeight);
+          {shippingOffer.options.map((method) => {
+            const selected = activeMethod === method.id;
+            const cost = estimateShippingCost(method.id, totalWeight, boxCount);
             return (
               <li key={method.id}>
                 <label
@@ -205,13 +227,17 @@ export function CheckoutShippingMethodStep({
                         {method.label}
                       </span>
                       <span className="text-sm font-black text-slate-900">
-                        {formatCurrency(cost)}
+                        {cost <= 0 ? "FREE" : formatCurrency(cost)}
                       </span>
                     </span>
                     <span className="mt-1 block text-xs text-slate-500">
                       {method.description}
-                      {method.id === "ground" ? " Default." : ""}
                     </span>
+                    {selected && method.scheduleNote && (
+                      <span className="mt-2 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-800">
+                        {method.scheduleNote}
+                      </span>
+                    )}
                   </span>
                 </label>
               </li>
@@ -222,7 +248,9 @@ export function CheckoutShippingMethodStep({
 
       <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm">
         <span className="font-semibold text-slate-600">Estimated shipping</span>
-        <span className="font-black text-slate-900">{formatCurrency(shippingCost)}</span>
+        <span className="font-black text-slate-900">
+          {shippingCost <= 0 ? "FREE" : formatCurrency(shippingCost)}
+        </span>
       </div>
 
       {taxExemptRequested ? (
