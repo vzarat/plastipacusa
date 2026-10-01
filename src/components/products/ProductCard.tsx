@@ -1,5 +1,8 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
+import { useLanguage } from "@/context/LanguageContext";
 import Image from "next/image";
 import { ProductWithVariants } from "@/types";
 import { formatCurrency } from "@/lib/utils";
@@ -86,6 +89,7 @@ const CATEGORY_STYLES: Record<
 };
 
 export function ProductCard({ product, priority = false }: ProductCardProps) {
+  const { t } = useLanguage();
   const [imageFailed, setImageFailed] = React.useState(false);
   // Resolve category brand logo and machine film detection
   const rawWidth = (product as any)?.width_inches ?? (product as any)?.widthInches ?? 0;
@@ -221,7 +225,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           {/* Official Category Brand Logo Badge */}
           {isSoldOut && (
             <div className="absolute top-3.5 right-3.5 z-10 rounded-full border border-rose-200 bg-rose-600 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
-              Sold Out
+              {t("products.soldOut")}
             </div>
           )}
 
@@ -303,7 +307,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               </div>
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className={`w-3.5 h-3.5 ${catStyles.iconColor} flex-shrink-0`} />
-                <span>{isSoldOut ? "Sold Out" : "Ready to Ship"}</span>
+                <span>{isSoldOut ? t("products.soldOut") : t("products.readyToShip")}</span>
               </div>
             </div>
           </div>
@@ -316,7 +320,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         <div className="flex items-baseline justify-between pt-3 border-t border-slate-100">
           <div>
             <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">
-              Starting at
+              {t("products.startingAt")}
             </span>
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl font-black text-slate-900 tracking-tight">
@@ -345,7 +349,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             disabled
             className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-slate-200 text-slate-500 font-extrabold text-sm cursor-not-allowed"
           >
-            Sold Out
+            {t("products.soldOut")}
           </button>
         ) : (
           <Link
@@ -353,7 +357,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 text-white font-extrabold text-sm shadow-md shadow-sky-500/20 hover:opacity-95 hover:shadow-lg hover:shadow-sky-500/30 transition-all duration-200 active:scale-[0.99] group/btn"
           >
             <ShoppingCart className="w-4 h-4 text-white group-hover/btn:scale-110 transition-transform" />
-            <span>BUY NOW</span>
+            <span>{t("products.buyNow")}</span>
             <ArrowRight className="w-4 h-4 text-sky-200 group-hover/btn:translate-x-0.5 transition-transform" />
           </Link>
         )}

@@ -190,8 +190,16 @@ export function AdminOrdersClient({
               Plastipac Enterprise Portal
             </span>
             <span className="text-slate-300">/</span>
-            <span className="text-xs font-black text-blue-950 capitalize">
-              {activeTab}
+            <span className="text-xs font-black text-blue-950">
+              {activeTab === "overview"
+                ? t("admin.overview")
+                : activeTab === "orders"
+                  ? t("admin.ordersQuotes")
+                  : activeTab === "products"
+                    ? t("admin.catalog")
+                    : activeTab === "customers"
+                      ? t("admin.customers")
+                      : t("admin.settings")}
             </span>
           </div>
 

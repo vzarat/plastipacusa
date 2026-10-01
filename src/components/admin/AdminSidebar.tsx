@@ -75,8 +75,7 @@ export function AdminSidebar({
   const customersRouteActive = Boolean(
     pathname?.startsWith("/admin/customers")
   );
-  const { t, locale } = useLanguage();
-  const isSpanish = locale === "es";
+  const { t } = useLanguage();
   const [internalIsCollapsed, setInternalIsCollapsed] = useState(false);
 
   const isCollapsed =
@@ -334,7 +333,7 @@ export function AdminSidebar({
                     : "border-blue-600 bg-blue-50/70 font-bold text-blue-950 shadow-xs"
                   : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-medium"
               }`}
-              aria-label="Discounts"
+              aria-label={t("admin.discounts")}
             >
               <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
                 <Percent
@@ -342,11 +341,11 @@ export function AdminSidebar({
                     discountsActive ? "text-blue-600" : "text-slate-400 group-hover:text-slate-700"
                   }`}
                 />
-                {!isCollapsed && <span>Discounts</span>}
+                {!isCollapsed && <span>{t("admin.discounts")}</span>}
               </div>
               {isCollapsed && (
                 <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap hidden md:flex items-center gap-2">
-                  Discounts
+                  {t("admin.discounts")}
                 </div>
               )}
             </Link>
@@ -364,7 +363,7 @@ export function AdminSidebar({
                     : "border-blue-600 bg-blue-50/70 font-bold text-blue-950 shadow-xs"
                   : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-medium"
               }`}
-              aria-label={isSpanish ? "Plantillas de correo" : "Email Templates"}
+              aria-label={t("admin.emailTemplates")}
             >
               <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
                 <Mail
@@ -375,12 +374,12 @@ export function AdminSidebar({
                   }`}
                 />
                 {!isCollapsed && (
-                  <span>{isSpanish ? "Email Templates" : "Email Templates"}</span>
+                  <span>{t("admin.emailTemplates")}</span>
                 )}
               </div>
               {isCollapsed && (
                 <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap hidden md:flex items-center gap-2">
-                  Email Templates
+                  {t("admin.emailTemplates")}
                 </div>
               )}
             </Link>
@@ -398,7 +397,7 @@ export function AdminSidebar({
                     : "border-blue-600 bg-blue-50/70 font-bold text-blue-950 shadow-xs"
                   : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-medium"
               }`}
-              aria-label={isSpanish ? "Usuarios" : "Users"}
+              aria-label={t("admin.users")}
             >
               <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
                 <Users
@@ -409,12 +408,12 @@ export function AdminSidebar({
                   }`}
                 />
                 {!isCollapsed && (
-                  <span>{isSpanish ? "Usuarios" : "Users"}</span>
+                  <span>{t("admin.users")}</span>
                 )}
               </div>
               {isCollapsed && (
                 <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap hidden md:flex items-center gap-2">
-                  {isSpanish ? "Usuarios" : "Users"}
+                  {t("admin.users")}
                 </div>
               )}
             </Link>
@@ -432,7 +431,7 @@ export function AdminSidebar({
                     : "border-blue-600 bg-blue-50/70 font-bold text-blue-950 shadow-xs"
                   : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-medium"
               }`}
-              aria-label="Credit Applications"
+              aria-label={t("admin.creditApplications")}
             >
               <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
                 <FileText
@@ -442,11 +441,11 @@ export function AdminSidebar({
                       : "text-slate-400 group-hover:text-slate-700"
                   }`}
                 />
-                {!isCollapsed && <span>Credit Applications</span>}
+                {!isCollapsed && <span>{t("admin.creditApplications")}</span>}
               </div>
               {isCollapsed && (
                 <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap hidden md:flex items-center gap-2">
-                  Credit Applications
+                  {t("admin.creditApplications")}
                 </div>
               )}
             </Link>

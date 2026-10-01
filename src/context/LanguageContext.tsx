@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useCallback, useContext, useMemo, useState, useEffect, ReactNode } from "react";
 
 export type Locale = "en" | "es";
 
@@ -277,6 +277,63 @@ export const translations = {
     "admin.viewAll": "View All",
     "admin.truckloads": "Truckloads",
     "admin.pallets": "Pallets",
+    "admin.noPartNumber": "No Part #",
+    "admin.noDescription": "No description provided.",
+    "admin.inStock": "In Stock",
+    "admin.outOfStock": "Out of stock",
+    "admin.soldOut": "Sold Out",
+    "admin.available": "Available",
+    "admin.edit": "Edit",
+    "admin.active": "Active",
+    "admin.inactive": "Inactive",
+    "admin.addProduct": "Add Product",
+    "admin.searchCatalog": "Search by title, part number, or description...",
+    "admin.handFilm": "Hand Stretch Film",
+    "admin.machineFilm": "Automatic / Machine",
+    "admin.gaugeFilter": "Gauge",
+    "admin.statusAll": "Status: All",
+    "admin.draftInactive": "Draft / Inactive",
+    "admin.clearFilters": "Clear Filters",
+    "admin.lengthLabel": "Length",
+    "admin.showing": "Showing",
+    "admin.of": "of",
+    "admin.productsCount": "products",
+    "admin.noProducts": "No products found.",
+    "admin.deleteProduct": "Delete product",
+    "admin.deactivate": "Deactivate",
+    "admin.activate": "Activate",
+    "admin.manualHand": "Manual Hand",
+    "admin.automatedMachine": "Automated Machine",
+    "admin.discounts": "Discounts",
+    "admin.emailTemplates": "Email Templates",
+    "admin.users": "Users",
+    "admin.creditApplications": "Credit Applications",
+    "admin.editProduct": "Edit Product",
+    "admin.addNewProduct": "Add New Product",
+    "admin.productTitle": "Product Title",
+    "admin.partNumber": "Part Number / SKU",
+    "admin.storefrontTitle": "Storefront Title / Display Name",
+    "admin.storefrontHint": "Shown on the public catalog card. Falls back to Product Title when left blank.",
+    "admin.description": "Description",
+    "admin.basePrice": "Base Unit Price (USD)",
+    "admin.stockQty": "Stock Qty",
+    "admin.application": "Application",
+    "admin.applicationHint": "Auto-set from Category (GENESIS = Machine).",
+    "admin.category": "Category",
+    "admin.activeVisible": "Active / Visible in store",
+    "admin.availability": "Availability",
+    "admin.pricingTiers": "Pricing & Volume Tiers",
+    "admin.casePrice": "Case / Box Price (USD)",
+    "admin.halfPalletPrice": "Half Pallet Price (USD)",
+    "admin.fullPalletPrice": "Full Pallet Price (USD)",
+    "admin.packageOptionsTitle": "Package Options & Tier Pricing",
+    "admin.imageUrl": "Image URL",
+    "admin.productImages": "Product Images",
+    "admin.upload": "Upload",
+    "admin.saveChanges": "Save Changes",
+    "admin.createProduct": "Create Product",
+    "admin.saving": "Saving...",
+    "admin.priceUsd": "Price (USD)",
 
     // Product Catalog / Detail
     "products.filterProducts": "Filter Products",
@@ -304,6 +361,17 @@ export const translations = {
     "products.paypalExpressCheckout": "Express Checkout",
     "products.directCheckout": "Proceed to Checkout",
     "products.inStock": "In Stock",
+    "products.soldOut": "Sold Out",
+    "products.outOfStock": "Out of stock",
+    "products.readyToShip": "Ready to Ship",
+    "products.startingAt": "Starting at",
+    "products.buyNow": "Buy Now",
+    "products.searchPlaceholder": "Search by product title, brand, or description...",
+    "products.searchCatalog": "Search Catalog",
+    "products.noProducts": "No products found",
+    "products.noProductsHint": "No stretch film matched the selected application, gauge, length, or width. Try resetting your filters.",
+    "products.prev": "Prev",
+    "products.next": "Next",
     "products.officialFactoryDirectPrice": "Official Factory Direct Price",
     "products.usd": "USD",
     "products.usdPerUnit": "USD / Unit",
@@ -725,6 +793,63 @@ export const translations = {
     "admin.viewAll": "Ver Todo",
     "admin.truckloads": "Cargas Completas",
     "admin.pallets": "Palets",
+    "admin.noPartNumber": "Sin número de parte",
+    "admin.noDescription": "Sin descripción.",
+    "admin.inStock": "En inventario",
+    "admin.outOfStock": "Agotado",
+    "admin.soldOut": "Agotado",
+    "admin.available": "Disponible",
+    "admin.edit": "Editar",
+    "admin.active": "Activo",
+    "admin.inactive": "Inactivo",
+    "admin.addProduct": "Agregar producto",
+    "admin.searchCatalog": "Buscar por título, número de parte o descripción...",
+    "admin.handFilm": "Película manual",
+    "admin.machineFilm": "Automática / Máquina",
+    "admin.gaugeFilter": "Calibre",
+    "admin.statusAll": "Estado: Todos",
+    "admin.draftInactive": "Borrador / Inactivo",
+    "admin.clearFilters": "Limpiar filtros",
+    "admin.lengthLabel": "Longitud",
+    "admin.showing": "Mostrando",
+    "admin.of": "de",
+    "admin.productsCount": "productos",
+    "admin.noProducts": "No se encontraron productos.",
+    "admin.deleteProduct": "Eliminar producto",
+    "admin.deactivate": "Desactivar",
+    "admin.activate": "Activar",
+    "admin.manualHand": "Manual",
+    "admin.automatedMachine": "Máquina automática",
+    "admin.discounts": "Descuentos",
+    "admin.emailTemplates": "Plantillas de correo",
+    "admin.users": "Usuarios",
+    "admin.creditApplications": "Solicitudes de crédito",
+    "admin.editProduct": "Editar producto",
+    "admin.addNewProduct": "Agregar producto",
+    "admin.productTitle": "Título del producto",
+    "admin.partNumber": "Número de parte / SKU",
+    "admin.storefrontTitle": "Título en tienda",
+    "admin.storefrontHint": "Se muestra en la tarjeta pública. Si queda vacío, se usa el título del producto.",
+    "admin.description": "Descripción",
+    "admin.basePrice": "Precio unitario base (USD)",
+    "admin.stockQty": "Cantidad en inventario",
+    "admin.application": "Aplicación",
+    "admin.applicationHint": "Se asigna según la categoría (GENESIS = Máquina).",
+    "admin.category": "Categoría",
+    "admin.activeVisible": "Activo / Visible en la tienda",
+    "admin.availability": "Disponibilidad",
+    "admin.pricingTiers": "Precios y volúmenes",
+    "admin.casePrice": "Precio por caja (USD)",
+    "admin.halfPalletPrice": "Precio de medio palet (USD)",
+    "admin.fullPalletPrice": "Precio de palet completo (USD)",
+    "admin.packageOptionsTitle": "Opciones de empaque y precios",
+    "admin.imageUrl": "URL de imagen",
+    "admin.productImages": "Imágenes del producto",
+    "admin.upload": "Subir",
+    "admin.saveChanges": "Guardar cambios",
+    "admin.createProduct": "Crear producto",
+    "admin.saving": "Guardando...",
+    "admin.priceUsd": "Precio (USD)",
 
     // Product Catalog / Detail
     "products.filterProducts": "Filtrar Productos",
@@ -751,7 +876,18 @@ export const translations = {
     "products.addToCart": "Agregar al Carrito",
     "products.paypalExpressCheckout": "Pago Express",
     "products.directCheckout": "Ir al Checkout",
-    "products.inStock": "En Inventario",
+    "products.inStock": "En inventario",
+    "products.soldOut": "Agotado",
+    "products.outOfStock": "Agotado",
+    "products.readyToShip": "Listo para envío",
+    "products.startingAt": "Desde",
+    "products.buyNow": "Comprar ahora",
+    "products.searchPlaceholder": "Buscar por título, marca o descripción...",
+    "products.searchCatalog": "Buscar en el catálogo",
+    "products.noProducts": "No se encontraron productos",
+    "products.noProductsHint": "Ninguna película coincide con la aplicación, el calibre, la longitud o el ancho. Restablece los filtros.",
+    "products.prev": "Anterior",
+    "products.next": "Siguiente",
     "products.officialFactoryDirectPrice": "Precio Oficial Directo de Fábrica",
     "products.usd": "USD",
     "products.usdPerUnit": "USD / Unidad",
@@ -968,7 +1104,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const setLocale = (newLocale: Locale) => {
+  const setLocale = useCallback((newLocale: Locale) => {
     setLocaleState(newLocale);
     try {
       localStorage.setItem(STORAGE_KEY, newLocale);
@@ -977,29 +1113,45 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     } catch {
       // Ignore persistence errors
     }
-  };
+  }, []);
 
-  const toggleLocale = () => {
-    setLocale(locale === "en" ? "es" : "en");
-  };
+  const toggleLocale = useCallback(() => {
+    setLocaleState((current) => {
+      const next = current === "en" ? "es" : "en";
+      try {
+        localStorage.setItem(STORAGE_KEY, next);
+        document.cookie = `${COOKIE_NAME}=${next}; path=/; max-age=31536000; SameSite=Lax`;
+        document.documentElement.lang = next;
+      } catch {
+        // Ignore persistence errors
+      }
+      return next;
+    });
+  }, []);
 
-  const t = (key: TranslationKey | string, fallback?: string): string => {
-    const activeDict = translations[locale] as Record<string, string>;
-    const defaultDict = translations.en as Record<string, string>;
-    return activeDict[key] || defaultDict[key] || fallback || key;
-  };
+  const t = useCallback(
+    (key: TranslationKey | string, fallback?: string): string => {
+      const activeDict = translations[locale] as Record<string, string>;
+      const defaultDict = translations.en as Record<string, string>;
+      return activeDict[key] || defaultDict[key] || fallback || key;
+    },
+    [locale]
+  );
+
+  const value = useMemo(
+    () => ({
+      locale,
+      language: locale,
+      setLocale,
+      toggleLocale,
+      t,
+      isSpanish: locale === "es",
+    }),
+    [locale, setLocale, toggleLocale, t]
+  );
 
   return (
-    <LanguageContext.Provider
-      value={{
-        locale,
-        language: locale,
-        setLocale,
-        toggleLocale,
-        t,
-        isSpanish: locale === "es",
-      }}
-    >
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );

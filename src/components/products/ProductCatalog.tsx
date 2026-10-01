@@ -18,6 +18,7 @@ import {
   type CatalogAppFilter,
 } from "@/components/products/ProductFilters";
 import { ProductCatalogToolbar } from "@/components/products/ProductCatalogToolbar";
+import { useLanguage } from "@/context/LanguageContext";
 import type { ProductWithVariants } from "@/types";
 import {
   SERIES_FORCE_ELITE,
@@ -191,6 +192,7 @@ function CatalogPagination({
   hrefForPage: (page: number) => string;
   onPageChange: (page: number) => void;
 }) {
+  const { t } = useLanguage();
   if (totalPages <= 1) return null;
 
   const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -203,7 +205,7 @@ function CatalogPagination({
       {currentPage <= 1 ? (
         <span className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-400 opacity-40">
           <ChevronLeft className="w-4 h-4" />
-          Prev
+          {t("products.prev")}
         </span>
       ) : (
         <Link
@@ -213,11 +215,11 @@ function CatalogPagination({
             onPageChange(currentPage - 1);
           }}
           className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-          aria-label="Previous page"
+          aria-label={t("products.prev")}
           rel="prev"
         >
           <ChevronLeft className="w-4 h-4" />
-          Prev
+          {t("products.prev")}
         </Link>
       )}
 
@@ -242,7 +244,7 @@ function CatalogPagination({
 
       {currentPage >= totalPages ? (
         <span className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-400 opacity-40">
-          Next
+          {t("products.next")}
           <ChevronRight className="w-4 h-4" />
         </span>
       ) : (
@@ -253,10 +255,10 @@ function CatalogPagination({
             onPageChange(currentPage + 1);
           }}
           className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-          aria-label="Next page"
+          aria-label={t("products.next")}
           rel="next"
         >
-          Next
+          {t("products.next")}
           <ChevronRight className="w-4 h-4" />
         </Link>
       )}
@@ -274,6 +276,7 @@ export function ProductCatalog({
   initialQuery = "",
   initialPage = 1,
 }: ProductCatalogProps) {
+  const { t } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -625,10 +628,9 @@ export function ProductCatalog({
           {filteredProducts.length === 0 ? (
             <div className="text-center py-20 rounded-3xl border border-slate-200 bg-white space-y-4 shadow-sm">
               <PackageOpen className="w-12 h-12 text-slate-400 mx-auto" />
-              <h3 className="text-lg font-bold text-slate-900">No products found</h3>
+              <h3 className="text-lg font-bold text-slate-900">{t("products.noProducts")}</h3>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
-                No stretch film matched the selected application, gauge, length, or
-                width criteria. Try resetting your filters.
+                {t("products.noProductsHint")}
               </p>
             </div>
           ) : (

@@ -20,6 +20,7 @@ import {
 } from "@/actions/products";
 import { AdminProduct, GAUGE_OPTIONS, PACKAGE_TIER_DEFAULTS, ProductFormValues } from "@/types/product";
 import { PRODUCT_CATEGORIES, getApplicationForCategory } from "@/data/categories";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface ProductFormModalProps {
   isOpen: boolean;
@@ -61,6 +62,7 @@ export function ProductFormModal({
   onSaved,
   showToast,
 }: ProductFormModalProps) {
+  const { t } = useLanguage();
   const [form, setForm] = useState<ProductFormValues>(EMPTY_FORM);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -209,13 +211,13 @@ export function ProductFormModal({
       >
         <div className="flex items-center justify-between shrink-0 p-6 border-b">
           <h2 className="text-lg font-black text-slate-900">
-            {product ? "Edit Product" : "Add New Product"}
+            {product ? t("admin.editProduct") : t("admin.addNewProduct")}
           </h2>
           <button
             type="button"
             onClick={onClose}
             className="p-1.5 rounded-xl text-slate-400 hover:text-slate-900 hover:bg-slate-100 cursor-pointer"
-            aria-label="Close"
+            aria-label={t("common.close")}
           >
             <X className="w-5 h-5" />
           </button>
@@ -226,7 +228,7 @@ export function ProductFormModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Product Title <span className="text-red-500">*</span>
+                {t("admin.productTitle")} <span className="text-red-500">*</span>
               </label>
               <Input
                 value={form.name}
@@ -239,7 +241,7 @@ export function ProductFormModal({
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Part Number / SKU
+                {t("admin.partNumber")}
               </label>
               <Input
                 value={form.partNumber}
@@ -251,7 +253,7 @@ export function ProductFormModal({
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              Storefront Title / Display Name
+              {t("admin.storefrontTitle")}
             </label>
             <Input
               value={form.storefrontTitle}
@@ -259,13 +261,13 @@ export function ProductFormModal({
               placeholder='e.g. Stretch Film 20" x 60 GA x 5,000 FT'
             />
             <p className="text-[10px] text-slate-400 mt-1">
-              Shown on the public catalog card. Falls back to Product Title when left blank.
+              {t("admin.storefrontHint")}
             </p>
           </div>
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              Description
+              {t("admin.description")}
             </label>
             <textarea
               value={form.description}
@@ -279,7 +281,7 @@ export function ProductFormModal({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Gauge / Calibre
+                {t("products.gauge")}
               </label>
               <select
                 value={form.gauge ?? ""}
@@ -298,7 +300,7 @@ export function ProductFormModal({
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Base Unit Price (USD)
+                {t("admin.basePrice")}
               </label>
               <Input
                 type="number"
@@ -314,7 +316,7 @@ export function ProductFormModal({
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Stock Qty
+                {t("admin.stockQty")}
               </label>
               <Input
                 type="number"
@@ -326,24 +328,24 @@ export function ProductFormModal({
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Application
+                {t("admin.application")}
               </label>
               <select
                 value={form.application}
                 disabled
                 className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-500 shadow-sm cursor-not-allowed"
               >
-                <option value="hand">Manual Hand</option>
-                <option value="machine">Machine</option>
+                <option value="hand">{t("admin.manualHand")}</option>
+                <option value="machine">{t("admin.machineFilm")}</option>
               </select>
-              <p className="text-[10px] text-slate-400 mt-1">Auto-set from Category (GENESIS = Machine).</p>
+              <p className="text-[10px] text-slate-400 mt-1">{t("admin.applicationHint")}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Category
+                {t("admin.category")}
               </label>
               <select
                 value={form.categorySlug}
@@ -372,13 +374,13 @@ export function ProductFormModal({
                   onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))}
                   className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
                 />
-                <span className="text-xs font-bold text-slate-700">Active / Visible in store</span>
+                <span className="text-xs font-bold text-slate-700">{t("admin.activeVisible")}</span>
               </label>
             </div>
           </div>
 
           <div className="rounded-xl border border-slate-200 p-4 space-y-2">
-            <p className="text-xs font-bold text-slate-700">Disponibilidad</p>
+            <p className="text-xs font-bold text-slate-700">{t("admin.availability")}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <label
                 className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 cursor-pointer ${
@@ -395,7 +397,7 @@ export function ProductFormModal({
                   className="h-4 w-4 text-emerald-600"
                 />
                 <span className="text-sm font-semibold text-slate-800">
-                  Disponible (In Stock)
+                  {t("admin.available")} ({t("admin.inStock")})
                 </span>
               </label>
               <label
@@ -413,18 +415,18 @@ export function ProductFormModal({
                   className="h-4 w-4 text-rose-600"
                 />
                 <span className="text-sm font-semibold text-slate-800">
-                  Agotado (Sold Out)
+                  {t("admin.soldOut")}
                 </span>
               </label>
             </div>
           </div>
 
           <div className="rounded-xl border border-slate-200 p-4 space-y-3">
-            <h3 className="text-sm font-black text-slate-900">Pricing & Volume Tiers</h3>
+            <h3 className="text-sm font-black text-slate-900">{t("admin.pricingTiers")}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Case / Box Price (USD)
+                  {t("admin.casePrice")}
                 </label>
                 <Input
                   type="number"
@@ -441,7 +443,7 @@ export function ProductFormModal({
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Half Pallet Price (USD)
+                  {t("admin.halfPalletPrice")}
                 </label>
                 <Input
                   type="number"
@@ -458,7 +460,7 @@ export function ProductFormModal({
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Full Pallet Price (USD)
+                  {t("admin.fullPalletPrice")}
                 </label>
                 <Input
                   type="number"
@@ -477,7 +479,7 @@ export function ProductFormModal({
 
           <div className="rounded-xl border border-slate-200 p-4 space-y-3">
             <div>
-              <h3 className="text-sm font-black text-slate-900">Package Options & Tier Pricing</h3>
+              <h3 className="text-sm font-black text-slate-900">{t("admin.packageOptionsTitle")}</h3>
               <p className="text-[10px] text-slate-400 mt-0.5">
                 Fixed roll-count packages shown on the public product page. SKUs are auto-generated from the
                 Part Number.
@@ -497,7 +499,7 @@ export function ProductFormModal({
                   <span className="text-xs font-bold text-slate-800">{tier.label}</span>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Price (USD)</label>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">{t("admin.priceUsd")}</label>
                       <Input
                         type="number"
                         step="0.01"
@@ -524,7 +526,7 @@ export function ProductFormModal({
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              Image URL
+              {t("admin.imageUrl")}
             </label>
             <Input
               value={form.imageUrl}
@@ -551,7 +553,7 @@ export function ProductFormModal({
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              Product Images
+              {t("admin.productImages")}
             </label>
 
             <div className="flex flex-wrap gap-3 mb-3">
@@ -595,7 +597,7 @@ export function ProductFormModal({
                 ) : (
                   <>
                     <UploadCloud className="w-5 h-5" />
-                    <span className="text-[9px] font-bold">Upload</span>
+                    <span className="text-[9px] font-bold">{t("admin.upload")}</span>
                   </>
                 )}
               </button>
@@ -616,7 +618,7 @@ export function ProductFormModal({
 
           <div className="flex items-center justify-end gap-3 shrink-0 p-6 border-t">
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="submit" size="sm" disabled={isSaving || isUploading} className="gap-1.5">
               {isSaving ? (
@@ -624,7 +626,7 @@ export function ProductFormModal({
               ) : (
                 <Save className="w-3.5 h-3.5" />
               )}
-              {isSaving ? "Saving..." : product ? "Save Changes" : "Create Product"}
+              {isSaving ? t("admin.saving") : product ? t("admin.saveChanges") : t("admin.createProduct")}
             </Button>
           </div>
         </form>

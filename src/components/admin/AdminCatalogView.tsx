@@ -245,7 +245,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
             className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xs cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Add Product</span>
+            <span>{t("admin.addProduct")}</span>
           </Button>
         </div>
       </div>
@@ -261,7 +261,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by title, part number, or description..."
+                placeholder={t("admin.searchCatalog")}
                 className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/10 focus:border-blue-400"
               />
             </div>
@@ -270,9 +270,9 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
             <div className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1 gap-1 overflow-x-auto w-full sm:w-auto">
               {(
                 [
-                  { key: "all", label: "All" },
-                  { key: "hand", label: "Hand Stretch Film" },
-                  { key: "machine", label: "Automatic / Machine" },
+                  { key: "all", label: t("admin.all") },
+                  { key: "hand", label: t("admin.handFilm") },
+                  { key: "machine", label: t("admin.machineFilm") },
                 ] as { key: ApplicationFilter; label: string }[]
               ).map((tab) => (
                 <button
@@ -298,7 +298,8 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-[11px] font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
-                Gauge{filterGauges.length > 0 ? ` (${filterGauges.length})` : ""}
+                {t("admin.gaugeFilter")}
+                {filterGauges.length > 0 ? ` (${filterGauges.length})` : ""}
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </button>
 
@@ -334,9 +335,9 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
               onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}
               className="text-xs font-semibold py-2 px-3 rounded-xl border border-slate-200 bg-white text-slate-700 focus:outline-none cursor-pointer"
             >
-              <option value="all">Status: All</option>
-              <option value="active">Active</option>
-              <option value="inactive">Draft / Inactive</option>
+              <option value="all">{t("admin.statusAll")}</option>
+              <option value="active">{t("admin.active")}</option>
+              <option value="inactive">{t("admin.draftInactive")}</option>
             </select>
 
             {hasActiveFilters && (
@@ -346,7 +347,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                 className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-700 text-[11px] font-bold hover:bg-red-100 cursor-pointer whitespace-nowrap"
               >
                 <X className="w-3.5 h-3.5" />
-                Clear Filters
+                {t("admin.clearFilters")}
               </button>
             )}
           </div>
@@ -354,7 +355,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
           {/* Length Quick Filters */}
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">
-              Length:
+              {t("admin.lengthLabel")}:
             </span>
             <button
               type="button"
@@ -365,7 +366,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              All
+              {t("admin.all")}
             </button>
             {availableLengths.map((len) => (
               <button
@@ -390,8 +391,11 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
         {/* Results Count */}
         <div className="px-4 sm:px-6 py-2.5 border-t border-slate-100 bg-slate-50/60 rounded-b-2xl">
           <p className="text-[11px] font-semibold text-slate-500">
-            Showing <span className="text-slate-900 font-bold">{filtered.length}</span> of{" "}
-            <span className="text-slate-900 font-bold">{products.length}</span> products
+            {t("admin.showing")}{" "}
+            <span className="text-slate-900 font-bold">{filtered.length}</span>{" "}
+            {t("admin.of")}{" "}
+            <span className="text-slate-900 font-bold">{products.length}</span>{" "}
+            {t("admin.productsCount")}
           </p>
         </div>
       </div>
@@ -401,14 +405,14 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
         <div className="rounded-2xl border border-slate-200/90 bg-white shadow-xs py-16 text-center text-slate-400">
           <div className="flex flex-col items-center gap-2">
             <PackageX className="w-8 h-8" />
-            <span className="text-xs font-semibold">No products found.</span>
+            <span className="text-xs font-semibold">{t("admin.noProducts")}</span>
             {hasActiveFilters && (
               <button
                 type="button"
                 onClick={clearFilters}
                 className="text-[11px] font-bold text-purple-700 hover:underline cursor-pointer"
               >
-                Clear filters
+                {t("admin.clearFilters")}
               </button>
             )}
           </div>
@@ -427,11 +431,11 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                   {item.isActive ? (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
                       <Check className="w-3 h-3 text-emerald-600" />
-                      Active
+                      {t("admin.active")}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-500 text-[10px] font-bold">
-                      Inactive
+                      {t("admin.inactive")}
                     </span>
                   )}
                 </span>
@@ -439,11 +443,11 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
 
               <div className="flex-1 flex flex-col p-4 gap-1.5">
                 <span className="text-xs text-gray-400 uppercase tracking-wide">
-                  {item.partNumber ? `#${item.partNumber}` : "No Part #"}
+                  {item.partNumber ? `#${item.partNumber}` : t("admin.noPartNumber")}
                 </span>
                 <h3 className="font-semibold text-gray-800 text-lg leading-snug">{item.name}</h3>
                 <p className="line-clamp-2 text-sm text-gray-500">
-                  {item.description || "No description provided."}
+                  {item.description || t("admin.noDescription")}
                 </p>
 
                 <div className="flex items-center gap-2 mt-1">
@@ -453,7 +457,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                     </span>
                   )}
                   <span className="capitalize text-[10px] font-semibold text-slate-500">
-                    {item.application === "hand" ? "Manual Hand" : "Automated Machine"}
+                    {item.application === "hand" ? t("admin.manualHand") : t("admin.automatedMachine")}
                   </span>
                 </div>
 
@@ -466,7 +470,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                       item.isSoldOut ? "text-red-600" : "text-emerald-700"
                     }`}
                   >
-                    {item.isSoldOut ? "Sold Out" : "In Stock"}
+                    {item.isSoldOut ? t("admin.soldOut") : t("admin.inStock")}
                   </span>
                 </div>
 
@@ -481,7 +485,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                         : "text-slate-500 hover:bg-white"
                     }`}
                   >
-                    Disponible
+                    {t("admin.available")}
                   </button>
                   <button
                     type="button"
@@ -493,7 +497,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                         : "text-slate-500 hover:bg-white"
                     }`}
                   >
-                    Agotado
+                    {t("admin.soldOut")}
                   </button>
                 </div>
 
@@ -504,13 +508,13 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                     className="flex-1 inline-flex items-center justify-center gap-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg px-4 py-2 text-sm font-semibold cursor-pointer transition-colors"
                   >
                     <Pencil className="w-3.5 h-3.5" />
-                    Edit
+                    {t("admin.edit")}
                   </button>
                   <button
                     type="button"
                     onClick={() => handleToggleActive(item)}
                     disabled={busyId === item.id}
-                    title={item.isActive ? "Deactivate" : "Activate"}
+                    title={item.isActive ? t("admin.deactivate") : t("admin.activate")}
                     className="p-2 rounded-lg text-slate-500 hover:text-amber-700 hover:bg-amber-50 cursor-pointer disabled:opacity-50"
                   >
                     {busyId === item.id ? (
@@ -523,7 +527,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                     type="button"
                     onClick={() => handleDelete(item)}
                     disabled={busyId === item.id}
-                    title="Delete product"
+                    title={t("admin.deleteProduct")}
                     className="p-2 rounded-lg text-slate-500 hover:text-red-700 hover:bg-red-50 cursor-pointer disabled:opacity-50"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Search } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface ProductCatalogToolbarProps {
   query: string;
@@ -14,6 +15,7 @@ export function ProductCatalogToolbar({
   onQueryChange,
   onSubmitSearch,
 }: ProductCatalogToolbarProps) {
+  const { t } = useLanguage();
   const [localQuery, setLocalQuery] = useState(query);
 
   useEffect(() => {
@@ -42,7 +44,7 @@ export function ProductCatalogToolbar({
             setLocalQuery(next);
             onQueryChange(next);
           }}
-          placeholder="Search by product title, brand, or description..."
+          placeholder={t("products.searchPlaceholder")}
           className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400"
         />
       </div>
@@ -50,7 +52,7 @@ export function ProductCatalogToolbar({
         type="submit"
         className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-sky-500/20 hover:opacity-95 hover:shadow-lg hover:shadow-sky-500/30 transition-all duration-200 cursor-pointer"
       >
-        Search Catalog
+        {t("products.searchCatalog")}
       </button>
     </form>
   );
