@@ -5,7 +5,12 @@ import { ProductWithVariants } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, ArrowRight, CheckCircle2, Box, Layers } from "lucide-react";
-import { GENESIS_HP_SLUGS, SERIES_GENESIS_HP, SERIES_GENESIS_STANDARD } from "@/lib/products";
+import {
+  GENESIS_HP_SLUGS,
+  SERIES_GENESIS_HP,
+  SERIES_GENESIS_STANDARD,
+  STRETCH_FILM_PLACEHOLDER,
+} from "@/lib/products";
 import { RequestSampleButton } from "@/components/products/RequestSampleButton";
 
 interface ProductCardProps {
@@ -81,6 +86,7 @@ const CATEGORY_STYLES: Record<
 };
 
 export function ProductCard({ product, priority = false }: ProductCardProps) {
+  const [imageFailed, setImageFailed] = React.useState(false);
   // Resolve category brand logo and machine film detection
   const rawWidth = (product as any)?.width_inches ?? (product as any)?.widthInches ?? 0;
   const width = typeof rawWidth === "number" ? rawWidth : parseFloat(String(rawWidth)) || 0;
@@ -166,10 +172,11 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   const rawImage =
     (product?.images && product.images[0]) || product?.imageUrl;
 
-  const primaryImage =
-    isGenesis && (!rawImage || rawImage.includes("manual"))
+  const primaryImage = imageFailed
+    ? STRETCH_FILM_PLACEHOLDER
+    : isGenesis && (!rawImage || rawImage.includes("manual"))
       ? AUTOMATIC_IMAGE
-      : rawImage || (isGenesis ? AUTOMATIC_IMAGE : DEFAULT_PRODUCT_IMAGE);
+      : rawImage || STRETCH_FILM_PLACEHOLDER;
 
   const secondaryImage =
     product?.images && product.images.length > 1
@@ -241,6 +248,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
                 ? "group-hover:opacity-0 group-hover:scale-95"
                 : "group-hover:scale-105"
             }`}
+            onError={() => setImageFailed(true)}
           />
 
           {/* Secondary Product Image (Box Packaging on Hover) */}

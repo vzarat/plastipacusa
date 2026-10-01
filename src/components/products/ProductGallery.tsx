@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
+import { STRETCH_FILM_PLACEHOLDER } from "@/lib/products";
 import {
   Box,
   Layers,
@@ -22,8 +23,7 @@ interface ProductGalleryProps {
   categoryName?: string | null;
 }
 
-const DEFAULT_IMAGE =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png";
+const DEFAULT_IMAGE = STRETCH_FILM_PLACEHOLDER;
 
 export function ProductGallery({
   images = [],
@@ -44,7 +44,14 @@ export function ProductGallery({
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-  const activeImage = galleryList[activeIndex] || DEFAULT_IMAGE;
+  const [imageBroken, setImageBroken] = useState(false);
+  const activeImage = imageBroken
+    ? DEFAULT_IMAGE
+    : galleryList[activeIndex] || DEFAULT_IMAGE;
+
+  useEffect(() => {
+    setImageBroken(false);
+  }, [activeIndex, imageUrl]);
 
   // Helper label for each thumbnail
   const getImageLabel = (index: number) => {
@@ -101,6 +108,9 @@ export function ProductGallery({
           placeholder="empty"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 600px"
           className="object-contain p-4 transition-all duration-300 group-hover:scale-105"
+          onError={() => {
+            if (activeImage !== DEFAULT_IMAGE) setImageBroken(true);
+          }}
         />
 
         {/* 1. Category Logo Watermark / Overlay (Top-Left) */}

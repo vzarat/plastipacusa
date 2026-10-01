@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import {
+  createServiceRoleClient,
+  isServiceRoleConfigured,
+} from "@/lib/supabase/admin";
 import { ProductWithVariants, ProductVariant, PackageOption } from "@/types";
 import { AdminProduct, ProductFormValues, PACKAGE_TIER_DEFAULTS } from "@/types/product";
 import { PRODUCT_CATEGORIES, getApplicationForCategory } from "@/data/categories";
@@ -26,6 +30,44 @@ import {
   seriesLabelFromCategorySlug,
   sortProductsByDimensions,
 } from "@/lib/products";
+
+async function getProductWriteClient() {
+  if (isServiceRoleConfigured()) return createServiceRoleClient();
+  return createServerClient();
+}
+
+function revalidateProductPaths(slug?: string) {
+  revalidatePath("/admin");
+  revalidatePath("/admin/products");
+  revalidatePath("/products");
+  if (slug) revalidatePath(`/products/${slug}`);
+}
+
+/** Drop unknown columns and retry so older Supabase schemas still save. */
+async function writeProductRow(
+  supabase: Awaited<ReturnType<typeof getProductWriteClient>>,
+  mode: "insert" | "update",
+  payload: Record<string, unknown>,
+  id?: number
+) {
+  let next = { ...payload };
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const query =
+      mode === "insert"
+        ? supabase.from("products").insert(next).select("*").single()
+        : supabase.from("products").update(next).eq("id", id as number).select("*").single();
+    const result = await query;
+    if (!result.error) return result;
+    const message = result.error.message || "";
+    const missing = message.match(/column ["']?([a-z0-9_]+)["']?/i);
+    if (!missing || !/does not exist/i.test(message)) return result;
+    const column = missing[1];
+    if (!(column in next)) return result;
+    delete next[column];
+    next = { ...next };
+  }
+  return supabase.from("products").update(next).eq("id", id as number).select("*").single();
+}
 
 function parsePositivePrice(...candidates: unknown[]): number | null {
   for (const candidate of candidates) {
@@ -871,7 +913,7 @@ export async function createProduct(values: ProductFormValues) {
       return { success: false, error: "Product name is required." };
     }
 
-    const supabase = await createServerClient();
+    const supabase = await getProductWriteClient();
     const baseSlug = slugify(values.name);
     let slug = baseSlug;
     let attempt = 1;
@@ -913,19 +955,14 @@ export async function createProduct(values: ProductFormValues) {
       category_id: PRODUCT_CATEGORIES.find((c) => c.slug === values.categorySlug)?.id || values.categorySlug || null,
     };
 
-    const { data, error } = await supabase
-      .from("products")
-      .insert(insertPayload)
-      .select("*")
-      .single();
+    const { data, error } = await writeProductRow(supabase, "insert", insertPayload);
 
     if (error) {
       console.error("createProduct insert error:", error);
       return { success: false, error: error.message || "Failed to create product." };
     }
 
-    revalidatePath("/admin");
-    revalidatePath("/products");
+    revalidateProductPaths(data.slug);
 
     return { success: true, product: formatAdminProduct(data) };
   } catch (err: any) {
@@ -944,7 +981,7 @@ export async function updateProduct(id: number, values: Partial<ProductFormValue
   }
 
   try {
-    const supabase = await createServerClient();
+    const supabase = await getProductWriteClient();
 
     const updatePayload: Record<string, any> = { updated_at: new Date().toISOString() };
     if (values.name !== undefined) updatePayload.name = values.name.trim();
@@ -980,21 +1017,19 @@ export async function updateProduct(id: number, values: Partial<ProductFormValue
       updatePayload.image_url = values.imageUrl;
     }
 
-    const { data, error } = await supabase
-      .from("products")
-      .update(updatePayload)
-      .eq("id", id)
-      .select("*")
-      .single();
+    const { data, error } = await writeProductRow(
+      supabase,
+      "update",
+      updatePayload,
+      id
+    );
 
     if (error) {
       console.error("updateProduct error:", error);
       return { success: false, error: error.message || "Failed to update product." };
     }
 
-    revalidatePath("/admin");
-    revalidatePath("/products");
-    revalidatePath(`/products/${data.slug}`);
+    revalidateProductPaths(data.slug);
 
     return { success: true, product: formatAdminProduct(data) };
   } catch (err: any) {
@@ -1024,7 +1059,7 @@ export async function deleteProduct(id: number) {
   }
 
   try {
-    const supabase = await createServerClient();
+    const supabase = await getProductWriteClient();
     const { error } = await supabase.from("products").delete().eq("id", id);
 
     if (error) {
@@ -1032,8 +1067,7 @@ export async function deleteProduct(id: number) {
       return { success: false, error: error.message || "Failed to delete product." };
     }
 
-    revalidatePath("/admin");
-    revalidatePath("/products");
+    revalidateProductPaths();
 
     return { success: true };
   } catch (err: any) {

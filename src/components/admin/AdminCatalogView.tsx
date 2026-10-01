@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
 import {
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminProduct } from "@/types/product";
+import { STRETCH_FILM_PLACEHOLDER } from "@/lib/products";
 import { deleteProduct, toggleProductActive, toggleProductSoldOut } from "@/actions/products";
 import { ProductFormModal } from "./ProductFormModal";
 
@@ -41,35 +43,35 @@ const FALLBACK_LENGTHS = [1000, 1500, 5000, 6000];
 
 // Resolves the best available image source across the various field shapes a product row may have
 function resolveProductImage(item: AdminProduct): string {
-  return item.imageUrl || item.images?.[0] || "";
+  return item.imageUrl || item.images?.[0] || STRETCH_FILM_PLACEHOLDER;
 }
 
 function ProductThumbnail({ src, alt }: { src: string; alt: string }) {
-  const [hasError, setHasError] = useState(false);
+  const [currentSrc, setCurrentSrc] = useState(src || STRETCH_FILM_PLACEHOLDER);
 
-  if (!src || hasError) {
-    return (
-      <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-slate-300">
-        <PackageX className="w-10 h-10" />
-        <span className="text-[10px] font-semibold text-slate-400">No image</span>
-      </div>
-    );
-  }
+  useEffect(() => {
+    setCurrentSrc(src || STRETCH_FILM_PLACEHOLDER);
+  }, [src]);
 
   return (
     <Image
-      src={src}
+      src={currentSrc}
       alt={alt}
       fill
       sizes="(max-width: 768px) 100vw, 25vw"
       className="object-contain p-4"
-      onError={() => setHasError(true)}
+      onError={() => {
+        if (currentSrc !== STRETCH_FILM_PLACEHOLDER) {
+          setCurrentSrc(STRETCH_FILM_PLACEHOLDER);
+        }
+      }}
     />
   );
 }
 
 export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogViewProps) {
   const { t } = useLanguage();
+  const router = useRouter();
   const [products, setProducts] = useState<AdminProduct[]>(initialProducts);
   const [search, setSearch] = useState("");
   const [filterApp, setFilterApp] = useState<ApplicationFilter>("all");
@@ -159,6 +161,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
     setProducts((prev) =>
       isNew ? [product, ...prev] : prev.map((p) => (p.id === product.id ? product : p))
     );
+    router.refresh();
   };
 
   const handleToggleActive = async (product: AdminProduct) => {
@@ -203,6 +206,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
       if (result.success) {
         setProducts((prev) => prev.filter((p) => p.id !== product.id));
         notify(`${product.name} deleted.`);
+        router.refresh();
       } else {
         notify(result.error || "Failed to delete product.");
       }

@@ -524,6 +524,33 @@ export function ProductFormModal({
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Image URL
+            </label>
+            <Input
+              value={form.imageUrl}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, imageUrl: e.target.value }))
+              }
+              onBlur={(e) => {
+                const imageUrl = e.target.value.trim();
+                if (!imageUrl) return;
+                setForm((prev) => ({
+                  ...prev,
+                  imageUrl,
+                  images: prev.images.includes(imageUrl)
+                    ? prev.images
+                    : [imageUrl, ...prev.images.filter(Boolean)],
+                }));
+              }}
+              placeholder="https://…/product.png"
+            />
+            <p className="text-[10px] text-slate-400 mt-1">
+              Paste a public image URL or upload a file below.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
               Product Images
             </label>
 

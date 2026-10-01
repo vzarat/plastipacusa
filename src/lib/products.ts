@@ -11,6 +11,9 @@ export {
 
 import type { PackageOption, ProductVariant, ProductWithVariants } from "@/types";
 
+/** Neutral catalog image when a product has no image_url / images. */
+export const STRETCH_FILM_PLACEHOLDER = "/images/stretch-film-placeholder.png";
+
 export interface PackageOptionLike {
   rolls: number;
   label: string;
