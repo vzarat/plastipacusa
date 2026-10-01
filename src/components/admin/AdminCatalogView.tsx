@@ -209,18 +209,29 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
   };
 
   const handleToggleActive = async (product: AdminProduct) => {
-    setBusyId(product.id);
+    const nextActive = !product.isActive;
+    setProducts((prev) =>
+      prev.map((item) => (item.id === product.id ? { ...item, isActive: nextActive } : item))
+    );
+
     try {
-      const result = await toggleProductActive(product.id, !product.isActive);
-      if (result.success && result.product) {
-        setProducts((prev) => prev.map((p) => (p.id === product.id ? result.product! : p)));
-        notify(`${product.name} is now ${!product.isActive ? "active" : "inactive"}.`);
-        router.refresh();
-      } else {
+      const result = await toggleProductActive(product.id, nextActive);
+      if (!result.success) {
+        setProducts((prev) =>
+          prev.map((item) =>
+            item.id === product.id ? { ...item, isActive: product.isActive } : item
+          )
+        );
         notify(result.error || "Failed to update product status.");
+        return;
       }
-    } finally {
-      setBusyId(null);
+      router.refresh();
+    } catch {
+      setProducts((prev) =>
+        prev.map((item) =>
+          item.id === product.id ? { ...item, isActive: product.isActive } : item
+        )
+      );
     }
   };
 

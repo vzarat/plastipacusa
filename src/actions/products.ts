@@ -49,6 +49,11 @@ function revalidateProductPaths(slug?: string) {
   if (slug) revalidatePath(`/products/${slug}`);
 }
 
+function firstRow<T>(data: T | T[] | null | undefined): T | null {
+  if (Array.isArray(data)) return data[0] ?? null;
+  return data ?? null;
+}
+
 /** Drop unknown columns and retry so older Supabase schemas still save. */
 async function writeProductRow(
   supabase: Awaited<ReturnType<typeof getProductWriteClient>>,
@@ -60,23 +65,26 @@ async function writeProductRow(
   for (let attempt = 0; attempt < 30; attempt += 1) {
     const query =
       mode === "insert"
-        ? supabase.from("products").insert(next).select("*").single()
-        : supabase.from("products").update(next).eq("id", id as string).select("*").single();
+        ? supabase.from("products").insert(next).select("*")
+        : supabase.from("products").update(next).eq("id", id as string).select("*");
     const result = await query;
-    if (!result.error) return result;
+    if (!result.error) {
+      return { data: firstRow(result.data), error: null };
+    }
     const message = result.error.message || "";
     const missing =
       message.match(/Could not find the ['"]([a-z0-9_]+)['"] column/i) ||
       message.match(/column ["']?([a-z0-9_]+)["']?/i);
     const unknownColumn =
       /does not exist/i.test(message) || /schema cache/i.test(message);
-    if (!missing || !unknownColumn) return result;
+    if (!missing || !unknownColumn) return { data: null, error: result.error };
     const column = missing[1];
-    if (!(column in next)) return result;
+    if (!(column in next)) return { data: null, error: result.error };
     delete next[column];
     next = { ...next };
   }
-  return supabase.from("products").update(next).eq("id", id as string).select("*").single();
+  const result = await supabase.from("products").update(next).eq("id", id as string).select("*");
+  return { data: firstRow(result.data), error: result.error };
 }
 
 function parsePositivePrice(...candidates: unknown[]): number | null {
@@ -1210,9 +1218,9 @@ export async function createProduct(values: ProductFormValues) {
 
     const { data, error } = await writeProductRow(supabase, "insert", insertPayload);
 
-    if (error) {
+    if (error || !data) {
       console.error("createProduct insert error:", error);
-      return { success: false, error: error.message || "Failed to create product." };
+      return { success: false, error: error?.message || "Failed to create product." };
     }
 
     const variants = await syncBaseVariant(supabase, data.id, values);
@@ -1322,6 +1330,9 @@ export async function updateProduct(id: string, values: Partial<ProductFormValue
       console.error("updateProduct error:", error);
       return { success: false, error: error.message || "Failed to update product." };
     }
+    if (!data) {
+      return { success: false, error: "Product not found." };
+    }
 
     const variants = await syncBaseVariant(supabase, data.id, values);
     revalidateProductPaths(data.slug);
@@ -1343,9 +1354,38 @@ export async function updateProduct(id: string, values: Partial<ProductFormValue
 
 /**
  * Toggle a product's active/inactive visibility status.
+ * `.select()` returns an array. Asking PostgREST for a single object
+ * throws "Cannot coerce the result to a single JSON object" when the
+ * representation is empty or has more than one row.
  */
 export async function toggleProductActive(id: string, isActive: boolean) {
-  return updateProduct(id, { isActive });
+  const { isAdmin } = await verifyAdmin();
+  if (!isAdmin) {
+    return { success: false, error: "Unauthorized." };
+  }
+
+  try {
+    const supabase = await getProductWriteClient();
+    const { data, error } = await supabase
+      .from("products")
+      .update({ is_active: isActive })
+      .eq("id", id)
+      .select();
+
+    if (error) {
+      console.error("toggleProductActive error:", error);
+      return { success: false, error: error.message || "Failed to update product status." };
+    }
+
+    const row = firstRow(data);
+    revalidateProductPaths(row?.slug);
+    revalidatePath("/admin/products");
+
+    return { success: true, isActive };
+  } catch (err: any) {
+    console.error("toggleProductActive error:", err);
+    return { success: false, error: err?.message || "Failed to update product status." };
+  }
 }
 
 export async function toggleProductSoldOut(id: string, isSoldOut: boolean) {
