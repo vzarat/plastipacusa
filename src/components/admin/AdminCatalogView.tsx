@@ -42,6 +42,20 @@ const FALLBACK_GAUGES = [60, 70, 80, 90];
 const FALLBACK_LENGTHS = [1000, 1500, 5000, 6000];
 
 // Resolves the best available image source across the various field shapes a product row may have
+function formatSpecInches(value: number): string {
+  return Number.isInteger(value) ? String(value) : String(value);
+}
+
+function specBadgesFor(item: AdminProduct, labels: { hand: string; machine: string }): string[] {
+  const badges: string[] = [];
+  if (item.gauge) badges.push(`${item.gauge} GA`);
+  if (item.widthInches) badges.push(`${formatSpecInches(item.widthInches)} IN`);
+  if (item.lengthFeet) badges.push(`${item.lengthFeet.toLocaleString("en-US")} FT`);
+  if (item.application === "hand") badges.push(labels.hand);
+  else if (item.application === "machine") badges.push(labels.machine);
+  return badges;
+}
+
 function resolveProductImage(item: AdminProduct): string {
   return item.imageUrl || item.images?.[0] || STRETCH_FILM_PLACEHOLDER;
 }
@@ -452,15 +466,18 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                   {item.description || t("admin.noDescription")}
                 </p>
 
-                <div className="flex items-center gap-2 mt-1">
-                  {item.gauge && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-sky-50 border border-sky-200 text-sky-700 text-[10px] font-bold">
-                      {item.gauge} GA
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {specBadgesFor(item, {
+                    hand: t("admin.specHand"),
+                    machine: t("admin.specMachine"),
+                  }).map((badge) => (
+                    <span
+                      key={badge}
+                      className="inline-flex items-center px-2 py-0.5 rounded-full bg-sky-50 border border-sky-200 text-sky-700 text-[10px] font-bold"
+                    >
+                      {badge}
                     </span>
-                  )}
-                  <span className="capitalize text-[10px] font-semibold text-slate-500">
-                    {item.application === "hand" ? t("admin.manualHand") : t("admin.automatedMachine")}
-                  </span>
+                  ))}
                 </div>
 
                 <div className="flex items-center justify-between mt-2">

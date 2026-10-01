@@ -825,12 +825,42 @@ function slugify(value: string): string {
     .replace(/(^-|-$)+/g, "");
 }
 
+function readPositiveNumber(...candidates: unknown[]): number | null {
+  for (const candidate of candidates) {
+    if (candidate === null || candidate === undefined || candidate === "") continue;
+    const value = Number(candidate);
+    if (Number.isFinite(value) && value > 0) return value;
+  }
+  return null;
+}
+
+function extractWidthInches(text: string): number | null {
+  const match = text.match(/(\d+(?:\.\d+)?)\s*(?:"|″|\bin\b)/i);
+  return match ? Number(match[1]) : null;
+}
+
+function extractLengthFeetFromText(text: string): number | null {
+  const match = text.match(/(\d{3,5})\s*ft\b/i);
+  return match ? Number(match[1]) : null;
+}
+
 function formatAdminProduct(raw: any): AdminProduct {
   const categorySlug = String(
     PRODUCT_CATEGORIES.find((c) => c.id === raw.category_id || c.slug === raw.category_id)?.slug ||
       raw.category_id ||
       "force-standard"
   );
+
+  const specSource = [raw.name, raw.storefront_title, raw.storefrontTitle, raw.slug]
+    .filter(Boolean)
+    .join(" ");
+  const gauge = readPositiveNumber(raw.gauge) ?? readPositiveNumber(specSource.match(/(\d+)\s*ga\b/i)?.[1]);
+  const widthInches =
+    readPositiveNumber(raw.width_inches, raw.widthInches, raw.width) ??
+    extractWidthInches(specSource);
+  const lengthFeet =
+    readPositiveNumber(raw.length_feet, raw.lengthFeet, raw.length) ??
+    extractLengthFeetFromText(specSource);
 
   return {
     id: String(raw.id),
@@ -839,7 +869,9 @@ function formatAdminProduct(raw: any): AdminProduct {
     storefrontTitle: String(raw.storefront_title || raw.storefrontTitle || ""),
     partNumber: String(raw.part_number || ""),
     description: String(raw.description || ""),
-    gauge: raw.gauge === null || raw.gauge === undefined ? null : Number(raw.gauge),
+    gauge,
+    widthInches,
+    lengthFeet,
     priceUsd: raw.price_usd === null || raw.price_usd === undefined ? null : Number(raw.price_usd),
     priceCase: raw.price_case === null || raw.price_case === undefined ? null : Number(raw.price_case),
     priceHalfPallet:

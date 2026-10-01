@@ -21,6 +21,8 @@ export interface AdminProduct {
   partNumber: string;
   description: string;
   gauge: number | null;
+  widthInches: number | null;
+  lengthFeet: number | null;
   priceUsd: number | null;
   priceCase: number | null;
   priceHalfPallet: number | null;
