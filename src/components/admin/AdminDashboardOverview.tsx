@@ -10,6 +10,7 @@ import {
   Truck,
   TrendingUp,
   ArrowUpRight,
+  ArrowDownRight,
   Clock,
   CheckCircle2,
   AlertTriangle,
@@ -48,22 +49,99 @@ const CategoryBarChart = dynamic(
 
 interface AdminDashboardOverviewProps {
   orders: AdminOrder[];
+  customers?: { createdAt?: string }[];
   onNavigateToOrders: (filter?: string) => void;
   onCreateOrder: () => void;
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function isPaidOrder(order: AdminOrder) {
+  return order.paymentStatus === "paid";
+}
+
+function inWindow(order: AdminOrder, start: number, end: number) {
+  const created = new Date(order.createdAt || 0).getTime();
+  return created >= start && created < end;
+}
+
+function formatDelta(value: number) {
+  if (!Number.isFinite(value) || value === 0) return "0%";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(1)}%`;
+}
+
+function DeltaBadge({ value }: { value: number }) {
+  const label = formatDelta(value);
+  const tone =
+    value > 0
+      ? "text-emerald-600 bg-emerald-50 border-emerald-100"
+      : value < 0
+        ? "text-rose-600 bg-rose-50 border-rose-100"
+        : "text-slate-500 bg-slate-50 border-slate-200";
+  return (
+    <span
+      className={`inline-flex items-center text-xs font-bold px-1.5 py-0.5 rounded-md border ${tone}`}
+    >
+      {value > 0 ? (
+        <ArrowUpRight className="w-3 h-3 mr-0.5" />
+      ) : value < 0 ? (
+        <ArrowDownRight className="w-3 h-3 mr-0.5" />
+      ) : null}
+      {label}
+    </span>
+  );
+}
+
 export function AdminDashboardOverview({
   orders,
+  customers = [],
   onNavigateToOrders,
   onCreateOrder,
 }: AdminDashboardOverviewProps) {
   const { t } = useLanguage();
 
-  // Dynamic calculations based on live orders
   const metrics = useMemo(() => {
-    const totalSales = orders.reduce((sum, o) => sum + o.totalUsd, 0);
+    const now = Date.now();
+    const currentStart = now - 30 * DAY_MS;
+    const previousStart = now - 60 * DAY_MS;
+    const paidOrders = orders.filter(isPaidOrder);
+    const totalSales = paidOrders.reduce(
+      (sum, order) => sum + Number(order.totalUsd || 0),
+      0
+    );
     const totalOrdersCount = orders.length;
     const aov = totalOrdersCount > 0 ? totalSales / totalOrdersCount : 0;
+
+    const currentPaid = paidOrders.filter((order) =>
+      inWindow(order, currentStart, now)
+    );
+    const previousPaid = paidOrders.filter((order) =>
+      inWindow(order, previousStart, currentStart)
+    );
+    const currentSales = currentPaid.reduce(
+      (sum, order) => sum + Number(order.totalUsd || 0),
+      0
+    );
+    const previousSales = previousPaid.reduce(
+      (sum, order) => sum + Number(order.totalUsd || 0),
+      0
+    );
+    const salesGrowth =
+      previousSales > 0 ? ((currentSales - previousSales) / previousSales) * 100 : 0;
+
+    const currentOrders = orders.filter((order) =>
+      inWindow(order, currentStart, now)
+    );
+    const previousOrders = orders.filter((order) =>
+      inWindow(order, previousStart, currentStart)
+    );
+    const currentAov =
+      currentOrders.length > 0 ? currentSales / currentOrders.length : 0;
+    const previousAov =
+      previousOrders.length > 0 ? previousSales / previousOrders.length : 0;
+    const aovGrowth =
+      previousAov > 0 ? ((currentAov - previousAov) / previousAov) * 100 : 0;
 
     const unfulfilledCount = orders.filter(
       (o) => o.fulfillmentStatus === "unfulfilled"
@@ -75,17 +153,19 @@ export function AdminDashboardOverview({
       (o) => o.fulfillmentStatus === "fulfilled"
     ).length;
 
-    // Unique corporate accounts count
-    const uniqueClients = new Set(orders.map((o) => o.customerCompany || o.customerEmail));
-    const activeAccountsCount = Math.max(uniqueClients.size, 48);
+    const activeAccountsCount = customers.length;
+    const newAccountsCount = customers.filter((customer) => {
+      if (!customer.createdAt) return false;
+      const created = new Date(customer.createdAt).getTime();
+      return created >= currentStart && created < now;
+    }).length;
 
-    // Total pallets calculated across all order items
     const totalPallets = orders.reduce((acc, order) => {
-      const orderPallets = order.items.reduce(
-        (sum, item) => sum + (item.quantity || 1),
+      const orderPallets = (order.items || []).reduce(
+        (sum, item) => sum + (Number(item.quantity) || 0),
         0
       );
-      return acc + (orderPallets || 1);
+      return acc + orderPallets;
     }, 0);
 
     const pendingPaymentCount = orders.filter(
@@ -102,8 +182,11 @@ export function AdminDashboardOverview({
       totalPallets,
       pendingPaymentCount,
       activeAccountsCount,
+      newAccountsCount,
+      salesGrowth,
+      aovGrowth,
     };
-  }, [orders]);
+  }, [orders, customers]);
 
   // High-value commercial orders sorted by total USD
   const highValueOrders = useMemo(() => {
@@ -171,11 +254,8 @@ export function AdminDashboardOverview({
               {formatCurrency(metrics.totalSales)}
             </div>
             <div className="flex items-center gap-1.5 mt-1.5">
-              <span className="inline-flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-100">
-                <ArrowUpRight className="w-3 h-3 mr-0.5" />
-                {t("admin.bentoRevenueGrowth")}
-              </span>
-              <span className="text-[11px] text-slate-400">vs prior period</span>
+              <DeltaBadge value={metrics.salesGrowth} />
+              <span className="text-[11px] text-slate-400">vs prior 30 days</span>
             </div>
           </div>
         </div>
@@ -220,10 +300,8 @@ export function AdminDashboardOverview({
               {formatCurrency(metrics.aov)}
             </div>
             <div className="flex items-center gap-1.5 mt-1.5 text-xs text-slate-500 font-medium">
-              <span className="inline-flex items-center text-[11px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
-                +4.8%
-              </span>
-              <span>Pallet freight average ticket</span>
+              <DeltaBadge value={metrics.aovGrowth} />
+              <span>vs prior 30 days</span>
             </div>
           </div>
         </div>
@@ -243,10 +321,10 @@ export function AdminDashboardOverview({
               <span className="text-sm font-semibold text-slate-400">Clients</span>
             </div>
             <div className="flex items-center gap-1.5 mt-1.5 text-xs">
-              <span className="inline-flex items-center text-[11px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
-                +5 New
+              <span className="inline-flex items-center text-[11px] font-bold text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
+                {metrics.newAccountsCount} new
               </span>
-              <span className="text-slate-500">Corporate Net-30 verified</span>
+              <span className="text-slate-500">last 30 days</span>
             </div>
           </div>
         </div>
@@ -256,12 +334,12 @@ export function AdminDashboardOverview({
       <div className="grid grid-cols-1 lg:grid-cols-3 3xl:grid-cols-12 gap-6 3xl:gap-8">
         {/* Left: mountain chart */}
         <div className="lg:col-span-2 3xl:col-span-8 min-w-0">
-          <RevenueMountainChart />
+          <RevenueMountainChart orders={orders} />
         </div>
 
         {/* Right: donut */}
         <div className="lg:col-span-1 3xl:col-span-4 min-w-0">
-          <FulfillmentDonutChart />
+          <FulfillmentDonutChart orders={orders} />
         </div>
       </div>
 
@@ -269,7 +347,7 @@ export function AdminDashboardOverview({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
         {/* Left: Category Bar Chart */}
         <div className="lg:col-span-5 xl:col-span-4 3xl:col-span-3 min-w-0">
-          <CategoryBarChart />
+          <CategoryBarChart orders={orders} />
         </div>
 
         {/* Right: High-Value Orders Quick Table */}

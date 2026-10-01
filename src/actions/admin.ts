@@ -357,14 +357,26 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
         row.shipping_address?.error_details ||
           row.shipping_address?.error_message
       );
+      const rawPayment = String(row.payment_status || "").toLowerCase();
+      const isPaid =
+        rawPayment === "paid" ||
+        rawPayment === "completed" ||
+        rawStatus === "paid" ||
+        rawStatus === "completed";
       const paymentStatus = hasFailureDetails
         ? "failed"
-        : ((row.payment_status ||
-            (rawStatus === "paid" ? "paid" : "pending")) as any);
+        : isPaid
+          ? "paid"
+          : rawPayment === "refunded" || rawStatus === "refunded"
+            ? "refunded"
+            : rawPayment === "failed" || rawStatus === "failed"
+              ? "failed"
+              : "pending";
       const fulfillmentStatus = hasFailureDetails
         ? "unfulfilled"
         : ((row.fulfillment_status ||
             (rawStatus === "paid" ||
+            rawStatus === "completed" ||
             rawStatus === "fulfilled" ||
             rawStatus === "delivered"
               ? "fulfilled"

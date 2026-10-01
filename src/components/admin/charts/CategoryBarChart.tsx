@@ -2,13 +2,8 @@
 
 import React, { useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
-import {
-  BarChart3,
-  Layers,
-  Sparkles,
-  Package,
-  TrendingUp,
-} from "lucide-react";
+import type { AdminOrder } from "@/actions/admin";
+import { BarChart3, Layers } from "lucide-react";
 
 interface CategoryData {
   id: string;
@@ -21,54 +16,50 @@ interface CategoryData {
   barColor: string;
 }
 
-const CATEGORIES: CategoryData[] = [
-  {
-    id: "hand_stretch",
-    nameKey: "admin.bentoCatHand",
-    specBadge: "50G - 80G Manual",
-    percentage: 44,
-    ordersCount: 580,
-    palletsCount: 1640,
-    gradient: "from-blue-600 to-indigo-600",
-    barColor: "#2563eb",
-  },
-  {
-    id: "machine_cast",
-    nameKey: "admin.bentoCatMachine",
-    specBadge: "Cast High-Speed",
-    percentage: 30,
-    ordersCount: 395,
-    palletsCount: 2280,
-    gradient: "from-indigo-600 to-purple-600",
-    barColor: "#4f46e5",
-  },
-  {
-    id: "pre_stretch",
-    nameKey: "admin.bentoCatNano",
-    specBadge: "Coreless 300% Nano",
-    percentage: 16,
-    ordersCount: 210,
-    palletsCount: 920,
-    gradient: "from-purple-600 to-pink-500",
-    barColor: "#9333ea",
-  },
-  {
-    id: "edge_protectors",
-    nameKey: "admin.bentoCatEdge",
-    specBadge: "V-Board & Corners",
-    percentage: 10,
-    ordersCount: 132,
-    palletsCount: 480,
-    gradient: "from-amber-500 to-orange-500",
-    barColor: "#f59e0b",
-  },
-];
-
-export function CategoryBarChart() {
+export function CategoryBarChart({ orders = [] }: { orders?: AdminOrder[] }) {
   const { t } = useLanguage();
   const [hoveredCatId, setHoveredCatId] = useState<string | null>(null);
 
-  const totalOrders = CATEGORIES.reduce((sum, c) => sum + c.ordersCount, 0);
+  const handOrders = orders.filter((order) =>
+    (order.items || []).some((item) => item.application === "hand")
+  );
+  const machineOrders = orders.filter((order) =>
+    (order.items || []).some((item) => item.application === "machine")
+  );
+  const palletsFor = (list: AdminOrder[]) =>
+    list.reduce(
+      (sum, order) =>
+        sum +
+        (order.items || []).reduce(
+          (itemSum, item) => itemSum + (Number(item.quantity) || 0),
+          0
+        ),
+      0
+    );
+  const totalOrders = orders.length;
+  const CATEGORIES: CategoryData[] = [
+    {
+      id: "hand_stretch",
+      nameKey: "admin.bentoCatHand",
+      specBadge: "Hand film",
+      percentage: totalOrders > 0 ? Math.round((handOrders.length / totalOrders) * 100) : 0,
+      ordersCount: handOrders.length,
+      palletsCount: palletsFor(handOrders),
+      gradient: "from-blue-600 to-indigo-600",
+      barColor: "#2563eb",
+    },
+    {
+      id: "machine_cast",
+      nameKey: "admin.bentoCatMachine",
+      specBadge: "Machine film",
+      percentage:
+        totalOrders > 0 ? Math.round((machineOrders.length / totalOrders) * 100) : 0,
+      ordersCount: machineOrders.length,
+      palletsCount: palletsFor(machineOrders),
+      gradient: "from-indigo-600 to-purple-600",
+      barColor: "#4f46e5",
+    },
+  ];
   const totalPallets = CATEGORIES.reduce((sum, c) => sum + c.palletsCount, 0);
 
   return (
@@ -151,7 +142,7 @@ export function CategoryBarChart() {
                 <div className="flex items-center justify-between text-[11px] text-slate-500 mt-2 animate-fade-in pt-1 border-t border-slate-100">
                   <span>{cat.ordersCount} purchase orders</span>
                   <span className="text-purple-600 font-semibold">
-                    ~{(cat.palletsCount / 22).toFixed(1)} Truckloads
+                    {cat.palletsCount.toLocaleString()} units
                   </span>
                 </div>
               )}
@@ -167,7 +158,7 @@ export function CategoryBarChart() {
           <span className="font-semibold">Total Pallet Output:</span>
         </div>
         <span className="font-mono font-bold text-slate-900">
-          {totalPallets.toLocaleString()} Pallets ({Math.round(totalPallets / 22)} TL)
+          {totalPallets.toLocaleString()} units
         </span>
       </div>
     </div>

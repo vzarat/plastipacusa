@@ -214,6 +214,7 @@ export function AdminOrdersClient({
           {activeTab === "overview" && (
             <AdminDashboardOverview
               orders={orders}
+              customers={customers}
               onNavigateToOrders={() => setActiveTab("orders")}
               onCreateOrder={() => {
                 setActiveTab("orders");

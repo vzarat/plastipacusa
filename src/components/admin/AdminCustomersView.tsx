@@ -27,6 +27,7 @@ export interface CustomerRecord {
   taxId?: string;
   creditApplicationStatus?: "pending" | "approved" | "rejected";
   status: "approved" | "under_review" | "suspended";
+  createdAt?: string;
 }
 
 interface AdminCustomersViewProps {

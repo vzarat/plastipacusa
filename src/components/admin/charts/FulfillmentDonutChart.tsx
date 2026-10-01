@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
+import type { AdminOrder } from "@/actions/admin";
 import {
   PieChart,
   Truck,
@@ -19,76 +20,43 @@ interface StatusSegment {
   hoverColor: string;
 }
 
-const SEGMENTS: StatusSegment[] = [
-  {
-    id: "delivered",
-    labelKey: "admin.bentoStatusDelivered",
-    value: 48,
-    count: 156,
-    color: "#10b981", // emerald-500
-    hoverColor: "#059669",
-  },
-  {
-    id: "in_transit",
-    labelKey: "admin.bentoStatusInTransit",
-    value: 28,
-    count: 91,
-    color: "#0284c7", // sky-600
-    hoverColor: "#0369a1",
-  },
-  {
-    id: "processing",
-    labelKey: "admin.bentoStatusProcessing",
-    value: 16,
-    count: 52,
-    color: "#f59e0b", // amber-500
-    hoverColor: "#d97706",
-  },
-  {
-    id: "pending",
-    labelKey: "admin.bentoStatusPending",
-    value: 8,
-    count: 26,
-    color: "#f43f5e", // rose-500
-    hoverColor: "#e11d48",
-  },
-];
+const SEGMENT_STYLE = [
+  { id: "delivered", labelKey: "admin.bentoStatusDelivered", color: "#10b981", hoverColor: "#059669" },
+  { id: "in_transit", labelKey: "admin.bentoStatusInTransit", color: "#0284c7", hoverColor: "#0369a1" },
+  { id: "processing", labelKey: "admin.bentoStatusProcessing", color: "#f59e0b", hoverColor: "#d97706" },
+  { id: "pending", labelKey: "admin.bentoStatusPending", color: "#f43f5e", hoverColor: "#e11d48" },
+] as const;
 
-interface LiveActivityItem {
-  id: string;
-  title: string;
-  description: string;
-  timeAgo: string;
-  type: "success" | "transit" | "warning";
-}
-
-const LIVE_ACTIVITIES: LiveActivityItem[] = [
-  {
-    id: "1",
-    title: "Laredo Hub Dock #4 Linehaul",
-    description: "40ft pallet load cleared US-MX customs for Dallas linehaul.",
-    timeAgo: "14m ago",
-    type: "transit",
-  },
-  {
-    id: "2",
-    title: "Extrusion Line #2 (FORCE™ 50G)",
-    description: "520 rolls automated packing completed. 100% tensile QA pass.",
-    timeAgo: "48m ago",
-    type: "success",
-  },
-  {
-    id: "3",
-    title: "Net-30 Commercial Credit Approval",
-    description: "Approved $45,000 line for General Motors Component Plant.",
-    timeAgo: "2h ago",
-    type: "warning",
-  },
-];
-
-export function FulfillmentDonutChart() {
+export function FulfillmentDonutChart({ orders = [] }: { orders?: AdminOrder[] }) {
   const { t } = useLanguage();
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
+
+  const counts = {
+    delivered: orders.filter((order) => order.fulfillmentStatus === "fulfilled").length,
+    in_transit: orders.filter((order) => order.fulfillmentStatus === "in_transit").length,
+    processing: orders.filter(
+      (order) =>
+        order.fulfillmentStatus === "unfulfilled" && order.paymentStatus === "paid"
+    ).length,
+    pending: orders.filter((order) => order.paymentStatus === "pending").length,
+  };
+  const total = orders.length;
+  const SEGMENTS: StatusSegment[] = SEGMENT_STYLE.map((style) => {
+    const count = counts[style.id];
+    return {
+      ...style,
+      count,
+      value: total > 0 ? Math.round((count / total) * 100) : 0,
+    };
+  });
+  const onTimeRate =
+    total > 0 ? Math.round((counts.delivered / total) * 100) : 0;
+  const recentOrders = [...orders]
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    )
+    .slice(0, 3);
 
   // SVG Donut geometry with wider inner hole so center text breathes comfortably
   const radius = 68;
@@ -122,7 +90,7 @@ export function FulfillmentDonutChart() {
             <span>{t("admin.bentoFulfillmentTitle")}</span>
           </span>
           <span className="text-[11px] font-bold text-slate-400">
-            325 Batches
+            {total} Orders
           </span>
         </div>
         <p className="text-xs text-slate-400">
@@ -180,7 +148,7 @@ export function FulfillmentDonutChart() {
           ) : (
             <div className="space-y-0.5">
               <span className="text-2xl font-black text-slate-800 tracking-tight">
-                94%
+                {onTimeRate}%
               </span>
               <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 {t("admin.bentoOnTimeRate")}
@@ -235,37 +203,34 @@ export function FulfillmentDonutChart() {
         </div>
 
         <div className="space-y-2">
-          {LIVE_ACTIVITIES.map((act) => (
-            <div
-              key={act.id}
-              className="flex items-start gap-2.5 p-2 rounded-xl bg-slate-50/70 border border-slate-100 hover:border-slate-200 transition-colors"
-            >
-              <div className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center flex-shrink-0 text-slate-700 shadow-2xs mt-0.5">
-                {act.type === "transit" && (
-                  <Truck className="w-3 h-3 text-sky-600" />
-                )}
-                {act.type === "success" && (
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                )}
-                {act.type === "warning" && (
-                  <Clock className="w-3 h-3 text-amber-500" />
-                )}
-              </div>
-              <div className="space-y-0.5 flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-1">
-                  <span className="text-[11px] font-bold text-slate-800 truncate">
-                    {act.title}
-                  </span>
-                  <span className="text-[10px] text-slate-400 flex-shrink-0">
-                    {act.timeAgo}
-                  </span>
+          {recentOrders.length === 0 ? (
+            <p className="text-[11px] text-slate-400">No orders yet.</p>
+          ) : (
+            recentOrders.map((order) => (
+              <div
+                key={order.id}
+                className="flex items-start gap-2.5 p-2 rounded-xl bg-slate-50/70 border border-slate-100"
+              >
+                <div className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  {order.fulfillmentStatus === "in_transit" ? (
+                    <Truck className="w-3 h-3 text-sky-600" />
+                  ) : order.fulfillmentStatus === "fulfilled" ? (
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                  ) : (
+                    <Clock className="w-3 h-3 text-amber-500" />
+                  )}
                 </div>
-                <p className="text-[11px] text-slate-500 line-clamp-1">
-                  {act.description}
-                </p>
+                <div className="space-y-0.5 flex-1 min-w-0">
+                  <span className="text-[11px] font-bold text-slate-800 truncate block">
+                    {order.customerCompany || order.customerName || "Order"}
+                  </span>
+                  <p className="text-[11px] text-slate-500 line-clamp-1">
+                    {order.itemsSummary || "Order"}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>

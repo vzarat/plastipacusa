@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useRef } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { formatCurrency } from "@/lib/utils";
+import type { AdminOrder } from "@/actions/admin";
 import {
   TrendingUp,
   ArrowUpRight,
@@ -19,40 +20,129 @@ interface ChartDataPoint {
   growth: string;
 }
 
-// Preset datasets for time periods
-const DATA_1Y: ChartDataPoint[] = [
-  { label: "Oct", fullDate: "Oct 2025", revenue: 68400, pallets: 210, truckloads: 8, growth: "+8.2%" },
-  { label: "Nov", fullDate: "Nov 2025", revenue: 74200, pallets: 235, truckloads: 9, growth: "+8.5%" },
-  { label: "Dec", fullDate: "Dec 2025", revenue: 89600, pallets: 280, truckloads: 11, growth: "+20.7%" },
-  { label: "Jan", fullDate: "Jan 2026", revenue: 78500, pallets: 245, truckloads: 10, growth: "-12.4%" },
-  { label: "Feb", fullDate: "Feb 2026", revenue: 92300, pallets: 290, truckloads: 12, growth: "+17.6%" },
-  { label: "Mar", fullDate: "Mar 2026", revenue: 104800, pallets: 325, truckloads: 13, growth: "+13.5%" },
-  { label: "Apr", fullDate: "Apr 2026", revenue: 98400, pallets: 310, truckloads: 12, growth: "-6.1%" },
-  { label: "May", fullDate: "May 2026", revenue: 112600, pallets: 350, truckloads: 14, growth: "+14.4%" },
-  { label: "Jun", fullDate: "Jun 2026", revenue: 126400, pallets: 390, truckloads: 16, growth: "+12.3%" },
-  { label: "Jul", fullDate: "Jul 2026", revenue: 119800, pallets: 375, truckloads: 15, growth: "-5.2%" },
-  { label: "Aug", fullDate: "Aug 2026", revenue: 138500, pallets: 430, truckloads: 17, growth: "+15.6%" },
-  { label: "Sep", fullDate: "Sep 2026", revenue: 148500, pallets: 465, truckloads: 19, growth: "+7.2%" },
-];
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-const DATA_7D: ChartDataPoint[] = [
-  { label: "Thu", fullDate: "Sep 4, 2026", revenue: 21400, pallets: 68, truckloads: 3, growth: "+4.1%" },
-  { label: "Fri", fullDate: "Sep 5, 2026", revenue: 26800, pallets: 84, truckloads: 3, growth: "+25.2%" },
-  { label: "Sat", fullDate: "Sep 6, 2026", revenue: 8400, pallets: 28, truckloads: 1, growth: "-68.6%" },
-  { label: "Sun", fullDate: "Sep 7, 2026", revenue: 4200, pallets: 14, truckloads: 1, growth: "-50.0%" },
-  { label: "Mon", fullDate: "Sep 8, 2026", revenue: 31500, pallets: 98, truckloads: 4, growth: "+650%" },
-  { label: "Tue", fullDate: "Sep 9, 2026", revenue: 34200, pallets: 106, truckloads: 4, growth: "+8.6%" },
-  { label: "Wed", fullDate: "Sep 10, 2026", revenue: 38900, pallets: 122, truckloads: 5, growth: "+13.7%" },
-];
+function formatGrowth(current: number, previous: number): string {
+  if (previous <= 0) return "0%";
+  const delta = ((current - previous) / previous) * 100;
+  const sign = delta > 0 ? "+" : "";
+  return `${sign}${delta.toFixed(1)}%`;
+}
 
-const DATA_1M: ChartDataPoint[] = [
-  { label: "Wk 34", fullDate: "Aug 17 - Aug 23", revenue: 32400, pallets: 102, truckloads: 4, growth: "+6.8%" },
-  { label: "Wk 35", fullDate: "Aug 24 - Aug 30", revenue: 36800, pallets: 114, truckloads: 5, growth: "+13.6%" },
-  { label: "Wk 36", fullDate: "Aug 31 - Sep 6", revenue: 39500, pallets: 124, truckloads: 5, growth: "+7.3%" },
-  { label: "Wk 37", fullDate: "Sep 7 - Sep 13", revenue: 44200, pallets: 138, truckloads: 6, growth: "+11.9%" },
-];
+function periodRevenueDelta(orders: AdminOrder[], period: TimePeriod): number {
+  const now = Date.now();
+  let start = now - 365 * DAY_MS;
+  if (period === "7D") start = now - 7 * DAY_MS;
+  else if (period === "1M") start = now - 28 * DAY_MS;
+  else if (period === "YTD") {
+    const yearStart = new Date();
+    yearStart.setMonth(0, 1);
+    yearStart.setHours(0, 0, 0, 0);
+    start = yearStart.getTime();
+  }
+  const span = now - start;
+  const sumBetween = (from: number, to: number) =>
+    orders.reduce((sum, order) => {
+      if (!isRevenueOrder(order)) return sum;
+      const created = new Date(order.createdAt || 0).getTime();
+      if (created < from || created >= to) return sum;
+      return sum + Number(order.totalUsd || 0);
+    }, 0);
+  const current = sumBetween(start, now);
+  const previous = sumBetween(start - span, start);
+  if (previous <= 0) return 0;
+  return ((current - previous) / previous) * 100;
+}
 
-const DATA_YTD: ChartDataPoint[] = DATA_1Y.slice(3); // Jan - Sep 2026
+function formatAxisMoney(value: number): string {
+  if (value >= 1000) return `$${Math.round(value / 1000)}k`;
+  return `$${Math.round(value)}`;
+}
+
+function orderPallets(order: AdminOrder): number {
+  return (order.items || []).reduce(
+    (sum, item) => sum + (Number(item.quantity) || 0),
+    0
+  );
+}
+
+function isRevenueOrder(order: AdminOrder): boolean {
+  return order.paymentStatus === "paid";
+}
+
+function buildRevenueSeries(
+  orders: AdminOrder[],
+  period: TimePeriod
+): ChartDataPoint[] {
+  const now = new Date();
+  const buckets: { start: Date; end: Date; label: string; fullDate: string }[] = [];
+
+  if (period === "7D") {
+    for (let i = 6; i >= 0; i -= 1) {
+      const start = new Date(now);
+      start.setHours(0, 0, 0, 0);
+      start.setDate(start.getDate() - i);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+      buckets.push({
+        start,
+        end,
+        label: start.toLocaleDateString("en-US", { weekday: "short" }),
+        fullDate: start.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
+      });
+    }
+  } else if (period === "1M") {
+    for (let i = 3; i >= 0; i -= 1) {
+      const end = new Date(now);
+      end.setHours(0, 0, 0, 0);
+      end.setDate(end.getDate() - i * 7 + 1);
+      const start = new Date(end);
+      start.setDate(start.getDate() - 7);
+      buckets.push({
+        start,
+        end,
+        label: `Wk ${4 - i}`,
+        fullDate: `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${new Date(end.getTime() - 1).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+      });
+    }
+  } else {
+    const months = period === "YTD" ? now.getMonth() + 1 : 12;
+    for (let i = months - 1; i >= 0; i -= 1) {
+      const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+      buckets.push({
+        start,
+        end,
+        label: start.toLocaleDateString("en-US", { month: "short" }),
+        fullDate: start.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+      });
+    }
+  }
+
+  let previousRevenue = 0;
+  return buckets.map((bucket) => {
+    const inBucket = orders.filter((order) => {
+      const created = new Date(order.createdAt || 0);
+      return created >= bucket.start && created < bucket.end && isRevenueOrder(order);
+    });
+    const revenue = inBucket.reduce((sum, order) => sum + Number(order.totalUsd || 0), 0);
+    const pallets = inBucket.reduce((sum, order) => sum + orderPallets(order), 0);
+    const point: ChartDataPoint = {
+      label: bucket.label,
+      fullDate: bucket.fullDate,
+      revenue,
+      pallets,
+      truckloads: 0,
+      growth: formatGrowth(revenue, previousRevenue),
+    };
+    previousRevenue = revenue;
+    return point;
+  });
+}
 
 /**
  * Generates a smooth cubic Bezier curve SVG path string from points.
@@ -81,25 +171,20 @@ function generateSmoothPath(points: { x: number; y: number }[]): string {
   return path;
 }
 
-export function RevenueMountainChart() {
+export function RevenueMountainChart({ orders = [] }: { orders?: AdminOrder[] }) {
   const { t } = useLanguage();
   const [period, setPeriod] = useState<TimePeriod>("1Y");
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
-  const data = useMemo(() => {
-    switch (period) {
-      case "7D":
-        return DATA_7D;
-      case "1M":
-        return DATA_1M;
-      case "YTD":
-        return DATA_YTD;
-      case "1Y":
-      default:
-        return DATA_1Y;
-    }
-  }, [period]);
+  const data = useMemo(
+    () => buildRevenueSeries(orders, period),
+    [orders, period]
+  );
+  const periodGrowth = useMemo(
+    () => periodRevenueDelta(orders, period),
+    [orders, period]
+  );
 
   // Overall totals for current period
   const totalPeriodRevenue = useMemo(
@@ -111,7 +196,7 @@ export function RevenueMountainChart() {
     [data]
   );
   const peakRevenue = useMemo(
-    () => Math.max(...data.map((d) => d.revenue)),
+    () => Math.max(1, ...data.map((d) => d.revenue), 0),
     [data]
   );
 
@@ -128,11 +213,13 @@ export function RevenueMountainChart() {
 
   // Scales
   const maxRev = peakRevenue * 1.15;
-  const maxPallets = Math.max(...data.map((d) => d.pallets)) * 1.25;
+  const maxPallets = Math.max(1, ...data.map((d) => d.pallets), 0) * 1.25;
 
   const pointsRev = useMemo(() => {
     return data.map((d, i) => {
-      const x = paddingLeft + (i / (data.length - 1)) * chartWidth;
+      const x =
+        paddingLeft +
+        (i / Math.max(1, data.length - 1)) * chartWidth;
       const y = paddingTop + chartHeight - (d.revenue / maxRev) * chartHeight;
       return { x, y, data: d };
     });
@@ -140,7 +227,9 @@ export function RevenueMountainChart() {
 
   const pointsPallets = useMemo(() => {
     return data.map((d, i) => {
-      const x = paddingLeft + (i / (data.length - 1)) * chartWidth;
+      const x =
+        paddingLeft +
+        (i / Math.max(1, data.length - 1)) * chartWidth;
       const y = paddingTop + chartHeight - (d.pallets / maxPallets) * chartHeight;
       return { x, y, data: d };
     });
@@ -191,13 +280,19 @@ export function RevenueMountainChart() {
     hoveredIdx !== null ? pointsPallets[hoveredIdx] : null;
 
   // Y-axis tick marks
-  const yTicks = [
-    { value: maxRev, label: `$${Math.round(maxRev / 1000)}k` },
-    { value: maxRev * 0.75, label: `$${Math.round((maxRev * 0.75) / 1000)}k` },
-    { value: maxRev * 0.5, label: `$${Math.round((maxRev * 0.5) / 1000)}k` },
-    { value: maxRev * 0.25, label: `$${Math.round((maxRev * 0.25) / 1000)}k` },
-    { value: 0, label: "$0" },
-  ];
+  const yTicks =
+    totalPeriodRevenue <= 0
+      ? [1, 0.75, 0.5, 0.25, 0].map((ratio) => ({
+          value: maxRev * ratio,
+          label: "$0",
+        }))
+      : [
+          { value: maxRev, label: formatAxisMoney(maxRev) },
+          { value: maxRev * 0.75, label: formatAxisMoney(maxRev * 0.75) },
+          { value: maxRev * 0.5, label: formatAxisMoney(maxRev * 0.5) },
+          { value: maxRev * 0.25, label: formatAxisMoney(maxRev * 0.25) },
+          { value: 0, label: "$0" },
+        ];
 
   return (
     <div className="bg-white border border-slate-200/80 shadow-xs hover:shadow-sm transition-all rounded-2xl p-6 space-y-6 flex flex-col justify-between">
@@ -209,9 +304,21 @@ export function RevenueMountainChart() {
               <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
               <span>{t("admin.bentoRevenueTitle")}</span>
             </span>
-            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
-              <ArrowUpRight className="w-3 h-3" />
-              <span>{t("admin.bentoRevenueGrowth")}</span>
+            <span
+              className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md border ${
+                periodGrowth > 0
+                  ? "text-emerald-600 bg-emerald-50 border-emerald-100"
+                  : periodGrowth < 0
+                    ? "text-rose-600 bg-rose-50 border-rose-100"
+                    : "text-slate-500 bg-slate-50 border-slate-200"
+              }`}
+            >
+              {periodGrowth > 0 ? <ArrowUpRight className="w-3 h-3" /> : null}
+              <span>
+                {periodGrowth === 0
+                  ? "0%"
+                  : `${periodGrowth > 0 ? "+" : ""}${periodGrowth.toFixed(1)}%`}
+              </span>
             </span>
           </div>
           <p className="text-xs text-slate-500 line-clamp-1">
@@ -458,7 +565,7 @@ export function RevenueMountainChart() {
                   <span>{t("admin.bentoPallets")}:</span>
                 </span>
                 <span className="font-mono font-bold text-white">
-                  {activePointRev.data.pallets} Plt ({activePointRev.data.truckloads} TL)
+                  {activePointRev.data.pallets} units
                 </span>
               </div>
             </div>
