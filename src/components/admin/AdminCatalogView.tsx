@@ -48,8 +48,8 @@ function formatSpecInches(value: number): string {
 
 function specBadgesFor(item: AdminProduct, labels: { hand: string; machine: string }): string[] {
   const badges: string[] = [];
-  if (item.gauge) badges.push(`${item.gauge} GA`);
   if (item.widthInches) badges.push(`${formatSpecInches(item.widthInches)} IN`);
+  if (item.gauge) badges.push(`${item.gauge} GA`);
   if (item.lengthFeet) badges.push(`${item.lengthFeet.toLocaleString("en-US")} FT`);
   if (item.application === "hand") badges.push(labels.hand);
   else if (item.application === "machine") badges.push(labels.machine);
