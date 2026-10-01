@@ -171,6 +171,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
       if (result.success && result.product) {
         setProducts((prev) => prev.map((p) => (p.id === product.id ? result.product! : p)));
         notify(`${product.name} is now ${!product.isActive ? "active" : "inactive"}.`);
+        router.refresh();
       } else {
         notify(result.error || "Failed to update product status.");
       }
@@ -189,6 +190,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
         notify(
           `${product.name} is now ${isSoldOut ? "sold out" : "in stock"}.`
         );
+        router.refresh();
       } else {
         notify(result.error || "Failed to update availability.");
       }

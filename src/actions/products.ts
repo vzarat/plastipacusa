@@ -59,8 +59,12 @@ async function writeProductRow(
     const result = await query;
     if (!result.error) return result;
     const message = result.error.message || "";
-    const missing = message.match(/column ["']?([a-z0-9_]+)["']?/i);
-    if (!missing || !/does not exist/i.test(message)) return result;
+    const missing =
+      message.match(/Could not find the ['"]([a-z0-9_]+)['"] column/i) ||
+      message.match(/column ["']?([a-z0-9_]+)["']?/i);
+    const unknownColumn =
+      /does not exist/i.test(message) || /schema cache/i.test(message);
+    if (!missing || !unknownColumn) return result;
     const column = missing[1];
     if (!(column in next)) return result;
     delete next[column];
@@ -983,7 +987,7 @@ export async function updateProduct(id: number, values: Partial<ProductFormValue
   try {
     const supabase = await getProductWriteClient();
 
-    const updatePayload: Record<string, any> = { updated_at: new Date().toISOString() };
+    const updatePayload: Record<string, any> = {};
     if (values.name !== undefined) updatePayload.name = values.name.trim();
     if (values.storefrontTitle !== undefined) updatePayload.storefront_title = values.storefrontTitle?.trim() || null;
     if (values.partNumber !== undefined) updatePayload.part_number = values.partNumber?.trim() || null;
