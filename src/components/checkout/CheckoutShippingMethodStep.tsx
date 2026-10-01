@@ -138,7 +138,7 @@ export function CheckoutShippingMethodStep({
         <div className="flex items-start gap-2 text-sm text-slate-700">
           <Warehouse className="mt-0.5 h-4 w-4 shrink-0 text-sky-700" />
           <p>
-            Shipped from:{" "}
+            Ship From:{" "}
             <span className="font-semibold">{WAREHOUSE_ORIGIN}</span>
           </p>
         </div>
@@ -149,11 +149,11 @@ export function CheckoutShippingMethodStep({
           <div className="flex items-center gap-2 text-sky-800">
             <Calendar className="h-4 w-4" />
             <p className="text-[11px] font-bold uppercase tracking-wider">
-              Estimated shipping date
+              Estimated Ship Date
             </p>
           </div>
           <p className="mt-2 text-sm font-black text-slate-900">
-            {schedule?.shippingLabel || "Next business day / 24 hrs"}
+            {schedule?.shippingLabel || "Next business day"}
           </p>
           {schedule && (
             <p className="mt-1 text-xs text-slate-500">{schedule.shippingDate}</p>
@@ -163,11 +163,11 @@ export function CheckoutShippingMethodStep({
           <div className="flex items-center gap-2 text-sky-800">
             <Calendar className="h-4 w-4" />
             <p className="text-[11px] font-bold uppercase tracking-wider">
-              Estimated delivery date
+              Estimated Delivery Date
             </p>
           </div>
           <p className="mt-2 text-sm font-black text-slate-900">
-            {schedule?.deliveryLabel || "3–5 business days"}
+            {schedule?.deliveryLabel || "2–3 business days"}
           </p>
           {schedule && (
             <p className="mt-1 text-xs text-slate-500">{schedule.deliveryRange}</p>

@@ -97,7 +97,7 @@ export function CheckoutPaymentStep({
             </dd>
           </div>
           <div className="flex items-center justify-between text-slate-600">
-            <dt>Estimated sales tax (8.25%)</dt>
+            <dt>Estimated Tax</dt>
             <dd className="font-semibold text-slate-900">
               {formatCurrency(quote.tax)}
             </dd>

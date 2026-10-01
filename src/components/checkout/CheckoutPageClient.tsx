@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { CheckoutCartStep } from "@/components/checkout/CheckoutCartStep";
 import { CheckoutPaymentStep } from "@/components/checkout/CheckoutPaymentStep";
+import { ShipmentOriginSummary } from "@/components/checkout/ShipmentOriginSummary";
 import { CheckoutAddressStep } from "@/components/checkout/CheckoutAddressStep";
 import { CheckoutShippingMethodStep } from "@/components/checkout/CheckoutShippingMethodStep";
 import {
@@ -61,7 +62,28 @@ function CheckoutPageInner() {
   );
   const [authChecking, setAuthChecking] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [cartReady, setCartReady] = useState(
+    () => useCartStore.persist.hasHydrated()
+  );
+  const emptyCartRedirected = useRef(false);
   const { selectedAddress, deliveryMethod, taxExemptRequested } = useCheckoutState();
+
+  useEffect(() => {
+    if (useCartStore.persist.hasHydrated()) {
+      setCartReady(true);
+    }
+    return useCartStore.persist.onFinishHydration(() => {
+      setCartReady(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!cartReady || authChecking || !isAuthenticated) return;
+    if (items.length > 0 || emptyCartRedirected.current) return;
+    emptyCartRedirected.current = true;
+    toast("Your cart is empty.");
+    router.replace("/products");
+  }, [authChecking, cartReady, isAuthenticated, items.length, router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -260,6 +282,8 @@ function CheckoutPageInner() {
             ))}
           </div>
 
+          {(step === 3 || step === 4) && <ShipmentOriginSummary />}
+
           <div className="mt-6 space-y-3 border-t border-slate-200 pt-4 text-sm">
             <div className="flex items-center justify-between text-slate-600">
               <span>Weight</span>
@@ -303,7 +327,7 @@ function CheckoutPageInner() {
               </p>
             )}
             <div className="flex items-center justify-between text-slate-600">
-              <span>Estimated Tax (8.25%)</span>
+              <span>Estimated Tax</span>
               <span className="font-semibold text-slate-800">
                 {formatCurrency(quote.tax)}
               </span>

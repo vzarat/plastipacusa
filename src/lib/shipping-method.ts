@@ -1,7 +1,8 @@
 export type DeliveryMethodId = "ground" | "freight";
 
-export const WAREHOUSE_ORIGIN =
-  "Plastipac USA Warehouse - Main Facility";
+export const SHIP_FROM_LOCATION = "Mission, TX";
+
+export const WAREHOUSE_ORIGIN = SHIP_FROM_LOCATION;
 
 export interface DeliveryMethod {
   id: DeliveryMethodId;
@@ -75,13 +76,13 @@ function formatScheduleDate(date: Date): string {
 
 export function buildShippingSchedule(now = new Date()): ShippingSchedule {
   const shippingDate = addBusinessDays(now, 1);
-  const deliveryStart = addBusinessDays(shippingDate, 3);
-  const deliveryEnd = addBusinessDays(shippingDate, 5);
+  const deliveryStart = addBusinessDays(shippingDate, 2);
+  const deliveryEnd = addBusinessDays(shippingDate, 3);
 
   return {
-    shippingLabel: "Next business day / 24 hrs",
+    shippingLabel: "Next business day",
     shippingDate: formatScheduleDate(shippingDate),
-    deliveryLabel: "3–5 business days",
+    deliveryLabel: "2–3 business days",
     deliveryRange: `${formatScheduleDate(deliveryStart)} – ${formatScheduleDate(deliveryEnd)}`,
   };
 }
