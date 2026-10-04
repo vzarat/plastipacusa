@@ -18,7 +18,7 @@ import {
 } from "@/lib/saved-shipping-address";
 
 const fieldClass =
-  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400";
+  "h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 md:h-auto md:py-2.5";
 
 const EMPTY_FORM: ShippingAddressInput = {
   fullName: "",
@@ -148,7 +148,7 @@ export function CheckoutAddressStep({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-tour="tour-destination">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-sky-700">
@@ -164,7 +164,7 @@ export function CheckoutAddressStep({
         <Button
           type="button"
           variant="outline"
-          className="shrink-0 gap-1.5"
+          className="h-12 shrink-0 gap-1.5 md:h-10"
           onClick={() => setModalOpen(true)}
         >
           <Plus className="h-4 w-4" />
@@ -194,7 +194,7 @@ export function CheckoutAddressStep({
             return (
               <li key={address.id}>
                 <div
-                  className={`rounded-2xl border p-4 transition-colors ${
+                  className={`min-h-12 rounded-2xl border p-4 transition-colors ${
                     selected
                       ? "border-sky-500 bg-sky-50 ring-2 ring-sky-200"
                       : "border-slate-200 bg-white"
@@ -293,12 +293,13 @@ export function CheckoutAddressStep({
       )}
 
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-        <Button type="button" variant="outline" onClick={onBack}>
+        <Button type="button" variant="outline" className="h-12 md:h-10" onClick={onBack}>
           Back to Cart
         </Button>
         <Button
           type="button"
           variant="gradient"
+          className="hidden h-12 md:inline-flex md:h-10"
           onClick={proceed}
           disabled={!selectedAddress}
         >
@@ -349,6 +350,7 @@ export function CheckoutAddressStep({
                   value={form.fullName}
                   onChange={(event) => setField("fullName", event.target.value)}
                   autoComplete="name"
+                  inputMode="text"
                 />
               </label>
               <label className="block space-y-1.5">
@@ -360,6 +362,7 @@ export function CheckoutAddressStep({
                   value={form.companyName}
                   onChange={(event) => setField("companyName", event.target.value)}
                   autoComplete="organization"
+                  inputMode="text"
                 />
               </label>
               <label className="block space-y-1.5">
@@ -371,9 +374,10 @@ export function CheckoutAddressStep({
                   value={form.streetAddress}
                   onChange={(event) => setField("streetAddress", event.target.value)}
                   autoComplete="address-line1"
+                  inputMode="text"
                 />
               </label>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <label className="block space-y-1.5">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                     City *
@@ -383,6 +387,7 @@ export function CheckoutAddressStep({
                     value={form.city}
                     onChange={(event) => setField("city", event.target.value)}
                     autoComplete="address-level2"
+                    inputMode="text"
                   />
                 </label>
                 <label className="block space-y-1.5">
@@ -394,10 +399,11 @@ export function CheckoutAddressStep({
                     value={form.state}
                     onChange={(event) => setField("state", event.target.value)}
                     autoComplete="address-level1"
+                    inputMode="text"
                   />
                 </label>
               </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <label className="block space-y-1.5">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                     Postal code *
@@ -407,6 +413,7 @@ export function CheckoutAddressStep({
                     value={form.postalCode}
                     onChange={(event) => setField("postalCode", event.target.value)}
                     autoComplete="postal-code"
+                    inputMode="numeric"
                   />
                 </label>
                 <label className="block space-y-1.5">
@@ -419,6 +426,7 @@ export function CheckoutAddressStep({
                     value={form.phone}
                     onChange={(event) => setField("phone", event.target.value)}
                     autoComplete="tel"
+                    inputMode="tel"
                   />
                 </label>
               </div>
@@ -434,12 +442,13 @@ export function CheckoutAddressStep({
             </div>
 
             <div className="mt-5 flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
+              <Button type="button" variant="outline" className="h-12 md:h-10" onClick={() => setModalOpen(false)}>
                 Cancel
               </Button>
               <Button
                 type="button"
                 variant="gradient"
+                className="h-12 md:h-10"
                 disabled={saving}
                 onClick={() => void submitAddress()}
               >

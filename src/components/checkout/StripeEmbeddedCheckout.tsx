@@ -219,9 +219,10 @@ function StripeCheckoutFormInner({
       )}
 
       <button
+        id="checkout-stripe-pay"
         type="submit"
         disabled={!stripe || !elements || isSubmitting || !agreedToPolicies}
-        className={`${BRAND_GRADIENT_CTA} py-3.5 px-6 rounded-xl w-full flex items-center justify-center gap-2 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed`}
+        className={`${BRAND_GRADIENT_CTA} hidden w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50 md:flex`}
       >
         {isSubmitting ? (
           <>

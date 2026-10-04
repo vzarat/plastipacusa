@@ -679,7 +679,7 @@ export function VariantSelector({
                 }
                 type="button"
                 onClick={() => handlePackageSelect(variant)}
-                className={`relative w-full p-3.5 sm:p-4 rounded-2xl border text-left transition-all flex flex-col gap-2.5 group cursor-pointer ${
+                className={`group relative mb-3 flex w-full cursor-pointer items-center justify-between rounded-xl border p-4 text-left transition active:scale-[0.98] md:mb-0 md:flex-col md:items-stretch md:justify-start md:gap-2.5 md:rounded-2xl md:active:scale-100 ${
                   isBestValue
                     ? isSelected
                       ? "border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-500/25 shadow-sm"

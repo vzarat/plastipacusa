@@ -16,6 +16,51 @@ import {
 } from "@/lib/onboarding-tour";
 
 const POPOVER_CLASS = "plastipac-tour-popover";
+const MOBILE_TOUR_QUERY = "(max-width: 767px)";
+const MOBILE_TOUR_FOCUS_KEY = "plastipac_mobile_tour_focus";
+
+const MOBILE_STEPS = [
+  {
+    id: "package",
+    title: "Choose your package",
+    body: "Select boxes, a half pallet, or a full pallet.",
+    selector: "[data-tour='product-price-tiers']",
+  },
+  {
+    id: "destination",
+    title: "Enter your destination",
+    body: "Quote shipping or choose pickup on the delivery address.",
+    selector: "[data-tour='tour-destination']",
+  },
+  {
+    id: "confirm",
+    title: "Review and confirm",
+    body: "Use the fixed bottom bar to place your order.",
+    selector: "[data-tour='tour-mobile-bar']",
+  },
+] as const;
+
+function isMobileTourViewport() {
+  return typeof window !== "undefined" && window.matchMedia(MOBILE_TOUR_QUERY).matches;
+}
+
+function scrollAboveTourCard(selector: string) {
+  const node = document.querySelector(selector) as HTMLElement | null;
+  if (!node) return false;
+  const top = node.getBoundingClientRect().top + window.scrollY - 72;
+  window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+  node.classList.add("outline", "outline-2", "outline-offset-4", "outline-sky-500", "rounded-2xl");
+  window.setTimeout(() => {
+    node.classList.remove(
+      "outline",
+      "outline-2",
+      "outline-offset-4",
+      "outline-sky-500",
+      "rounded-2xl"
+    );
+  }, 1800);
+  return true;
+}
 
 function waitForSelector(
   selector: string,
@@ -213,7 +258,12 @@ export function OnboardingTour() {
   const openDrawer = useCartStore((s) => s.openDrawer);
   const activeDriver = useRef<Driver | null>(null);
   const runningRef = useRef(false);
+  const touchStartX = useRef<number | null>(null);
+  const navigatedForStep = useRef<number | null>(null);
   const [eventKick, setEventKick] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+  const [tourOn, setTourOn] = useState(false);
+  const [mobileStep, setMobileStep] = useState(0);
 
   const destroyActive = useCallback(() => {
     try {
@@ -227,6 +277,7 @@ export function OnboardingTour() {
 
   const runPhase = useCallback(
     async (state: TourState) => {
+      if (isMobileTourViewport()) return;
       if (runningRef.current) return;
       if (!state.active || state.completed || state.phase === "done") return;
 
@@ -436,6 +487,8 @@ export function OnboardingTour() {
     const timer = window.setTimeout(() => {
       if (cancelled) return;
       const state = readTourState();
+      const active = Boolean(state.active && !state.completed && state.phase !== "done");
+      setTourOn(active);
       syncTourQueryParams(state);
       void runPhase(state);
     }, 400);
@@ -448,14 +501,170 @@ export function OnboardingTour() {
   }, [pathname, isDrawerOpen, runPhase, destroyActive, eventKick]);
 
   useEffect(() => {
+    const media = window.matchMedia(MOBILE_TOUR_QUERY);
+    const apply = () => setIsMobile(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile || !tourOn) return;
+    let cancelled = false;
+    const step = MOBILE_STEPS[mobileStep];
+
+    const focusCheckout = (focus: "destination" | "confirm") => {
+      sessionStorage.setItem(MOBILE_TOUR_FOCUS_KEY, focus);
+      window.dispatchEvent(new CustomEvent("plastipac:mobile-tour-focus", { detail: focus }));
+    };
+
+    void (async () => {
+      const ready = await waitForSelector(step.selector, 900);
+      if (cancelled) return;
+      if (ready) {
+        scrollAboveTourCard(step.selector);
+        return;
+      }
+      if (navigatedForStep.current === mobileStep) return;
+
+      if (mobileStep === 0) {
+        navigatedForStep.current = mobileStep;
+        const link = document.querySelector(
+          "[data-tour='tour-catalog'] a[href^='/products/']"
+        ) as HTMLAnchorElement | null;
+        const href = link?.getAttribute("href");
+        if (href) {
+          router.push(href.split("?")[0]);
+          return;
+        }
+        if (!pathname.startsWith("/products/")) router.push("/products");
+        return;
+      }
+
+      if (mobileStep === 1) {
+        focusCheckout("destination");
+        if (!pathname.startsWith("/checkout")) {
+          navigatedForStep.current = mobileStep;
+          router.push("/checkout");
+          return;
+        }
+      } else {
+        focusCheckout("confirm");
+        if (!pathname.startsWith("/checkout")) {
+          navigatedForStep.current = mobileStep;
+          router.push("/checkout");
+          return;
+        }
+      }
+
+      const revealed = await waitForSelector(step.selector, 2000);
+      if (!cancelled && revealed) scrollAboveTourCard(step.selector);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isMobile, tourOn, mobileStep, pathname, router]);
+
+  useEffect(() => {
     const bump = () => setEventKick((k) => k + 1);
-    window.addEventListener("plastipac:start-tour", bump);
+    const onStart = () => {
+      navigatedForStep.current = null;
+      setMobileStep(0);
+      setTourOn(true);
+      bump();
+    };
+    window.addEventListener("plastipac:start-tour", onStart);
     window.addEventListener("plastipac:tour-phase", bump);
     return () => {
-      window.removeEventListener("plastipac:start-tour", bump);
+      window.removeEventListener("plastipac:start-tour", onStart);
       window.removeEventListener("plastipac:tour-phase", bump);
     };
   }, []);
 
-  return null;
+  const closeMobileTour = () => {
+    markTourCompleted();
+    setTourOn(false);
+  };
+
+  const goToMobileStep = (next: number) => {
+    const clamped = Math.min(MOBILE_STEPS.length - 1, Math.max(0, next));
+    if (clamped !== mobileStep) navigatedForStep.current = null;
+    setMobileStep(clamped);
+  };
+
+  const advanceMobileStep = () => {
+    if (mobileStep >= MOBILE_STEPS.length - 1) {
+      closeMobileTour();
+      return;
+    }
+    goToMobileStep(mobileStep + 1);
+  };
+
+  if (!isMobile || !tourOn) return null;
+
+  const current = MOBILE_STEPS[mobileStep];
+
+  return (
+    <div
+      className="fixed bottom-6 left-4 right-4 z-50 rounded-2xl border bg-white p-5 shadow-2xl md:hidden"
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby="mobile-tour-title"
+      onTouchStart={(event) => {
+        touchStartX.current = event.changedTouches[0]?.clientX ?? null;
+      }}
+      onTouchEnd={(event) => {
+        if (touchStartX.current == null) return;
+        const delta = (event.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current;
+        touchStartX.current = null;
+        if (delta <= -48) advanceMobileStep();
+        else if (delta >= 48) goToMobileStep(mobileStep - 1);
+      }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <h2 id="mobile-tour-title" className="text-base font-semibold text-slate-900">
+          {current.title}
+        </h2>
+        <button
+          type="button"
+          onClick={closeMobileTour}
+          className="text-xs text-gray-400"
+        >
+          Skip
+        </button>
+      </div>
+      <p className="mt-2 text-sm leading-relaxed text-slate-600">{current.body}</p>
+      <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <span />
+        <div className="flex justify-center gap-2">
+          {MOBILE_STEPS.map((step, index) => (
+            <button
+              key={step.id}
+              type="button"
+              aria-label={`Step ${index + 1}`}
+              aria-current={index === mobileStep ? "step" : undefined}
+              onClick={() => goToMobileStep(index)}
+              className="flex h-8 w-8 items-center justify-center"
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  index === mobileStep ? "bg-black" : "bg-gray-300"
+                }`}
+              />
+            />
+          ))}
+        </div>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={advanceMobileStep}
+            className="h-11 rounded-xl bg-black px-5 font-medium text-white"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

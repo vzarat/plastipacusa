@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useMemo, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useCallback, useContext, useMemo, useEffect, ReactNode } from "react";
 
 export type Locale = "en" | "es";
 
@@ -351,7 +351,7 @@ export const translations = {
     "products.allLengths": "All Lengths",
     "products.filmWidth": "Film Width",
     "products.allWidths": "All Widths",
-    "products.packageOptions": "Package Options",
+    "products.packageOptions": "Package Options & Tier Pricing",
     "products.specifications": "Specifications",
     "products.width": "Width",
     "products.gauge": "Gauge",
@@ -1078,68 +1078,32 @@ const STORAGE_KEY = "plastipac_locale";
 const COOKIE_NAME = "NEXT_LOCALE";
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>("en");
+  const locale: Locale = "en";
 
-  // Read initial locale from localStorage or cookie on mount
   useEffect(() => {
     try {
-      const savedLocale = localStorage.getItem(STORAGE_KEY) as Locale | null;
-      if (savedLocale === "en" || savedLocale === "es") {
-        setLocaleState(savedLocale);
-        document.documentElement.lang = savedLocale;
-        return;
-      }
-
-      // Check cookies
-      const match = document.cookie.match(new RegExp("(^| )" + COOKIE_NAME + "=([^;]+)"));
-      if (match && (match[2] === "en" || match[2] === "es")) {
-        setLocaleState(match[2] as Locale);
-        document.documentElement.lang = match[2];
-        return;
-      }
-
-      // Check navigator language
-      if (typeof navigator !== "undefined" && navigator.language?.startsWith("es")) {
-        setLocaleState("es");
-        document.documentElement.lang = "es";
-      }
-    } catch {
-      // Ignore local storage read errors
-    }
-  }, []);
-
-  const setLocale = useCallback((newLocale: Locale) => {
-    setLocaleState(newLocale);
-    try {
-      localStorage.setItem(STORAGE_KEY, newLocale);
-      document.cookie = `${COOKIE_NAME}=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
-      document.documentElement.lang = newLocale;
+      localStorage.setItem(STORAGE_KEY, "en");
+      document.cookie = `${COOKIE_NAME}=en; path=/; max-age=31536000; SameSite=Lax`;
+      document.documentElement.lang = "en";
     } catch {
       // Ignore persistence errors
     }
   }, []);
 
+  const setLocale = useCallback((_newLocale: Locale) => {
+    // English is the only supported interface language.
+  }, []);
+
   const toggleLocale = useCallback(() => {
-    setLocaleState((current) => {
-      const next = current === "en" ? "es" : "en";
-      try {
-        localStorage.setItem(STORAGE_KEY, next);
-        document.cookie = `${COOKIE_NAME}=${next}; path=/; max-age=31536000; SameSite=Lax`;
-        document.documentElement.lang = next;
-      } catch {
-        // Ignore persistence errors
-      }
-      return next;
-    });
+    // English is the only supported interface language.
   }, []);
 
   const t = useCallback(
     (key: TranslationKey | string, fallback?: string): string => {
-      const activeDict = translations[locale] as Record<string, string>;
       const defaultDict = translations.en as Record<string, string>;
-      return activeDict[key] || defaultDict[key] || fallback || key;
+      return defaultDict[key] || fallback || key;
     },
-    [locale]
+    []
   );
 
   const value = useMemo(
@@ -1149,9 +1113,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       setLocale,
       toggleLocale,
       t,
-      isSpanish: locale === "es",
+      isSpanish: false,
     }),
-    [locale, setLocale, toggleLocale, t]
+    [setLocale, toggleLocale, t]
   );
 
   return (

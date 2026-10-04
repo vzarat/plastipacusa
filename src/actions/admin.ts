@@ -173,10 +173,7 @@ export async function createOrder(order: AdminOrder) {
         sendEmail({
           from: `Plastipac Orders <${getSenderEmail("onboarding@resend.dev")}>`,
           to: order.customerEmail,
-          subject:
-            locale === "es"
-              ? `Confirmación de Pedido #${orderId} - Plastipac USA`
-              : `Order Confirmation #${orderId} - Plastipac USA`,
+          subject: `Order Confirmation #${orderId} - Plastipac USA`,
           text: [
             `PO Reference: ${orderId}`,
             `Total: $${Number(order.totalUsd || 0).toFixed(2)}`,

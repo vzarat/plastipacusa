@@ -19,7 +19,7 @@ interface CheckoutFormProps {
 }
 
 const fieldClass =
-  "w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400";
+  "h-12 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 md:h-auto md:py-2.5";
 
 function ShippingField({
   label,
@@ -109,11 +109,13 @@ export function CheckoutForm({
           </span>
           <input
             type="email"
+            inputMode="email"
+            autoComplete="email"
             value={checkoutEmail}
             onChange={(e) => onCheckoutEmailChange(e.target.value)}
             placeholder="you@company.com"
             required
-            className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400"
+            className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 md:h-auto md:py-2.5"
           />
         </label>
         <PromoCodeInput userEmail={checkoutEmail || null} showBreakdown={false} />
@@ -141,6 +143,7 @@ export function CheckoutForm({
             value={shipping.fullName}
             onChange={(e) => setShip("fullName", e.target.value)}
             autoComplete="name"
+            inputMode="text"
             required
           />
         </ShippingField>
@@ -150,6 +153,7 @@ export function CheckoutForm({
             value={shipping.line1}
             onChange={(e) => setShip("line1", e.target.value)}
             autoComplete="address-line1"
+            inputMode="text"
             required
           />
         </ShippingField>
@@ -159,15 +163,17 @@ export function CheckoutForm({
             value={shipping.line2}
             onChange={(e) => setShip("line2", e.target.value)}
             autoComplete="address-line2"
+            inputMode="text"
           />
         </ShippingField>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <ShippingField label="City" required>
             <input
               className={fieldClass}
               value={shipping.city}
               onChange={(e) => setShip("city", e.target.value)}
               autoComplete="address-level2"
+              inputMode="text"
               required
             />
           </ShippingField>
@@ -177,23 +183,26 @@ export function CheckoutForm({
               value={shipping.state}
               onChange={(e) => setShip("state", e.target.value)}
               autoComplete="address-level1"
+              inputMode="text"
               required
             />
           </ShippingField>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <ShippingField label="Postal Code" required>
             <input
               className={fieldClass}
               value={shipping.postalCode}
               onChange={(e) => setShip("postalCode", e.target.value)}
               autoComplete="postal-code"
+              inputMode="numeric"
               required
             />
           </ShippingField>
           <ShippingField label="Phone Number" required>
             <input
               type="tel"
+              inputMode="tel"
               className={fieldClass}
               value={shipping.phone}
               onChange={(e) => setShip("phone", e.target.value)}

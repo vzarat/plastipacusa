@@ -100,7 +100,7 @@ function ProductThumbnail({ src, alt }: { src: string; alt: string }) {
 const PAGE_SIZE = 12;
 
 export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogViewProps) {
-  const { t, locale } = useLanguage();
+  const { t } = useLanguage();
   const router = useRouter();
   const [products, setProducts] = useState<AdminProduct[]>(initialProducts);
   const [search, setSearch] = useState("");
@@ -568,12 +568,10 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
       {filtered.length > 0 && (
         <nav
           className="flex flex-col items-center gap-3 pt-2"
-          aria-label={locale === "es" ? "Paginación del catálogo" : "Catalog pagination"}
+          aria-label="Catalog pagination"
         >
           <p className="text-xs font-semibold text-slate-500">
-            {locale === "es"
-              ? `Página ${page} de ${totalPages}`
-              : `Page ${page} of ${totalPages}`}
+            {`Page ${page} of ${totalPages}`}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-1.5">
             <button
@@ -583,7 +581,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
               className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
-              {locale === "es" ? "Anterior" : "Previous"}
+              Previous
             </button>
             {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
               <button
@@ -606,7 +604,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
               disabled={page >= totalPages}
               className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {locale === "es" ? "Siguiente" : "Next"}
+              Next
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
           </div>

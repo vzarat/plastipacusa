@@ -20,7 +20,7 @@ import {
 } from "@/lib/shipping-method";
 
 const fieldClass =
-  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400";
+  "h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 md:h-auto md:py-2.5";
 
 const US_STATES = [
   "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS",
@@ -208,7 +208,7 @@ export function CheckoutShippingMethodStep({
             return (
               <li key={method.id}>
                 <label
-                  className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${
+                  className={`flex min-h-12 cursor-pointer items-start gap-3 rounded-2xl border p-4 ${
                     selected
                       ? "border-sky-500 bg-sky-50 ring-2 ring-sky-200"
                       : "border-slate-200 bg-white"
@@ -272,12 +272,13 @@ export function CheckoutShippingMethodStep({
       )}
 
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-        <Button type="button" variant="outline" onClick={onBack}>
+        <Button type="button" variant="outline" className="h-12 md:h-10" onClick={onBack}>
           Back to Address
         </Button>
         <Button
           type="button"
           variant="gradient"
+          className="hidden h-12 md:inline-flex md:h-10"
           onClick={onProceed}
           disabled={!selectedAddress}
         >
@@ -327,6 +328,8 @@ export function CheckoutShippingMethodStep({
                   className={fieldClass}
                   value={companyName}
                   onChange={(event) => setCompanyName(event.target.value)}
+                  autoComplete="organization"
+                  inputMode="text"
                 />
               </label>
               <label className="block space-y-1.5">
@@ -337,6 +340,8 @@ export function CheckoutShippingMethodStep({
                   className={fieldClass}
                   value={taxId}
                   onChange={(event) => setTaxId(event.target.value)}
+                  autoComplete="off"
+                  inputMode="text"
                 />
               </label>
               <label className="block space-y-1.5">

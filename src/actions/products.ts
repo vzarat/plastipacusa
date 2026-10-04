@@ -1416,7 +1416,10 @@ export async function toggleProductActive(id: string, isActive: boolean) {
 
     if (error) {
       console.error("toggleProductActive error:", error);
-      return { success: false, error: error.message || "Failed to update product status." };
+      return {
+        success: false,
+        error: "Failed to update product status. Please try again.",
+      };
     }
 
     const row = firstRow(data);
@@ -1426,7 +1429,10 @@ export async function toggleProductActive(id: string, isActive: boolean) {
     return { success: true, isActive };
   } catch (err: any) {
     console.error("toggleProductActive error:", err);
-    return { success: false, error: err?.message || "Failed to update product status." };
+    return {
+      success: false,
+      error: "Failed to update product status. Please try again.",
+    };
   }
 }
 

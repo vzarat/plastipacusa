@@ -3,16 +3,12 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Sparkles, ArrowRight } from "lucide-react";
-import { useLanguage } from "@/context/LanguageContext";
 import { startGuidedTour } from "@/lib/onboarding-tour";
 
 /**
  * Lightweight post-hero CTA — CSS shine + Framer Motion fade only (no heavy JS).
  */
 export function GuidedTourBanner() {
-  const { locale } = useLanguage();
-  const isEs = locale === "es";
-
   return (
     <motion.section
       initial={{ opacity: 0, y: 8 }}
@@ -20,9 +16,7 @@ export function GuidedTourBanner() {
       viewport={{ once: true, amount: 0.4 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
       className="relative w-full overflow-hidden bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-800"
-      aria-label={
-        isEs ? "Tutorial de compra guiada" : "Guided buying tour"
-      }
+      aria-label="Guided buying tour"
     >
       {/* Soft ambient glow — pure CSS, no canvas */}
       <div
@@ -41,14 +35,7 @@ export function GuidedTourBanner() {
           </div>
           <div className="min-w-0 space-y-0.5">
             <p className="text-sm font-bold leading-snug text-white sm:text-[15px]">
-              {isEs
-                ? "¿Necesitas ayuda para realizar tu primera compra?"
-                : "Need help placing your first B2B order?"}
-            </p>
-            <p className="text-xs font-medium text-sky-100/90 sm:text-[13px]">
-              {isEs
-                ? "Need help placing your first B2B order?"
-                : "¿Necesitas ayuda para realizar tu primera compra?"}
+              Need help placing your first B2B order?
             </p>
           </div>
         </div>
@@ -63,15 +50,7 @@ export function GuidedTourBanner() {
             className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-sky-200/70 to-transparent opacity-0 transition-all duration-500 group-hover:left-[120%] group-hover:opacity-100"
             aria-hidden
           />
-          <span className="relative whitespace-nowrap">
-            {isEs ? "Iniciar Tutorial Step-by-Step" : "Start Guided Tour"}
-          </span>
-          <span className="relative hidden font-semibold text-blue-400/80 sm:inline">
-            /
-          </span>
-          <span className="relative hidden whitespace-nowrap sm:inline sm:font-bold sm:text-blue-700/80">
-            {isEs ? "Start Guided Tour" : "Iniciar Tutorial Step-by-Step"}
-          </span>
+          <span className="relative whitespace-nowrap">Start Guided Tour</span>
           <ArrowRight className="relative h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
         </button>
       </div>

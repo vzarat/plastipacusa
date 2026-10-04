@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { CheckoutCartStep } from "@/components/checkout/CheckoutCartStep";
 import { CheckoutPaymentStep } from "@/components/checkout/CheckoutPaymentStep";
@@ -23,7 +23,6 @@ import { useCartStore } from "@/lib/store/useCartStore";
 import { calculateOrderTotal, roundMoney } from "@/lib/sales-tax";
 import { formatCurrency } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { useLanguage } from "@/context/LanguageContext";
 import { savedAddressToCheckout } from "@/lib/saved-shipping-address";
 import {
   activeShippingMethod,
@@ -48,10 +47,9 @@ export function CheckoutPageClient() {
 
 function CheckoutPageInner() {
   const router = useRouter();
-  const { locale } = useLanguage();
-  const isEs = locale === "es";
   const [step, setStep] = useState<CheckoutStepId>(1);
   const [furthestStep, setFurthestStep] = useState<CheckoutStepId>(1);
+  const [summaryOpen, setSummaryOpen] = useState(false);
 
   const items = useCartStore((state) => state.items);
   const getSubtotal = useCartStore((state) => state.getSubtotal);
@@ -77,6 +75,22 @@ function CheckoutPageInner() {
     setDeliveryMethod,
     taxExemptRequested,
   } = useCheckoutState();
+
+  useEffect(() => {
+    const openDestination = () => {
+      setStep(2);
+      setFurthestStep((current) => (current < 2 ? 2 : current));
+    };
+    if (sessionStorage.getItem("plastipac_mobile_tour_focus") === "destination") {
+      openDestination();
+    }
+    sessionStorage.removeItem("plastipac_mobile_tour_focus");
+    const onFocus = (event: Event) => {
+      if ((event as CustomEvent<string>).detail === "destination") openDestination();
+    };
+    window.addEventListener("plastipac:mobile-tour-focus", onFocus);
+    return () => window.removeEventListener("plastipac:mobile-tour-focus", onFocus);
+  }, []);
 
   useEffect(() => {
     if (useCartStore.persist.hasHydrated()) {
@@ -130,6 +144,7 @@ function CheckoutPageInner() {
     };
   }, [router]);
 
+  const itemCount = items.reduce((count, item) => count + item.quantity, 0);
   const subtotal = getSubtotal();
   const discountAmount = getDiscountAmount();
   const totalWeight = getTotalWeight();
@@ -221,14 +236,35 @@ function CheckoutPageInner() {
       <main className="mx-auto flex min-h-[50vh] max-w-4xl items-center justify-center px-6 py-16">
         <div className="flex items-center gap-2 text-sm text-slate-600">
           <Loader2 className="h-4 w-4 animate-spin text-sky-600" />
-          {isEs ? "Verificando sesión…" : "Verifying session…"}
+          Verifying session…
         </div>
       </main>
     );
   }
 
+  const continueCheckout = () => {
+    if (step === 1) {
+      proceedToShipping();
+      return;
+    }
+    if (step === 2) {
+      proceedToShippingMethod();
+      return;
+    }
+    if (step === 3) {
+      proceedToPayment();
+      return;
+    }
+    document.getElementById("checkout-stripe-pay")?.click();
+  };
+
+  const mobileActionDisabled =
+    (step === 1 && items.length === 0) ||
+    ((step === 2 || step === 3) && !selectedAddress) ||
+    (step === 4 && !agreedToPolicies);
+
   return (
-    <main className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-10">
+    <main className="mx-auto max-w-6xl px-4 pb-24 pt-8 sm:px-6 sm:pt-10 md:pb-10">
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.2em] text-sky-700">
@@ -288,8 +324,28 @@ function CheckoutPageInner() {
           )}
         </div>
 
-        <aside className="lg:col-span-5 rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-6 shadow-sm h-fit lg:sticky lg:top-6">
-          <h2 className="text-lg font-black text-slate-900">Order summary</h2>
+        <aside className="h-fit rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm sm:p-6 lg:sticky lg:top-6 lg:col-span-5">
+          <button
+            type="button"
+            className="flex min-h-12 w-full items-center justify-between gap-3 text-left md:hidden"
+            aria-expanded={summaryOpen}
+            onClick={() => setSummaryOpen((open) => !open)}
+          >
+            <span className="text-sm font-bold text-slate-900">
+              {`View Order Summary (${itemCount} items) - ${formatCurrency(total)}`}
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${
+                summaryOpen ? "rotate-180" : ""
+              }`}
+              aria-hidden
+            />
+          </button>
+
+          <div className={summaryOpen ? "mt-4 md:mt-0" : "hidden md:block"}>
+          <h2 className="hidden text-lg font-black text-slate-900 md:block">
+            Order summary
+          </h2>
 
           <div className="mt-6 space-y-4">
             {items.map((item) => (
@@ -380,12 +436,38 @@ function CheckoutPageInner() {
           <Button
             type="button"
             variant="outline"
-            className="w-full mt-4"
+            className="mt-4 h-12 w-full md:h-10"
             onClick={() => clearCart()}
           >
             Clear cart
           </Button>
+          </div>
         </aside>
+      </div>
+
+      <div
+        data-tour="tour-mobile-bar"
+        className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white p-4 shadow-lg md:hidden"
+      >
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              Total
+            </p>
+            <p className="truncate text-lg font-black text-slate-900">
+              {formatCurrency(total)}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="gradient"
+            className="h-12 shrink-0 px-5"
+            onClick={continueCheckout}
+            disabled={mobileActionDisabled}
+          >
+            {step === 4 ? "Place Order" : "Proceed to Checkout"}
+          </Button>
+        </div>
       </div>
     </main>
   );

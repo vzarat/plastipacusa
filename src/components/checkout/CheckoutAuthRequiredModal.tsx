@@ -4,8 +4,6 @@ import React from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Lock, LogIn, UserPlus, X } from "lucide-react";
-import { useLanguage } from "@/context/LanguageContext";
-
 interface CheckoutAuthRequiredModalProps {
   open: boolean;
   onClose: () => void;
@@ -21,9 +19,6 @@ export function CheckoutAuthRequiredModal({
   onClose,
   redirectTo = "/checkout",
 }: CheckoutAuthRequiredModalProps) {
-  const { locale } = useLanguage();
-  const isEs = locale === "es";
-
   if (!open || typeof document === "undefined") return null;
 
   const redirect = encodeURIComponent(redirectTo);
@@ -46,7 +41,7 @@ export function CheckoutAuthRequiredModal({
           type="button"
           onClick={onClose}
           className="absolute right-3 top-3 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
-          aria-label={isEs ? "Cerrar" : "Close"}
+          aria-label="Close"
         >
           <X className="h-4 w-4" />
         </button>
@@ -58,13 +53,13 @@ export function CheckoutAuthRequiredModal({
             </div>
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wider text-sky-100/90">
-                {isEs ? "Cuenta B2B requerida" : "B2B account required"}
+                B2B account required
               </p>
               <h2
                 id="checkout-auth-title"
                 className="text-base font-extrabold leading-snug"
               >
-                {isEs ? "Inicia sesión para pagar" : "Sign in to complete checkout"}
+                Sign in to complete checkout
               </h2>
             </div>
           </div>
@@ -72,14 +67,7 @@ export function CheckoutAuthRequiredModal({
 
         <div className="space-y-4 px-6 py-5">
           <p className="text-sm leading-relaxed text-slate-600">
-            {isEs
-              ? "Debes iniciar sesión o crear una cuenta B2B para completar tu pedido."
-              : "You must sign in or create a B2B account to complete your order."}
-          </p>
-          <p className="text-xs text-slate-500">
-            {isEs
-              ? "You must sign in or create a B2B account to complete your order."
-              : "Debes iniciar sesión o crear una cuenta B2B para completar tu pedido."}
+            You must sign in or create a B2B account to complete your order.
           </p>
 
           <div className="flex flex-col gap-2.5 pt-1">
@@ -89,7 +77,7 @@ export function CheckoutAuthRequiredModal({
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 px-4 py-3 text-sm font-bold text-white shadow-md shadow-sky-500/20 transition-opacity hover:opacity-95"
             >
               <LogIn className="h-4 w-4" aria-hidden />
-              {isEs ? "Iniciar sesión" : "Sign In"}
+              Sign In
             </Link>
             <Link
               href={registerHref}
@@ -97,7 +85,7 @@ export function CheckoutAuthRequiredModal({
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 transition-colors hover:bg-slate-50"
             >
               <UserPlus className="h-4 w-4" aria-hidden />
-              {isEs ? "Crear cuenta B2B" : "Create B2B Account"}
+              Create B2B Account
             </Link>
           </div>
         </div>

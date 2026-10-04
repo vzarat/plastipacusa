@@ -96,7 +96,7 @@ export function CheckoutCartStep({
                     <button
                       type="button"
                       onClick={() => removeItem(item.id)}
-                      className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                      className="flex h-12 w-12 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 md:h-auto md:w-auto md:p-1.5"
                       aria-label={`Remove ${item.productName}`}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -121,7 +121,7 @@ export function CheckoutCartStep({
                       <button
                         type="button"
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 hover:bg-white"
+                        className="flex h-12 w-12 items-center justify-center rounded-lg text-slate-600 hover:bg-white md:h-7 md:w-7"
                         aria-label="Decrease quantity"
                       >
                         <Minus className="h-3.5 w-3.5" />
@@ -132,7 +132,7 @@ export function CheckoutCartStep({
                       <button
                         type="button"
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 hover:bg-white"
+                        className="flex h-12 w-12 items-center justify-center rounded-lg text-slate-600 hover:bg-white md:h-7 md:w-7"
                         aria-label="Increase quantity"
                       >
                         <Plus className="h-3.5 w-3.5" />
@@ -159,7 +159,7 @@ export function CheckoutCartStep({
       <Button
         type="button"
         variant="gradient"
-        className="w-full"
+        className="hidden h-12 w-full md:inline-flex md:h-10"
         onClick={proceed}
         disabled={items.length === 0}
       >

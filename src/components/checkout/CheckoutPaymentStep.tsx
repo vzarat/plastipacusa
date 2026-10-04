@@ -109,7 +109,7 @@ export function CheckoutPaymentStep({
         </dl>
       </section>
 
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="flex items-center justify-between gap-2">
             <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -167,9 +167,11 @@ export function CheckoutPaymentStep({
         </span>
         <input
           type="email"
+          inputMode="email"
+          autoComplete="email"
           value={checkoutEmail}
           onChange={(event) => onCheckoutEmailChange(event.target.value)}
-          className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-sm text-slate-900 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
+          className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 text-sm text-slate-900 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/20 md:h-auto md:py-2.5"
         />
       </label>
 
@@ -215,7 +217,7 @@ export function CheckoutPaymentStep({
         }}
       />
 
-      <Button type="button" variant="outline" onClick={onBack}>
+      <Button type="button" variant="outline" className="h-12 md:h-10" onClick={onBack}>
         Back to Shipping Method
       </Button>
     </div>
