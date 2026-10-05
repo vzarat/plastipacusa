@@ -679,7 +679,7 @@ export function VariantSelector({
                 }
                 type="button"
                 onClick={() => handlePackageSelect(variant)}
-                className={`group relative mb-3 flex w-full cursor-pointer items-center justify-between rounded-xl border p-4 text-left transition active:scale-[0.98] md:mb-0 md:flex-col md:items-stretch md:justify-start md:gap-2.5 md:rounded-2xl md:active:scale-100 ${
+                className={`group relative mb-3 flex w-full cursor-pointer flex-col items-stretch rounded-xl border p-4 text-left transition active:scale-[0.98] md:mb-0 md:gap-2.5 md:rounded-2xl md:active:scale-100 ${
                   isBestValue
                     ? isSelected
                       ? "border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-500/25 shadow-sm"
@@ -690,14 +690,29 @@ export function VariantSelector({
                 }`}
               >
                 {isBestValue && (
-                  <div className="absolute -top-2.5 left-3 inline-flex items-center rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+                  <div className="absolute -top-2.5 left-3 hidden items-center rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm md:inline-flex">
                     Best Value · Max Savings (~{savingsPercent > 0 ? savingsPercent : 13}% OFF)
                   </div>
                 )}
 
+                {(isBestValue || showSavings) && (
+                  <div className="mb-1 flex w-full flex-wrap items-center justify-end gap-1 md:hidden">
+                    {isBestValue && (
+                      <span className="whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                        Best Value
+                      </span>
+                    )}
+                    {showSavings && (
+                      <span className="whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                        Save {savingsPercent}% OFF
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 <div
-                  className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 ${
-                    isBestValue ? "pt-1" : ""
+                  className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 md:gap-4 ${
+                    isBestValue ? "md:pt-1" : ""
                   }`}
                 >
                   <div className="flex min-w-0 items-center gap-3">
@@ -722,22 +737,21 @@ export function VariantSelector({
                           {variantTitle}
                         </span>
                         {showSavings && (
-                          <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-full">
+                          <span className="hidden whitespace-nowrap rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800 md:inline-flex">
                             Save {savingsPercent}% OFF
                           </span>
                         )}
                       </div>
-                      <span className="text-[11px] text-slate-500 block mt-0.5">
+                      <span className="mt-0.5 block text-[11px] text-slate-500">
                         {isMachineFilm ? (
                           <>
-                            SKU: {variant.sku} · {rollsCount}{" "}
-                            {rollsCount === 1 ? "Roll" : "Rolls"}
+                            {rollsCount} {rollsCount === 1 ? "Roll" : "Rolls"}
                             {tierKind === "fixed_half" ? " (1 layer)" : ""}
                             {tierKind === "full_pallet" ? " (2 layers)" : ""}
                           </>
                         ) : (
                           <>
-                            SKU: {variant.sku} · {rollsCount} Rolls included ({boxesCount}{" "}
+                            {rollsCount} Rolls included ({boxesCount}{" "}
                             {boxesCount === 1 ? "Box" : "Boxes"})
                           </>
                         )}
