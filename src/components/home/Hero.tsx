@@ -105,7 +105,7 @@ export function Hero() {
 
   return (
     <section
-      className="relative isolate h-auto min-h-[480px] overflow-hidden border-b border-slate-800 bg-slate-950 px-4 py-6 md:h-[520px] md:min-h-0 md:px-0 md:py-0"
+      className="relative isolate flex h-[460px] flex-col overflow-hidden border-b border-slate-800 bg-slate-950 px-5 md:block md:h-[520px] md:px-0"
       aria-roledescription="carousel"
       aria-label="Featured"
       onMouseEnter={() => {
@@ -175,13 +175,14 @@ export function Hero() {
             alt="Houston industrial logistics"
             fill
             sizes="100vw"
-            className="h-full w-full object-cover object-right"
+            className="h-full w-full object-cover object-center md:object-right"
           />
-          <div className="pointer-events-none absolute inset-0 z-10 w-full bg-gradient-to-b from-slate-950 via-slate-950/90 to-slate-950/60 md:bg-gradient-to-r md:from-slate-950 md:via-slate-950/90 md:via-50% md:to-transparent" />
+          <div className="pointer-events-none absolute inset-0 z-10 w-full bg-gradient-to-b from-slate-950 via-slate-950/80 via-40% to-slate-950/25 md:bg-gradient-to-r md:from-slate-950 md:via-slate-950/90 md:via-50% md:to-transparent" />
         </div>
       </div>
 
-      <div className="relative z-10 pb-8 md:flex md:h-full md:items-center">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col md:block md:h-full md:pb-8">
+        <div className="flex min-h-0 w-full flex-1 flex-col justify-center md:flex md:h-full md:items-center">
         <AnimatePresence mode="wait">
           {index === 0 ? (
             <motion.div
@@ -196,43 +197,43 @@ export function Hero() {
                   variants={fadeUp}
                   className="space-y-3 text-center md:col-span-7 md:space-y-3 md:text-left"
                 >
-                  <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-950/60 px-3 py-1 text-[11px] font-semibold text-blue-300 shadow-sm backdrop-blur-xs">
-                    <Zap className="h-3.5 w-3.5 text-blue-400" />
+                  <div className="mx-auto inline-flex max-w-full items-center gap-2 rounded-full border border-blue-500/30 bg-blue-950/60 px-3 py-1 text-center text-[11px] font-semibold leading-snug text-blue-300 shadow-sm backdrop-blur-xs">
+                    <Zap className="h-3.5 w-3.5 shrink-0 text-blue-400" />
                     <span>{t("hero.badge")}</span>
                   </div>
 
-                  <h1 className="text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl sm:font-extrabold lg:text-4xl">
+                  <h1 className="text-[1.65rem] font-bold leading-[1.15] tracking-tight text-white md:text-3xl md:font-extrabold lg:text-4xl">
                     {t("hero.titlePart1")} <br />
                     <span className="text-blue-400">{t("hero.titlePart2")}</span>
                   </h1>
 
-                  <p className="mx-auto hidden max-w-2xl text-sm leading-snug text-slate-200 sm:block md:mx-0 md:line-clamp-3">
+                  <p className="mx-auto hidden max-w-2xl text-sm leading-snug text-slate-200 md:mx-0 md:block md:line-clamp-3">
                     {t("hero.description")}
                   </p>
 
-                  <div className="flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:flex-wrap sm:items-center md:justify-start">
+                  <div className="flex flex-col items-stretch justify-center gap-2 md:flex-row md:flex-wrap md:items-center md:justify-start">
                     <Button
                       asChild
                       size="lg"
                       variant="gradient"
-                      className="flex h-10 w-full items-center justify-center gap-2 px-3 text-sm shadow-lg shadow-sky-500/20 sm:h-10 sm:w-auto sm:px-4"
+                      className="flex h-11 w-full items-center justify-center gap-2 px-3 text-sm shadow-lg shadow-sky-500/20 md:h-10 md:w-auto md:px-4"
                     >
                       <Link href="/products">
-                        <span className="sm:hidden">Explore Catalog</span>
-                        <span className="hidden sm:inline">{t("hero.exploreBtn")}</span>
+                        <span className="md:hidden">Explore Catalog</span>
+                        <span className="hidden md:inline">{t("hero.exploreBtn")}</span>
                         <ArrowRight className="h-4 w-4" />
                       </Link>
                     </Button>
 
                     <Link
                       href="#inquiry-form"
-                      className="hidden h-10 cursor-pointer items-center justify-center rounded-xl border border-white/30 bg-white/5 px-4 text-sm font-medium text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/10 sm:inline-flex"
+                      className="hidden h-10 cursor-pointer items-center justify-center rounded-xl border border-white/30 bg-white/5 px-4 text-sm font-medium text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/10 md:inline-flex"
                     >
                       <span className="font-medium text-white">{t("hero.quoteBtn")}</span>
                     </Link>
                   </div>
 
-                  <div className="flex flex-wrap justify-center gap-2 sm:hidden">
+                  <div className="flex flex-wrap justify-center gap-2 md:hidden">
                     <span className="rounded-full border border-white/15 bg-slate-950/60 px-3 py-1 text-[11px] font-semibold text-slate-100">
                       300%+ Pre-Stretch
                     </span>
@@ -241,7 +242,7 @@ export function Hero() {
                     </span>
                   </div>
 
-                  <div className="hidden grid-cols-3 gap-2 border-t border-white/10 pt-2.5 text-left sm:grid">
+                  <div className="hidden grid-cols-3 gap-2 border-t border-white/10 pt-2.5 text-left md:grid">
                     <div className="flex items-start gap-2.5">
                       <div className="mt-0.5 rounded-full border border-emerald-500/30 bg-emerald-950/60 p-1 text-emerald-400">
                         <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
@@ -347,38 +348,42 @@ export function Hero() {
                   variants={fadeUp}
                   className="space-y-3 text-center md:col-span-7 md:space-y-2.5 md:text-left"
                 >
-                  <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-slate-950/50 px-3 py-1 text-[11px] font-semibold text-sky-200 shadow-sm">
-                    <Zap className="h-3.5 w-3.5 text-sky-300" />
+                  <div className="mx-auto inline-flex max-w-full items-center gap-2 rounded-full border border-sky-400/30 bg-slate-950/50 px-3 py-1 text-center text-[11px] font-semibold leading-snug text-sky-200 shadow-sm">
+                    <Zap className="h-3.5 w-3.5 shrink-0 text-sky-300" />
                     <span>Direct Regional Distribution · RGV Fleet</span>
                   </div>
 
-                  <h2 className="text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl sm:font-extrabold lg:text-4xl">
-                    <span className="sm:hidden">FREE LOCAL DELIVERY ACROSS THE RGV</span>
-                    <span className="hidden sm:inline">
+                  <h2 className="text-[1.65rem] font-bold leading-[1.15] tracking-tight text-white md:text-3xl md:font-extrabold lg:text-4xl">
+                    <span className="md:hidden">
+                      FREE LOCAL DELIVERY
+                      <br />
+                      <span className="text-sky-300">ACROSS THE RGV</span>
+                    </span>
+                    <span className="hidden md:inline">
                       FREE LOCAL DELIVERY
                       <br />
                       <span className="text-sky-300">ACROSS THE RIO GRANDE VALLEY</span>
                     </span>
                   </h2>
 
-                  <p className="mx-auto max-w-2xl text-xs leading-snug text-slate-100 sm:text-sm md:mx-0">
-                    <span className="sm:hidden">$0 Freight Fee on Case & Pallet Orders.</span>
-                    <span className="hidden sm:inline">
+                  <p className="mx-auto max-w-2xl text-sm leading-snug text-slate-100 md:mx-0 md:text-sm">
+                    <span className="md:hidden">$0 Freight Fee on Case & Pallet Orders.</span>
+                    <span className="hidden md:inline">
                       $0 Freight Charges for Case & Pallet Orders. Shipped directly from our local fulfillment hub with zero middleman markups.
                     </span>
                   </p>
 
-                  <div className="grid grid-cols-2 gap-1.5 sm:hidden">
+                  <div className="grid grid-cols-2 gap-2 md:hidden">
                     {RGV_MOBILE_CITIES.map((city) => (
                       <span
                         key={city}
-                        className="rounded-full border border-white/20 bg-slate-950/55 px-2.5 py-1 text-center text-[11px] font-semibold text-slate-100"
+                        className="rounded-xl border border-white/20 bg-slate-950/55 px-2.5 py-2 text-center text-xs font-semibold text-slate-100"
                       >
                         {city}
                       </span>
                     ))}
                   </div>
-                  <div className="hidden flex-wrap items-center justify-center gap-1.5 sm:flex md:justify-start">
+                  <div className="hidden flex-wrap items-center justify-center gap-1.5 md:flex md:justify-start">
                     {RGV_CITIES.map((city) => (
                       <span
                         key={city}
@@ -389,12 +394,12 @@ export function Hero() {
                     ))}
                   </div>
 
-                  <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center md:justify-start">
+                  <div className="flex flex-col items-stretch gap-2 md:flex-row md:flex-wrap md:items-center md:justify-start">
                     <Button
                       asChild
                       size="lg"
                       variant="gradient"
-                      className="h-10 w-full px-3 text-sm shadow-lg shadow-sky-500/20 sm:hidden"
+                      className="h-11 w-full px-3 text-sm shadow-lg shadow-sky-500/20 md:hidden"
                     >
                       <Link href="/#usa-coverage">
                         <span>Check Delivery Eligibility</span>
@@ -405,7 +410,7 @@ export function Hero() {
                       asChild
                       size="lg"
                       variant="gradient"
-                      className="hidden h-10 px-4 text-sm shadow-lg shadow-sky-500/20 sm:inline-flex sm:w-auto"
+                      className="hidden h-10 px-4 text-sm shadow-lg shadow-sky-500/20 md:inline-flex md:w-auto"
                     >
                       <Link href="#inquiry-form">
                         <span>Schedule Local Delivery</span>
@@ -414,7 +419,7 @@ export function Hero() {
                     </Button>
                     <Link
                       href="/#usa-coverage"
-                      className="hidden h-10 cursor-pointer items-center justify-center rounded-xl border border-white/30 bg-white/10 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-white/15 sm:inline-flex"
+                      className="hidden h-10 cursor-pointer items-center justify-center rounded-xl border border-white/30 bg-white/10 px-4 text-sm font-medium text-white shadow-sm transition-all hover:bg-white/15 md:inline-flex"
                     >
                       View Service Area Map
                     </Link>
@@ -461,31 +466,31 @@ export function Hero() {
               className="relative w-full md:h-full md:self-stretch"
             >
               <div className="relative z-20 mx-auto flex w-full max-w-7xl items-center md:h-full md:px-6 lg:px-8">
-                <motion.div variants={fadeUp} className="max-w-xl space-y-3 text-center md:space-y-2.5 md:text-left">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-slate-950/50 px-3 py-1 text-[11px] font-semibold text-sky-200 shadow-sm">
-                    <Zap className="h-3.5 w-3.5 text-sky-300" />
+                <motion.div variants={fadeUp} className="w-full max-w-xl space-y-3 text-center md:space-y-2.5 md:text-left">
+                  <div className="mx-auto inline-flex max-w-full items-center gap-2 rounded-full border border-sky-400/30 bg-slate-950/50 px-3 py-1 text-center text-[11px] font-semibold leading-snug text-sky-200 shadow-sm">
+                    <Zap className="h-3.5 w-3.5 shrink-0 text-sky-300" />
                     <span>Weekly Texas Freight Route</span>
                   </div>
 
-                  <h2 className="text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl sm:font-extrabold lg:text-4xl">
+                  <h2 className="text-[1.65rem] font-bold leading-[1.15] tracking-tight text-white md:text-3xl md:font-extrabold lg:text-4xl">
                     FREE HOUSTON DELIVERY
                     <br />
                     <span className="text-sky-300">EVERY FRIDAY</span>
                   </h2>
 
-                  <p className="text-[11px] font-semibold text-amber-200 sm:text-xs">
-                    <span className="sm:hidden">★ Full Pallet Orders Only (256 Rolls)</span>
-                    <span className="hidden sm:inline">★ Exclusive to Full Pallet Orders (256 Rolls)</span>
+                  <p className="text-xs font-semibold text-amber-200">
+                    <span className="md:hidden">★ Full Pallet Orders Only (256 Rolls)</span>
+                    <span className="hidden md:inline">★ Exclusive to Full Pallet Orders (256 Rolls)</span>
                   </p>
 
-                  <p className="mx-auto max-w-xl text-xs leading-snug text-slate-100 sm:text-sm md:mx-0">
-                    <span className="sm:hidden">Weekly Friday freight route to Houston industrial docks.</span>
-                    <span className="hidden sm:inline">
+                  <p className="mx-auto max-w-xl text-sm leading-snug text-slate-100 md:mx-0">
+                    <span className="md:hidden">Weekly Friday freight route to Houston industrial docks.</span>
+                    <span className="hidden md:inline">
                       We service the greater Houston Metro area every Friday. Order full pallets by Wednesday 5 PM to qualify for $0 shipping directly to your facility dock.
                     </span>
                   </p>
 
-                  <ul className="hidden space-y-1 text-left sm:flex sm:flex-col">
+                  <ul className="hidden space-y-1 text-left md:flex md:flex-col">
                     {HOUSTON_HIGHLIGHTS.map((item) => (
                       <li key={item} className="flex items-start gap-2 text-xs text-slate-100">
                         <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-300" />
@@ -499,11 +504,11 @@ export function Hero() {
                       asChild
                       size="lg"
                       variant="gradient"
-                      className="h-10 w-full px-3 text-sm shadow-lg shadow-sky-500/20 sm:w-auto sm:px-4"
+                      className="h-11 w-full px-3 text-sm shadow-lg shadow-sky-500/20 md:h-10 md:w-auto md:px-4"
                     >
                       <Link href="#inquiry-form">
-                        <span className="sm:hidden">Reserve Friday Route</span>
-                        <span className="hidden sm:inline">Reserve Friday Route Slot</span>
+                        <span className="md:hidden">Reserve Friday Route</span>
+                        <span className="hidden md:inline">Reserve Friday Route Slot</span>
                         <ArrowRight className="h-4 w-4" />
                       </Link>
                     </Button>
@@ -525,8 +530,9 @@ export function Hero() {
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
 
-        <div className="absolute bottom-3 left-0 right-0 z-20 flex items-center justify-center gap-2" aria-label="Hero slides">
+        <div className="mt-5 flex shrink-0 items-center justify-center gap-2 md:absolute md:bottom-3 md:left-0 md:right-0 md:z-20 md:mt-0" aria-label="Hero slides">
           {Array.from({ length: SLIDE_COUNT }, (_, dot) => {
             const active = index === dot;
             return (
