@@ -12,6 +12,10 @@ export interface ProductVariant extends Omit<
   boxes_count?: number;
   rollsCount?: number;
   boxesCount?: number;
+  tierKey?: string;
+  tierSubtext?: string;
+  tierBadges?: string[];
+  tierTag?: string;
   rollWeightLbs?: number | null;
   boxWeightLbs?: number | null;
   palletWeightLbs?: number | null;
