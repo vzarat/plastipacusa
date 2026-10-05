@@ -99,7 +99,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
   const title = product?.title || product?.name || "Stretch Film";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 md:space-y-6">
       {/* Product Title & Film Type Header — price lives only in VariantSelector card */}
       <div>
         <div className="flex items-center gap-2 mb-2">

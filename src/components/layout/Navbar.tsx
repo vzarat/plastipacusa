@@ -29,6 +29,7 @@ export function Navbar() {
   const router = useRouter();
   const { t } = useLanguage();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [compactLogo, setCompactLogo] = useState(false);
   const [currentUser, setCurrentUser] = useState<CurrentUserResponse | null>(null);
 
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -68,6 +69,17 @@ export function Navbar() {
   useEffect(() => {
     setIsUserMenuOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const onScroll = () => setCompactLogo(window.scrollY > 20);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const mobileLogoClass = `w-auto object-contain transition-all duration-300 ease-in-out ${
+    compactLogo ? "h-7" : "h-12"
+  }`;
 
   const openCart = () => openDrawer();
   const isHomePage = pathname === "/";
@@ -111,7 +123,7 @@ export function Navbar() {
                 width={140}
                 height={36}
                 priority
-                className="h-8 w-auto object-contain"
+                className={mobileLogoClass}
               />
             </Link>
             <div className="flex items-center gap-1">
@@ -164,7 +176,7 @@ export function Navbar() {
               width={140}
               height={36}
               priority
-              className="h-8 w-auto object-contain"
+              className={mobileLogoClass}
             />
           </Link>
         </div>

@@ -168,8 +168,8 @@ export default async function ProductDetailPage({
   })();
 
   return (
-    <div className="py-10 bg-slate-50/40 min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+    <div className="min-h-screen bg-slate-50/40 py-4 md:py-10">
+      <div className="mx-auto max-w-7xl space-y-3 px-4 sm:px-6 md:space-y-12 lg:px-8">
         {/* Breadcrumb Navigation */}
         <nav className="flex items-center gap-2 text-xs text-slate-500 font-medium">
           <Link href="/" className="hover:text-sky-600 transition-colors">
@@ -184,9 +184,9 @@ export default async function ProductDetailPage({
         </nav>
 
         {/* Top Product Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 md:gap-10">
           {/* Left Column: Interactive Image Gallery & Technical Features */}
-          <div className="lg:col-span-6 space-y-6">
+          <div className="space-y-3 lg:col-span-6 md:space-y-6">
             <ProductGallery
               images={product?.images || []}
               imageUrl={product?.imageUrl || ""}
@@ -197,7 +197,7 @@ export default async function ProductDetailPage({
             />
 
             {/* Engineering Highlights */}
-            <div className="rounded-3xl border border-slate-200/90 bg-white p-7 space-y-4 shadow-sm">
+            <div className="hidden rounded-3xl border border-slate-200/90 bg-white p-7 shadow-sm md:block md:space-y-4">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-sky-600" />
                 Performance Characteristics
@@ -260,7 +260,7 @@ export default async function ProductDetailPage({
         </div>
 
         {/* Bottom Section: Full Engineering Dimension & Pack-Out Matrix */}
-        <section className="pt-8 border-t border-slate-200 space-y-8">
+        <section className="space-y-3 border-t border-slate-200 pt-4 md:space-y-8 md:pt-8">
           <PalletizingSpecsPanel
             specs={palletizing}
             widthLabel={widthDisplay ? `${widthDisplay}"` : undefined}

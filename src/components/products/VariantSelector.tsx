@@ -583,7 +583,7 @@ export function VariantSelector({
   }
 
   return (
-    <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 space-y-7 shadow-xl shadow-slate-200/40">
+    <div className="flex flex-col space-y-3 rounded-3xl border border-slate-200/90 bg-white p-4 shadow-xl shadow-slate-200/40 md:block md:space-y-7 md:p-8">
       {/* Dynamic Price Header */}
       <div className="pb-5 border-b border-slate-100 flex flex-wrap items-baseline justify-between gap-3">
         <div>
@@ -622,7 +622,7 @@ export function VariantSelector({
       </div>
 
       {/* Package Size Pill Selector */}
-      <div className="space-y-3" data-tour="product-price-tiers">
+      <div className="order-1 space-y-3 md:order-none" data-tour="product-price-tiers">
         <div className="flex items-center justify-between">
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
             {t("products.packageOptions")}
@@ -777,13 +777,15 @@ export function VariantSelector({
         </div>
       </div>
 
-      <ProductDiscountInput
-        appliedDiscount={appliedDiscount}
-        onApplied={handleDiscountApplied}
-      />
+      <div className="order-2 md:order-none">
+        <ProductDiscountInput
+          appliedDiscount={appliedDiscount}
+          onApplied={handleDiscountApplied}
+        />
+      </div>
 
-      {/* Specs + Quantity (onboarding step 1) */}
-      <div className="space-y-4" data-tour="product-specs">
+      {/* Specifications sit below the action buttons on mobile */}
+      <div className="order-5 space-y-2 md:order-none" data-tour="product-specs">
       {(() => {
         const widthVal =
           (product as any)?.width_inches ||
@@ -842,10 +844,11 @@ export function VariantSelector({
           </div>
         );
       })()}
+      </div>
 
-      {/* Quantity */}
-      <div className="pt-2 border-t border-slate-100">
-        <div className="flex items-center justify-between gap-4">
+      {/* Quantity and subtotal, directly above the action buttons */}
+      <div className="order-3 border-t border-slate-100 pt-2 md:order-none">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-slate-600 font-bold uppercase">
@@ -935,10 +938,9 @@ export function VariantSelector({
           </div>
         </div>
       </div>
-      </div>
 
       {/* Actions */}
-      <div className="space-y-4 pt-2">
+      <div className="order-4 space-y-3 pt-1 md:order-none md:space-y-4 md:pt-2">
         {showSmartUpsell && (
           <div
             key={`upsell-${quantity}`}
@@ -974,7 +976,7 @@ export function VariantSelector({
             variant={isSoldOut ? "secondary" : "gradient"}
             size="lg"
             disabled={isSoldOut || baseUnitPriceRaw <= 0}
-            className={`w-full flex items-center justify-center gap-2 text-sm font-bold py-6 rounded-2xl ${
+            className={`flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold md:py-6 ${
               isSoldOut
                 ? "bg-slate-300 text-slate-500 shadow-none cursor-not-allowed hover:bg-slate-300"
                 : "shadow-lg shadow-sky-500/20"
@@ -1001,7 +1003,7 @@ export function VariantSelector({
       </div>
 
       {addedNotice && (
-        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs flex items-center gap-2 font-semibold shadow-sm animate-fade-in-up">
+        <div className="order-4 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-semibold text-emerald-800 shadow-sm animate-fade-in-up md:order-none">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
           <span>
             {t("products.addedToCart")
