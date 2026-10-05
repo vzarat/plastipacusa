@@ -17,6 +17,7 @@ import {
   ProductFilters,
   type CatalogAppFilter,
 } from "@/components/products/ProductFilters";
+import { MobileFilterBar } from "@/components/products/MobileFilterBar";
 import { ProductCatalogToolbar } from "@/components/products/ProductCatalogToolbar";
 import { useLanguage } from "@/context/LanguageContext";
 import type { ProductWithVariants } from "@/types";
@@ -567,16 +568,6 @@ export function ProductCatalog({
   const [freeShippingOnly, setFreeShippingOnly] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const cycleValue = (current: string, options: readonly string[]) => {
-    const index = options.indexOf(current);
-    return options[(index + 1) % options.length];
-  };
-
-  const chipClass = (active: boolean) =>
-    `rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium whitespace-nowrap ${
-      active ? "border-sky-600 bg-sky-50 text-sky-800" : "bg-white text-slate-700"
-    }`;
-
   const handleQueryChange = (value: string) => {
     startTransition(() => {
       setSearchQuery(value);
@@ -619,49 +610,20 @@ export function ProductCatalog({
         />
       </div>
 
-      <div className="md:hidden">
-        <div className="no-scrollbar flex gap-2 overflow-x-auto px-3 py-2">
-          <button
-            type="button"
-            onClick={() => setMobileFiltersOpen((open) => !open)}
-            className={chipClass(mobileFiltersOpen || selectedAppType !== "all" || selectedWidth !== "all" || selectedGauge !== "all" || selectedLength !== "all")}
-          >
-            Sort & Filters
-          </button>
-          <button
-            type="button"
-            onClick={() => updateFilter("gauge", cycleValue(selectedGauge, ["all", "60", "70", "80"]))}
-            className={chipClass(selectedGauge !== "all")}
-          >
-            {selectedGauge === "all" ? "Gauge" : `${selectedGauge} GA`}
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              updateFilter("length", cycleValue(selectedLength, ["all", "1000", "1500", "5000", "6000"]))
-            }
-            className={chipClass(selectedLength !== "all")}
-          >
-            {selectedLength === "all" ? "Length" : `${selectedLength} FT`}
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              updateFilter("app", cycleValue(selectedAppType, ["all", "hand", "machine"]) as CatalogAppFilter)
-            }
-            className={chipClass(selectedAppType !== "all")}
-          >
-            {selectedAppType === "hand" ? "Hand" : selectedAppType === "machine" ? "Machine" : "Type"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setFreeShippingOnly((on) => !on)}
-            className={chipClass(freeShippingOnly)}
-          >
-            Free Shipping
-          </button>
-        </div>
-        {mobileFiltersOpen && (
+      <MobileFilterBar
+        selectedApp={selectedAppType}
+        selectedWidth={selectedWidth}
+        selectedGauge={selectedGauge}
+        selectedLength={selectedLength}
+        freeShippingOnly={freeShippingOnly}
+        filtersPanelOpen={mobileFiltersOpen}
+        onToggleFiltersPanel={() => setMobileFiltersOpen((open) => !open)}
+        onAppChange={(value) => updateFilter("app", value)}
+        onWidthChange={(value) => updateFilter("width", value)}
+        onGaugeChange={(value) => updateFilter("gauge", value)}
+        onLengthChange={(value) => updateFilter("length", value)}
+        onFreeShippingChange={setFreeShippingOnly}
+        filtersPanel={
           <div className="px-3 pb-3">
             <ProductFilters
               selectedApp={selectedAppType}
@@ -675,8 +637,8 @@ export function ProductCatalog({
               onReset={resetFilters}
             />
           </div>
-        )}
-      </div>
+        }
+      />
 
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
         <div className="hidden md:block lg:col-span-3">
