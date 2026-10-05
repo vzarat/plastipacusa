@@ -28,7 +28,7 @@ export function AnnouncementBar() {
   const { t } = useLanguage();
 
   return (
-    <div className="bg-gradient-to-r from-sky-600 via-sky-700 to-blue-800 text-white text-xs py-2.5 px-4 shadow-sm">
+    <div className="hidden bg-gradient-to-r from-sky-600 via-sky-700 to-blue-800 text-white text-xs py-2.5 px-4 shadow-sm md:block">
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 text-sky-50 min-w-0">
           <UsFlagIcon className="h-3.5 w-[18px] shrink-0 rounded-[1px] shadow-sm" />

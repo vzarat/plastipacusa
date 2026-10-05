@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -9,9 +8,8 @@ import { useCartStore } from "@/lib/store/useCartStore";
 import { getCurrentUser, signOut, CurrentUserResponse } from "@/actions/auth";
 import {
   ShoppingCart,
-  Menu,
-  X,
   ChevronDown,
+  Search,
   LayoutGrid,
   User,
   LogOut,
@@ -26,16 +24,11 @@ import { LanguageToggle } from "@/components/common/LanguageToggle";
 const LOGO_SRC =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PLASTIPAC_USA_LOGO%202.svg";
 
-const drawerLinkClass =
-  "block py-3 text-lg font-medium text-slate-800 border-b border-slate-100 hover:text-sky-700 transition-colors";
-
 export function Navbar() {
   const pathname = usePathname();
-  const { t, locale } = useLanguage();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { t } = useLanguage();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<CurrentUserResponse | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
 
   const userMenuRef = useRef<HTMLDivElement>(null);
   const items = useCartStore((state) => state.items);
@@ -43,10 +36,6 @@ export function Navbar() {
 
   const totalItemsCount = items.reduce((acc, item) => acc + item.quantity, 0);
   const isSpanish = locale === "es";
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -76,31 +65,10 @@ export function Navbar() {
   }, []);
 
   useEffect(() => {
-    setIsMobileMenuOpen(false);
     setIsUserMenuOpen(false);
   }, [pathname]);
 
-  useEffect(() => {
-    if (!isMobileMenuOpen || typeof document === "undefined" || typeof window === "undefined") {
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setIsMobileMenuOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [isMobileMenuOpen]);
-
   const openCart = () => openDrawer();
-  const closeMobileMenu = () => setIsMobileMenuOpen(false);
   const isHomePage = pathname === "/";
 
   const handleCategoriesClick = (
@@ -108,7 +76,6 @@ export function Navbar() {
   ) => {
     if (!isHomePage) return;
     event.preventDefault();
-    closeMobileMenu();
     const target =
       document.getElementById("categories") ||
       document.getElementById("category-showcase") ||
@@ -118,253 +85,27 @@ export function Navbar() {
 
   const categoriesHref = isHomePage ? "/#categories" : "/products";
 
-  const accountHref =
-    currentUser?.profile.role === "admin" ? "/admin" : "/dashboard";
-  const ordersHref =
-    currentUser?.profile.role === "admin"
-      ? "/admin"
-      : currentUser
-        ? "/dashboard/orders"
-        : "/login";
-
-  const mobileDrawer =
-    isMounted &&
-    typeof document !== "undefined" &&
-    document.body &&
-    createPortal(
-      <div className="md:hidden" aria-hidden={!isMobileMenuOpen}>
-        {/* Backdrop */}
-        <div
-          className={`fixed inset-0 bg-black/50 z-[60] backdrop-blur-sm transition-opacity duration-300 ease-in-out ${
-            isMobileMenuOpen
-              ? "opacity-100 pointer-events-auto"
-              : "opacity-0 pointer-events-none"
-          }`}
-          onClick={closeMobileMenu}
-        />
-
-        {/* Right slide-over panel */}
-        <aside
-          role="dialog"
-          aria-modal="true"
-          aria-label="Mobile navigation"
-          className={`fixed top-0 right-0 bottom-0 w-[85vw] max-w-sm bg-white z-[70] p-6 flex flex-col justify-between shadow-2xl transition-transform duration-300 ease-in-out overflow-y-auto ${
-            isMobileMenuOpen
-              ? "translate-x-0"
-              : "translate-x-full pointer-events-none"
-          }`}
-        >
-          <div className="space-y-6">
-            <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-100">
-              <Link href="/" onClick={closeMobileMenu} className="inline-flex items-center">
-                <Image
-                  src={LOGO_SRC}
-                  alt="Plastipac USA"
-                  width={180}
-                  height={48}
-                  className="h-10 w-auto object-contain"
-                />
-              </Link>
-              <button
-                type="button"
-                onClick={closeMobileMenu}
-                className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
-                aria-label="Close menu"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <nav className="flex flex-col">
-              <Link href="/" onClick={closeMobileMenu} className={drawerLinkClass}>
-                {isSpanish ? "Inicio / Catálogo" : "Home / Catalog"}
-              </Link>
-              <Link
-                href="/products"
-                onClick={closeMobileMenu}
-                className={drawerLinkClass}
-              >
-                {t("nav.products")}
-              </Link>
-              <Link
-                href={categoriesHref}
-                onClick={(e) => {
-                  handleCategoriesClick(e);
-                  if (!isHomePage) closeMobileMenu();
-                }}
-                className={drawerLinkClass}
-              >
-                {t("nav.categories")}
-              </Link>
-              <Link
-                href="/products?app=hand"
-                onClick={closeMobileMenu}
-                className={drawerLinkClass}
-              >
-                {t("products.handStretchFilmSeries")}
-              </Link>
-              <Link
-                href="/products?app=machine"
-                onClick={closeMobileMenu}
-                className={drawerLinkClass}
-              >
-                {t("products.machineHighYieldFilm")}
-              </Link>
-              <Link
-                href="/about"
-                onClick={closeMobileMenu}
-                className={drawerLinkClass}
-              >
-                {t("nav.about")}
-              </Link>
-              <Link
-                href={ordersHref}
-                onClick={closeMobileMenu}
-                className={drawerLinkClass}
-              >
-                {isSpanish ? "Órdenes y Cotizaciones" : "Orders & Quotes"}
-              </Link>
-
-              <p className="pt-4 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                {isSpanish ? "Políticas Legales" : "Legal Policies"}
-              </p>
-              <Link
-                href="/privacy-policy"
-                onClick={closeMobileMenu}
-                className={drawerLinkClass}
-              >
-                {isSpanish ? "Privacidad" : "Privacy Policy"}
-              </Link>
-              <Link
-                href="/terms-of-service"
-                onClick={closeMobileMenu}
-                className={drawerLinkClass}
-              >
-                {isSpanish ? "Términos" : "Terms of Service"}
-              </Link>
-              <Link
-                href="/refund-policy"
-                onClick={closeMobileMenu}
-                className={drawerLinkClass}
-              >
-                {isSpanish ? "Reembolsos" : "Refund Policy"}
-              </Link>
-              <Link
-                href="/shipping-policy"
-                onClick={closeMobileMenu}
-                className={`${drawerLinkClass} border-b-0`}
-              >
-                {isSpanish ? "Envíos" : "Shipping Policy"}
-              </Link>
-            </nav>
-          </div>
-
-          <div className="space-y-4 pt-6 border-t border-slate-100 mt-6">
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-              <span className="text-xs font-bold text-slate-600">
-                {t("nav.language")}
-              </span>
-              <LanguageToggle />
-            </div>
-
-            <a
-              href="tel:+19564003683"
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-800 hover:border-sky-300 hover:bg-sky-50/50 transition-colors"
-            >
-              <PhoneCall className="w-4 h-4 text-sky-600" />
-              (956) 400-3683
-            </a>
-
-            {currentUser ? (
-              <div className="space-y-2">
-                <Link
-                  href={accountHref}
-                  prefetch={false}
-                  onClick={closeMobileMenu}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 py-3 text-sm font-semibold text-white shadow-md shadow-sky-500/20 hover:opacity-95 hover:shadow-lg hover:shadow-sky-500/30 transition-all"
-                >
-                  {currentUser.profile.role === "admin" ? (
-                    <>
-                      <ShieldCheck className="w-4 h-4" />
-                      {t("nav.adminPortal")}
-                    </>
-                  ) : (
-                    <>
-                      <LayoutGrid className="w-4 h-4" />
-                      {t("nav.dashboard")}
-                    </>
-                  )}
-                </Link>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    closeMobileMenu();
-                    await signOut();
-                  }}
-                  className="w-full rounded-xl border border-rose-200 py-3 text-sm font-semibold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                >
-                  {t("nav.signOut")}
-                </button>
-              </div>
-            ) : (
-              <Link
-                href="/login"
-                onClick={closeMobileMenu}
-                data-tour="nav-sign-in"
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 py-3 font-semibold text-white shadow-md shadow-sky-500/20 hover:opacity-95 hover:shadow-lg hover:shadow-sky-500/30 transition-all"
-              >
-                <User className="w-4 h-4" />
-                {t("nav.signIn")}
-              </Link>
-            )}
-          </div>
-        </aside>
-      </div>,
-      document.body
-    );
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-100 bg-white/95 backdrop-blur-md shadow-sm">
-      {/* Mobile top bar */}
-      <div className="md:hidden relative flex items-center justify-between h-[4.5rem] px-4">
-        <button
-          type="button"
-          onClick={openCart}
-          className="relative z-10 p-2 text-slate-700 hover:text-sky-600 rounded-xl border border-slate-200 hover:border-slate-300 transition-colors cursor-pointer"
-          aria-label="Shopping Cart"
-        >
-          <ShoppingCart className="w-5 h-5" />
-          {totalItemsCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white shadow-sm">
-              {totalItemsCount}
-            </span>
-          )}
-        </button>
-
-        <Link
-          href="/"
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center"
-          aria-label="Plastipac USA Home"
-        >
+      <div className="flex h-14 items-center justify-between px-4 md:hidden">
+        <Link href="/" className="flex items-center" aria-label="Plastipac USA Home">
           <Image
             src={LOGO_SRC}
-            alt="Plastipac USA - Industrial Stretch Packaging"
-            width={280}
-            height={76}
+            alt="Plastipac USA"
+            width={140}
+            height={36}
             priority
-            className="h-14 w-auto max-w-[min(68vw,240px)] object-contain"
+            className="h-8 w-auto object-contain"
           />
         </Link>
-
-        <button
-          type="button"
-          onClick={() => setIsMobileMenuOpen((open) => !open)}
-          className="relative z-10 p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
-          aria-label="Toggle menu"
-          aria-expanded={isMobileMenuOpen}
+        <Link
+          href="/catalog"
+          aria-label="Search catalog"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition-transform active:scale-95"
         >
-          {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+          <Search className="h-5 w-5" />
+        </Link>
       </div>
 
       {/* Desktop layout */}
@@ -577,7 +318,6 @@ export function Navbar() {
         </div>
       </div>
 
-      {mobileDrawer}
     </header>
   );
 }

@@ -216,10 +216,10 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
       : "Volume tiers: Boxes & Pallets";
 
   return (
-    <div className="group h-full flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-white overflow-hidden transition-all duration-300 hover:border-sky-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-500/10 card-hover-effect">
+    <div className="group flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/90 bg-white transition-all duration-300 hover:border-sky-300 md:rounded-3xl md:hover:-translate-y-1 md:hover:shadow-xl md:hover:shadow-sky-500/10 card-hover-effect">
       <div>
         {/* 1. Clean Product Image Area (Completely free of floating dark pills and text overlays) */}
-        <div className="relative aspect-[4/3] w-full bg-slate-50/50 overflow-hidden border-b border-slate-100 flex items-center justify-center">
+        <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden border-b border-slate-100 bg-slate-50/50 md:aspect-[4/3]">
           {/* Official Category Brand Logo Badge */}
           {isSoldOut && (
             <div className="absolute top-3.5 right-3.5 z-10 rounded-full border border-rose-200 bg-rose-600 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
@@ -227,7 +227,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             </div>
           )}
 
-          <div className="absolute top-3.5 left-3.5 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-800 shadow-sm flex items-center justify-center">
+          <div className="absolute top-3.5 left-3.5 z-10 hidden items-center justify-center rounded-lg border border-slate-200/60 bg-white/90 px-2.5 py-1.5 shadow-sm backdrop-blur-md md:flex">
             <Image
               src={categoryLogo.src}
               alt={categoryLogo.alt}
@@ -244,8 +244,8 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             fill
             priority={priority}
             placeholder="empty"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-            className={`object-contain p-5 transition-all duration-300 ${
+            sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className={`object-contain p-2 transition-all duration-300 md:p-5 ${
               secondaryImage
                 ? "group-hover:opacity-0 group-hover:scale-95"
                 : "group-hover:scale-105"
@@ -260,16 +260,16 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               alt={`${title} Packaging Box`}
               fill
               placeholder="empty"
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-              className="object-contain p-5 opacity-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300 pointer-events-none"
+              sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              className="pointer-events-none object-contain p-2 opacity-0 transition-all duration-300 group-hover:scale-105 group-hover:opacity-100 md:p-5"
             />
           )}
         </div>
 
         {/* 2. Refined Product Info & B2B Volume Indicator */}
-        <div className="p-6 pb-4 space-y-3.5">
+        <div className="space-y-3.5 p-3 pb-2 md:p-6 md:pb-4">
           <div>
-            <span className={`text-[10px] font-mono uppercase ${catStyles.seriesColor} font-bold tracking-wider block`}>
+            <span className={`hidden text-[10px] font-mono font-bold uppercase tracking-wider md:block ${catStyles.seriesColor}`}>
               {isGenesis
                 ? isGenesisHighPerformance
                   ? "GENESIS • Automatic High Performance"
@@ -278,12 +278,12 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
                 ? "FORCE ELITE • Nano Multi-Layer Series"
                 : "FORCE • Industrial Cast Series"}
             </span>
-            <h3 className={`text-sm sm:text-base font-extrabold text-slate-900 ${catStyles.hoverTitleColor} transition-colors mt-1 line-clamp-2 min-h-[2.75rem] sm:min-h-[3rem] leading-snug`}>
+            <h3 className={`mt-0 line-clamp-2 text-xs font-extrabold leading-snug text-slate-900 transition-colors md:mt-1 md:min-h-[3rem] md:text-base ${catStyles.hoverTitleColor}`}>
               <Link href={`/products/${product?.slug || "stretch-film-18-x-60-ga-x-1000ft"}`}>
                 {title}
               </Link>
             </h3>
-            <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mt-1.5">
+            <p className="mt-1.5 hidden text-xs leading-relaxed text-slate-500 line-clamp-2 md:block">
               {product?.shortDescription ||
                 (isGenesis
                   ? "High-yield automated cast stretch film engineered for high-speed turntable and rotary wrapper systems."
@@ -292,7 +292,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           </div>
 
           {/* B2B Volume Availability & Feature Badges */}
-          <div className="space-y-2.5 pt-1">
+          <div className="hidden space-y-2.5 pt-1 md:block">
             <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${catStyles.badgeBg} border ${catStyles.badgeBorder} ${catStyles.badgeText} text-[11px] font-semibold`}>
               <Layers className={`w-3.5 h-3.5 ${catStyles.iconColor}`} />
               <span>{volumeTierLabel}</span>
@@ -313,23 +313,22 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
       </div>
 
       {/* 3. Pricing Display & Full-Width High-Conversion CTA Button */}
-      <div className="p-6 pt-0 space-y-3.5">
-        {/* Dynamic Tier Price Header */}
-        <div className="flex items-baseline justify-between pt-3 border-t border-slate-100">
+      <div className="space-y-2 p-3 pt-0 md:space-y-3.5 md:p-6">
+        <div className="flex items-baseline justify-between border-t border-slate-100 pt-2 md:pt-3">
           <div>
-            <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">
+            <span className="hidden text-[10px] font-bold uppercase tracking-wider text-slate-400 md:block">
               {t("products.startingAt")}
             </span>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-black text-slate-900 tracking-tight">
+              <span className="text-base font-black tracking-tight text-slate-900 md:text-2xl">
                 {primaryPrice !== null ? formatCurrency(primaryPrice) : "—"}
               </span>
               {primaryPrice !== null && (
-                <span className="text-xs font-bold text-slate-500">USD</span>
+                <span className="hidden text-xs font-bold text-slate-500 md:inline">USD</span>
               )}
             </div>
           </div>
-          <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
+          <span className="hidden rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500 md:inline">
             {isGenesis
               ? "Machine Roll"
               : cheapestPackage?.rolls
@@ -345,18 +344,19 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           <button
             type="button"
             disabled
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-slate-200 text-slate-500 font-extrabold text-sm cursor-not-allowed"
+            className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-slate-200 px-3 py-2 text-xs font-extrabold text-slate-500 md:px-4 md:py-3 md:text-sm"
           >
             {t("products.soldOut")}
           </button>
         ) : (
           <Link
             href={`/products/${product?.slug || "stretch-film-18-x-60-ga-x-1000ft"}`}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 text-white font-extrabold text-sm shadow-md shadow-sky-500/20 hover:opacity-95 hover:shadow-lg hover:shadow-sky-500/30 transition-all duration-200 active:scale-[0.99] group/btn"
+            className="group/btn flex w-full items-center justify-center gap-1.5 rounded-xl bg-sky-600 px-3 py-2 text-xs font-bold text-white transition-transform active:scale-95 md:gap-2 md:bg-gradient-to-r md:from-sky-500 md:via-sky-600 md:to-blue-700 md:px-4 md:py-3 md:text-sm md:font-extrabold md:shadow-md md:shadow-sky-500/20 md:hover:opacity-95 md:active:scale-[0.99]"
           >
-            <ShoppingCart className="w-4 h-4 text-white group-hover/btn:scale-110 transition-transform" />
-            <span>{t("products.buyNow")}</span>
-            <ArrowRight className="w-4 h-4 text-sky-200 group-hover/btn:translate-x-0.5 transition-transform" />
+            <ShoppingCart className="hidden h-4 w-4 text-white md:block" />
+            <span className="md:hidden">Add</span>
+            <span className="hidden md:inline">{t("products.buyNow")}</span>
+            <ArrowRight className="hidden h-4 w-4 text-sky-200 md:block" />
           </Link>
         )}
 
