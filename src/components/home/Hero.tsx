@@ -17,9 +17,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import GradientWaves from "@/components/ui/GradientWaves";
+import { HoustonMap } from "@/components/ui/HoustonMap";
 import { useLanguage } from "@/context/LanguageContext";
 
-const SLIDE_COUNT = 2;
+const SLIDE_COUNT = 3;
+
+const HOUSTON_HIGHLIGHTS = [
+  "Guaranteed Friday Delivery Slots",
+  "Applies to 256-Roll Full Pallet Tiers",
+  "Direct Industrial Dock Unloading",
+] as const;
 const AUTO_MS = 6000;
 
 const WAREHOUSE_BG =
@@ -153,6 +160,21 @@ export function Hero() {
             brightness={0.85}
             opacity={0.9}
             className="absolute inset-0 z-0"
+          />
+        </div>
+        <div
+          className={`absolute inset-0 bg-slate-950 transition-opacity duration-700 ease-out ${
+            index === 2 ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <div className="absolute inset-0 bg-slate-950/90" />
+          <div
+            className="absolute inset-0 opacity-70"
+            style={{
+              backgroundImage:
+                "linear-gradient(to right, rgba(148,163,184,0.18) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.18) 1px, transparent 1px)",
+              backgroundSize: "48px 48px",
+            }}
           />
         </div>
       </div>
@@ -300,7 +322,7 @@ export function Hero() {
                 </motion.div>
               </div>
             </motion.div>
-          ) : (
+          ) : index === 1 ? (
             <motion.div
               key="hero-delivery"
               initial="hidden"
@@ -387,6 +409,76 @@ export function Hero() {
                     <p className="mt-2 text-[11px] font-semibold text-emerald-300">
                       ✓ Active Daily RGV Routes
                     </p>
+                  </div>
+                </motion.div>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="hero-houston"
+              initial="hidden"
+              animate="show"
+              exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
+              className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8"
+            >
+              <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-12 md:gap-6">
+                <motion.div
+                  variants={fadeUp}
+                  className="space-y-2 text-center md:col-span-7 md:space-y-2.5 md:text-left"
+                >
+                  <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-slate-950/50 px-3 py-1 text-[11px] font-semibold text-sky-200 shadow-sm">
+                    <Zap className="h-3.5 w-3.5 text-sky-300" />
+                    <span>Weekly Texas Freight Route</span>
+                  </div>
+
+                  <h2 className="text-xl font-extrabold leading-tight tracking-tight text-white sm:text-2xl lg:text-3xl">
+                    FREE HOUSTON DELIVERY
+                    <br />
+                    <span className="text-sky-300">EVERY FRIDAY</span>
+                  </h2>
+
+                  <p className="text-[11px] font-semibold text-amber-200">
+                    ★ Exclusive to Full Pallet Orders (256 Rolls)
+                  </p>
+
+                  <p className="mx-auto max-w-2xl text-xs leading-snug text-slate-100 sm:text-sm md:mx-0">
+                    We service the greater Houston Metro area every Friday. Order full pallets by Wednesday 5 PM to qualify for $0 shipping directly to your warehouse dock.
+                  </p>
+
+                  <ul className="space-y-1 text-left">
+                    {HOUSTON_HIGHLIGHTS.map((item) => (
+                      <li key={item} className="flex items-start gap-2 text-xs text-slate-100">
+                        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-300" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="flex justify-center md:justify-start">
+                    <Button
+                      asChild
+                      size="lg"
+                      variant="gradient"
+                      className="h-9 px-3 text-xs shadow-lg shadow-sky-500/20 sm:h-10 sm:px-4 sm:text-sm"
+                    >
+                      <Link href="#inquiry-form">
+                        <span>Reserve Friday Route Slot</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                </motion.div>
+
+                <motion.div variants={fadeRight} className="md:col-span-5">
+                  <div
+                    className="relative h-[220px] overflow-hidden rounded-2xl border border-slate-800 shadow-2xl md:h-[380px]"
+                    onTouchStart={(event) => event.stopPropagation()}
+                    onTouchEnd={(event) => event.stopPropagation()}
+                  >
+                    <HoustonMap />
+                    <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[calc(100%-1.5rem)] rounded-full border border-white/15 bg-slate-950/80 px-2.5 py-1 text-[11px] font-semibold text-slate-100 shadow-lg">
+                      🚚 Friday Route: Greater Houston Metro Area
+                    </div>
                   </div>
                 </motion.div>
               </div>
