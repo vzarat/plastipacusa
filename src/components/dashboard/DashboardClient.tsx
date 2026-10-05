@@ -32,8 +32,6 @@ import {
   Phone,
   ArrowLeft,
   LogOut,
-  Menu,
-  X,
   FileText,
   Download,
   MapPin,
@@ -45,6 +43,7 @@ import {
 import { useLanguage } from "@/context/LanguageContext";
 import { LanguageToggle } from "@/components/common/LanguageToggle";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
+import { DashboardMobileChrome } from "@/components/dashboard/DashboardMobileChrome";
 import { AvatarUpload } from "@/components/dashboard/AvatarUpload";
 import { DashboardGreeting } from "@/components/dashboard/DashboardGreeting";
 import dynamic from "next/dynamic";
@@ -184,7 +183,6 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [reorderNotice, setReorderNotice] = useState<string | null>(null);
   const [backupPasswordPending, setBackupPasswordPending] = useState(
     Boolean(profile.backupPasswordPending)
@@ -584,7 +582,6 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
 
   const handleTabClick = (tab: TabKey) => {
     setActiveTab(tab);
-    setIsMobileSidebarOpen(false);
   };
 
   return (
@@ -613,54 +610,17 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
         errorMessage={pdfModalError}
         onClose={closeInvoicePdfModal}
       />
-      <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
-      {/* Mobile Top Header */}
-      <div className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-            className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-            aria-label="Toggle Portal Menu"
-          >
-            {isMobileSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-          <Link href="/">
-            <Image
-              src="https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PLASTIPAC_USA_LOGO%202.svg"
-              alt="Plastipac USA"
-              width={140}
-              height={38}
-              className="h-7 w-auto object-contain"
-            />
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <LanguageToggle showIcon={false} />
-
-          <button
-            type="button"
-            onClick={openDrawer}
-            className="relative p-2 text-slate-700 hover:text-blue-600 rounded-full border border-slate-200 hover:border-slate-300 transition-colors cursor-pointer"
-            aria-label="Shopping Cart"
-          >
-            <ShoppingCart className="w-4 h-4 text-sky-600" />
-            {totalCartCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white shadow-sm">
-                {totalCartCount}
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
+      <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-slate-50 md:h-auto md:min-h-screen md:flex-row md:overflow-visible">
+      <DashboardMobileChrome
+        welcomeName={profile.fullName || profile.email || "there"}
+        avatarUrl={profile.avatarUrl}
+        avatarInitial={profile.fullName?.charAt(0) || "C"}
+        onAccount={() => handleTabClick("settings")}
+        headerAction={<NotificationBell pending={backupPasswordPending} />}
+      />
 
       {/* Left Sidebar Navigation Column */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 shrink-0 bg-white border-r border-slate-200/90 flex flex-col justify-between p-6 transition-transform duration-200 md:sticky md:translate-x-0 md:h-screen md:top-0 ${
-          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
+      <aside className="hidden md:sticky md:top-0 md:z-30 md:flex md:h-screen md:w-72 md:shrink-0 md:flex-col md:justify-between md:border-r md:border-slate-200/90 md:bg-white md:p-6">
         {/* Top: Logo & Portal Badge */}
         <div className="space-y-6">
           <div className="space-y-2">
@@ -719,7 +679,6 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                     {button}
                     <Link
                       href="/dashboard/credit"
-                      onClick={() => setIsMobileSidebarOpen(false)}
                       className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 ease-in-out text-left border-l-4 border-transparent text-emerald-900 hover:text-emerald-950 hover:bg-emerald-50/70 font-semibold"
                     >
                       <CreditCard className="w-4 h-4 shrink-0 text-emerald-600" />
@@ -821,18 +780,10 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
         </div>
       </aside>
 
-      {/* Backdrop for Mobile Sidebar */}
-      {isMobileSidebarOpen && (
-        <div
-          onClick={() => setIsMobileSidebarOpen(false)}
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 md:hidden"
-        />
-      )}
-
       {/* Right Main Content Area — expands; sidebar stays fixed width */}
-      <main className="flex-1 min-w-0 w-full max-w-[1800px] mx-auto px-6 py-5 sm:py-8 lg:py-10 overflow-y-auto space-y-8">
+      <main className="dashboard-mobile-scroll min-h-0 w-full min-w-0 max-w-[1800px] flex-1 mx-auto space-y-8 overflow-x-hidden overflow-y-auto px-6 pb-28 pt-5 [-webkit-overflow-scrolling:touch] sm:pt-8 md:py-10 lg:py-10">
         {/* Top Minimal Action Bar */}
-        <div className="flex items-center justify-between border-b border-slate-200/80 pb-4">
+        <div className="hidden items-center justify-between border-b border-slate-200/80 pb-4 md:flex">
           <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
             <span>{t("dashboard.title")}</span>
             <span>/</span>

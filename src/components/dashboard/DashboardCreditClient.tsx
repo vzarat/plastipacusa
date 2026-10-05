@@ -12,7 +12,6 @@ import {
   FileText,
   Loader2,
   Mail,
-  Menu,
   ShieldCheck,
   XCircle,
 } from "lucide-react";
@@ -22,8 +21,9 @@ import {
   submitCreditApplication,
   type MyCreditStatusInfo,
 } from "@/actions/credit-applications";
-import { LanguageToggle } from "@/components/common/LanguageToggle";
 import { DashboardSidebar } from "@/components/dashboard/Sidebar";
+import { DashboardMobileChrome } from "@/components/dashboard/DashboardMobileChrome";
+import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { Net30CreditHeroBanner } from "@/components/dashboard/Net30CreditHeroBanner";
 import { useLanguage } from "@/context/LanguageContext";
 import { formatCurrency } from "@/lib/utils";
@@ -94,7 +94,6 @@ export function DashboardCreditClient({
   const { locale } = useLanguage();
   const isSpanish = locale === "es";
   const router = useRouter();
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [creditStatus, setCreditStatus] = useState(initialStatus);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
@@ -239,27 +238,20 @@ export function DashboardCreditClient({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
-      <div className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
-        <button
-          type="button"
-          onClick={() => setIsMobileSidebarOpen(true)}
-          className="p-2 rounded-xl border border-slate-200 text-slate-600"
-          aria-label="Open menu"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-        <p className="text-xs font-bold text-slate-800">
-          {isSpanish ? "Crédito Comercial" : "Commercial Credit"}
-        </p>
-        <LanguageToggle showIcon={false} />
-      </div>
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-slate-50 md:h-auto md:min-h-screen md:flex-row md:overflow-visible">
+      <DashboardMobileChrome
+        welcomeName={profile.fullName || profile.email || "there"}
+        avatarUrl={profile.avatarUrl}
+        avatarInitial={profile.fullName?.charAt(0) || "C"}
+        onAccount={() => router.push("/dashboard/settings")}
+        headerAction={
+          <NotificationBell pending={Boolean(profile.backupPasswordPending)} />
+        }
+      />
 
       <DashboardSidebar
         profile={profile}
         activeKey="credit"
-        isMobileOpen={isMobileSidebarOpen}
-        onCloseMobile={() => setIsMobileSidebarOpen(false)}
         onNavigate={(key) => {
           if (key === "settings") {
             router.push("/dashboard/settings");
@@ -270,14 +262,7 @@ export function DashboardCreditClient({
         backupPasswordPending={Boolean(profile.backupPasswordPending)}
       />
 
-      {isMobileSidebarOpen && (
-        <div
-          onClick={() => setIsMobileSidebarOpen(false)}
-          className="fixed inset-0 bg-slate-900/40 z-40 md:hidden"
-        />
-      )}
-
-      <main className="flex-1 min-w-0 w-full max-w-[1800px] mx-auto px-6 py-5 sm:py-8 lg:py-10 overflow-y-auto space-y-6">
+      <main className="dashboard-mobile-scroll mx-auto min-h-0 w-full min-w-0 max-w-[1800px] flex-1 space-y-6 overflow-x-hidden overflow-y-auto px-6 pb-28 pt-5 [-webkit-overflow-scrolling:touch] sm:pt-8 md:py-10 lg:py-10">
         <div className="w-full">
           <Net30CreditHeroBanner />
         </div>

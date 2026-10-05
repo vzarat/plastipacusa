@@ -30,6 +30,12 @@ const nextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return [
+      { source: "/catalog", destination: "/products" },
+      { source: "/catalog/:path*", destination: "/products/:path*" },
+    ];
+  },
   // Stabilize production minify when large client chunks (e.g. three.js / Beams)
   // cause Terser worker early-exit under PWA + parallel minify.
   webpack: (config, { dev }) => {

@@ -43,7 +43,6 @@ export function DashboardSidebar({
   activeKey,
   onNavigate,
   backupPasswordPending = false,
-  isMobileOpen = false,
   onCloseMobile,
 }: DashboardSidebarProps) {
   const { t, locale } = useLanguage();
@@ -80,11 +79,7 @@ export function DashboardSidebar({
   };
 
   return (
-    <aside
-      className={`fixed inset-y-0 left-0 z-50 w-72 shrink-0 bg-white border-r border-slate-200/90 flex flex-col justify-between p-6 transition-transform duration-200 md:sticky md:translate-x-0 md:h-screen md:top-0 ${
-        isMobileOpen ? "translate-x-0" : "-translate-x-full"
-      }`}
-    >
+    <aside className="hidden md:sticky md:top-0 md:z-30 md:flex md:h-screen md:w-72 md:shrink-0 md:flex-col md:justify-between md:border-r md:border-slate-200/90 md:bg-white md:p-6">
       <div className="space-y-6 overflow-y-auto">
         <div className="space-y-2">
           <Link href="/" className="inline-block" onClick={onCloseMobile}>

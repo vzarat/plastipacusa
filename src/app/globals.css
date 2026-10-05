@@ -211,6 +211,28 @@
     transform: translateY(-4px);
     box-shadow: 0 20px 25px -5px rgba(2, 132, 199, 0.08), 0 8px 10px -6px rgba(2, 132, 199, 0.04);
   }
+
+  .safe-area-bottom {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 767px) {
+  .dashboard-mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    overflow-x: hidden;
+  }
+
+  .dashboard-mobile-scroll button,
+  .dashboard-mobile-scroll a[class*="rounded"] {
+    touch-action: manipulation;
+    transition: transform 150ms ease;
+  }
+
+  .dashboard-mobile-scroll button:active,
+  .dashboard-mobile-scroll a[class*="rounded"]:active {
+    transform: scale(0.98);
+  }
 }
 
 body {
