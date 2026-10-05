@@ -189,7 +189,7 @@ export function startGuidedTour() {
 
   if (typeof window !== "undefined") {
     const catalog = document.getElementById("product-catalog-section");
-    const hero = document.querySelector("[data-tour='tour-hero']");
+    const hero = document.querySelector("[data-tour='hero']");
     if (window.matchMedia("(max-width: 767px)").matches && hero) {
       hero.scrollIntoView({ behavior: "smooth", block: "start" });
     } else {

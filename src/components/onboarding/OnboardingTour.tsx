@@ -21,54 +21,79 @@ const MOBILE_TOUR_QUERY = "(max-width: 767px)";
 const MOBILE_STEPS = [
   {
     id: "hero",
-    title: "Bienvenido a Plastipac",
-    body: "Explora nuestros calibres industriales y niveles de pedido: desde 1 Caza (4 rollos) hasta Tarimas completas.",
-    selector: "[data-tour='tour-hero']",
-    slide: 0,
+    title: "Industrial Stretch Film",
+    body: "Explore high-yield hand and machine stretch films engineered for extreme load containment.",
+    selector: "#hero-carousel, [data-tour='hero']",
+    slide: 0 as number | null,
   },
   {
     id: "rgv",
-    title: "Envío Gratis en el RGV",
-    body: "Obtén $0 flete directo a tu bodega en el Valle de Texas en pedidos a partir de 1 Cama (64 rollos).",
-    selector: "[data-tour='tour-hero']",
-    slide: 1,
+    title: "Free RGV Local Shipping",
+    body: "Qualified orders starting from 1 Layer (64 rolls / 16 boxes) get $0 freight delivery across the Rio Grande Valley.",
+    selector: "#rgv-shipping, [data-tour='rgv-shipping']",
+    slide: 1 as number | null,
   },
   {
     id: "houston",
-    title: "Ruta Houston los Viernes",
-    body: "Entregas directas a andenes industriales en Houston todos los viernes en compras de Tarima Completa (256 rollos).",
-    selector: "[data-tour='tour-hero']",
-    slide: 2,
+    title: "Houston Friday Corridor",
+    body: "Exclusive $0 shipping every Friday to Houston industrial docks on Full Pallet orders (256 rolls).",
+    selector: "#houston-shipping, [data-tour='houston-shipping']",
+    slide: 2 as number | null,
+  },
+  {
+    id: "catalog",
+    title: "Product Filter Bar",
+    body: "Filter films by Gauge (GA), Roll Length, or Width to find the exact specification for your facility.",
+    selector: "#product-catalog, [data-tour='catalog-filters']",
+    slide: null,
   },
   {
     id: "nav",
-    title: "Navegación y Cotizaciones",
-    body: "Usa el menú lateral para navegar por categorías o calcular el peso y precio exacto de tus tarimas.",
-    selector: "[data-tour='tour-mobile-nav']",
+    title: "Navigation & Custom Quotes",
+    body: "Access categories, company info, and wholesale quote requests anytime using the top menu.",
+    selector: "#mobile-nav-trigger, [data-tour='nav-trigger']",
     slide: null,
   },
 ] as const;
 
-function isMobileTourViewport() {
-  return typeof window !== "undefined" && window.matchMedia(MOBILE_TOUR_QUERY).matches;
+type TourAnchor = {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  tipTop: number;
+  tipLeft: number;
+  place: "above" | "below";
+  arrowLeft: number;
+};
+
+function measureTourAnchor(node: HTMLElement, tooltipHeight: number): TourAnchor {
+  const rect = node.getBoundingClientRect();
+  const pad = 8;
+  const tipWidth = Math.min(320, window.innerWidth - 24);
+  const gap = 14;
+  const top = Math.max(8, rect.top - pad);
+  const left = Math.max(8, rect.left - pad);
+  const width = Math.min(rect.width + pad * 2, window.innerWidth - 16);
+  const height = Math.max(36, rect.height + pad * 2);
+  const center = left + width / 2;
+  const tipLeft = Math.max(12, Math.min(center - tipWidth / 2, window.innerWidth - tipWidth - 12));
+  const spaceBelow = window.innerHeight - (top + height);
+  const spaceAbove = top;
+  const place: "above" | "below" =
+    spaceBelow >= tooltipHeight + gap || spaceBelow >= spaceAbove ? "below" : "above";
+  let tipTop =
+    place === "below" ? top + height + gap : top - tooltipHeight - gap;
+  if (tipTop < 8) tipTop = Math.max(8, window.innerHeight - tooltipHeight - 12);
+  if (tipTop + tooltipHeight > window.innerHeight - 8) {
+    tipTop = Math.max(8, window.innerHeight - tooltipHeight - 12);
+  }
+  const arrowLeft = Math.min(tipWidth - 18, Math.max(16, center - tipLeft - 6));
+  return { top, left, width, height, tipTop, tipLeft, place, arrowLeft };
 }
 
-function scrollAboveTourCard(selector: string) {
-  const node = document.querySelector(selector) as HTMLElement | null;
-  if (!node) return false;
-  const top = node.getBoundingClientRect().top + window.scrollY - 72;
-  window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
-  node.classList.add("outline", "outline-2", "outline-offset-4", "outline-sky-500", "rounded-2xl");
-  window.setTimeout(() => {
-    node.classList.remove(
-      "outline",
-      "outline-2",
-      "outline-offset-4",
-      "outline-sky-500",
-      "rounded-2xl"
-    );
-  }, 1800);
-  return true;
+function isMobileTourViewport() {
+  return typeof window !== "undefined" && window.matchMedia(MOBILE_TOUR_QUERY).matches;
 }
 
 function waitForSelector(
@@ -269,10 +294,12 @@ export function OnboardingTour() {
   const runningRef = useRef(false);
   const touchStartX = useRef<number | null>(null);
   const navigatedForStep = useRef<number | null>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const [eventKick, setEventKick] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const [tourOn, setTourOn] = useState(false);
   const [mobileStep, setMobileStep] = useState(0);
+  const [anchor, setAnchor] = useState<TourAnchor | null>(null);
 
   const destroyActive = useCallback(() => {
     try {
@@ -518,29 +545,46 @@ export function OnboardingTour() {
   }, []);
 
   useEffect(() => {
-    if (!isMobile || !tourOn) return;
+    if (!isMobile || !tourOn) {
+      setAnchor(null);
+      return;
+    }
     let cancelled = false;
     const step = MOBILE_STEPS[mobileStep];
 
+    const place = () => {
+      const node = document.querySelector(step.selector) as HTMLElement | null;
+      if (!node) return;
+      const tipHeight = tooltipRef.current?.offsetHeight ?? 210;
+      setAnchor(measureTourAnchor(node, tipHeight));
+    };
+
     void (async () => {
-      if (step.slide != null) {
-        window.dispatchEvent(new CustomEvent("plastipac:hero-slide", { detail: step.slide }));
-      }
-      if (step.slide != null && pathname !== "/") {
+      if (pathname !== "/") {
         if (navigatedForStep.current !== mobileStep) {
           navigatedForStep.current = mobileStep;
           router.push("/");
         }
         return;
       }
-
-      const ready = await waitForSelector(step.selector, 900);
+      if (step.slide != null) {
+        window.dispatchEvent(new CustomEvent("plastipac:hero-slide", { detail: step.slide }));
+      }
+      const ready = await waitForSelector(step.selector, 1600);
       if (cancelled || !ready) return;
-      if (step.id !== "nav") scrollAboveTourCard(step.selector);
+      ready.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => {
+        if (!cancelled) place();
+      }, 480);
     })();
 
+    const onMove = () => place();
+    window.addEventListener("scroll", onMove, { passive: true });
+    window.addEventListener("resize", onMove);
     return () => {
       cancelled = true;
+      window.removeEventListener("scroll", onMove);
+      window.removeEventListener("resize", onMove);
     };
   }, [isMobile, tourOn, mobileStep, pathname, router]);
 
@@ -563,6 +607,7 @@ export function OnboardingTour() {
   const closeMobileTour = () => {
     markTourCompleted();
     setTourOn(false);
+    setAnchor(null);
     window.dispatchEvent(new CustomEvent("plastipac:hero-slide-release"));
   };
 
@@ -583,74 +628,111 @@ export function OnboardingTour() {
   if (!isMobile || !tourOn) return null;
 
   const current = MOBILE_STEPS[mobileStep];
+  const isLastStep = mobileStep >= MOBILE_STEPS.length - 1;
 
   return (
-    <div
-      className="fixed bottom-6 left-4 right-4 z-50 border border-slate-800 bg-slate-900/95 text-white shadow-2xl rounded-2xl p-5 backdrop-blur-md md:hidden"
-      role="dialog"
-      aria-modal="false"
-      aria-labelledby="mobile-tour-title"
-      onTouchStart={(event) => {
-        touchStartX.current = event.changedTouches[0]?.clientX ?? null;
-      }}
-      onTouchEnd={(event) => {
-        if (touchStartX.current == null) return;
-        const delta = (event.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current;
-        touchStartX.current = null;
-        if (delta <= -48) advanceMobileStep();
-        else if (delta >= 48) goToMobileStep(mobileStep - 1);
-      }}
-    >
-      <div key={current.id} className="animate-in fade-in duration-300">
-        <h2 id="mobile-tour-title" className="text-base font-semibold text-white">
-          {current.title}
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-slate-200">{current.body}</p>
+    <>
+      <div className="fixed inset-0 z-[90] md:hidden" aria-hidden>
+        <div
+          className="absolute rounded-2xl transition-[top,left,width,height] duration-300 ease-out"
+          style={
+            anchor
+              ? {
+                  top: anchor.top,
+                  left: anchor.left,
+                  width: anchor.width,
+                  height: anchor.height,
+                  boxShadow: "0 0 0 9999px rgba(15, 23, 42, 0.62)",
+                }
+              : { inset: 0, boxShadow: "0 0 0 9999px rgba(15, 23, 42, 0.62)" }
+          }
+        />
       </div>
-      <div className="mt-4 flex justify-center gap-2">
-        {MOBILE_STEPS.map((step, index) => (
+      <div
+        ref={tooltipRef}
+        className="fixed z-[100] w-[min(20rem,calc(100vw-1.5rem))] bg-white text-slate-900 border border-slate-200 shadow-2xl rounded-2xl p-4 max-w-xs md:hidden"
+        style={
+          anchor
+            ? { top: anchor.tipTop, left: anchor.tipLeft }
+            : { left: 16, right: 16, bottom: 24, width: "auto" }
+        }
+        role="dialog"
+        aria-modal="false"
+        aria-labelledby="mobile-tour-title"
+        onTouchStart={(event) => {
+          touchStartX.current = event.changedTouches[0]?.clientX ?? null;
+        }}
+        onTouchEnd={(event) => {
+          if (touchStartX.current == null) return;
+          const delta = (event.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current;
+          touchStartX.current = null;
+          if (delta <= -48) advanceMobileStep();
+          else if (delta >= 48) goToMobileStep(mobileStep - 1);
+        }}
+      >
+        {anchor && (
+          <span
+            aria-hidden
+            className={`absolute h-3 w-3 rotate-45 border-slate-200 bg-white ${
+              anchor.place === "below" ? "-top-1.5 border-l border-t" : "-bottom-1.5 border-b border-r"
+            }`}
+            style={{ left: anchor.arrowLeft }}
+          />
+        )}
+        <div key={current.id} className="animate-in fade-in duration-300">
+          <span className="bg-slate-100 text-slate-900 font-semibold px-2.5 py-1 rounded-full text-xs">
+            Step {mobileStep + 1} of {MOBILE_STEPS.length}
+          </span>
+          <h2 id="mobile-tour-title" className="mt-3 text-base font-semibold text-slate-900">
+            {current.title}
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">{current.body}</p>
+        </div>
+        <div className="mt-4 flex justify-center gap-1.5">
+          {MOBILE_STEPS.map((step, index) => (
+            <button
+              key={step.id}
+              type="button"
+              aria-label={`Step ${index + 1}`}
+              aria-current={index === mobileStep ? "step" : undefined}
+              onClick={() => goToMobileStep(index)}
+              className="flex h-6 w-6 items-center justify-center"
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  index === mobileStep ? "bg-slate-900" : "bg-slate-200"
+                }`}
+              />
+            </button>
+          ))}
+        </div>
+        <div className="mt-2 flex items-center justify-between gap-2">
           <button
-            key={step.id}
             type="button"
-            aria-label={`Paso ${index + 1}`}
-            aria-current={index === mobileStep ? "step" : undefined}
-            onClick={() => goToMobileStep(index)}
-            className="flex h-8 w-8 items-center justify-center"
+            onClick={closeMobileTour}
+            className="text-slate-500 hover:text-slate-900 font-medium px-3 py-2 transition-colors"
           >
-            <span
-              className={`h-2 w-2 rounded-full ${
-                index === mobileStep ? "bg-sky-400" : "bg-slate-600"
-              }`}
-            />
+            Skip Tour
           </button>
-        ))}
-      </div>
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={closeMobileTour}
-          className="text-xs font-medium text-slate-400 underline-offset-2 hover:text-white hover:underline"
-        >
-          Omitir tutorial
-        </button>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => goToMobileStep(mobileStep - 1)}
-            disabled={mobileStep === 0}
-            className="h-10 rounded-xl border border-slate-700 px-3 text-sm font-medium text-white transition-opacity disabled:opacity-40"
-          >
-            Atrás
-          </button>
-          <button
-            type="button"
-            onClick={advanceMobileStep}
-            className="h-10 rounded-xl bg-sky-500 px-4 text-sm font-semibold text-white"
-          >
-            Siguiente →
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => goToMobileStep(mobileStep - 1)}
+              disabled={mobileStep === 0}
+              className="text-slate-500 hover:text-slate-900 font-medium px-3 py-2 transition-colors disabled:opacity-40"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={advanceMobileStep}
+              className="bg-slate-900 hover:bg-slate-800 text-white font-medium px-4 py-2 rounded-xl transition-colors"
+            >
+              {isLastStep ? "Finish" : "Next →"}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

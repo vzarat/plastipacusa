@@ -171,7 +171,11 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 mb-8 sm:mb-10">
+        <div
+          id="product-catalog"
+          data-tour="catalog-filters"
+          className="flex flex-wrap items-center gap-2.5 sm:gap-3 mb-8 sm:mb-10"
+        >
           {CATEGORY_PILLS.map((pill) => {
             const isActive = selectedCategory === pill.slug;
             return (

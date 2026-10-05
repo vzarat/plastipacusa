@@ -141,7 +141,8 @@ export function Hero() {
       className="relative isolate flex h-[480px] min-h-[480px] flex-col overflow-hidden border-b border-slate-800 bg-slate-950 px-5 [contain:strict] md:block md:h-[520px] md:min-h-[520px] md:px-0"
       aria-roledescription="carousel"
       aria-label="Featured"
-      data-tour="tour-hero"
+      id="hero-carousel"
+      data-tour="hero"
       onMouseEnter={() => {
         pausedRef.current = true;
       }}
@@ -312,6 +313,8 @@ export function Hero() {
           ) : index === 1 ? (
             <motion.div
               key="hero-delivery"
+              id="rgv-shipping"
+              data-tour="rgv-shipping"
               initial="hidden"
               animate="show"
               exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
@@ -434,6 +437,8 @@ export function Hero() {
           ) : (
             <motion.div
               key="hero-houston"
+              id="houston-shipping"
+              data-tour="houston-shipping"
               initial="hidden"
               animate="show"
               exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}

@@ -111,7 +111,8 @@ export function Navbar() {
       className="relative flex h-9 w-9 items-center justify-center rounded-full text-slate-700 transition-transform active:scale-95"
       aria-label="Open Navigation Menu"
       aria-expanded={isNavOpen}
-      data-tour="tour-mobile-nav"
+      id="mobile-nav-trigger"
+      data-tour="nav-trigger"
     >
       <span className="relative h-5 w-5">
         <Menu
