@@ -180,16 +180,42 @@ function displayPackageTitle(variant: any, isMachine: boolean): string {
   if (isMachine) {
     return normalizeMachinePackageLabel(getRollsCount(variant), raw);
   }
-  const upper = raw.toUpperCase();
-  if (
-    !isCompact1880Package(variant) &&
-    (upper.includes("FULL PALLET") ||
-      upper.includes("64 BOXES") ||
-      getRollsCount(variant) === 256)
-  ) {
-    return HAND_FULL_PALLET.label;
+
+  const kind = getPackageTierKind(variant, false);
+  const rolls = Math.max(0, getRollsCount(variant));
+  const boxes = getBoxesCount(variant, false);
+
+  if (kind === "single_unit" || boxes === 1) {
+    const rollCount = rolls > 0 ? rolls : 4;
+    return rollCount === 4 ? "1 BOX WITH 4 ROLLS" : `1 BOX WITH ${rollCount} ROLLS`;
   }
+  if (kind === "fixed_half" || raw.toUpperCase().includes("HALF PALLET")) {
+    return `${rolls || 128} ROLLS (HALF PALLET)`;
+  }
+  if (kind === "full_pallet" || raw.toUpperCase().includes("FULL PALLET")) {
+    return `${rolls || 256} ROLLS (FULL PALLET)`;
+  }
+  if (rolls > 0) return `${rolls} ROLLS`;
   return raw;
+}
+
+function displayPackageSubtext(variant: any, isMachine: boolean): string {
+  const rolls = Math.max(0, getRollsCount(variant));
+  if (isMachine) {
+    const tierKind = getPackageTierKind(variant, true);
+    const rollLabel = `${rolls} ${rolls === 1 ? "Roll" : "Rolls"}`;
+    if (tierKind === "fixed_half") return `${rollLabel} (1 layer)`;
+    if (tierKind === "full_pallet") return `${rollLabel} (2 layers)`;
+    return rollLabel;
+  }
+
+  const boxes = getBoxesCount(variant, false);
+  const kind = getPackageTierKind(variant, false);
+  if (kind === "single_unit" || boxes === 1) {
+    const rollCount = rolls > 0 ? rolls : 4;
+    return `${rollCount} Rolls included (1 Box)`;
+  }
+  return `${rolls} Rolls included`;
 }
 
 interface VariantSelectorProps {
@@ -229,11 +255,7 @@ export function VariantSelector({
             });
             const label = isMachineFilm
               ? normalizeMachinePackageLabel(rolls, opt?.label)
-              : !keepStoredLabel &&
-                  (rolls === HAND_FULL_PALLET.rolls ||
-                    String(opt?.label || "").toUpperCase().includes("FULL PALLET"))
-                ? HAND_FULL_PALLET.label
-                : opt?.label;
+              : opt?.label;
             return {
               id: opt.sku,
               sku: opt.sku,
@@ -272,31 +294,7 @@ export function VariantSelector({
           return Number.isFinite(price) && price > 0;
         })
         .map((v: any) => {
-          if (!isMachineFilm) {
-            const rolls = getRollsCount(v);
-            const keepStoredLabel = usesCompact1880Pallets({
-              widthInches: product?.width_inches || product?.widthInches || v.widthInches,
-              gauge: product?.gauge || v.gauge,
-              lengthFeet: product?.length_feet || product?.lengthFeet || v.lengthFeet,
-              slug: product?.slug,
-              name: product?.title || product?.name,
-            });
-            if (
-              !keepStoredLabel &&
-              (String(v.packageSize || v.title || "").toUpperCase().includes("FULL PALLET") ||
-                rolls === 256)
-            ) {
-              return {
-                ...v,
-                packageSize: HAND_FULL_PALLET.label,
-                title: HAND_FULL_PALLET.label,
-                rollsPerBox: HAND_FULL_PALLET.rolls,
-                rolls_count: HAND_FULL_PALLET.rolls,
-                boxes_count: HAND_FULL_PALLET.boxes,
-              };
-            }
-            return v;
-          }
+          if (!isMachineFilm) return v;
           const rolls = getRollsCount(v);
           const label = normalizeMachinePackageLabel(rolls, v.title || v.packageSize);
           const normalizedRolls = label.startsWith("1 ROLL")
@@ -743,18 +741,7 @@ export function VariantSelector({
                         )}
                       </div>
                       <span className="mt-0.5 block text-[11px] text-slate-500">
-                        {isMachineFilm ? (
-                          <>
-                            {rollsCount} {rollsCount === 1 ? "Roll" : "Rolls"}
-                            {tierKind === "fixed_half" ? " (1 layer)" : ""}
-                            {tierKind === "full_pallet" ? " (2 layers)" : ""}
-                          </>
-                        ) : (
-                          <>
-                            {rollsCount} Rolls included ({boxesCount}{" "}
-                            {boxesCount === 1 ? "Box" : "Boxes"})
-                          </>
-                        )}
+                        {displayPackageSubtext(variant, isMachineFilm)}
                       </span>
                     </div>
                   </div>
@@ -969,7 +956,7 @@ export function VariantSelector({
                 You have selected{" "}
                 <span className="font-bold text-slate-900">{quantity}</span>{" "}
                 {unitLabelPlural.toLowerCase()}. Upgrading to the{" "}
-                <span className="font-bold text-slate-900">16 BOXES (64 ROLLS)</span> package
+                <span className="font-bold text-slate-900">64 ROLLS</span> package
                 offers better bulk pricing and lower unit cost.
               </p>
               <button
