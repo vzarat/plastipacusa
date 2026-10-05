@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import GradientWaves from "@/components/ui/GradientWaves";
 import { useLanguage } from "@/context/LanguageContext";
 
 const SLIDE_COUNT = 2;
@@ -23,23 +24,35 @@ const AUTO_MS = 6000;
 
 const WAREHOUSE_BG =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/warehouse_storage_background.png";
-const LOGISTICS_BG =
-  "https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=2000&q=80";
 
 const RGV_CITIES = [
   "McAllen",
   "Edinburg",
-  "Pharr",
+  "Pharr Bridge",
   "Mission",
   "Harlingen",
-  "Brownsville",
+  "Brownsville Port",
   "Weslaco",
+  "San Juan / Alamo",
 ] as const;
 
 const LOGISTICS = [
-  { icon: Warehouse, label: "Direct Warehouse Dispatch" },
-  { icon: Truck, label: "Dedicated Fleet Operations" },
-  { icon: Building2, label: "Industrial Park Coverage" },
+  {
+    icon: Truck,
+    title: "Direct Plant-to-Dock Shipping",
+    detail: "No cross-dock delays; straight from warehouse to your facility.",
+  },
+  {
+    icon: Building2,
+    title: "Industrial Park Coverage",
+    detail:
+      "Serving Sharyland, McAllen NW, Mid-Valley, & Valley International Trade parks.",
+  },
+  {
+    icon: Warehouse,
+    title: "Bulk Volume Freight Waiver",
+    detail: "Free delivery unlocked on all 1-Layer (64 rolls) and Full Pallet orders.",
+  },
 ] as const;
 
 export function Hero() {
@@ -108,30 +121,40 @@ export function Hero() {
         }, 4000);
       }}
     >
-      <div className="absolute inset-0 -z-10">
-        <Image
-          src={WAREHOUSE_BG}
-          alt="Plastipac warehouse storage"
-          fill
-          priority
-          fetchPriority="high"
-          quality={75}
-          sizes="100vw"
-          className={`object-cover object-center transition-opacity duration-700 ease-out ${
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div
+          className={`absolute inset-0 transition-opacity duration-700 ease-out ${
             index === 0 ? "opacity-100" : "opacity-0"
           }`}
-        />
-        <Image
-          src={LOGISTICS_BG}
-          alt="Industrial delivery truck"
-          fill
-          quality={75}
-          sizes="100vw"
-          className={`object-cover object-center transition-opacity duration-700 ease-out ${
+        >
+          <Image
+            src={WAREHOUSE_BG}
+            alt="Plastipac warehouse storage"
+            fill
+            priority
+            fetchPriority="high"
+            quality={75}
+            sizes="100vw"
+            className="object-cover object-center"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-900/90 to-slate-950" />
+        </div>
+        <div
+          className={`absolute inset-0 z-0 transition-opacity duration-700 ease-out ${
             index === 1 ? "opacity-100" : "opacity-0"
           }`}
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-900/90 to-slate-950" />
+        >
+          <GradientWaves
+            horizonColor="#0b1329"
+            waveColor="#0284c7"
+            crestColor="#38bdf8"
+            speed={0.35}
+            amplitude={2.0}
+            brightness={0.85}
+            opacity={0.9}
+            className="absolute inset-0 z-0"
+          />
+        </div>
       </div>
 
       <div className="relative z-10 flex h-full items-center pb-8">
@@ -288,70 +311,82 @@ export function Hero() {
               <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-12 md:gap-6">
                 <motion.div
                   variants={fadeUp}
-                  className="space-y-2.5 text-center md:col-span-7 md:space-y-3 md:text-left"
+                  className="space-y-2 text-center md:col-span-7 md:space-y-2.5 md:text-left"
                 >
-                  <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-950/60 px-3 py-1 text-[11px] font-semibold text-blue-300 shadow-sm backdrop-blur-xs">
-                    <Zap className="h-3.5 w-3.5 text-blue-400" />
-                    <span>Direct Factory Supply</span>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-slate-950/50 px-3 py-1 text-[11px] font-semibold text-sky-200 shadow-sm">
+                    <Zap className="h-3.5 w-3.5 text-sky-300" />
+                    <span>Direct Regional Distribution · RGV Fleet</span>
                   </div>
 
-                  <h2 className="text-2xl font-extrabold leading-tight tracking-tight text-white sm:text-3xl lg:text-4xl">
+                  <h2 className="text-xl font-extrabold leading-tight tracking-tight text-white sm:text-2xl lg:text-3xl">
                     FREE LOCAL DELIVERY
                     <br />
-                    <span className="text-blue-400">ACROSS THE RGV</span>
+                    <span className="text-sky-300">ACROSS THE RIO GRANDE VALLEY</span>
                   </h2>
 
-                  <p className="mx-auto max-w-2xl text-sm leading-snug text-slate-200 md:mx-0">
-                    $0 Freight Fee on Case & Pallet Orders direct from our regional facility.
+                  <p className="mx-auto max-w-2xl text-xs leading-snug text-slate-100 sm:text-sm md:mx-0">
+                    $0 Freight Charges for Case & Pallet Orders. Shipped directly from our local fulfillment hub with zero middleman markups.
                   </p>
 
                   <div className="flex flex-wrap items-center justify-center gap-1.5 md:justify-start">
                     {RGV_CITIES.map((city) => (
                       <span
                         key={city}
-                        className="rounded-full border border-white/15 bg-slate-950/70 px-2.5 py-0.5 text-[11px] font-semibold text-slate-100"
+                        className="rounded-full border border-white/20 bg-slate-950/55 px-2.5 py-0.5 text-[11px] font-semibold text-slate-100"
                       >
                         {city}
                       </span>
                     ))}
                   </div>
 
-                  <div className="flex justify-center md:justify-start">
+                  <div className="flex flex-row flex-wrap items-center justify-center gap-2 md:justify-start">
                     <Button
                       asChild
                       size="lg"
                       variant="gradient"
                       className="h-9 px-3 text-xs shadow-lg shadow-sky-500/20 sm:h-10 sm:px-4 sm:text-sm"
                     >
-                      <Link href="/#usa-coverage">
-                        <span>Check Delivery Eligibility</span>
+                      <Link href="#inquiry-form">
+                        <span>Schedule Local Delivery</span>
                         <ArrowRight className="h-4 w-4" />
                       </Link>
                     </Button>
+                    <Link
+                      href="/#usa-coverage"
+                      className="inline-flex h-9 cursor-pointer items-center justify-center rounded-xl border border-white/30 bg-white/10 px-3 text-xs font-medium text-white shadow-sm transition-all hover:bg-white/15 sm:h-10 sm:px-4 sm:text-sm"
+                    >
+                      View Service Area Map
+                    </Link>
                   </div>
                 </motion.div>
 
                 <motion.div variants={fadeRight} className="md:col-span-5">
-                  <div className="rounded-2xl border border-white/15 bg-slate-950/55 p-4 shadow-2xl shadow-black/40 backdrop-blur-md lg:p-5">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-300">
-                      RGV Logistics
+                  <div className="rounded-2xl border border-white/20 bg-slate-950/45 p-3 shadow-2xl shadow-black/30 backdrop-blur-sm lg:p-4">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-sky-200">
+                      Regional Fleet & Supply Highlights
                     </p>
-                    <ul className="mt-3 space-y-2">
+                    <ul className="mt-2 space-y-1.5">
                       {LOGISTICS.map((item) => {
                         const Icon = item.icon;
                         return (
                           <li
-                            key={item.label}
-                            className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2"
+                            key={item.title}
+                            className="flex items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5"
                           >
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-blue-500/30 bg-blue-950/70 text-blue-300">
-                              <Icon className="h-4 w-4" />
+                            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-sky-400/30 bg-sky-950/70 text-sky-200">
+                              <Icon className="h-3.5 w-3.5" />
                             </span>
-                            <span className="text-sm font-semibold text-white">{item.label}</span>
+                            <span className="min-w-0">
+                              <span className="block text-xs font-semibold text-white">{item.title}</span>
+                              <span className="block text-[11px] leading-snug text-slate-200">{item.detail}</span>
+                            </span>
                           </li>
                         );
                       })}
                     </ul>
+                    <p className="mt-2 text-[11px] font-semibold text-emerald-300">
+                      ✓ Active Daily RGV Routes
+                    </p>
                   </div>
                 </motion.div>
               </div>
