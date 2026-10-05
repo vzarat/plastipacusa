@@ -7,15 +7,24 @@ import {
   type USAStateAbbreviation,
 } from "@mirawision/usa-map-react";
 import { Badge } from "@/components/ui/badge";
-import { Clock, MapPin, Truck } from "lucide-react";
+import { Clock, MapPin, PhoneCall, Truck } from "lucide-react";
 import {
   getDeliveryLeadTime,
   getDeliveryZone,
-  LEAD_TIME_DISTANT,
   LEAD_TIME_REGIONAL,
   LEAD_TIME_TEXAS,
   type DeliveryZone,
 } from "@/lib/shipping/deliveryEstimates";
+import {
+  CoverageStateTooltip,
+  CUSTOM_FREIGHT_BADGE,
+  CUSTOM_FREIGHT_DESCRIPTION,
+  CUSTOM_FREIGHT_TITLE,
+  HOUSTON_FRIDAY_NOTE,
+  LOGISTICS_PHONE_DISPLAY,
+  LOGISTICS_PHONE_HREF,
+  TEXAS_RGV_NOTE,
+} from "@/components/common/CoverageStateTooltip";
 
 /** Plastipac brand blues for active shipping zones */
 const FILL_PRIMARY = "#0052CC";
@@ -188,17 +197,7 @@ export function USACoverageMap() {
           enabled: true,
           render: (abbr) => {
             const info = getCoverage(abbr);
-            return (
-              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-left shadow-lg max-w-[220px]">
-                <p className="text-xs font-black text-slate-900">{info.name}</p>
-                <p className="text-[10px] font-bold text-sky-700 mt-0.5">
-                  {info.leadTime}
-                </p>
-                <p className="text-[10px] text-slate-500 mt-1 leading-snug">
-                  {tierLabel(info.tier)}
-                </p>
-              </div>
-            );
+            return <CoverageStateTooltip abbr={abbr} stateName={info.name} />;
           },
         },
       };
@@ -254,7 +253,7 @@ export function USACoverageMap() {
               style={{ backgroundColor: FILL_SECONDARY }}
               aria-hidden
             />
-            Distant ({LEAD_TIME_DISTANT})
+            Distant (custom freight)
           </span>
         </div>
       </div>
@@ -293,33 +292,63 @@ export function USACoverageMap() {
                   </h3>
                 </div>
                 <Badge
-                  variant={
-                    activeCoverage.tier === "texas" ||
-                    activeCoverage.tier === "regional"
-                      ? "gradient"
-                      : "default"
-                  }
-                  className="text-[10px] font-bold uppercase shrink-0"
+                  variant={activeCoverage.tier === "distant" ? "default" : "gradient"}
+                  className={`shrink-0 text-[10px] font-bold ${
+                    activeCoverage.tier === "distant" ? "normal-case" : "uppercase"
+                  }`}
                 >
-                  {tierLabel(activeCoverage.tier)}
+                  {activeCoverage.tier === "texas"
+                    ? "Active route"
+                    : activeCoverage.tier === "distant"
+                      ? CUSTOM_FREIGHT_BADGE
+                      : tierLabel(activeCoverage.tier)}
                 </Badge>
               </div>
 
-              <div className="flex items-center gap-2 rounded-xl border border-sky-100 bg-white px-3 py-2.5">
-                <Clock className="h-4 w-4 text-sky-600 shrink-0" />
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Est. Delivery
+              {activeCoverage.tier === "texas" ? (
+                <div className="space-y-2">
+                  <p className="rounded-xl border border-sky-100 bg-white px-3 py-2.5 text-sm font-semibold leading-snug text-sky-900">
+                    {TEXAS_RGV_NOTE}
                   </p>
-                  <p className="text-sm font-black text-sky-800">
-                    {activeCoverage.leadTime}
+                  <p className="rounded-xl border border-sky-100 bg-white px-3 py-2.5 text-sm font-semibold leading-snug text-sky-900">
+                    {HOUSTON_FRIDAY_NOTE}
                   </p>
                 </div>
-              </div>
+              ) : activeCoverage.tier === "distant" ? (
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold leading-snug text-slate-900">
+                    {CUSTOM_FREIGHT_TITLE}
+                  </p>
+                  <p className="text-xs leading-relaxed text-slate-600">
+                    {CUSTOM_FREIGHT_DESCRIPTION}
+                  </p>
+                  <a
+                    href={LOGISTICS_PHONE_HREF}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-3 py-2.5 text-sm font-bold text-white hover:bg-sky-700"
+                  >
+                    <PhoneCall className="h-4 w-4" />
+                    Llamar a Logística: {LOGISTICS_PHONE_DISPLAY}
+                  </a>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 rounded-xl border border-sky-100 bg-white px-3 py-2.5">
+                  <Clock className="h-4 w-4 text-sky-600 shrink-0" />
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Est. Delivery
+                    </p>
+                    <p className="text-sm font-black text-sky-800">
+                      {activeCoverage.leadTime}
+                    </p>
+                  </div>
+                </div>
+              )}
 
-              <p className="text-xs text-slate-600 leading-relaxed">
-                {activeCoverage.detail}
-              </p>
+              {activeCoverage.tier !== "distant" && (
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  {activeCoverage.detail}
+                </p>
+              )}
 
               <div className="flex items-start gap-2 pt-1 text-[11px] text-slate-500">
                 <Truck className="h-3.5 w-3.5 text-slate-400 mt-0.5 shrink-0" />

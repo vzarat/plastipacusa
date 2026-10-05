@@ -9,9 +9,19 @@ import {
 import { toast } from "sonner";
 import {
   getDeliveryLeadTime,
+  getDeliveryZone,
   isRegionalState,
   isTexasState,
 } from "@/lib/shipping/deliveryEstimates";
+import {
+  CoverageStateTooltip,
+  CUSTOM_FREIGHT_DESCRIPTION,
+  CUSTOM_FREIGHT_TITLE,
+  HOUSTON_FRIDAY_NOTE,
+  LOGISTICS_PHONE_DISPLAY,
+  LOGISTICS_PHONE_HREF,
+  TEXAS_RGV_NOTE,
+} from "@/components/common/CoverageStateTooltip";
 
 const HUB_FILL = "#2563EB";
 const HUB_HOVER = "#1D4ED8";
@@ -28,18 +38,23 @@ const HIGHLIGHT_BADGES = [
   { label: "Full Pallet & LTL Freight Discounts", icon: "🚛" },
 ] as const;
 
-function laneLabel(abbr: string): string {
-  if (isTexasState(abbr)) return "Texas hub";
-  if (isRegionalState(abbr)) return "Neighboring lane";
-  return "Distant lane";
-}
-
 export function USACoverageSection() {
   const [hovered, setHovered] = useState<USAStateAbbreviation | null>(null);
   const [selected, setSelected] = useState<USAStateAbbreviation | null>(null);
 
   const handleStateClick = (state: USAStateAbbreviation) => {
     setSelected(state);
+    const zone = getDeliveryZone(state);
+    if (zone === "texas") {
+      toast.message(`${TEXAS_RGV_NOTE}. ${HOUSTON_FRIDAY_NOTE}`);
+      return;
+    }
+    if (zone === "distant") {
+      toast.message(
+        `${CUSTOM_FREIGHT_TITLE}. Llamar a Logística: ${LOGISTICS_PHONE_DISPLAY}`
+      );
+      return;
+    }
     const leadTime = getDeliveryLeadTime(state);
     toast.message(
       `Estimated Delivery to ${state}: ${leadTime}. Free freight available on Full Pallet orders.`
@@ -55,6 +70,10 @@ export function USACoverageSection() {
         onClick: (state: USAStateAbbreviation) => void;
         onHover: (state: USAStateAbbreviation) => void;
         onLeave: () => void;
+        tooltip: {
+          enabled: boolean;
+          render: (state: USAStateAbbreviation) => React.ReactNode;
+        };
       }
     > = {};
 
@@ -80,14 +99,15 @@ export function USACoverageSection() {
         onClick: handleStateClick,
         onHover: (abbr) => setHovered(abbr),
         onLeave: () => setHovered(null),
+        tooltip: {
+          enabled: true,
+          render: (abbr) => <CoverageStateTooltip abbr={abbr} stateName={abbr} />,
+        },
       };
     });
 
     return settings;
   }, [hovered, selected]);
-
-  const activeState = hovered || selected;
-  const selectedLeadTime = selected ? getDeliveryLeadTime(selected) : null;
 
   return (
     <section
@@ -133,7 +153,7 @@ export function USACoverageSection() {
                   fill: STANDARD_FILL,
                   stroke: BORDER_WHITE,
                   label: { enabled: false },
-                  tooltip: { enabled: false },
+                  tooltip: { enabled: true },
                 }}
                 customStates={customStates}
                 mapSettings={{ width: "100%", height: "auto" }}
@@ -164,7 +184,7 @@ export function USACoverageSection() {
                   style={{ backgroundColor: STANDARD_FILL }}
                   aria-hidden
                 />
-                Distant (7 - 8 Days)
+                Distant (custom freight)
               </span>
             </div>
           </div>
@@ -173,33 +193,47 @@ export function USACoverageSection() {
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-600">
               State Delivery Info
             </p>
-            {selected && selectedLeadTime ? (
+            {selected ? (
               <div
                 key={selected}
                 className="space-y-3 animate-in fade-in duration-200"
                 role="status"
               >
                 <h3 className="text-2xl font-black text-slate-900">{selected}</h3>
-                <div className="rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3 text-sm font-semibold text-blue-900 leading-relaxed">
-                  Estimated Delivery to {selected}: {selectedLeadTime}. Free
-                  freight available on Full Pallet orders.
-                </div>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Click another state to refresh delivery estimates. All pricing
-                  is in USD.
-                </p>
+                {getDeliveryZone(selected) === "texas" ? (
+                  <div className="space-y-2">
+                    <p className="rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3 text-sm font-semibold leading-relaxed text-blue-900">
+                      {TEXAS_RGV_NOTE}
+                    </p>
+                    <p className="rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3 text-sm font-semibold leading-relaxed text-blue-900">
+                      {HOUSTON_FRIDAY_NOTE}
+                    </p>
+                  </div>
+                ) : getDeliveryZone(selected) === "distant" ? (
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold leading-snug text-slate-900">
+                      {CUSTOM_FREIGHT_TITLE}
+                    </p>
+                    <p className="text-xs leading-relaxed text-slate-600">
+                      {CUSTOM_FREIGHT_DESCRIPTION}
+                    </p>
+                    <a
+                      href={LOGISTICS_PHONE_HREF}
+                      className="inline-flex w-full items-center justify-center rounded-xl bg-sky-600 px-3 py-2.5 text-sm font-bold text-white hover:bg-sky-700"
+                    >
+                      📞 Llamar a Logística: {LOGISTICS_PHONE_DISPLAY}
+                    </a>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3 text-sm font-semibold leading-relaxed text-blue-900">
+                    Estimated Delivery to {selected}: {getDeliveryLeadTime(selected)}. Free
+                    freight available on Full Pallet orders.
+                  </div>
+                )}
               </div>
             ) : (
               <p className="text-sm text-slate-500 leading-relaxed">
-                Click any state on the map to view estimated delivery timing and
-                full-pallet freight availability.
-              </p>
-            )}
-
-            {activeState && (
-              <p className="text-[11px] font-bold text-slate-400">
-                Active: {activeState} · {laneLabel(String(activeState))} ·{" "}
-                {getDeliveryLeadTime(String(activeState))}
+                Click any state on the map to view route coverage or call logistics for custom freight.
               </p>
             )}
           </aside>

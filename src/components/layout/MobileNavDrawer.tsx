@@ -5,19 +5,18 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { MessageCircle, PhoneCall, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const LOGO_SRC =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PLASTIPAC_USA_LOGO%202.svg";
 
 const NAV_LINKS = [
-  { href: "/", label: "Inicio", id: "home" },
-  { href: "/about", label: "Nosotros", id: "about" },
-  { href: "/products", label: "Productos", id: "products" },
-  { href: "/#categories", label: "Categorías", id: "categories" },
-  { href: "/#usa-coverage", label: "Cobertura RGV & Houston", id: "coverage" },
-  { href: "/#inquiry-form", label: "Cotización Directa / Contacto", id: "contact" },
+  { href: "/", label: "Home", id: "home" },
+  { href: "/about", label: "About Us", id: "about" },
+  { href: "/products", label: "Products", id: "products" },
+  { href: "/#categories", label: "Categories", id: "categories" },
+  { href: "/#inquiry-form", label: "Contact", id: "contact" },
 ] as const;
 
 interface MobileNavDrawerProps {
@@ -30,7 +29,6 @@ function isLinkActive(id: string, pathname: string, hash: string) {
   if (id === "about") return pathname === "/about";
   if (id === "products") return pathname === "/products" || pathname.startsWith("/products/");
   if (id === "categories") return hash === "#categories";
-  if (id === "coverage") return hash === "#usa-coverage";
   if (id === "contact") return hash === "#inquiry-form";
   return false;
 }
@@ -85,29 +83,26 @@ export function MobileNavDrawer({ open, onClose }: MobileNavDrawerProps) {
       <aside
         role="dialog"
         aria-modal="true"
-        aria-label="Navegación"
-        className={`fixed inset-y-0 right-0 z-50 w-full max-w-xs sm:max-w-sm bg-slate-950 border-l border-slate-800 p-6 shadow-2xl flex flex-col justify-between transform transition-transform duration-300 ease-out ${
+        aria-label="Navigation"
+        className={`fixed inset-y-0 right-0 z-50 w-full max-w-xs sm:max-w-sm bg-white text-slate-900 border-l border-slate-200 p-6 shadow-2xl flex flex-col justify-between transform transition-transform duration-300 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="min-h-0">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <span className="inline-flex shrink-0 rounded-lg bg-white px-2 py-1">
-                <Image
-                  src={LOGO_SRC}
-                  alt="Plastipac USA"
-                  width={96}
-                  height={28}
-                  className="h-6 w-auto object-contain"
-                />
-              </span>
-              <span className="truncate text-sm font-semibold text-white">Navegación</span>
-            </div>
+            <Link href="/" onClick={onClose} className="inline-flex shrink-0" aria-label="Plastipac USA Home">
+              <Image
+                src={LOGO_SRC}
+                alt="Plastipac USA"
+                width={120}
+                height={32}
+                className="h-8 w-auto object-contain"
+              />
+            </Link>
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-800 transition-colors hover:bg-slate-100"
               aria-label="Close navigation menu"
             >
               <X className="h-5 w-5" />
@@ -122,10 +117,10 @@ export function MobileNavDrawer({ open, onClose }: MobileNavDrawerProps) {
                   key={link.id}
                   href={link.href}
                   onClick={onClose}
-                  className={`border-b border-slate-800 text-sm transition-colors hover:bg-slate-800/80 hover:text-white ${
+                  className={`border-b border-slate-100 text-sm text-slate-800 transition-colors hover:bg-slate-100 ${
                     active
-                      ? "text-sky-400 font-semibold bg-sky-950/30 rounded-lg px-3 py-2"
-                      : "rounded-lg px-3 py-2 text-slate-200"
+                      ? "rounded-lg bg-sky-50 px-3 py-2 font-semibold text-sky-700"
+                      : "rounded-lg px-3 py-2"
                   }`}
                 >
                   {link.label}
@@ -135,28 +130,12 @@ export function MobileNavDrawer({ open, onClose }: MobileNavDrawerProps) {
           </nav>
         </div>
 
-        <div className="space-y-2.5 pt-6">
+        <div className="pt-6">
           <Button asChild variant="gradient" className="h-11 w-full text-sm">
             <Link href="/#inquiry-form" onClick={onClose}>
-              Solicitar Cotización de Tarima
+              Request Quote
             </Link>
           </Button>
-          <a
-            href="tel:+19564003683"
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-700 text-sm font-semibold text-slate-100 transition-colors hover:border-sky-500 hover:text-sky-300"
-          >
-            <PhoneCall className="h-4 w-4 text-sky-400" />
-            (956) 400-3683
-          </a>
-          <a
-            href="https://wa.me/19564003683"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-700/70 bg-emerald-950/40 text-sm font-semibold text-emerald-200 transition-colors hover:bg-emerald-900/50"
-          >
-            <MessageCircle className="h-4 w-4" />
-            WhatsApp
-          </a>
         </div>
       </aside>
     </div>,
