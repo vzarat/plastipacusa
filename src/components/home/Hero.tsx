@@ -61,16 +61,36 @@ const LOGISTICS = [
   {
     icon: Warehouse,
     title: "Bulk Volume Freight Waiver",
-    detail: "Free delivery unlocked on all 1-Layer (64 rolls) and Full Pallet orders.",
+    detail: "Free delivery from 1 Layer (64 Rolls / 16 Boxes) through Full Pallet orders.",
   },
 ] as const;
 
 export function Hero() {
   const { t } = useLanguage();
   const reduceMotion = useReducedMotion();
+  const [houstonReady, setHoustonReady] = useState(false);
   const [index, setIndex] = useState(0);
   const pausedRef = useRef(false);
   const touchRef = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    let cancelled = false;
+    const reveal = () => {
+      if (!cancelled) setHoustonReady(true);
+    };
+    if (typeof window.requestIdleCallback === "function") {
+      const id = window.requestIdleCallback(reveal, { timeout: 1500 });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback(id);
+      };
+    }
+    const id = window.setTimeout(reveal, 300);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(id);
+    };
+  }, []);
 
   useEffect(() => {
     if (reduceMotion) return;
@@ -105,7 +125,7 @@ export function Hero() {
 
   return (
     <section
-      className="relative isolate flex h-[460px] flex-col overflow-hidden border-b border-slate-800 bg-slate-950 px-5 md:block md:h-[520px] md:px-0"
+      className="relative isolate flex h-[480px] min-h-[480px] flex-col overflow-hidden border-b border-slate-800 bg-slate-950 px-5 [contain:strict] md:block md:h-[520px] md:min-h-[520px] md:px-0"
       aria-roledescription="carousel"
       aria-label="Featured"
       onMouseEnter={() => {
@@ -155,6 +175,7 @@ export function Hero() {
           }`}
         >
           <GradientWaves
+            active={index === 1}
             horizonColor="#0b1329"
             waveColor="#0284c7"
             crestColor="#38bdf8"
@@ -170,13 +191,17 @@ export function Hero() {
             index === 2 ? "opacity-100" : "opacity-0"
           }`}
         >
-          <Image
-            src={HOUSTON_BG}
-            alt="Houston industrial logistics"
-            fill
-            sizes="100vw"
-            className="h-full w-full object-cover object-center md:object-right"
-          />
+          {houstonReady ? (
+            <Image
+              src={HOUSTON_BG}
+              alt="Houston industrial logistics"
+              fill
+              loading="lazy"
+              fetchPriority="low"
+              sizes="100vw"
+              className="h-full w-full object-cover object-center md:object-right"
+            />
+          ) : null}
           <div className="pointer-events-none absolute inset-0 z-10 w-full bg-gradient-to-b from-slate-950 via-slate-950/80 via-40% to-slate-950/25 md:bg-gradient-to-r md:from-slate-950 md:via-slate-950/90 md:via-50% md:to-transparent" />
         </div>
       </div>
@@ -350,7 +375,7 @@ export function Hero() {
                 >
                   <div className="mx-auto inline-flex max-w-full items-center gap-2 rounded-full border border-sky-400/30 bg-slate-950/50 px-3 py-1 text-center text-[11px] font-semibold leading-snug text-sky-200 shadow-sm">
                     <Zap className="h-3.5 w-3.5 shrink-0 text-sky-300" />
-                    <span>Direct Regional Distribution · RGV Fleet</span>
+                    <span>Direct Regional Distribution · From 1 Layer Up</span>
                   </div>
 
                   <h2 className="text-[1.65rem] font-bold leading-[1.15] tracking-tight text-white md:text-3xl md:font-extrabold lg:text-4xl">
@@ -366,11 +391,11 @@ export function Hero() {
                     </span>
                   </h2>
 
-                  <p className="mx-auto max-w-2xl text-sm leading-snug text-slate-100 md:mx-0 md:text-sm">
-                    <span className="md:hidden">$0 Freight Fee on Case & Pallet Orders.</span>
-                    <span className="hidden md:inline">
-                      $0 Freight Charges for Case & Pallet Orders. Shipped directly from our local fulfillment hub with zero middleman markups.
-                    </span>
+                  <p className="mx-auto max-w-2xl text-sm leading-snug text-slate-100 md:mx-0">
+                    $0 Freight Fee across the RGV starting from 1 Layer (64 Rolls / 16 Boxes) up to Full Pallet orders.
+                  </p>
+                  <p className="mx-auto inline-flex max-w-full items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-200 md:mx-0">
+                    ✓ Free Local Delivery on 64+ Rolls
                   </p>
 
                   <div className="grid grid-cols-2 gap-2 md:hidden">
@@ -479,8 +504,7 @@ export function Hero() {
                   </h2>
 
                   <p className="text-xs font-semibold text-amber-200">
-                    <span className="md:hidden">★ Full Pallet Orders Only (256 Rolls)</span>
-                    <span className="hidden md:inline">★ Exclusive to Full Pallet Orders (256 Rolls)</span>
+                    ★ Exclusive to Full Pallet Orders (256 Rolls / 4 Layers)
                   </p>
 
                   <p className="mx-auto max-w-xl text-sm leading-snug text-slate-100 md:mx-0">

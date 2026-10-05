@@ -23,6 +23,27 @@ function safeNumberDisplay(value: unknown, suffix = ""): string {
   return `${n}${suffix}`;
 }
 
+function packageTierLabel(variant: ProductVariant): string {
+  const explicit = Number(variant.rolls_count ?? variant.rollsCount);
+  const rolls = Number.isFinite(explicit) && explicit > 0 ? explicit : 0;
+  const boxes = Number(variant.boxes_count ?? variant.boxesCount) || 0;
+  const stored = `${variant.title || ""} ${variant.packageSize || ""}`.toUpperCase();
+
+  if (rolls === 256 || boxes === 64 || stored.includes("256 ROLLS")) {
+    return "Full Pallet (256 Rolls / 4 Layers)";
+  }
+  if (rolls === 128 || boxes === 32 || stored.includes("128 ROLLS")) {
+    return "Half Pallet (128 Rolls / 2 Layers)";
+  }
+  if (rolls === 64 || boxes === 16 || stored.includes("64 ROLLS") || stored.includes("16 BOX")) {
+    return "1 Layer (64 Rolls / 16 Boxes)";
+  }
+  if (rolls === 4 || boxes === 1 || stored.includes("1 BOX")) {
+    return "1 Box (4 Rolls)";
+  }
+  return variant.title || variant.packageSize || variant.sku || "—";
+}
+
 function safeLocaleNumber(value: unknown, suffix = ""): string {
   if (value === null || value === undefined || value === "") return "—";
   const n =
@@ -82,7 +103,7 @@ export function SpecsTable({ variants }: SpecsTableProps) {
                     className="hover:bg-sky-50/50 font-mono text-xs"
                   >
                     <TableCell className="font-bold text-slate-900 font-sans">
-                      {(v as any)?.title || v?.packageSize || v?.sku || "—"}
+                      {packageTierLabel(v)}
                     </TableCell>
                     <TableCell className="text-sky-700 font-bold">
                       {v?.sku || "—"}

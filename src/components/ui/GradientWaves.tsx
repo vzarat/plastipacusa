@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Renderer, Program, Mesh, Triangle } from 'ogl';
 import './GradientWaves.css';
 
@@ -27,6 +27,8 @@ export interface GradientWavesProps {
   parallaxStrength?: number;
   grain?: boolean;
   grainIntensity?: number;
+  /** When false, the WebGL frame loop stays paused. */
+  active?: boolean;
   className?: string;
 }
 
@@ -182,12 +184,23 @@ const GradientWaves: React.FC<GradientWavesProps> = ({
   parallaxStrength = 0.5,
   grain = true,
   grainIntensity = 0.05,
+  active = true,
   className = ''
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const enableMouseRef = useRef<boolean>(mouseInteraction);
+  const activeRef = useRef(active);
+  const controlsRef = useRef<{ start: () => void; stop: () => void } | null>(null);
+  const [booted, setBooted] = useState(false);
+
+  activeRef.current = active;
 
   useEffect(() => {
+    if (active) setBooted(true);
+  }, [active]);
+
+  useEffect(() => {
+    if (!booted) return;
     const container = containerRef.current;
     if (!container) return;
 
@@ -290,7 +303,7 @@ const GradientWaves: React.FC<GradientWavesProps> = ({
     };
 
     const tryStart = () => {
-      if (isVisible && isPageVisible && raf === 0) raf = requestAnimationFrame(loop);
+      if (isVisible && isPageVisible && activeRef.current && raf === 0) raf = requestAnimationFrame(loop);
     };
     const tryStop = () => {
       if (raf !== 0) {
@@ -298,6 +311,8 @@ const GradientWaves: React.FC<GradientWavesProps> = ({
         raf = 0;
       }
     };
+
+    controlsRef.current = { start: tryStart, stop: tryStop };
 
     const io = new IntersectionObserver(
       ([entry]) => {
@@ -318,6 +333,7 @@ const GradientWaves: React.FC<GradientWavesProps> = ({
 
     return () => {
       tryStop();
+      controlsRef.current = null;
       ro.disconnect();
       io.disconnect();
       document.removeEventListener('visibilitychange', onVisibility);
@@ -329,7 +345,13 @@ const GradientWaves: React.FC<GradientWavesProps> = ({
       } catch {}
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
-  }, []);
+  }, [booted]);
+
+  useEffect(() => {
+    if (!booted) return;
+    if (active) controlsRef.current?.start();
+    else controlsRef.current?.stop();
+  }, [active, booted]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -393,7 +415,8 @@ const GradientWaves: React.FC<GradientWavesProps> = ({
     grain,
     grainIntensity,
     mouseInteraction,
-    parallaxStrength
+    parallaxStrength,
+    booted
   ]);
 
   return (

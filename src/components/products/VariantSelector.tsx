@@ -185,20 +185,22 @@ function displayPackageTitle(variant: any, isMachine: boolean): string {
   const rolls = Math.max(0, getRollsCount(variant));
   const boxes = getBoxesCount(variant, false);
 
+  if (rolls === 256 || boxes === 64) return "Full Pallet (256 Rolls / 4 Layers)";
+  if (rolls === 128 || boxes === 32) return "Half Pallet (128 Rolls / 2 Layers)";
+  if (kind === "fixed_mid" || rolls === 64 || boxes === 16) {
+    return "1 Layer (64 Rolls / 16 Boxes)";
+  }
   if (kind === "single_unit" || boxes === 1) {
     const rollCount = rolls > 0 ? rolls : 4;
-    return rollCount === 4 ? "1 BOX WITH 4 ROLLS" : `1 BOX WITH ${rollCount} ROLLS`;
+    return rollCount === 4 ? "1 Box (4 Rolls)" : `1 Box (${rollCount} Rolls)`;
   }
-  if (kind === "fixed_half" || raw.toUpperCase().includes("HALF PALLET")) {
-    return `${rolls || 128} ROLLS (HALF PALLET)`;
+  if (kind === "fixed_half") {
+    return rolls > 0 ? `${rolls} Rolls (Half Pallet)` : raw;
   }
-  if (kind === "full_pallet" || raw.toUpperCase().includes("FULL PALLET")) {
-    return `${rolls || 256} ROLLS (FULL PALLET)`;
+  if (kind === "full_pallet") {
+    return rolls > 0 ? `${rolls} Rolls (Full Pallet)` : raw;
   }
-  if (kind === "fixed_mid" || rolls === 64) {
-    return "1 LAYER = 64 ROLLS";
-  }
-  if (rolls > 0) return `${rolls} ROLLS`;
+  if (rolls > 0) return `${rolls} Rolls`;
   return raw;
 }
 
@@ -214,14 +216,14 @@ function displayPackageSubtext(variant: any, isMachine: boolean): string {
 
   const boxes = getBoxesCount(variant, false);
   const kind = getPackageTierKind(variant, false);
+  if (rolls === 256 || boxes === 64) return "4 Layers included";
+  if (rolls === 128 || boxes === 32) return "2 Layers included";
+  if (kind === "fixed_mid" || rolls === 64 || boxes === 16) return "16 Boxes included";
   if (kind === "single_unit" || boxes === 1) {
     const rollCount = rolls > 0 ? rolls : 4;
-    return `${rollCount} Rolls included (1 Box)`;
+    return `${rollCount} Rolls included`;
   }
-  if (kind === "fixed_mid" || rolls === 64) {
-    return "64 Rolls included (1 Layer / 16 Boxes)";
-  }
-  return `${rolls} Rolls included`;
+  return rolls > 0 ? `${rolls} Rolls included` : "";
 }
 
 interface VariantSelectorProps {
@@ -962,7 +964,7 @@ export function VariantSelector({
                 You have selected{" "}
                 <span className="font-bold text-slate-900">{quantity}</span>{" "}
                 {unitLabelPlural.toLowerCase()}. Upgrading to the{" "}
-                <span className="font-bold text-slate-900">64 ROLLS</span> package
+                <span className="font-bold text-slate-900">1 Layer (64 Rolls / 16 Boxes)</span> package
                 offers better bulk pricing and lower unit cost.
               </p>
               <button
@@ -970,7 +972,7 @@ export function VariantSelector({
                 onClick={handleSwitchToMidTier}
                 className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 hover:text-blue-800 underline underline-offset-2 decoration-blue-300 hover:decoration-blue-500 transition-colors cursor-pointer"
               >
-                Switch to 16 {unitLabelPlural} →
+                Switch to 1 Layer →
               </button>
             </div>
           </div>
