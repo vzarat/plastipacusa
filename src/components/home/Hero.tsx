@@ -17,11 +17,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import GradientWaves from "@/components/ui/GradientWaves";
-import { HoustonMap } from "@/components/ui/HoustonMap";
 import { useLanguage } from "@/context/LanguageContext";
 
 const SLIDE_COUNT = 3;
 const AUTO_MS = 6000;
+
+const HOUSTON_HIGHLIGHTS = [
+  "Guaranteed Friday Delivery Slots",
+  "Applies to 256-Roll Full Pallet Tiers",
+  "Direct Industrial Dock Unloading",
+] as const;
 
 const WAREHOUSE_BG =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/warehouse_storage_background.png";
@@ -157,11 +162,11 @@ export function Hero() {
           />
         </div>
         <div
-          className={`absolute inset-0 transition-opacity duration-700 ease-out ${
+          className={`absolute inset-0 bg-slate-950 transition-opacity duration-700 ease-out ${
             index === 2 ? "opacity-100" : "opacity-0"
           }`}
         >
-          <HoustonMap />
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" />
         </div>
       </div>
 
@@ -405,11 +410,13 @@ export function Hero() {
               initial="hidden"
               animate="show"
               exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
-              className="relative h-full w-full self-stretch"
+              className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8"
             >
-              <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-full bg-gradient-to-r from-slate-950 via-slate-950/85 to-transparent lg:w-3/5" />
-              <div className="relative z-20 mx-auto flex h-full max-w-7xl items-center px-4 sm:px-6 lg:px-8">
-                <motion.div variants={fadeUp} className="max-w-xl space-y-2.5 text-center md:text-left">
+              <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-12 md:gap-6">
+                <motion.div
+                  variants={fadeUp}
+                  className="space-y-2 text-center md:col-span-7 md:space-y-2.5 md:text-left"
+                >
                   <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-slate-950/50 px-3 py-1 text-[11px] font-semibold text-sky-200 shadow-sm">
                     <Zap className="h-3.5 w-3.5 text-sky-300" />
                     <span>Weekly Texas Freight Route</span>
@@ -425,11 +432,20 @@ export function Hero() {
                     ★ Exclusive to Full Pallet Orders (256 Rolls)
                   </p>
 
-                  <p className="mx-auto max-w-xl text-xs leading-snug text-slate-100 sm:text-sm md:mx-0">
-                    Order full pallets by Wednesday 5 PM to qualify for $0 shipping directly to your Houston facility.
+                  <p className="mx-auto max-w-2xl text-xs leading-snug text-slate-100 sm:text-sm md:mx-0">
+                    We service the greater Houston Metro area every Friday. Order full pallets by Wednesday 5 PM to qualify for $0 shipping directly to your facility dock.
                   </p>
 
-                  <div className="flex justify-center pt-1 md:justify-start">
+                  <ul className="space-y-1 text-left">
+                    {HOUSTON_HIGHLIGHTS.map((item) => (
+                      <li key={item} className="flex items-start gap-2 text-xs text-slate-100">
+                        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-300" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="flex justify-center md:justify-start">
                     <Button
                       asChild
                       size="lg"
@@ -443,19 +459,26 @@ export function Hero() {
                     </Button>
                   </div>
                 </motion.div>
-              </div>
 
-              <div className="pointer-events-none absolute inset-0 z-20 flex items-end justify-end p-4 pb-12 sm:items-center sm:p-8 sm:pb-12">
-                <motion.div
-                  variants={fadeRight}
-                  className="max-w-xs rounded-2xl border border-white/15 bg-slate-950/45 px-4 py-3 text-left shadow-2xl shadow-black/30 backdrop-blur-md"
-                >
-                  <p className="text-xs font-semibold text-white">
-                    ● Live Route Status: Active Friday Shipping Corridor
-                  </p>
-                  <p className="mt-1.5 text-[11px] leading-snug text-slate-200">
-                    Coverage: Greater Houston Metro, Pasadena, Baytown, Sugar Land
-                  </p>
+                <motion.div variants={fadeRight} className="md:col-span-5">
+                  <div className="relative h-[220px] w-full overflow-hidden rounded-2xl border border-slate-800 shadow-2xl md:h-[380px]">
+                    <Image
+                      src="/images/houston-logistics.jpg"
+                      alt="Industrial logistics truck"
+                      fill
+                      sizes="(min-width: 768px) 40vw, 100vw"
+                      className="object-cover object-center"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-slate-950/30" />
+                    <div className="absolute bottom-3 left-3 right-3 rounded-xl border border-white/15 bg-slate-950/55 px-3 py-2 text-left shadow-lg backdrop-blur-md">
+                      <p className="text-xs font-semibold text-white">
+                        🚚 Greater Houston Metro Area · Weekly Route
+                      </p>
+                      <p className="mt-0.5 text-[11px] leading-snug text-slate-200">
+                        Serving Pasadena, Baytown, Sugar Land & Industrial Hubs
+                      </p>
+                    </div>
+                  </div>
                 </motion.div>
               </div>
             </motion.div>
