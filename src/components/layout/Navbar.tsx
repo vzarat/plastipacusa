@@ -16,10 +16,13 @@ import {
   Building2,
   ShieldCheck,
   PhoneCall,
+  Menu,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/context/LanguageContext";
 import { LanguageToggle } from "@/components/common/LanguageToggle";
+import { MobileNavDrawer } from "@/components/layout/MobileNavDrawer";
 
 const LOGO_SRC =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PLASTIPAC_USA_LOGO%202.svg";
@@ -29,6 +32,7 @@ export function Navbar() {
   const router = useRouter();
   const { t } = useLanguage();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isNavOpen, setIsNavOpen] = useState(false);
   const [compactLogo, setCompactLogo] = useState(false);
   const [currentUser, setCurrentUser] = useState<CurrentUserResponse | null>(null);
 
@@ -68,6 +72,7 @@ export function Navbar() {
 
   useEffect(() => {
     setIsUserMenuOpen(false);
+    setIsNavOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -82,6 +87,45 @@ export function Navbar() {
   }`;
 
   const openCart = () => openDrawer();
+
+  const mobileCartButton = (
+    <button
+      type="button"
+      onClick={openCart}
+      className="relative flex h-9 w-9 items-center justify-center rounded-full text-slate-700 transition-transform active:scale-95"
+      aria-label="Shopping cart"
+    >
+      <ShoppingCart className="h-5 w-5" />
+      {totalItemsCount > 0 && (
+        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-600 px-1 text-[9px] font-bold text-white">
+          {totalItemsCount > 99 ? "99+" : totalItemsCount}
+        </span>
+      )}
+    </button>
+  );
+
+  const mobileMenuButton = (
+    <button
+      type="button"
+      onClick={() => setIsNavOpen((open) => !open)}
+      className="relative flex h-9 w-9 items-center justify-center rounded-full text-slate-700 transition-transform active:scale-95"
+      aria-label="Open Navigation Menu"
+      aria-expanded={isNavOpen}
+    >
+      <span className="relative h-5 w-5">
+        <Menu
+          className={`absolute inset-0 h-5 w-5 transition-all duration-300 ${
+            isNavOpen ? "rotate-90 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100"
+          }`}
+        />
+        <X
+          className={`absolute inset-0 h-5 w-5 transition-all duration-300 ${
+            isNavOpen ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-0 opacity-0"
+          }`}
+        />
+      </span>
+    </button>
+  );
   const isHomePage = pathname === "/";
   const isCatalogPage =
     pathname === "/catalog" ||
@@ -135,19 +179,8 @@ export function Navbar() {
               >
                 <Search className="h-5 w-5" />
               </button>
-              <button
-                type="button"
-                onClick={openCart}
-                className="relative flex h-9 w-9 items-center justify-center rounded-full text-slate-700 transition-transform active:scale-95"
-                aria-label="Shopping cart"
-              >
-                <ShoppingCart className="h-5 w-5" />
-                {totalItemsCount > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-600 px-1 text-[9px] font-bold text-white">
-                    {totalItemsCount > 99 ? "99+" : totalItemsCount}
-                  </span>
-                )}
-              </button>
+              {mobileCartButton}
+              {mobileMenuButton}
             </div>
           </div>
           <form onSubmit={submitCatalogSearch} className="px-4 pb-3">
@@ -179,6 +212,10 @@ export function Navbar() {
               className={mobileLogoClass}
             />
           </Link>
+          <div className="relative z-10 ml-auto flex items-center gap-1">
+            {mobileCartButton}
+            {mobileMenuButton}
+          </div>
         </div>
       )}
 
@@ -392,6 +429,7 @@ export function Navbar() {
         </div>
       </div>
 
+      <MobileNavDrawer open={isNavOpen} onClose={() => setIsNavOpen(false)} />
     </header>
   );
 }
