@@ -195,6 +195,9 @@ function displayPackageTitle(variant: any, isMachine: boolean): string {
   if (kind === "full_pallet" || raw.toUpperCase().includes("FULL PALLET")) {
     return `${rolls || 256} ROLLS (FULL PALLET)`;
   }
+  if (kind === "fixed_mid" || rolls === 64) {
+    return "1 LAYER = 64 ROLLS";
+  }
   if (rolls > 0) return `${rolls} ROLLS`;
   return raw;
 }
@@ -214,6 +217,9 @@ function displayPackageSubtext(variant: any, isMachine: boolean): string {
   if (kind === "single_unit" || boxes === 1) {
     const rollCount = rolls > 0 ? rolls : 4;
     return `${rollCount} Rolls included (1 Box)`;
+  }
+  if (kind === "fixed_mid" || rolls === 64) {
+    return "64 Rolls included (1 Layer / 16 Boxes)";
   }
   return `${rolls} Rolls included`;
 }

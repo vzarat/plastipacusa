@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
   Box,
@@ -18,7 +19,12 @@ import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/context/LanguageContext";
 
 const SLIDE_COUNT = 2;
-const AUTO_MS = 7000;
+const AUTO_MS = 6000;
+
+const WAREHOUSE_BG =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/warehouse_storage_background.png";
+const LOGISTICS_BG =
+  "https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=2000&q=80";
 
 const RGV_CITIES = [
   "McAllen",
@@ -36,24 +42,44 @@ const LOGISTICS = [
   { icon: Building2, label: "Industrial Park Coverage" },
 ] as const;
 
+const EASE = [0.16, 1, 0.3, 1] as const;
+
 export function Hero() {
   const { t } = useLanguage();
+  const reduceMotion = useReducedMotion();
   const [index, setIndex] = useState(0);
   const pausedRef = useRef(false);
   const touchRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) return;
+    if (reduceMotion) return;
     const timer = window.setInterval(() => {
       if (pausedRef.current) return;
       setIndex((current) => (current + 1) % SLIDE_COUNT);
     }, AUTO_MS);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [reduceMotion]);
 
   const goTo = (next: number) => {
     setIndex((next + SLIDE_COUNT) % SLIDE_COUNT);
+  };
+
+  const duration = reduceMotion ? 0 : 0.5;
+  const fadeUp = {
+    hidden: { opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : 16 },
+    show: (delay: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: { duration, ease: EASE, delay: reduceMotion ? 0 : delay },
+    }),
+  };
+  const fadeRight = {
+    hidden: { opacity: reduceMotion ? 1 : 0, x: reduceMotion ? 0 : 16 },
+    show: {
+      opacity: 1,
+      x: 0,
+      transition: { duration, ease: EASE, delay: reduceMotion ? 0 : 0.12 },
+    },
   };
 
   return (
@@ -86,42 +112,73 @@ export function Hero() {
     >
       <div className="absolute inset-0 -z-10">
         <Image
-          src="https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/warehouse_storage_background.png"
-          alt="Plastipac Warehouse Storage"
+          src={WAREHOUSE_BG}
+          alt="Plastipac warehouse storage"
           fill
           priority
           fetchPriority="high"
           quality={75}
           sizes="100vw"
-          className="object-cover object-center"
+          className={`object-cover object-center transition-opacity duration-700 ease-out ${
+            index === 0 ? "opacity-100" : "opacity-0"
+          }`}
         />
-        <div className="absolute inset-0 bg-slate-950/80 backdrop-brightness-75" />
+        <Image
+          src={LOGISTICS_BG}
+          alt="Industrial delivery truck"
+          fill
+          quality={75}
+          sizes="100vw"
+          className={`object-cover object-center transition-opacity duration-700 ease-out ${
+            index === 1 ? "opacity-100" : "opacity-0"
+          }`}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-900/90 to-slate-950" />
       </div>
 
-      <div className="relative z-10 overflow-hidden">
-        <div
-          className="flex transition-transform duration-500 ease-out"
-          style={{ transform: `translateX(-${index * 100}%)` }}
-        >
-          <div className="w-full shrink-0" aria-hidden={index !== 0}>
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="relative z-10">
+        <AnimatePresence mode="wait">
+          {index === 0 ? (
+            <motion.div
+              key="hero-product"
+              initial="hidden"
+              animate="show"
+              exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
+              className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
+            >
               <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12">
                 <div className="space-y-6 text-center lg:col-span-7 lg:text-left">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-950/60 px-3.5 py-1.5 text-xs font-semibold text-blue-300 shadow-sm backdrop-blur-xs">
+                  <motion.div
+                    variants={fadeUp}
+                    custom={0}
+                    className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-950/60 px-3.5 py-1.5 text-xs font-semibold text-blue-300 shadow-sm backdrop-blur-xs"
+                  >
                     <Zap className="h-3.5 w-3.5 text-blue-400" />
                     <span>{t("hero.badge")}</span>
-                  </div>
+                  </motion.div>
 
-                  <h1 className="text-4xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-5xl lg:text-6xl">
+                  <motion.h1
+                    variants={fadeUp}
+                    custom={0}
+                    className="text-4xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-5xl lg:text-6xl"
+                  >
                     {t("hero.titlePart1")} <br />
                     <span className="text-blue-400">{t("hero.titlePart2")}</span>
-                  </h1>
+                  </motion.h1>
 
-                  <p className="max-w-2xl text-base font-normal leading-relaxed text-slate-200 sm:text-lg">
+                  <motion.p
+                    variants={fadeUp}
+                    custom={0.12}
+                    className="max-w-2xl text-base font-normal leading-relaxed text-slate-200 sm:text-lg"
+                  >
                     {t("hero.description")}
-                  </p>
+                  </motion.p>
 
-                  <div className="flex flex-col items-center justify-center gap-4 pt-2 sm:flex-row lg:justify-start">
+                  <motion.div
+                    variants={fadeUp}
+                    custom={0.2}
+                    className="flex flex-col items-center justify-center gap-4 pt-2 sm:flex-row lg:justify-start"
+                  >
                     <Button
                       asChild
                       size="lg"
@@ -140,9 +197,13 @@ export function Hero() {
                     >
                       <span className="font-medium text-white">{t("hero.quoteBtn")}</span>
                     </Link>
-                  </div>
+                  </motion.div>
 
-                  <div className="grid grid-cols-2 gap-4 border-t border-white/10 pt-6 text-left sm:grid-cols-3">
+                  <motion.div
+                    variants={fadeUp}
+                    custom={0.2}
+                    className="grid grid-cols-2 gap-4 border-t border-white/10 pt-6 text-left sm:grid-cols-3"
+                  >
                     <div className="flex items-start gap-2.5">
                       <div className="mt-0.5 rounded-full border border-emerald-500/30 bg-emerald-950/60 p-1 text-emerald-400">
                         <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
@@ -172,10 +233,10 @@ export function Hero() {
                         <div className="text-[11px] text-slate-300">{t("hero.badgeFactorySub")}</div>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 </div>
 
-                <div className="lg:col-span-5">
+                <motion.div variants={fadeRight} className="lg:col-span-5">
                   <div className="relative rounded-3xl border border-white/20 bg-white/95 p-7 shadow-2xl shadow-black/40 backdrop-blur-md">
                     <div className="absolute -top-3 right-6">
                       <Badge variant="gradient" className="px-3 py-1 font-bold shadow-md shadow-sky-500/20">
@@ -232,31 +293,51 @@ export function Hero() {
                       </Button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               </div>
-            </div>
-          </div>
-
-          <div className="w-full shrink-0" aria-hidden={index !== 1}>
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            </motion.div>
+          ) : (
+            <motion.div
+              key="hero-delivery"
+              initial="hidden"
+              animate="show"
+              exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
+              className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
+            >
               <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12">
                 <div className="space-y-6 text-center lg:col-span-7 lg:text-left">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-950/60 px-3.5 py-1.5 text-xs font-semibold text-blue-300 shadow-sm backdrop-blur-xs">
+                  <motion.div
+                    variants={fadeUp}
+                    custom={0}
+                    className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-950/60 px-3.5 py-1.5 text-xs font-semibold text-blue-300 shadow-sm backdrop-blur-xs"
+                  >
                     <Zap className="h-3.5 w-3.5 text-blue-400" />
                     <span>Direct Factory Supply</span>
-                  </div>
+                  </motion.div>
 
-                  <h2 className="text-4xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-5xl lg:text-6xl">
+                  <motion.h2
+                    variants={fadeUp}
+                    custom={0}
+                    className="text-4xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-5xl lg:text-6xl"
+                  >
                     FREE LOCAL DELIVERY
                     <br />
                     <span className="text-blue-400">ACROSS THE RGV</span>
-                  </h2>
+                  </motion.h2>
 
-                  <p className="max-w-2xl text-base font-normal leading-relaxed text-slate-200 sm:text-lg">
+                  <motion.p
+                    variants={fadeUp}
+                    custom={0.12}
+                    className="max-w-2xl text-base font-normal leading-relaxed text-slate-200 sm:text-lg"
+                  >
                     $0 Freight Fee on Case & Pallet Orders direct from our regional facility.
-                  </p>
+                  </motion.p>
 
-                  <div className="flex flex-wrap items-center justify-center gap-2 lg:justify-start">
+                  <motion.div
+                    variants={fadeUp}
+                    custom={0.16}
+                    className="flex flex-wrap items-center justify-center gap-2 lg:justify-start"
+                  >
                     {RGV_CITIES.map((city) => (
                       <span
                         key={city}
@@ -265,9 +346,13 @@ export function Hero() {
                         {city}
                       </span>
                     ))}
-                  </div>
+                  </motion.div>
 
-                  <div className="flex justify-center pt-2 lg:justify-start">
+                  <motion.div
+                    variants={fadeUp}
+                    custom={0.2}
+                    className="flex justify-center pt-2 lg:justify-start"
+                  >
                     <Button
                       asChild
                       size="lg"
@@ -279,10 +364,10 @@ export function Hero() {
                         <ArrowRight className="h-4 w-4" />
                       </Link>
                     </Button>
-                  </div>
+                  </motion.div>
                 </div>
 
-                <div className="lg:col-span-5">
+                <motion.div variants={fadeRight} className="lg:col-span-5">
                   <div className="rounded-3xl border border-white/15 bg-slate-950/55 p-7 shadow-2xl shadow-black/40 backdrop-blur-md">
                     <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-300">
                       RGV Logistics
@@ -304,11 +389,11 @@ export function Hero() {
                       })}
                     </ul>
                   </div>
-                </div>
+                </motion.div>
               </div>
-            </div>
-          </div>
-        </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="mt-8 flex items-center justify-center gap-2" aria-label="Hero slides">
           {Array.from({ length: SLIDE_COUNT }, (_, dot) => {
@@ -320,11 +405,13 @@ export function Hero() {
                 aria-label={`Show slide ${dot + 1}`}
                 aria-current={active ? "true" : undefined}
                 onClick={() => goTo(dot)}
-                className="flex h-4 w-4 items-center justify-center"
+                className="flex h-6 w-8 items-center justify-center"
               >
                 <span
-                  className={`h-2.5 w-2.5 rounded-full border transition-colors ${
-                    active ? "border-sky-400 bg-sky-400" : "border-white/50 bg-transparent"
+                  className={`h-2.5 rounded-full border transition-all duration-300 ease-out ${
+                    active
+                      ? "w-6 border-sky-400 bg-sky-400"
+                      : "w-2.5 border-white/50 bg-transparent"
                   }`}
                 />
               </button>
