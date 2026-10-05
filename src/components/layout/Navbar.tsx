@@ -35,7 +35,6 @@ export function Navbar() {
   const openDrawer = useCartStore((state) => state.openDrawer);
 
   const totalItemsCount = items.reduce((acc, item) => acc + item.quantity, 0);
-  const isSpanish = locale === "es";
 
   useEffect(() => {
     let isActive = true;
