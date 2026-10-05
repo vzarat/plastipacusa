@@ -30,10 +30,10 @@ function packageTierLabel(variant: ProductVariant): string {
   const stored = `${variant.title || ""} ${variant.packageSize || ""}`.toUpperCase();
 
   if (rolls === 256 || boxes === 64 || stored.includes("256 ROLLS")) {
-    return "Full Pallet (256 Rolls / 4 Layers)";
+    return "Full Pallet (256 Rolls / 64 Boxes)";
   }
   if (rolls === 128 || boxes === 32 || stored.includes("128 ROLLS")) {
-    return "Half Pallet (128 Rolls / 2 Layers)";
+    return "Half Pallet (128 Rolls / 32 Boxes)";
   }
   if (rolls === 64 || boxes === 16 || stored.includes("64 ROLLS") || stored.includes("16 BOX")) {
     return "1 Layer (64 Rolls / 16 Boxes)";

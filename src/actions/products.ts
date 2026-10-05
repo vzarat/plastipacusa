@@ -336,11 +336,11 @@ function formatProduct(raw: any): ProductWithVariants {
         slug: slugStr,
         name: nameStr,
       });
+      const isStandard256Pallet = rolls === 256 || boxes === 64;
       const isFullPalletLabel =
         !keepStoredPackageLabel &&
+        !isStandard256Pallet &&
         (label.includes("FULL PALLET") ||
-          rolls === 256 ||
-          boxes === 64 ||
           (palletizing.fullPalletRolls === 40 && (rolls === 40 || label.includes("40 ROLLS"))));
 
       if (isFullPalletLabel) {
@@ -504,6 +504,7 @@ function formatProduct(raw: any): ProductWithVariants {
       })
       .map((v) => {
       const rolls = Number(v.rollsPerBox || (v as any).rollsCount || 4);
+      const boxes = Number((v as any).boxes_count || (v as any).boxesCount || 0);
       const label = String((v as any).title || v.packageSize || v.sku);
       const keepStoredPackageLabel = usesCompact1880Pallets({
         widthInches: resolvedWidth,
@@ -512,9 +513,11 @@ function formatProduct(raw: any): ProductWithVariants {
         slug: slugStr,
         name: nameStr,
       });
+      const isStandard256Pallet = rolls === 256 || boxes === 64;
       const normalizedLabel =
         !keepStoredPackageLabel &&
-        (label.toUpperCase().includes("FULL PALLET") || rolls === 256 || rolls === 192)
+        !isStandard256Pallet &&
+        (label.toUpperCase().includes("FULL PALLET") || rolls === 192)
           ? HAND_FULL_PALLET.label
           : label;
       return {

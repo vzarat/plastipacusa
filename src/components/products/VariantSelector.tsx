@@ -185,8 +185,8 @@ function displayPackageTitle(variant: any, isMachine: boolean): string {
   const rolls = Math.max(0, getRollsCount(variant));
   const boxes = getBoxesCount(variant, false);
 
-  if (rolls === 256 || boxes === 64) return "Full Pallet (256 Rolls / 4 Layers)";
-  if (rolls === 128 || boxes === 32) return "Half Pallet (128 Rolls / 2 Layers)";
+  if (rolls === 256 || boxes === 64) return "Full Pallet (256 Rolls / 64 Boxes)";
+  if (rolls === 128 || boxes === 32) return "Half Pallet (128 Rolls / 32 Boxes)";
   if (kind === "fixed_mid" || rolls === 64 || boxes === 16) {
     return "1 Layer (64 Rolls / 16 Boxes)";
   }
@@ -216,12 +216,18 @@ function displayPackageSubtext(variant: any, isMachine: boolean): string {
 
   const boxes = getBoxesCount(variant, false);
   const kind = getPackageTierKind(variant, false);
-  if (rolls === 256 || boxes === 64) return "4 Layers included";
-  if (rolls === 128 || boxes === 32) return "2 Layers included";
-  if (kind === "fixed_mid" || rolls === 64 || boxes === 16) return "16 Boxes included";
+  if (rolls === 256 || boxes === 64) {
+    return "256 Rolls included · Save 9% OFF · Houston Friday Freight Eligible";
+  }
+  if (rolls === 128 || boxes === 32) return "128 Rolls included · Save 5% OFF";
+  if (kind === "fixed_mid" || rolls === 64 || boxes === 16) {
+    return "64 Rolls included · Free RGV Freight Eligible";
+  }
   if (kind === "single_unit" || boxes === 1) {
     const rollCount = rolls > 0 ? rolls : 4;
-    return `${rollCount} Rolls included`;
+    return rollCount === 4
+      ? "4 Rolls included · Standard package"
+      : `${rollCount} Rolls included`;
   }
   return rolls > 0 ? `${rolls} Rolls included` : "";
 }
@@ -617,6 +623,12 @@ export function VariantSelector({
                 {formatDiscountAppliedBadge(appliedDiscount)}
               </span>
             )}
+            {unitPrice > 0 && !isMachineFilm && getBoxesCount(selectedVariant, false) > 0 && (
+              <span className="basis-full text-sm font-semibold text-slate-500">
+                {formatCurrency(unitPrice / Math.max(1, getBoxesCount(selectedVariant, false)))}{" "}
+                USD / box
+              </span>
+            )}
           </div>
         </div>
 
@@ -638,7 +650,7 @@ export function VariantSelector({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 gap-2.5">
+        <div className="grid grid-cols-1 gap-2.5" role="radiogroup" aria-label="Package options">
           {variants.map((variant: any, index: number) => {
             const isSelected =
               selectedVariant?.id === variant.id ||
@@ -660,9 +672,11 @@ export function VariantSelector({
             const variantTitle = displayPackageTitle(variant, isMachineFilm);
             const rollsCount = getRollsCount(variant);
             const boxesCount = getBoxesCount(variant, isMachineFilm);
-            const tierKind = getPackageTierKind(variant, isMachineFilm);
-            const isBestValue = tierKind === "full_pallet";
-            const { savingsPercent, perUnitPrice, unitCount } = getPackageSavings(
+            const isStandardFullPallet =
+              !isMachineFilm && (rollsCount === 256 || boxesCount === 64);
+            const isStandardHalfPallet =
+              !isMachineFilm && (rollsCount === 128 || boxesCount === 32);
+            const { savingsPercent, unitCount } = getPackageSavings(
               variant,
               baseUnitPrice,
               isMachineFilm
@@ -670,11 +684,15 @@ export function VariantSelector({
             const pricedUnitCount = isMachineFilm
               ? Math.max(1, rollsCount)
               : Math.max(1, boxesCount);
-            const discountedPerUnit =
-              pricedUnitCount > 0 ? (price / pricedUnitCount).toFixed(2) : perUnitPrice;
-            const showSavings = savingsPercent > 0 && unitCount > 1;
+            const showSavings =
+              !isStandardFullPallet &&
+              !isStandardHalfPallet &&
+              savingsPercent > 0 &&
+              unitCount > 1;
             const showDiscountStrike =
               Boolean(appliedDiscount) && originalPrice > 0 && price < originalPrice;
+            const discountBadgeClass =
+              "bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-0.5 rounded-full";
 
             return (
               <button
@@ -684,68 +702,43 @@ export function VariantSelector({
                   `variant-${variant.rollsCount || (variant as any).rolls_count}-${index}`
                 }
                 type="button"
+                role="radio"
+                aria-checked={isSelected}
                 onClick={() => handlePackageSelect(variant)}
-                className={`group relative mb-3 flex w-full cursor-pointer flex-col items-stretch rounded-xl border p-4 text-left transition active:scale-[0.98] md:mb-0 md:gap-2.5 md:rounded-2xl md:active:scale-100 ${
-                  isBestValue
-                    ? isSelected
-                      ? "border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-500/25 shadow-sm"
-                      : "border-emerald-300 bg-emerald-50/20 hover:border-emerald-400 hover:bg-emerald-50/40"
-                    : isSelected
-                      ? "border-blue-600 bg-blue-50/20 ring-2 ring-blue-600/20 shadow-sm"
-                      : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60"
+                className={`group relative flex w-full cursor-pointer flex-col items-stretch rounded-xl p-4 text-left transition ${
+                  isSelected
+                    ? "border-2 border-blue-600 bg-blue-50/30 shadow-sm"
+                    : "border border-slate-200 bg-white hover:border-slate-300"
                 }`}
               >
-                {isBestValue && (
-                  <div className="absolute -top-2.5 left-3 hidden items-center rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm md:inline-flex">
-                    Best Value · Max Savings (~{savingsPercent > 0 ? savingsPercent : 13}% OFF)
-                  </div>
-                )}
-
-                {(isBestValue || showSavings) && (
-                  <div className="mb-1 flex w-full flex-wrap items-center justify-end gap-1 md:hidden">
-                    {isBestValue && (
-                      <span className="whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                        Best Value
-                      </span>
-                    )}
-                    {showSavings && (
-                      <span className="whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                        Save {savingsPercent}% OFF
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                <div
-                  className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 md:gap-4 ${
-                    isBestValue ? "md:pt-1" : ""
-                  }`}
-                >
+                <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <div
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
                         isSelected
-                          ? isBestValue
-                            ? "border-emerald-600 bg-emerald-600 ring-2 ring-emerald-600/30"
-                            : "border-blue-600 bg-blue-600 ring-2 ring-blue-600/30"
+                          ? "border-blue-600 bg-blue-600"
                           : "border-slate-300 bg-white group-hover:border-slate-400"
                       }`}
                     >
-                      {isSelected && <div className="w-2 h-2 rounded-full bg-white shadow-sm" />}
+                      {isSelected && <div className="h-2 w-2 rounded-full bg-white" />}
                     </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span
-                          className={`text-xs sm:text-sm font-bold ${
+                          className={`text-xs font-bold sm:text-sm ${
                             isSelected ? "text-slate-900" : "text-slate-700"
                           }`}
                         >
                           {variantTitle}
                         </span>
+                        {isStandardFullPallet && (
+                          <span className={discountBadgeClass}>BEST VALUE - MAX SAVINGS</span>
+                        )}
+                        {isStandardHalfPallet && (
+                          <span className={discountBadgeClass}>Save 5% OFF</span>
+                        )}
                         {showSavings && (
-                          <span className="hidden whitespace-nowrap rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800 md:inline-flex">
-                            Save {savingsPercent}% OFF
-                          </span>
+                          <span className={discountBadgeClass}>Save {savingsPercent}% OFF</span>
                         )}
                       </div>
                       <span className="mt-0.5 block text-[11px] text-slate-500">
@@ -761,21 +754,16 @@ export function VariantSelector({
                       </span>
                     )}
                     <p
-                      className={`text-sm sm:text-base font-extrabold whitespace-nowrap ${
-                        showDiscountStrike
-                          ? "text-emerald-700"
-                          : isSelected
-                            ? isBestValue
-                              ? "text-emerald-800"
-                              : "text-blue-800"
-                            : "text-slate-900"
+                      className={`whitespace-nowrap text-sm font-extrabold sm:text-base ${
+                        showDiscountStrike ? "text-emerald-700" : "text-slate-900"
                       }`}
                     >
                       {formatCurrency(price)} USD
                     </p>
                     {price > 0 && pricedUnitCount > 0 && (
                       <p className="mt-0.5 whitespace-nowrap text-xs text-slate-500">
-                        ${discountedPerUnit} USD / {unitLabel.toLowerCase()}
+                        {formatCurrency(price / pricedUnitCount)} USD /{" "}
+                        {unitLabel.toLowerCase()}
                       </p>
                     )}
                   </div>
