@@ -288,24 +288,31 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
         </div>
       </div>
 
-      {/* Sticky Filter Toolbar */}
-      <div className="sticky top-0 z-20 rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-sm shadow-xs">
-        <div className="p-4 sm:px-6 space-y-3">
-          <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-            {/* Search */}
-            <div className="relative flex-1 min-w-0 w-full">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t("admin.searchCatalog")}
-                className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/10 focus:border-blue-400"
-              />
-            </div>
+      <div className="sticky top-0 z-20 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="relative w-full max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("admin.searchCatalog")}
+              className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-9 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-600/10"
+            />
+            {search.trim() !== "" && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
 
-            {/* Application Tabs */}
-            <div className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1 gap-1 overflow-x-auto w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-1 overflow-x-auto bg-slate-100 p-1 rounded-xl">
               {(
                 [
                   { key: "all", label: t("admin.all") },
@@ -317,10 +324,10 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                   key={tab.key}
                   type="button"
                   onClick={() => setFilterApp(tab.key)}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer ${
+                  className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs transition-all duration-200 ${
                     filterApp === tab.key
-                      ? "bg-blue-600 text-white shadow-xs"
-                      : "text-slate-600 hover:bg-slate-100"
+                      ? "bg-white shadow-xs text-blue-600 font-semibold"
+                      : "font-medium text-slate-600 hover:text-slate-900"
                   }`}
                 >
                   {tab.label}
@@ -328,17 +335,16 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
               ))}
             </div>
 
-            {/* Gauge Multi-Select */}
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setIsGaugeMenuOpen((v) => !v)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-[11px] font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 hover:bg-slate-50"
               >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
+                <SlidersHorizontal className="h-3.5 w-3.5 text-slate-400" />
                 {t("admin.gaugeFilter")}
                 {filterGauges.length > 0 ? ` (${filterGauges.length})` : ""}
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
               </button>
 
               {isGaugeMenuOpen && (
@@ -347,17 +353,17 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                     className="fixed inset-0 z-30"
                     onClick={() => setIsGaugeMenuOpen(false)}
                   />
-                  <div className="absolute left-0 mt-2 w-48 rounded-xl border border-slate-200 bg-white shadow-xl z-40 p-2 space-y-1 max-h-64 overflow-y-auto">
+                  <div className="absolute left-0 z-40 mt-2 max-h-64 w-48 space-y-1 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
                     {availableGauges.map((g) => (
                       <label
                         key={g}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-xs font-semibold text-slate-700"
+                        className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                       >
                         <input
                           type="checkbox"
                           checked={filterGauges.includes(g)}
                           onChange={() => toggleGauge(g)}
-                          className="w-3.5 h-3.5 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                          className="h-3.5 w-3.5 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                         />
                         {g} GA
                       </label>
@@ -367,11 +373,10 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
               )}
             </div>
 
-            {/* Status Filter */}
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}
-              className="text-xs font-semibold py-2 px-3 rounded-xl border border-slate-200 bg-white text-slate-700 focus:outline-none cursor-pointer"
+              className="h-10 cursor-pointer rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:outline-none"
             >
               <option value="all">{t("admin.statusAll")}</option>
               <option value="active">{t("admin.active")}</option>
@@ -382,60 +387,108 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
               <button
                 type="button"
                 onClick={clearFilters}
-                className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-700 text-[11px] font-bold hover:bg-red-100 cursor-pointer whitespace-nowrap"
+                className="text-slate-500 hover:text-red-600 hover:bg-red-50 text-xs font-medium px-3 py-2 rounded-lg transition-colors"
               >
-                <X className="w-3.5 h-3.5" />
                 {t("admin.clearFilters")}
               </button>
             )}
           </div>
+        </div>
 
-          {/* Length Quick Filters */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">
-              {t("admin.lengthLabel")}:
-            </span>
-            <button
-              type="button"
-              onClick={() => setFilterLength("all")}
-              className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${
-                filterLength === "all"
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              {t("admin.all")}
-            </button>
-            {availableLengths.map((len) => (
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+          <span className="mr-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            {t("admin.lengthLabel")}
+          </span>
+          <button
+            type="button"
+            onClick={() => setFilterLength("all")}
+            className={
+              filterLength === "all"
+                ? "rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm"
+                : "rounded-lg border border-transparent bg-slate-100/80 px-3 py-1.5 text-xs font-medium text-slate-600 transition-all hover:bg-slate-200/80"
+            }
+          >
+            {t("admin.all")}
+          </button>
+          {availableLengths.map((len) => {
+            const label = `${Number(len).toLocaleString("en-US")} FT`;
+            const active = filterLength === len;
+            return (
               <button
                 key={len}
                 type="button"
-                onClick={() => setFilterLength(filterLength === len ? "all" : len)}
-                className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${
-                  filterLength === len
-                    ? "bg-slate-900 text-white"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
+                onClick={() => setFilterLength(active ? "all" : len)}
+                className={
+                  active
+                    ? "rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm"
+                    : "rounded-lg border border-transparent bg-slate-100/80 px-3 py-1.5 text-xs font-medium text-slate-600 transition-all hover:bg-slate-200/80"
+                }
               >
-                {typeof len === "number"
-                  ? len.toLocaleString("en-US")
-                  : Number(len || 0).toLocaleString("en-US")}{" "}
-                FT
+                {label}
               </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Results Count */}
-        <div className="px-4 sm:px-6 py-2.5 border-t border-slate-100 bg-slate-50/60 rounded-b-2xl">
-          <p className="text-[11px] font-semibold text-slate-500">
-            {t("admin.showing")}{" "}
-            <span className="text-slate-900 font-bold">{filtered.length}</span>{" "}
-            {t("admin.of")}{" "}
-            <span className="text-slate-900 font-bold">{products.length}</span>{" "}
+            );
+          })}
+          <p className="ml-auto text-xs font-medium text-slate-500">
+            {t("admin.showing")} {filtered.length} {t("admin.of")} {products.length}{" "}
             {t("admin.productsCount")}
           </p>
         </div>
+
+        {hasActiveFilters && (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            {search.trim() !== "" && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200"
+              >
+                <span className="max-w-[12rem] truncate">&ldquo;{search.trim()}&rdquo;</span>
+                <X className="h-3 w-3 text-slate-400" />
+              </button>
+            )}
+            {filterApp !== "all" && (
+              <button
+                type="button"
+                onClick={() => setFilterApp("all")}
+                className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200"
+              >
+                {filterApp === "hand" ? t("admin.handFilm") : t("admin.machineFilm")}
+                <X className="h-3 w-3 text-slate-400" />
+              </button>
+            )}
+            {filterGauges.map((gauge) => (
+              <button
+                key={gauge}
+                type="button"
+                onClick={() => toggleGauge(gauge)}
+                className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200"
+              >
+                {gauge} GA
+                <X className="h-3 w-3 text-slate-400" />
+              </button>
+            ))}
+            {filterLength !== "all" && (
+              <button
+                type="button"
+                onClick={() => setFilterLength("all")}
+                className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200"
+              >
+                {Number(filterLength).toLocaleString("en-US")} FT
+                <X className="h-3 w-3 text-slate-400" />
+              </button>
+            )}
+            {filterStatus !== "all" && (
+              <button
+                type="button"
+                onClick={() => setFilterStatus("all")}
+                className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200"
+              >
+                {filterStatus === "active" ? t("admin.active") : t("admin.draftInactive")}
+                <X className="h-3 w-3 text-slate-400" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Catalog Grid */}

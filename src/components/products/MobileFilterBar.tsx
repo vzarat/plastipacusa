@@ -30,16 +30,24 @@ interface MobileFilterBarProps {
 }
 
 function chipClass(active: boolean) {
-  return `inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-200 ${
+  return `inline-flex items-center whitespace-nowrap transition-all duration-200 ${
     active
-      ? "bg-sky-950/40 border-sky-500 text-sky-400"
-      : "border-gray-300 bg-white text-slate-700"
+      ? "bg-slate-900 text-white font-semibold rounded-xl px-3 py-2 text-xs"
+      : "bg-slate-100/80 text-slate-800 border border-slate-200 hover:bg-slate-200/80 rounded-xl px-3 py-2 text-xs font-medium"
+  }`;
+}
+
+function optionClass(selected: boolean) {
+  return `w-full px-3 py-2.5 text-left transition-colors duration-200 ${
+    selected
+      ? "bg-slate-900 text-white font-semibold rounded-lg"
+      : "hover:bg-slate-100 text-slate-700 font-medium rounded-lg"
   }`;
 }
 
 function CountBadge() {
   return (
-    <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-bold text-white">
+    <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-white/20 px-1 text-[10px] font-bold text-white">
       1
     </span>
   );
@@ -112,8 +120,8 @@ export function MobileFilterBar({
   return (
     <div
       ref={rootRef}
-      className={`sticky top-[109px] z-30 -mx-4 relative bg-slate-950/90 backdrop-blur-md border-b border-slate-800 transition-all duration-200 sm:-mx-6 md:hidden ${
-        stuck ? "shadow-lg shadow-black/40" : ""
+      className={`sticky top-[109px] z-30 -mx-4 relative bg-white/95 backdrop-blur-md border-b border-slate-200/80 transition-all duration-200 shadow-sm sm:-mx-6 md:hidden ${
+        stuck ? "shadow-md" : ""
       }`}
     >
       <div className="no-scrollbar flex gap-2 overflow-x-auto px-3 py-2">
@@ -123,13 +131,7 @@ export function MobileFilterBar({
             setOpenKey(null);
             onToggleFiltersPanel();
           }}
-          className={chipClass(
-            filtersPanelOpen ||
-              selectedApp !== "all" ||
-              selectedWidth !== "all" ||
-              selectedGauge !== "all" ||
-              selectedLength !== "all"
-          )}
+          className={chipClass(filtersPanelOpen)}
         >
           Sort & Filters
         </button>
@@ -187,7 +189,7 @@ export function MobileFilterBar({
       >
         <div>
           {openKey && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-lg">
+            <div className="bg-white text-slate-900 border border-slate-200 shadow-xl rounded-2xl p-3 z-40">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   {panelTitle}
@@ -209,11 +211,7 @@ export function MobileFilterBar({
                         key={value}
                         type="button"
                         onClick={() => choose(selectedGauge, value, onGaugeChange)}
-                        className={`rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition-all duration-200 ${
-                          selected
-                            ? "bg-sky-950/40 border-sky-500 text-sky-700"
-                            : "border-slate-200 bg-white text-slate-800 hover:bg-slate-100"
-                        }`}
+                        className={optionClass(selected)}
                       >
                         {value} GA
                       </button>
@@ -227,11 +225,7 @@ export function MobileFilterBar({
                         key={value}
                         type="button"
                         onClick={() => choose(selectedLength, value, onLengthChange)}
-                        className={`rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition-all duration-200 ${
-                          selected
-                            ? "bg-sky-950/40 border-sky-500 text-sky-700"
-                            : "border-slate-200 bg-white text-slate-800 hover:bg-slate-100"
-                        }`}
+                        className={optionClass(selected)}
                       >
                         {Number(value).toLocaleString("en-US")} ft
                       </button>
@@ -245,11 +239,7 @@ export function MobileFilterBar({
                         key={value}
                         type="button"
                         onClick={() => choose(selectedWidth, value, onWidthChange)}
-                        className={`rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition-all duration-200 ${
-                          selected
-                            ? "bg-sky-950/40 border-sky-500 text-sky-700"
-                            : "border-slate-200 bg-white text-slate-800 hover:bg-slate-100"
-                        }`}
+                        className={optionClass(selected)}
                       >
                         {value}&quot;
                       </button>
@@ -265,11 +255,7 @@ export function MobileFilterBar({
                         onClick={() =>
                           onAppChange(selected ? "all" : option.value)
                         }
-                        className={`rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition-all duration-200 ${
-                          selected
-                            ? "bg-sky-950/40 border-sky-500 text-sky-700"
-                            : "border-slate-200 bg-white text-slate-800 hover:bg-slate-100"
-                        }`}
+                        className={optionClass(selected)}
                       >
                         {option.label}
                       </button>

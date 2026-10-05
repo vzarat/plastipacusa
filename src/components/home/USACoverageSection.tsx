@@ -17,10 +17,12 @@ import {
   CoverageStateTooltip,
   CUSTOM_FREIGHT_DESCRIPTION,
   CUSTOM_FREIGHT_TITLE,
-  HOUSTON_FRIDAY_NOTE,
+  HOUSTON_BADGE,
+  HOUSTON_DESCRIPTION,
   LOGISTICS_PHONE_DISPLAY,
   LOGISTICS_PHONE_HREF,
-  TEXAS_RGV_NOTE,
+  RGV_BADGE,
+  RGV_DESCRIPTION,
 } from "@/components/common/CoverageStateTooltip";
 
 const HUB_FILL = "#2563EB";
@@ -33,9 +35,9 @@ const BORDER_WHITE = "#FFFFFF";
 const SELECTED_FILL = "#1D4ED8";
 
 const HIGHLIGHT_BADGES = [
-  { label: "1 - 2 Days in Texas", icon: "⚡" },
-  { label: "Direct Factory Shipping", icon: "📦" },
-  { label: "Full Pallet & LTL Freight Discounts", icon: "🚛" },
+  { label: "Free Local Delivery (RGV)", icon: "⚡" },
+  { label: "Friday Route (Greater Houston)", icon: "📦" },
+  { label: "Custom Freight (Call for Schedule)", icon: "🚛" },
 ] as const;
 
 export function USACoverageSection() {
@@ -46,12 +48,12 @@ export function USACoverageSection() {
     setSelected(state);
     const zone = getDeliveryZone(state);
     if (zone === "texas") {
-      toast.message(`${TEXAS_RGV_NOTE}. ${HOUSTON_FRIDAY_NOTE}`);
+      toast.message(`${RGV_DESCRIPTION} ${HOUSTON_DESCRIPTION}`);
       return;
     }
     if (zone === "distant") {
       toast.message(
-        `${CUSTOM_FREIGHT_TITLE}. Llamar a Logística: ${LOGISTICS_PHONE_DISPLAY}`
+        `${CUSTOM_FREIGHT_TITLE}. Call Logistics: ${LOGISTICS_PHONE_DISPLAY}`
       );
       return;
     }
@@ -125,7 +127,7 @@ export function USACoverageSection() {
             id="usa-coverage-home-heading"
             className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight"
           >
-            Nationwide Fast Delivery & Freight Coverage
+            US Coverage & Logistics Network
           </h2>
           <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
             Distributing High-Yield GENESIS & FORCE Stretch Film across all 50 US
@@ -168,7 +170,7 @@ export function USACoverageSection() {
                   style={{ backgroundColor: HUB_FILL }}
                   aria-hidden
                 />
-                Texas (1 - 2 Days)
+                Free Local Delivery (RGV)
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span
@@ -176,7 +178,7 @@ export function USACoverageSection() {
                   style={{ backgroundColor: REGIONAL_FILL }}
                   aria-hidden
                 />
-                Neighboring (6 - 7 Days)
+                Friday Route (Greater Houston)
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span
@@ -184,7 +186,7 @@ export function USACoverageSection() {
                   style={{ backgroundColor: STANDARD_FILL }}
                   aria-hidden
                 />
-                Distant (custom freight)
+                Custom Freight (Call for Schedule)
               </span>
             </div>
           </div>
@@ -202,12 +204,22 @@ export function USACoverageSection() {
                 <h3 className="text-2xl font-black text-slate-900">{selected}</h3>
                 {getDeliveryZone(selected) === "texas" ? (
                   <div className="space-y-2">
-                    <p className="rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3 text-sm font-semibold leading-relaxed text-blue-900">
-                      {TEXAS_RGV_NOTE}
-                    </p>
-                    <p className="rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3 text-sm font-semibold leading-relaxed text-blue-900">
-                      {HOUSTON_FRIDAY_NOTE}
-                    </p>
+                    <div className="rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-blue-700">
+                        {RGV_BADGE}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-800">
+                        {RGV_DESCRIPTION}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-blue-700">
+                        {HOUSTON_BADGE}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-800">
+                        {HOUSTON_DESCRIPTION}
+                      </p>
+                    </div>
                   </div>
                 ) : getDeliveryZone(selected) === "distant" ? (
                   <div className="space-y-3">
@@ -221,7 +233,7 @@ export function USACoverageSection() {
                       href={LOGISTICS_PHONE_HREF}
                       className="inline-flex w-full items-center justify-center rounded-xl bg-sky-600 px-3 py-2.5 text-sm font-bold text-white hover:bg-sky-700"
                     >
-                      📞 Llamar a Logística: {LOGISTICS_PHONE_DISPLAY}
+                      📞 Call Logistics: {LOGISTICS_PHONE_DISPLAY}
                     </a>
                   </div>
                 ) : (

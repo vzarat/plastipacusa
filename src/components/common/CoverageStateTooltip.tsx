@@ -8,16 +8,19 @@ import {
 
 export const LOGISTICS_PHONE_DISPLAY = "(956) 400-3683";
 export const LOGISTICS_PHONE_HREF = "tel:+19564003683";
+export const LOGISTICS_PHONE_LABEL = `📞 Call Logistics: ${LOGISTICS_PHONE_DISPLAY}`;
 
-export const TEXAS_RGV_NOTE = "Entrega Local Gratis desde 1 Cama (64 rollos)";
-export const HOUSTON_FRIDAY_NOTE =
-  "Ruta Directa Gratis los Viernes (Tarimas Completas / 256 rollos)";
+export const RGV_BADGE = "Free Local Delivery";
+export const RGV_DESCRIPTION =
+  "Free delivery across the RGV starting at 1 Layer (64 rolls / 16 boxes).";
+export const HOUSTON_BADGE = "Friday Corridor Route";
+export const HOUSTON_DESCRIPTION =
+  "Free Friday delivery to industrial docks on Full Pallet orders (256 rolls).";
 
-export const CUSTOM_FREIGHT_BADGE = "Zona de Cobertura por Pedido Directo";
-export const CUSTOM_FREIGHT_TITLE =
-  "Llama para consultar disponibilidad y fechas de envío";
+export const CUSTOM_FREIGHT_BADGE = "Custom Shipping Zone";
+export const CUSTOM_FREIGHT_TITLE = "Call to Check Freight Availability & Dates";
 export const CUSTOM_FREIGHT_DESCRIPTION =
-  "Para envíos fuera de nuestras rutas fijas, coordinamos logística consolidada y fechas exactas de entrega vía telefónica.";
+  "For orders outside our fixed routes, we arrange consolidated freight and schedule direct delivery dates over the phone.";
 
 export function CoverageStateTooltip({
   abbr,
@@ -30,13 +33,19 @@ export function CoverageStateTooltip({
 
   if (zone === "texas") {
     return (
-      <div className="max-w-[240px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-left shadow-lg">
+      <div className="max-w-[280px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-left shadow-lg">
         <p className="text-xs font-black text-slate-900">{stateName}</p>
-        <p className="mt-1 text-[11px] font-semibold leading-snug text-sky-800">
-          {TEXAS_RGV_NOTE}
+        <p className="mt-1.5 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800">
+          {RGV_BADGE}
         </p>
-        <p className="mt-1 text-[11px] font-semibold leading-snug text-sky-800">
-          {HOUSTON_FRIDAY_NOTE}
+        <p className="mt-1 text-[11px] font-medium leading-snug text-slate-700">
+          {RGV_DESCRIPTION}
+        </p>
+        <p className="mt-2 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800">
+          {HOUSTON_BADGE}
+        </p>
+        <p className="mt-1 text-[11px] font-medium leading-snug text-slate-700">
+          {HOUSTON_DESCRIPTION}
         </p>
       </div>
     );
@@ -60,7 +69,7 @@ export function CoverageStateTooltip({
           className="mt-2 inline-flex text-[11px] font-bold text-sky-700 hover:underline"
           onClick={(event) => event.stopPropagation()}
         >
-          📞 Llamar a Logística: {LOGISTICS_PHONE_DISPLAY}
+          📞 Call Logistics: {LOGISTICS_PHONE_DISPLAY}
         </a>
       </div>
     );

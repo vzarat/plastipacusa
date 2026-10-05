@@ -11,8 +11,6 @@ import { Clock, MapPin, PhoneCall, Truck } from "lucide-react";
 import {
   getDeliveryLeadTime,
   getDeliveryZone,
-  LEAD_TIME_REGIONAL,
-  LEAD_TIME_TEXAS,
   type DeliveryZone,
 } from "@/lib/shipping/deliveryEstimates";
 import {
@@ -20,10 +18,12 @@ import {
   CUSTOM_FREIGHT_BADGE,
   CUSTOM_FREIGHT_DESCRIPTION,
   CUSTOM_FREIGHT_TITLE,
-  HOUSTON_FRIDAY_NOTE,
+  HOUSTON_BADGE,
+  HOUSTON_DESCRIPTION,
   LOGISTICS_PHONE_DISPLAY,
   LOGISTICS_PHONE_HREF,
-  TEXAS_RGV_NOTE,
+  RGV_BADGE,
+  RGV_DESCRIPTION,
 } from "@/components/common/CoverageStateTooltip";
 
 /** Plastipac brand blues for active shipping zones */
@@ -221,7 +221,7 @@ export function USACoverageMap() {
             id="usa-coverage-heading"
             className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight"
           >
-            Interactive Delivery Map
+            US Coverage & Logistics Network
           </h2>
           <p className="text-sm text-slate-600 leading-relaxed">
             Click or hover any state to view Plastipac USA delivery estimates from
@@ -237,7 +237,7 @@ export function USACoverageMap() {
               style={{ backgroundColor: FILL_PRIMARY }}
               aria-hidden
             />
-            Texas ({LEAD_TIME_TEXAS})
+            Free Local Delivery (RGV)
           </span>
           <span className="inline-flex items-center gap-1.5 text-slate-700">
             <span
@@ -245,7 +245,7 @@ export function USACoverageMap() {
               style={{ backgroundColor: FILL_REGIONAL }}
               aria-hidden
             />
-            Neighboring ({LEAD_TIME_REGIONAL})
+            Friday Route (Greater Houston)
           </span>
           <span className="inline-flex items-center gap-1.5 text-slate-700">
             <span
@@ -253,7 +253,7 @@ export function USACoverageMap() {
               style={{ backgroundColor: FILL_SECONDARY }}
               aria-hidden
             />
-            Distant (custom freight)
+            Custom Freight (Call for Schedule)
           </span>
         </div>
       </div>
@@ -298,7 +298,7 @@ export function USACoverageMap() {
                   }`}
                 >
                   {activeCoverage.tier === "texas"
-                    ? "Active route"
+                    ? "Texas routes"
                     : activeCoverage.tier === "distant"
                       ? CUSTOM_FREIGHT_BADGE
                       : tierLabel(activeCoverage.tier)}
@@ -307,12 +307,22 @@ export function USACoverageMap() {
 
               {activeCoverage.tier === "texas" ? (
                 <div className="space-y-2">
-                  <p className="rounded-xl border border-sky-100 bg-white px-3 py-2.5 text-sm font-semibold leading-snug text-sky-900">
-                    {TEXAS_RGV_NOTE}
-                  </p>
-                  <p className="rounded-xl border border-sky-100 bg-white px-3 py-2.5 text-sm font-semibold leading-snug text-sky-900">
-                    {HOUSTON_FRIDAY_NOTE}
-                  </p>
+                  <div className="rounded-xl border border-sky-100 bg-white px-3 py-2.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-sky-700">
+                      {RGV_BADGE}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold leading-snug text-slate-800">
+                      {RGV_DESCRIPTION}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-sky-100 bg-white px-3 py-2.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-sky-700">
+                      {HOUSTON_BADGE}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold leading-snug text-slate-800">
+                      {HOUSTON_DESCRIPTION}
+                    </p>
+                  </div>
                 </div>
               ) : activeCoverage.tier === "distant" ? (
                 <div className="space-y-3">
@@ -327,7 +337,7 @@ export function USACoverageMap() {
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-3 py-2.5 text-sm font-bold text-white hover:bg-sky-700"
                   >
                     <PhoneCall className="h-4 w-4" />
-                    Llamar a Logística: {LOGISTICS_PHONE_DISPLAY}
+                    Call Logistics: {LOGISTICS_PHONE_DISPLAY}
                   </a>
                 </div>
               ) : (
