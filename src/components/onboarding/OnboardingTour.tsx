@@ -652,7 +652,7 @@ export function OnboardingTour() {
                   index === mobileStep ? "bg-black" : "bg-gray-300"
                 }`}
               />
-            />
+            </button>
           ))}
         </div>
         <div className="flex justify-end">
