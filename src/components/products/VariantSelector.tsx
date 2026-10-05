@@ -175,6 +175,120 @@ function getPackageSavings(variant: any, baseUnitPrice: number, isMachine: boole
   return { unitCount, savingsPercent, perUnitPrice };
 }
 
+function roundMoney(amount: number): number {
+  return Math.round(amount * 100) / 100;
+}
+
+/** Official hand-film ladder. Prices are the box price times boxes, less the tier rate. */
+const STANDARD_HAND_PACKAGE_TIERS = [
+  {
+    key: "box",
+    title: "1 Box (4 Rolls)",
+    rolls: 4,
+    boxes: 1,
+    discountRate: 0,
+    subtext: "4 Rolls included · Standard package",
+    badges: [] as string[],
+    tag: "",
+  },
+  {
+    key: "layer",
+    title: "1 Layer (64 Rolls / 16 Boxes)",
+    rolls: 64,
+    boxes: 16,
+    discountRate: 0.05,
+    subtext: "64 Rolls included · Free RGV Freight Eligible",
+    badges: [] as string[],
+    tag: "",
+  },
+  {
+    key: "half",
+    title: "Half Pallet (128 Rolls / 32 Boxes)",
+    rolls: 128,
+    boxes: 32,
+    discountRate: 0.0625,
+    subtext: "128 Rolls included · Save 5% OFF",
+    badges: ["Save 5% OFF"],
+    tag: "",
+  },
+  {
+    key: "full",
+    title: "Full Pallet (256 Rolls / 64 Boxes)",
+    rolls: 256,
+    boxes: 64,
+    discountRate: 0.10625,
+    subtext: "256 Rolls included · Houston Friday Freight Eligible",
+    badges: ["Save 9% OFF"],
+    tag: "BEST VALUE - MAX SAVINGS (~9% OFF)",
+  },
+] as const;
+
+function isSingleBoxSource(option: any): boolean {
+  const rolls = Number(
+    option?.rolls ?? option?.rolls_count ?? option?.rollsCount ?? option?.rollsPerBox ?? 0
+  );
+  const boxes = Number(option?.boxes_count ?? option?.boxesCount ?? 0);
+  const label = String(option?.label || option?.title || option?.packageSize || "").toUpperCase();
+  return boxes === 1 || rolls === 4 || label.includes("1 BOX");
+}
+
+function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
+  const single = sourceOptions.find(
+    (option) => isSingleBoxSource(option) && getVariantPrice(option) > 0
+  );
+  const baseBoxPrice = single
+    ? getVariantPrice(single)
+    : Number(product?.startingPrice) > 0
+      ? Number(product.startingPrice)
+      : 0;
+  if (!(baseBoxPrice > 0)) return [];
+
+  const widthInches = String(
+    product?.width_inches || product?.widthInches || single?.widthInches || "18.00"
+  );
+  const gauge = Number(product?.gauge || single?.gauge || 60);
+  const lengthFeet = Number(
+    product?.length_feet || product?.lengthFeet || single?.lengthFeet || 1000
+  );
+  const baseSku = String(single?.sku || product?.partNumber || product?.slug || "SKU");
+
+  return STANDARD_HAND_PACKAGE_TIERS.map((tier) => {
+    const total = roundMoney(baseBoxPrice * tier.boxes * (1 - tier.discountRate));
+    const matched = sourceOptions.find((option) => {
+      const boxes = Number(option?.boxes_count ?? option?.boxesCount ?? 0);
+      const rolls = Number(
+        option?.rolls ?? option?.rolls_count ?? option?.rollsCount ?? option?.rollsPerBox ?? 0
+      );
+      return boxes === tier.boxes || rolls === tier.rolls;
+    });
+    const sku = String(matched?.sku || `${baseSku}-${tier.boxes}B`);
+    return {
+      id: matched?.id || sku,
+      sku,
+      tierKey: tier.key,
+      packageSize: tier.title,
+      title: tier.title,
+      tierSubtext: tier.subtext,
+      tierBadges: [...tier.badges],
+      tierTag: tier.tag,
+      priceUsd: total.toFixed(2),
+      price: total,
+      rollsPerBox: tier.rolls,
+      rolls_count: tier.rolls,
+      rollsCount: tier.rolls,
+      boxes_count: tier.boxes,
+      boxesCount: tier.boxes,
+      rollsPerPallet: 256,
+      widthInches,
+      gauge,
+      lengthFeet,
+      weightLbs: String(matched?.weightLbs ?? single?.weightLbs ?? "0.00"),
+      stockStatus: "in_stock",
+      createdAt: new Date().toISOString(),
+    };
+  });
+}
+
 function displayPackageTitle(variant: any, isMachine: boolean): string {
   const raw = String(variant?.title || variant?.packageSize || variant?.sku || "");
   if (isMachine) {
@@ -217,7 +331,7 @@ function displayPackageSubtext(variant: any, isMachine: boolean): string {
   const boxes = getBoxesCount(variant, false);
   const kind = getPackageTierKind(variant, false);
   if (rolls === 256 || boxes === 64) {
-    return "256 Rolls included · Save 9% OFF · Houston Friday Freight Eligible";
+    return "256 Rolls included · Houston Friday Freight Eligible";
   }
   if (rolls === 128 || boxes === 32) return "128 Rolls included · Save 5% OFF";
   if (kind === "fixed_mid" || rolls === 64 || boxes === 16) {
@@ -339,25 +453,11 @@ export function VariantSelector({
         });
     })();
 
-    const visible = isMachineFilm
-      ? mapped
-      : mapped.filter((variant: any) => {
-          const compact = usesCompact1880Pallets({
-            widthInches:
-              product?.width_inches || product?.widthInches || variant?.widthInches,
-            gauge: product?.gauge || variant?.gauge,
-            lengthFeet:
-              product?.length_feet || product?.lengthFeet || variant?.lengthFeet,
-            slug: product?.slug,
-            name: product?.title || product?.name,
-          });
-          if (!compact) return true;
-          const boxes = getBoxesCount(variant, false);
-          return boxes === 1 || boxes === 12 || boxes === 24;
-        });
-
-    if (!isMachineFilm) return visible;
-    return [...visible].sort((a: any, b: any) => getRollsCount(a) - getRollsCount(b));
+    if (!isMachineFilm) {
+      const standardTiers = buildStandardHandTiers(product, mapped);
+      return standardTiers.length > 0 ? standardTiers : mapped;
+    }
+    return [...mapped].sort((a: any, b: any) => getRollsCount(a) - getRollsCount(b));
   }, [product, isMachineFilm]);
 
   const addItem = useCartStore((state) => state.addItem);
@@ -391,6 +491,19 @@ export function VariantSelector({
   );
 
   const selectedVariant: ProductVariant = useMemo(() => {
+    if (!isMachineFilm && variants[0]?.tierKey) {
+      const sourceKey = propSelectedVariant?.tierKey;
+      if (sourceKey) {
+        return variants.find((variant: any) => variant.tierKey === sourceKey) || variants[0];
+      }
+      const sourceBoxes = propSelectedVariant
+        ? getBoxesCount(propSelectedVariant, false)
+        : 0;
+      return (
+        variants.find((variant: any) => getBoxesCount(variant, false) === sourceBoxes) ||
+        variants[0]
+      );
+    }
     if (propSelectedVariant) return propSelectedVariant;
     const targetId = propSelectedVariantId || internalSelectedVariantId;
     return (
@@ -402,7 +515,7 @@ export function VariantSelector({
           String(v.sku) === String(targetId)
       ) || variants[0]
     );
-  }, [variants, propSelectedVariant, propSelectedVariantId, internalSelectedVariantId]);
+  }, [variants, propSelectedVariant, propSelectedVariantId, internalSelectedVariantId, isMachineFilm]);
 
   const selectedVariantId =
     propSelectedVariantId ||
@@ -439,6 +552,15 @@ export function VariantSelector({
     },
     [onVariantChange]
   );
+
+  useEffect(() => {
+    if (isMachineFilm || !selectedVariant?.tierKey || !onVariantChange) return;
+    const parentKey = propSelectedVariant?.tierKey;
+    const parentPrice = getVariantPrice(propSelectedVariant);
+    const nextPrice = getVariantPrice(selectedVariant);
+    if (parentKey === selectedVariant.tierKey && parentPrice === nextPrice) return;
+    onVariantChange(selectedVariant);
+  }, [isMachineFilm, selectedVariant, propSelectedVariant, onVariantChange]);
 
   const handleSwitchToMidTier = () => {
     if (!midTierVariant) return;
@@ -669,13 +791,18 @@ export function VariantSelector({
 
             const originalPrice = getVariantPrice(variant);
             const price = applyDiscountToPrice(originalPrice, appliedDiscount);
-            const variantTitle = displayPackageTitle(variant, isMachineFilm);
+            const variantTitle = variant?.tierKey
+              ? String(variant.title)
+              : displayPackageTitle(variant, isMachineFilm);
             const rollsCount = getRollsCount(variant);
             const boxesCount = getBoxesCount(variant, isMachineFilm);
-            const isStandardFullPallet =
-              !isMachineFilm && (rollsCount === 256 || boxesCount === 64);
-            const isStandardHalfPallet =
-              !isMachineFilm && (rollsCount === 128 || boxesCount === 32);
+            const tierBadges: string[] = Array.isArray(variant?.tierBadges)
+              ? variant.tierBadges
+              : [];
+            const tierTag = String(variant?.tierTag || "");
+            const tierSubtext = String(
+              variant?.tierSubtext || displayPackageSubtext(variant, isMachineFilm)
+            );
             const { savingsPercent, unitCount } = getPackageSavings(
               variant,
               baseUnitPrice,
@@ -685,8 +812,9 @@ export function VariantSelector({
               ? Math.max(1, rollsCount)
               : Math.max(1, boxesCount);
             const showSavings =
-              !isStandardFullPallet &&
-              !isStandardHalfPallet &&
+              !variant?.tierKey &&
+              tierBadges.length === 0 &&
+              !tierTag &&
               savingsPercent > 0 &&
               unitCount > 1;
             const showDiscountStrike =
@@ -731,18 +859,18 @@ export function VariantSelector({
                         >
                           {variantTitle}
                         </span>
-                        {isStandardFullPallet && (
-                          <span className={discountBadgeClass}>BEST VALUE - MAX SAVINGS</span>
-                        )}
-                        {isStandardHalfPallet && (
-                          <span className={discountBadgeClass}>Save 5% OFF</span>
-                        )}
+                        {tierTag && <span className={discountBadgeClass}>{tierTag}</span>}
+                        {tierBadges.map((badge) => (
+                          <span key={badge} className={discountBadgeClass}>
+                            {badge}
+                          </span>
+                        ))}
                         {showSavings && (
                           <span className={discountBadgeClass}>Save {savingsPercent}% OFF</span>
                         )}
                       </div>
                       <span className="mt-0.5 block text-[11px] text-slate-500">
-                        {displayPackageSubtext(variant, isMachineFilm)}
+                        {tierSubtext}
                       </span>
                     </div>
                   </div>

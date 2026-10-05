@@ -9,9 +9,13 @@ const GAUGE_OPTIONS = ["60", "70", "80"] as const;
 const LENGTH_OPTIONS = ["1000", "1500", "5000", "6000"] as const;
 const WIDTH_OPTIONS = ["15", "18", "20", "30"] as const;
 const TYPE_OPTIONS = [
-  { value: "hand" as const, label: "Hand" },
-  { value: "machine" as const, label: "Machine" },
+  { value: "hand" as const, label: "Hand Film" },
+  { value: "machine" as const, label: "Machine Film" },
 ];
+
+function formatLength(value: string) {
+  return `${Number(value).toLocaleString("en-US")} FT`;
+}
 
 interface MobileFilterBarProps {
   selectedApp: CatalogAppFilter;
@@ -70,6 +74,8 @@ export function MobileFilterBar({
 }: MobileFilterBarProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [openKey, setOpenKey] = useState<AttributeKey | null>(null);
+  const [menuKey, setMenuKey] = useState<AttributeKey | null>(null);
+  const [sortVisible, setSortVisible] = useState(filtersPanelOpen);
   const [stuck, setStuck] = useState(false);
 
   useEffect(() => {
@@ -84,6 +90,24 @@ export function MobileFilterBar({
   }, []);
 
   useEffect(() => {
+    if (openKey) {
+      setMenuKey(openKey);
+      return;
+    }
+    const timer = window.setTimeout(() => setMenuKey(null), 200);
+    return () => window.clearTimeout(timer);
+  }, [openKey]);
+
+  useEffect(() => {
+    if (filtersPanelOpen) {
+      setSortVisible(true);
+      return;
+    }
+    const timer = window.setTimeout(() => setSortVisible(false), 200);
+    return () => window.clearTimeout(timer);
+  }, [filtersPanelOpen]);
+
+  useEffect(() => {
     if (!openKey) return;
     const onPointerDown = (event: MouseEvent) => {
       if (!rootRef.current?.contains(event.target as Node)) setOpenKey(null);
@@ -92,6 +116,8 @@ export function MobileFilterBar({
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [openKey]);
 
+  const closeMenu = () => setOpenKey(null);
+
   const toggleAttribute = (key: AttributeKey) => {
     setOpenKey((current) => (current === key ? null : key));
     if (filtersPanelOpen) onToggleFiltersPanel();
@@ -99,22 +125,24 @@ export function MobileFilterBar({
 
   const choose = (current: string, value: string, apply: (next: string) => void) => {
     apply(current === value ? "all" : value);
+    closeMenu();
   };
 
   const panelTitle =
-    openKey === "gauge"
-      ? "GA (Calibre)"
-      : openKey === "length"
-        ? "Length"
-        : openKey === "width"
-          ? "Width"
+    menuKey === "width"
+      ? "Width"
+      : menuKey === "gauge"
+        ? "Gauge"
+        : menuKey === "length"
+          ? "Length"
           : "Type";
 
   const clearOpenAttribute = () => {
-    if (openKey === "gauge") onGaugeChange("all");
-    if (openKey === "length") onLengthChange("all");
-    if (openKey === "width") onWidthChange("all");
-    if (openKey === "app") onAppChange("all");
+    if (menuKey === "gauge") onGaugeChange("all");
+    if (menuKey === "length") onLengthChange("all");
+    if (menuKey === "width") onWidthChange("all");
+    if (menuKey === "app") onAppChange("all");
+    closeMenu();
   };
 
   return (
@@ -127,34 +155,6 @@ export function MobileFilterBar({
       <div className="no-scrollbar flex gap-2 overflow-x-auto px-3 py-2">
         <button
           type="button"
-          onClick={() => {
-            setOpenKey(null);
-            onToggleFiltersPanel();
-          }}
-          className={chipClass(filtersPanelOpen)}
-        >
-          Sort & Filters
-        </button>
-        <button
-          type="button"
-          aria-expanded={openKey === "gauge"}
-          onClick={() => toggleAttribute("gauge")}
-          className={chipClass(selectedGauge !== "all" || openKey === "gauge")}
-        >
-          {selectedGauge === "all" ? "GA" : `${selectedGauge} GA`}
-          {selectedGauge !== "all" && <CountBadge />}
-        </button>
-        <button
-          type="button"
-          aria-expanded={openKey === "length"}
-          onClick={() => toggleAttribute("length")}
-          className={chipClass(selectedLength !== "all" || openKey === "length")}
-        >
-          {selectedLength === "all" ? "Length" : `${Number(selectedLength).toLocaleString("en-US")} ft`}
-          {selectedLength !== "all" && <CountBadge />}
-        </button>
-        <button
-          type="button"
           aria-expanded={openKey === "width"}
           onClick={() => toggleAttribute("width")}
           className={chipClass(selectedWidth !== "all" || openKey === "width")}
@@ -164,12 +164,45 @@ export function MobileFilterBar({
         </button>
         <button
           type="button"
+          aria-expanded={openKey === "gauge"}
+          onClick={() => toggleAttribute("gauge")}
+          className={chipClass(selectedGauge !== "all" || openKey === "gauge")}
+        >
+          {selectedGauge === "all" ? "Gauge" : `${selectedGauge} GA`}
+          {selectedGauge !== "all" && <CountBadge />}
+        </button>
+        <button
+          type="button"
+          aria-expanded={openKey === "length"}
+          onClick={() => toggleAttribute("length")}
+          className={chipClass(selectedLength !== "all" || openKey === "length")}
+        >
+          {selectedLength === "all" ? "Length" : formatLength(selectedLength)}
+          {selectedLength !== "all" && <CountBadge />}
+        </button>
+        <button
+          type="button"
           aria-expanded={openKey === "app"}
           onClick={() => toggleAttribute("app")}
           className={chipClass(selectedApp !== "all" || openKey === "app")}
         >
-          {selectedApp === "hand" ? "Hand" : selectedApp === "machine" ? "Machine" : "Type"}
+          {selectedApp === "hand"
+            ? "Hand Film"
+            : selectedApp === "machine"
+              ? "Machine Film"
+              : "Type"}
           {selectedApp !== "all" && <CountBadge />}
+        </button>
+        <button
+          type="button"
+          aria-expanded={filtersPanelOpen}
+          onClick={() => {
+            closeMenu();
+            onToggleFiltersPanel();
+          }}
+          className={chipClass(filtersPanelOpen)}
+        >
+          Sort
         </button>
         <button
           type="button"
@@ -181,14 +214,14 @@ export function MobileFilterBar({
       </div>
 
       <div
-        className={`absolute left-0 right-0 top-full z-50 px-3 pt-2 transition-all duration-200 ${
+        className={`absolute left-0 right-0 top-full z-50 px-3 pt-2 transition-all duration-200 ease-out ${
           openKey
             ? "pointer-events-auto translate-y-0 opacity-100"
             : "pointer-events-none -translate-y-1 opacity-0"
         }`}
       >
         <div>
-          {openKey && (
+          {menuKey && (
             <div className="bg-white text-slate-900 border border-slate-200 shadow-xl rounded-2xl p-3 z-40">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -203,35 +236,7 @@ export function MobileFilterBar({
                 </button>
               </div>
               <div className="flex flex-col gap-1.5">
-                {openKey === "gauge" &&
-                  GAUGE_OPTIONS.map((value) => {
-                    const selected = selectedGauge === value;
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => choose(selectedGauge, value, onGaugeChange)}
-                        className={optionClass(selected)}
-                      >
-                        {value} GA
-                      </button>
-                    );
-                  })}
-                {openKey === "length" &&
-                  LENGTH_OPTIONS.map((value) => {
-                    const selected = selectedLength === value;
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => choose(selectedLength, value, onLengthChange)}
-                        className={optionClass(selected)}
-                      >
-                        {Number(value).toLocaleString("en-US")} ft
-                      </button>
-                    );
-                  })}
-                {openKey === "width" &&
+                {menuKey === "width" &&
                   WIDTH_OPTIONS.map((value) => {
                     const selected = selectedWidth === value;
                     return (
@@ -245,16 +250,45 @@ export function MobileFilterBar({
                       </button>
                     );
                   })}
-                {openKey === "app" &&
+                {menuKey === "gauge" &&
+                  GAUGE_OPTIONS.map((value) => {
+                    const selected = selectedGauge === value;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => choose(selectedGauge, value, onGaugeChange)}
+                        className={optionClass(selected)}
+                      >
+                        {value} GA
+                      </button>
+                    );
+                  })}
+                {menuKey === "length" &&
+                  LENGTH_OPTIONS.map((value) => {
+                    const selected = selectedLength === value;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => choose(selectedLength, value, onLengthChange)}
+                        className={optionClass(selected)}
+                      >
+                        {formatLength(value)}
+                      </button>
+                    );
+                  })}
+                {menuKey === "app" &&
                   TYPE_OPTIONS.map((option) => {
                     const selected = selectedApp === option.value;
                     return (
                       <button
                         key={option.value}
                         type="button"
-                        onClick={() =>
-                          onAppChange(selected ? "all" : option.value)
-                        }
+                        onClick={() => {
+                          onAppChange(selected ? "all" : option.value);
+                          closeMenu();
+                        }}
                         className={optionClass(selected)}
                       >
                         {option.label}
@@ -267,7 +301,21 @@ export function MobileFilterBar({
         </div>
       </div>
 
-      {filtersPanelOpen && filtersPanel}
+      {sortVisible && (
+        <div
+          className={`px-0 transition-opacity duration-200 ease-out ${
+            filtersPanelOpen ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+          onClick={(event) => {
+            if (!filtersPanelOpen) return;
+            if ((event.target as HTMLElement).closest("button")) {
+              onToggleFiltersPanel();
+            }
+          }}
+        >
+          {filtersPanel}
+        </div>
+      )}
     </div>
   );
 }
