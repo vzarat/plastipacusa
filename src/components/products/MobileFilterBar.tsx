@@ -62,6 +62,18 @@ export function MobileFilterBar({
 }: MobileFilterBarProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [openKey, setOpenKey] = useState<AttributeKey | null>(null);
+  const [stuck, setStuck] = useState(false);
+
+  useEffect(() => {
+    const node = rootRef.current;
+    if (!node) return;
+    const onScroll = () => {
+      setStuck(node.getBoundingClientRect().top <= 110);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     if (!openKey) return;
@@ -98,7 +110,12 @@ export function MobileFilterBar({
   };
 
   return (
-    <div ref={rootRef} className="md:hidden">
+    <div
+      ref={rootRef}
+      className={`sticky top-[109px] z-30 -mx-4 relative bg-slate-950/90 backdrop-blur-md border-b border-slate-800 transition-all duration-200 sm:-mx-6 md:hidden ${
+        stuck ? "shadow-lg shadow-black/40" : ""
+      }`}
+    >
       <div className="no-scrollbar flex gap-2 overflow-x-auto px-3 py-2">
         <button
           type="button"
@@ -162,13 +179,15 @@ export function MobileFilterBar({
       </div>
 
       <div
-        className={`grid px-3 transition-all duration-200 ${
-          openKey ? "grid-rows-[1fr] pb-3 opacity-100" : "grid-rows-[0fr] opacity-0"
+        className={`absolute left-0 right-0 top-full z-50 px-3 pt-2 transition-all duration-200 ${
+          openKey
+            ? "pointer-events-auto translate-y-0 opacity-100"
+            : "pointer-events-none -translate-y-1 opacity-0"
         }`}
       >
-        <div className="overflow-hidden">
+        <div>
           {openKey && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-lg">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   {panelTitle}
