@@ -30,7 +30,7 @@ import {
 
 export type { CatalogAppFilter };
 
-/** 3 rows × 3 columns on desktop (`lg:grid-cols-3`) */
+/** 3 columns on desktop (`md:grid-cols-3`) */
 const ITEMS_PER_PAGE = 9;
 
 interface ProductCatalogProps {
@@ -711,7 +711,7 @@ export function ProductCatalog({
             <>
               <motion.div
                 layout
-                className="flex flex-col divide-y divide-gray-200 md:grid md:grid-cols-3 md:gap-6 md:divide-y-0 lg:grid-cols-4"
+                className="flex flex-col divide-y divide-gray-200 md:grid md:grid-cols-3 md:gap-6 md:divide-y-0"
               >
                 <AnimatePresence mode="popLayout">
                   {paginatedProducts.map((product, idx) => (

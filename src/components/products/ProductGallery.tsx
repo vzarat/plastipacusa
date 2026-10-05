@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { STRETCH_FILM_PLACEHOLDER } from "@/lib/products";
@@ -43,6 +43,9 @@ export function ProductGallery({
   }, [images, imageUrl]);
 
   const [activeIndex, setActiveIndex] = useState(0);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const swipeRef = useRef({ startX: 0, moved: false });
+  const touchingRef = useRef(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [imageBroken, setImageBroken] = useState(false);
   const activeImage = imageBroken
@@ -68,6 +71,20 @@ export function ProductGallery({
     setActiveIndex((prev) => (prev < galleryList.length - 1 ? prev + 1 : 0));
   }, [galleryList.length]);
 
+  const scrollToSlide = useCallback((index: number) => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    scroller.scrollTo({ left: index * scroller.clientWidth, behavior: "smooth" });
+  }, []);
+
+  const handleCarouselScroll = () => {
+    const scroller = scrollerRef.current;
+    if (!scroller || scroller.clientWidth === 0) return;
+    const index = Math.round(scroller.scrollLeft / scroller.clientWidth);
+    const next = Math.min(galleryList.length - 1, Math.max(0, index));
+    setActiveIndex((current) => (current === next ? current : next));
+  };
+
   // Keyboard controls & body scroll lock for Lightbox
   useEffect(() => {
     if (!isLightboxOpen) return;
@@ -92,12 +109,98 @@ export function ProductGallery({
     };
   }, [isLightboxOpen, handlePrev, handleNext]);
 
+  useEffect(() => {
+    if (touchingRef.current) return;
+    const scroller = scrollerRef.current;
+    if (!scroller || scroller.clientWidth === 0) return;
+    const left = activeIndex * scroller.clientWidth;
+    if (Math.abs(scroller.scrollLeft - left) > 4) {
+      scroller.scrollTo({ left, behavior: "smooth" });
+    }
+  }, [activeIndex]);
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-2 md:space-y-4">
+      <div className="relative md:hidden">
+        <div
+          ref={scrollerRef}
+          onScroll={handleCarouselScroll}
+          onTouchStart={(event) => {
+            touchingRef.current = true;
+            swipeRef.current = {
+              startX: event.changedTouches[0]?.clientX ?? 0,
+              moved: false,
+            };
+          }}
+          onTouchEnd={() => {
+            window.setTimeout(() => {
+              touchingRef.current = false;
+            }, 80);
+          }}
+          onTouchMove={(event) => {
+            const startX = swipeRef.current.startX;
+            const nextX = event.changedTouches[0]?.clientX ?? startX;
+            if (Math.abs(nextX - startX) > 8) swipeRef.current.moved = true;
+          }}
+          className="no-scrollbar flex w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-2xl border border-slate-200/90 bg-white shadow-sm [-webkit-overflow-scrolling:touch]"
+        >
+          {galleryList.map((img, idx) => (
+            <button
+              key={`${img}-${idx}`}
+              type="button"
+              onClick={() => {
+                if (swipeRef.current.moved) return;
+                setIsLightboxOpen(true);
+              }}
+              className="relative aspect-[4/3] min-w-full shrink-0 snap-center bg-white"
+              aria-label={`${productName} image ${idx + 1} of ${galleryList.length}`}
+            >
+              <Image
+                src={imageBroken && idx === activeIndex ? DEFAULT_IMAGE : img}
+                alt={`${productName} - ${getImageLabel(idx)}`}
+                fill
+                priority={idx === 0}
+                sizes="100vw"
+                className="object-contain p-3"
+                onError={() => {
+                  if (idx === activeIndex && img !== DEFAULT_IMAGE) setImageBroken(true);
+                }}
+              />
+            </button>
+          ))}
+        </div>
+        <div className="mt-2 flex items-center justify-center gap-1.5" aria-label="Image pages">
+          {galleryList.map((img, idx) => {
+            const isActive = activeIndex === idx;
+            return (
+              <button
+                key={`dot-${img}-${idx}`}
+                type="button"
+                aria-label={`Show image ${idx + 1}`}
+                aria-current={isActive ? "true" : undefined}
+                onClick={() => {
+                  setActiveIndex(idx);
+                  scrollToSlide(idx);
+                }}
+                className="flex h-4 w-4 items-center justify-center"
+              >
+                <span
+                  className={`h-2 w-2 rounded-full border transition-colors ${
+                    isActive
+                      ? "border-sky-600 bg-sky-600"
+                      : "border-slate-300 bg-transparent"
+                  }`}
+                />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Main High-Resolution Showcase Frame */}
       <div
         onClick={() => setIsLightboxOpen(true)}
-        className="relative aspect-[4/3] w-full rounded-3xl border border-slate-200/90 bg-white p-6 overflow-hidden shadow-sm flex items-center justify-center group cursor-zoom-in hover:border-sky-300 transition-colors"
+        className="relative hidden aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-6 shadow-sm transition-colors group cursor-zoom-in hover:border-sky-300 md:flex"
       >
         <Image
           key={activeImage}
@@ -163,7 +266,7 @@ export function ProductGallery({
 
       {/* Interactive Thumbnails Selector */}
       {galleryList.length > 1 && (
-        <div className="grid grid-cols-2 sm:grid-cols-2 gap-3">
+        <div className="hidden gap-3 md:grid md:grid-cols-2 max-md:hidden">
           {galleryList.map((img, idx) => {
             const isActive = activeIndex === idx;
             const Icon = idx === 0 ? Layers : Box;
