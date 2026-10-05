@@ -781,7 +781,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
       </aside>
 
       {/* Right Main Content Area — expands; sidebar stays fixed width */}
-      <main className="dashboard-mobile-scroll min-h-0 w-full min-w-0 max-w-[1800px] flex-1 mx-auto space-y-8 overflow-x-hidden overflow-y-auto px-6 pb-28 pt-5 [-webkit-overflow-scrolling:touch] sm:pt-8 md:py-10 lg:py-10">
+      <main className="dashboard-mobile-scroll mx-auto min-h-0 w-full min-w-0 max-w-[1800px] flex-1 space-y-8 overflow-x-hidden overflow-y-auto px-6 py-5 [-webkit-overflow-scrolling:touch] sm:py-8 md:py-10 lg:py-10">
         {/* Top Minimal Action Bar */}
         <div className="hidden items-center justify-between border-b border-slate-200/80 pb-4 md:flex">
           <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">

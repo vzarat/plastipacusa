@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { getCurrentUser, signOut, CurrentUserResponse } from "@/actions/auth";
 import {
@@ -26,11 +26,13 @@ const LOGO_SRC =
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { t } = useLanguage();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<CurrentUserResponse | null>(null);
 
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const items = useCartStore((state) => state.items);
   const openDrawer = useCartStore((state) => state.openDrawer);
 
@@ -69,6 +71,18 @@ export function Navbar() {
 
   const openCart = () => openDrawer();
   const isHomePage = pathname === "/";
+  const isCatalogPage =
+    pathname === "/catalog" ||
+    pathname === "/products" ||
+    pathname.startsWith("/products/");
+
+  const submitCatalogSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const query = searchInputRef.current?.value.trim() || "";
+    const listing =
+      pathname === "/catalog" || pathname === "/products" ? pathname : "/products";
+    router.push(query ? `${listing}?q=${encodeURIComponent(query)}` : listing);
+  };
 
   const handleCategoriesClick = (
     event: React.MouseEvent<HTMLAnchorElement>
@@ -87,25 +101,74 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-100 bg-white/95 backdrop-blur-md shadow-sm">
-      <div className="flex h-14 items-center justify-between px-4 md:hidden">
-        <Link href="/" className="flex items-center" aria-label="Plastipac USA Home">
-          <Image
-            src={LOGO_SRC}
-            alt="Plastipac USA"
-            width={140}
-            height={36}
-            priority
-            className="h-8 w-auto object-contain"
-          />
-        </Link>
-        <Link
-          href="/catalog"
-          aria-label="Search catalog"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition-transform active:scale-95"
-        >
-          <Search className="h-5 w-5" />
-        </Link>
-      </div>
+      {isCatalogPage ? (
+        <div className="md:hidden">
+          <div className="flex h-14 items-center justify-between px-4">
+            <Link href="/" className="flex items-center" aria-label="Plastipac USA Home">
+              <Image
+                src={LOGO_SRC}
+                alt="Plastipac USA"
+                width={140}
+                height={36}
+                priority
+                className="h-8 w-auto object-contain"
+              />
+            </Link>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => searchInputRef.current?.focus()}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-slate-700 transition-transform active:scale-95"
+                aria-label="Search catalog"
+              >
+                <Search className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={openCart}
+                className="relative flex h-9 w-9 items-center justify-center rounded-full text-slate-700 transition-transform active:scale-95"
+                aria-label="Shopping cart"
+              >
+                <ShoppingCart className="h-5 w-5" />
+                {totalItemsCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-600 px-1 text-[9px] font-bold text-white">
+                    {totalItemsCount > 99 ? "99+" : totalItemsCount}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+          <form onSubmit={submitCatalogSearch} className="px-4 pb-3">
+            <label className="relative block">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                ref={searchInputRef}
+                type="search"
+                name="q"
+                placeholder="Search films, part numbers..."
+                className="h-10 w-full rounded-xl border border-gray-200 bg-slate-50 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
+              />
+            </label>
+          </form>
+        </div>
+      ) : (
+        <div className="relative flex h-14 items-center justify-center px-4 md:hidden">
+          <Link
+            href="/"
+            className="absolute left-1/2 flex -translate-x-1/2 items-center"
+            aria-label="Plastipac USA Home"
+          >
+            <Image
+              src={LOGO_SRC}
+              alt="Plastipac USA"
+              width={140}
+              height={36}
+              priority
+              className="h-8 w-auto object-contain"
+            />
+          </Link>
+        </div>
+      )}
 
       {/* Desktop layout */}
       <div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -445,6 +445,7 @@ export function ProductCatalog({
             product?.shortDescription,
             product?.brand,
             product?.slug,
+            product?.partNumber,
           ]
             .filter(Boolean)
             .join(" ")
@@ -562,7 +563,19 @@ export function ProductCatalog({
     );
   };
 
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [freeShippingOnly, setFreeShippingOnly] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cycleValue = (current: string, options: readonly string[]) => {
+    const index = options.indexOf(current);
+    return options[(index + 1) % options.length];
+  };
+
+  const chipClass = (active: boolean) =>
+    `rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium whitespace-nowrap ${
+      active ? "border-sky-600 bg-sky-50 text-sky-800" : "bg-white text-slate-700"
+    }`;
 
   const handleQueryChange = (value: string) => {
     startTransition(() => {
@@ -595,17 +608,78 @@ export function ProductCatalog({
 
   return (
     <div className="space-y-6">
-      <ProductCatalogToolbar
-        query={searchQuery}
-        onQueryChange={handleQueryChange}
-        onSubmitSearch={(value) => {
-          if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-          updateFilter("q", value);
-        }}
-      />
+      <div className="hidden md:block">
+        <ProductCatalogToolbar
+          query={searchQuery}
+          onQueryChange={handleQueryChange}
+          onSubmitSearch={(value) => {
+            if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+            updateFilter("q", value);
+          }}
+        />
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        <div className="lg:col-span-3">
+      <div className="md:hidden">
+        <div className="no-scrollbar flex gap-2 overflow-x-auto px-3 py-2">
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen((open) => !open)}
+            className={chipClass(mobileFiltersOpen || selectedAppType !== "all" || selectedWidth !== "all" || selectedGauge !== "all" || selectedLength !== "all")}
+          >
+            Sort & Filters
+          </button>
+          <button
+            type="button"
+            onClick={() => updateFilter("gauge", cycleValue(selectedGauge, ["all", "60", "70", "80"]))}
+            className={chipClass(selectedGauge !== "all")}
+          >
+            {selectedGauge === "all" ? "Gauge" : `${selectedGauge} GA`}
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              updateFilter("length", cycleValue(selectedLength, ["all", "1000", "1500", "5000", "6000"]))
+            }
+            className={chipClass(selectedLength !== "all")}
+          >
+            {selectedLength === "all" ? "Length" : `${selectedLength} FT`}
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              updateFilter("app", cycleValue(selectedAppType, ["all", "hand", "machine"]) as CatalogAppFilter)
+            }
+            className={chipClass(selectedAppType !== "all")}
+          >
+            {selectedAppType === "hand" ? "Hand" : selectedAppType === "machine" ? "Machine" : "Type"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setFreeShippingOnly((on) => !on)}
+            className={chipClass(freeShippingOnly)}
+          >
+            Free Shipping
+          </button>
+        </div>
+        {mobileFiltersOpen && (
+          <div className="px-3 pb-3">
+            <ProductFilters
+              selectedApp={selectedAppType}
+              selectedWidth={selectedWidth}
+              selectedGauge={selectedGauge}
+              selectedLength={selectedLength}
+              onAppChange={(value) => updateFilter("app", value)}
+              onWidthChange={(value) => updateFilter("width", value)}
+              onGaugeChange={(value) => updateFilter("gauge", value)}
+              onLengthChange={(value) => updateFilter("length", value)}
+              onReset={resetFilters}
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
+        <div className="hidden md:block lg:col-span-3">
           <ProductFilters
             selectedApp={selectedAppType}
             selectedWidth={selectedWidth}
@@ -637,7 +711,7 @@ export function ProductCatalog({
             <>
               <motion.div
                 layout
-                className="grid grid-cols-2 gap-3 p-3 md:grid-cols-3 lg:grid-cols-4"
+                className="flex flex-col divide-y divide-gray-200 md:grid md:grid-cols-3 md:gap-6 md:divide-y-0 lg:grid-cols-4"
               >
                 <AnimatePresence mode="popLayout">
                   {paginatedProducts.map((product, idx) => (

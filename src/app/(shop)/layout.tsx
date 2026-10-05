@@ -9,7 +9,7 @@ export default function ShopLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col bg-white pb-28 md:pb-0">
+    <div className="flex min-h-screen flex-col bg-white">
       <AnnouncementBar />
       <Navbar />
       <main className="flex-1 bg-white">{children}</main>

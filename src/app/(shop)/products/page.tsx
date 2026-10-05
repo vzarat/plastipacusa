@@ -48,7 +48,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const allProducts = await getProducts("all");
 
   return (
-    <div className="py-12 bg-slate-50/40 min-h-[calc(100vh-200px)]">
+    <div className="min-h-[calc(100vh-200px)] bg-slate-50/40 py-4 md:py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <CatalogPageHeader />
 

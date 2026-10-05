@@ -6,7 +6,6 @@ import { Toaster } from "sonner";
 import { LanguageProvider } from "@/context/LanguageContext";
 import ClientPWAProvider from "@/components/providers/ClientPWAProvider";
 import { OnboardingTourWrapper } from "@/components/onboarding/OnboardingTourWrapper";
-import { MobileFloatingNavbar } from "@/components/layout/MobileFloatingNavbar";
 
 const SUPABASE_ORIGIN = "https://ahvmjptomjjnqjylofpa.supabase.co";
 
@@ -133,7 +132,6 @@ export default function RootLayout({
         <LanguageProvider>
           <ClientPWAProvider />
           {children}
-          <MobileFloatingNavbar />
           <CartDrawer />
           <OnboardingTourWrapper />
           <Toaster closeButton position="top-right" richColors />

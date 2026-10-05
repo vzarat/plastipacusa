@@ -207,6 +207,16 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
     availableTiers.push("Pallet");
   }
   const isSoldOut = Boolean(product.isSoldOut);
+  const widthLabel = width > 0 ? `${Math.round(width)} IN` : null;
+  const gaugeValue = Number(product.gauge);
+  const gaugeLabel = Number.isFinite(gaugeValue) && gaugeValue > 0 ? `${gaugeValue} GA` : null;
+  const specLine = [widthLabel, gaugeLabel].filter(Boolean).join(" | ");
+  const comparePrice =
+    priceCandidates.length > 1 ? Math.max(...priceCandidates) : null;
+  const showCompare =
+    primaryPrice !== null && comparePrice !== null && comparePrice > primaryPrice;
+  const productHref = `/products/${product?.slug || "stretch-film-18-x-60-ga-x-1000ft"}`;
+  const statusBadge = isSoldOut ? "SOLD OUT" : showCompare ? "HOT DEAL" : "FREE SHIPPING";
 
   const volumeTierLabel =
     availableTiers.length > 0
@@ -216,7 +226,62 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
       : "Volume tiers: Boxes & Pallets";
 
   return (
-    <div className="group flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/90 bg-white transition-all duration-300 hover:border-sky-300 md:rounded-3xl md:hover:-translate-y-1 md:hover:shadow-xl md:hover:shadow-sky-500/10 card-hover-effect">
+    <>
+    <article className="flex w-full gap-3 bg-white py-3 md:hidden">
+      <div className="relative w-[35%] shrink-0">
+        <div className="relative aspect-square overflow-hidden bg-slate-50">
+          <Image
+            src={primaryImage}
+            alt={title}
+            fill
+            priority={priority}
+            sizes="35vw"
+            className="object-contain p-2"
+            onError={() => setImageFailed(true)}
+          />
+          <span className={`absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white ${
+            isSoldOut ? "bg-slate-500" : "bg-red-600"
+          }`}>
+            {statusBadge}
+          </span>
+        </div>
+      </div>
+      <div className="flex min-w-0 w-[65%] flex-col">
+        <h3 className="line-clamp-2 text-sm font-bold leading-snug text-slate-900">
+          <Link href={productHref}>{title}</Link>
+        </h3>
+        {specLine && (
+          <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+            {specLine}
+          </p>
+        )}
+        <div className="mt-2 flex items-baseline gap-2">
+          <span className="text-lg font-bold text-red-600">
+            {primaryPrice !== null ? formatCurrency(primaryPrice) : "—"}
+          </span>
+          {showCompare && (
+            <span className="text-xs text-slate-400 line-through">
+              {formatCurrency(comparePrice)}
+            </span>
+          )}
+        </div>
+        <div className="mt-auto flex justify-end pt-2">
+          {isSoldOut ? (
+            <span className="rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-500">
+              {t("products.soldOut")}
+            </span>
+          ) : (
+            <Link
+              href={productHref}
+              className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-bold text-white active:scale-95"
+            >
+              Add
+            </Link>
+          )}
+        </div>
+      </div>
+    </article>
+    <div className="group hidden h-full flex-col justify-between overflow-hidden rounded-3xl border border-slate-200/90 bg-white transition-all duration-300 hover:border-sky-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-500/10 card-hover-effect md:flex">
       <div>
         {/* 1. Clean Product Image Area (Completely free of floating dark pills and text overlays) */}
         <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden border-b border-slate-100 bg-slate-50/50 md:aspect-[4/3]">
@@ -350,7 +415,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           </button>
         ) : (
           <Link
-            href={`/products/${product?.slug || "stretch-film-18-x-60-ga-x-1000ft"}`}
+            href={productHref}
             className="group/btn flex w-full items-center justify-center gap-1.5 rounded-xl bg-sky-600 px-3 py-2 text-xs font-bold text-white transition-transform active:scale-95 md:gap-2 md:bg-gradient-to-r md:from-sky-500 md:via-sky-600 md:to-blue-700 md:px-4 md:py-3 md:text-sm md:font-extrabold md:shadow-md md:shadow-sky-500/20 md:hover:opacity-95 md:active:scale-[0.99]"
           >
             <ShoppingCart className="hidden h-4 w-4 text-white md:block" />
@@ -362,5 +427,6 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
 
       </div>
     </div>
+    </>
   );
 }

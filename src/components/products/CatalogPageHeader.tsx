@@ -8,7 +8,7 @@ export function CatalogPageHeader() {
   const { t } = useLanguage();
 
   return (
-    <div className="mb-10 space-y-2">
+    <div className="mb-4 space-y-2 md:mb-10">
       <Badge variant="default" className="uppercase text-xs tracking-wider font-bold">
         {t("catalog.badge")}
       </Badge>

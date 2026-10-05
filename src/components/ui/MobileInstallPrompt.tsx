@@ -149,7 +149,7 @@ export function MobileInstallPrompt() {
     : "Tap Options (⋮) → Install App or Add to Home Screen.";
 
   return (
-    <div className="fixed bottom-28 left-4 right-4 z-50 block md:hidden">
+    <div className="fixed bottom-4 left-4 right-4 z-50 block md:hidden">
       <div className="bg-white/95 backdrop-blur-md text-slate-900 rounded-2xl p-4 shadow-2xl border border-slate-200">
         <div className="flex items-start gap-3">
           <Image

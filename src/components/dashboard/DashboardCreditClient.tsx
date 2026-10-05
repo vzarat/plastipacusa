@@ -262,7 +262,7 @@ export function DashboardCreditClient({
         backupPasswordPending={Boolean(profile.backupPasswordPending)}
       />
 
-      <main className="dashboard-mobile-scroll mx-auto min-h-0 w-full min-w-0 max-w-[1800px] flex-1 space-y-6 overflow-x-hidden overflow-y-auto px-6 pb-28 pt-5 [-webkit-overflow-scrolling:touch] sm:pt-8 md:py-10 lg:py-10">
+      <main className="dashboard-mobile-scroll mx-auto min-h-0 w-full min-w-0 max-w-[1800px] flex-1 space-y-6 overflow-x-hidden overflow-y-auto px-6 py-5 [-webkit-overflow-scrolling:touch] sm:py-8 md:py-10 lg:py-10">
         <div className="w-full">
           <Net30CreditHeroBanner />
         </div>

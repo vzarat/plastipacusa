@@ -207,7 +207,7 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
             transition={{ duration: 0.28, ease: "easeInOut" }}
           >
             {filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+              <div className="flex flex-col divide-y divide-gray-200 md:grid md:grid-cols-3 md:gap-6 md:divide-y-0 lg:grid-cols-4">
                 {filteredProducts.map((product, idx) => (
                   <ProductCard
                     key={`${product.series || "x"}-${product.slug || product.id || idx}`}
