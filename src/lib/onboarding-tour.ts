@@ -189,7 +189,12 @@ export function startGuidedTour() {
 
   if (typeof window !== "undefined") {
     const catalog = document.getElementById("product-catalog-section");
-    catalog?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const hero = document.querySelector("[data-tour='tour-hero']");
+    if (window.matchMedia("(max-width: 767px)").matches && hero) {
+      hero.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      catalog?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
     window.dispatchEvent(new CustomEvent("plastipac:start-tour", { detail: next }));
   }
 }

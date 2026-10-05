@@ -6,18 +6,14 @@ import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
-  Box,
   Building2,
   CheckCircle2,
-  ChevronRight,
   Truck,
   Warehouse,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import GradientWaves from "@/components/ui/GradientWaves";
-import { useLanguage } from "@/context/LanguageContext";
 
 const SLIDE_COUNT = 3;
 const AUTO_MS = 6000;
@@ -66,7 +62,6 @@ const LOGISTICS = [
 ] as const;
 
 export function Hero() {
-  const { t } = useLanguage();
   const reduceMotion = useReducedMotion();
   const [houstonReady, setHoustonReady] = useState(false);
   const [index, setIndex] = useState(0);
@@ -89,6 +84,24 @@ export function Hero() {
     return () => {
       cancelled = true;
       window.clearTimeout(id);
+    };
+  }, []);
+
+  useEffect(() => {
+    const onSlide = (event: Event) => {
+      const detail = (event as CustomEvent<number>).detail;
+      if (typeof detail !== "number") return;
+      pausedRef.current = true;
+      setIndex(((detail % SLIDE_COUNT) + SLIDE_COUNT) % SLIDE_COUNT);
+    };
+    const onRelease = () => {
+      pausedRef.current = false;
+    };
+    window.addEventListener("plastipac:hero-slide", onSlide);
+    window.addEventListener("plastipac:hero-slide-release", onRelease);
+    return () => {
+      window.removeEventListener("plastipac:hero-slide", onSlide);
+      window.removeEventListener("plastipac:hero-slide-release", onRelease);
     };
   }, []);
 
@@ -128,6 +141,7 @@ export function Hero() {
       className="relative isolate flex h-[480px] min-h-[480px] flex-col overflow-hidden border-b border-slate-800 bg-slate-950 px-5 [contain:strict] md:block md:h-[520px] md:min-h-[520px] md:px-0"
       aria-roledescription="carousel"
       aria-label="Featured"
+      data-tour="tour-hero"
       onMouseEnter={() => {
         pausedRef.current = true;
       }}
@@ -220,20 +234,21 @@ export function Hero() {
               <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-12 md:gap-6">
                 <motion.div
                   variants={fadeUp}
-                  className="space-y-3 text-center md:col-span-7 md:space-y-3 md:text-left"
+                  className="space-y-2 text-center md:col-span-7 md:space-y-3 md:text-left"
                 >
                   <div className="mx-auto inline-flex max-w-full items-center gap-2 rounded-full border border-blue-500/30 bg-blue-950/60 px-3 py-1 text-center text-[11px] font-semibold leading-snug text-blue-300 shadow-sm backdrop-blur-xs">
                     <Zap className="h-3.5 w-3.5 shrink-0 text-blue-400" />
-                    <span>{t("hero.badge")}</span>
+                    <span>Engineered for Maximum Load Containment</span>
                   </div>
 
-                  <h1 className="text-[1.65rem] font-bold leading-[1.15] tracking-tight text-white md:text-3xl md:font-extrabold lg:text-4xl">
-                    {t("hero.titlePart1")} <br />
-                    <span className="text-blue-400">{t("hero.titlePart2")}</span>
+                  <h1 className="text-2xl font-bold leading-[1.15] tracking-tight text-white md:text-3xl md:font-extrabold lg:text-4xl">
+                    Industrial Strength.
+                    <br />
+                    <span className="text-blue-400">Precision Stretch Film.</span>
                   </h1>
 
-                  <p className="mx-auto hidden max-w-2xl text-sm leading-snug text-slate-200 md:mx-0 md:block md:line-clamp-3">
-                    {t("hero.description")}
+                  <p className="mx-auto max-w-2xl text-xs leading-snug text-slate-200 md:mx-0 md:text-sm md:leading-relaxed">
+                    Factory-direct high-yield hand & machine stretch film designed for high-tension pallet wrapping and zero puncture failures.
                   </p>
 
                   <div className="flex flex-col items-stretch justify-center gap-2 md:flex-row md:flex-wrap md:items-center md:justify-start">
@@ -241,120 +256,54 @@ export function Hero() {
                       asChild
                       size="lg"
                       variant="gradient"
-                      className="flex h-11 w-full items-center justify-center gap-2 px-3 text-sm shadow-lg shadow-sky-500/20 md:h-10 md:w-auto md:px-4"
+                      className="flex h-10 w-full items-center justify-center gap-2 px-3 text-sm shadow-lg shadow-sky-500/20 md:h-10 md:w-auto md:px-4"
                     >
-                      <Link href="/products">
-                        <span className="md:hidden">Explore Catalog</span>
-                        <span className="hidden md:inline">{t("hero.exploreBtn")}</span>
+                      <Link
+                        href="/#product-catalog-section"
+                        onClick={(event) => {
+                          const target = document.getElementById("product-catalog-section");
+                          if (!target) return;
+                          event.preventDefault();
+                          target.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }}
+                      >
+                        <span>Explore Product Catalog</span>
                         <ArrowRight className="h-4 w-4" />
                       </Link>
                     </Button>
 
                     <Link
-                      href="#inquiry-form"
-                      className="hidden h-10 cursor-pointer items-center justify-center rounded-xl border border-white/30 bg-white/5 px-4 text-sm font-medium text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/10 md:inline-flex"
+                      href="/#inquiry-form"
+                      className="inline-flex h-10 cursor-pointer items-center justify-center rounded-xl border border-white/30 bg-white/5 px-4 text-sm font-medium text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/10"
                     >
-                      <span className="font-medium text-white">{t("hero.quoteBtn")}</span>
+                      Request Wholesale Quote
                     </Link>
-                  </div>
-
-                  <div className="flex flex-wrap justify-center gap-2 md:hidden">
-                    <span className="rounded-full border border-white/15 bg-slate-950/60 px-3 py-1 text-[11px] font-semibold text-slate-100">
-                      300%+ Pre-Stretch
-                    </span>
-                    <span className="rounded-full border border-white/15 bg-slate-950/60 px-3 py-1 text-[11px] font-semibold text-slate-100">
-                      Factory Direct
-                    </span>
-                  </div>
-
-                  <div className="hidden grid-cols-3 gap-2 border-t border-white/10 pt-2.5 text-left md:grid">
-                    <div className="flex items-start gap-2.5">
-                      <div className="mt-0.5 rounded-full border border-emerald-500/30 bg-emerald-950/60 p-1 text-emerald-400">
-                        <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-bold text-white">{t("hero.badgePreStretchTitle")}</div>
-                        <div className="text-[11px] text-slate-300">{t("hero.badgePreStretchSub")}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-2.5">
-                      <div className="mt-0.5 rounded-full border border-emerald-500/30 bg-emerald-950/60 p-1 text-emerald-400">
-                        <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-bold text-white">{t("hero.badgePunctureTitle")}</div>
-                        <div className="text-[11px] text-slate-300">{t("hero.badgePunctureSub")}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-2.5">
-                      <div className="mt-0.5 rounded-full border border-emerald-500/30 bg-emerald-950/60 p-1 text-emerald-400">
-                        <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-bold text-white">{t("hero.badgeFactoryTitle")}</div>
-                        <div className="text-[11px] text-slate-300">{t("hero.badgeFactorySub")}</div>
-                      </div>
-                    </div>
                   </div>
                 </motion.div>
 
-                <motion.div variants={fadeRight} className="hidden md:col-span-5 md:block">
-                  <div className="relative rounded-2xl border border-white/20 bg-white/95 p-4 shadow-2xl shadow-black/40 backdrop-blur-md lg:p-5">
-                    <div className="absolute -top-3 right-6">
-                      <Badge variant="gradient" className="px-3 py-1 font-bold shadow-md shadow-sky-500/20">
-                        {t("hero.flagshipSeries")}
-                      </Badge>
-                    </div>
-
-                    <div className="mb-3 flex items-center gap-3">
-                      <div className="rounded-xl border border-sky-100 bg-sky-50 p-2 text-sky-600">
-                        <Box className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <span className="font-mono text-[10px] font-bold uppercase text-sky-600">
-                          {t("hero.seriesName")}
-                        </span>
-                        <h3 className="text-sm font-bold text-slate-900 lg:text-base">{t("hero.floatingCardTitle")}</h3>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-1.5 border-y border-slate-100 py-2 text-[10px] md:grid-cols-2 md:gap-2 md:py-3 md:text-xs">
-                      <div className="rounded-lg border border-slate-100 bg-slate-50/80 p-2">
-                        <span className="block text-[10px] font-semibold uppercase text-slate-500">
-                          {t("hero.filmGauge")}
-                        </span>
-                        <span className="text-xs font-bold text-slate-900 md:text-sm">{t("hero.gaugeValue")}</span>
-                      </div>
-                      <div className="rounded-lg border border-slate-100 bg-slate-50/80 p-2">
-                        <span className="block text-[10px] font-semibold uppercase text-slate-500">
-                          {t("hero.width")}
-                        </span>
-                        <span className="text-xs font-bold text-slate-900 md:text-sm">{t("hero.widthValue")}</span>
-                      </div>
-                      <div className="rounded-lg border border-slate-100 bg-slate-50/80 p-2">
-                        <span className="block text-[10px] font-semibold uppercase text-slate-500">
-                          {t("hero.application")}
-                        </span>
-                        <span className="text-xs font-bold text-sky-700 md:text-sm">{t("hero.appValue")}</span>
-                      </div>
-                      <div className="rounded-lg border border-slate-100 bg-slate-50/80 p-2">
-                        <span className="block text-[10px] font-semibold uppercase text-slate-500">
-                          {t("hero.startingAt")}
-                        </span>
-                        <span className="text-xs font-extrabold text-slate-900 md:text-sm">{t("hero.priceValue")}</span>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-between">
-                      <span className="text-xs font-medium text-slate-500">{t("hero.readyToShip")}</span>
-                      <Button asChild variant="gradient" size="sm" className="gap-1.5 shadow-sm">
-                        <Link href="/products/stretch-film-18-x-60-ga-x-1000ft">
-                          <span>{t("hero.viewMatrix")}</span>
-                          <ChevronRight className="h-3.5 w-3.5" />
-                        </Link>
-                      </Button>
+                <motion.div variants={fadeRight} className="md:col-span-5">
+                  <div className="rounded-2xl border border-white/20 bg-white/95 p-3 text-left shadow-2xl shadow-black/40 backdrop-blur-md md:p-5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-sky-600">
+                      Featured Product
+                    </p>
+                    <h3 className="mt-1 text-sm font-bold text-slate-900 md:text-base">
+                      FORCE™ Hand Stretch Film
+                    </h3>
+                    <p className="mt-1 text-xs font-medium text-slate-600">
+                      1 Box (4 Rolls) · 18&quot; x 80 Ga x 1500 ft
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {["300%+ Pre-Stretch Yield", "Extreme Puncture Hold", "Factory Direct Pricing"].map(
+                        (label) => (
+                          <span
+                            key={label}
+                            className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-800 md:text-[11px]"
+                          >
+                            <CheckCircle2 className="h-3 w-3 shrink-0" />
+                            {label}
+                          </span>
+                        )
+                      )}
                     </div>
                   </div>
                 </motion.div>

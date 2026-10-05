@@ -17,26 +17,35 @@ import {
 
 const POPOVER_CLASS = "plastipac-tour-popover";
 const MOBILE_TOUR_QUERY = "(max-width: 767px)";
-const MOBILE_TOUR_FOCUS_KEY = "plastipac_mobile_tour_focus";
 
 const MOBILE_STEPS = [
   {
-    id: "package",
-    title: "Choose your package",
-    body: "Select boxes, a half pallet, or a full pallet.",
-    selector: "[data-tour='product-price-tiers']",
+    id: "hero",
+    title: "Bienvenido a Plastipac",
+    body: "Explora nuestros calibres industriales y niveles de pedido: desde 1 Caza (4 rollos) hasta Tarimas completas.",
+    selector: "[data-tour='tour-hero']",
+    slide: 0,
   },
   {
-    id: "destination",
-    title: "Enter your destination",
-    body: "Quote shipping or choose pickup on the delivery address.",
-    selector: "[data-tour='tour-destination']",
+    id: "rgv",
+    title: "Envío Gratis en el RGV",
+    body: "Obtén $0 flete directo a tu bodega en el Valle de Texas en pedidos a partir de 1 Cama (64 rollos).",
+    selector: "[data-tour='tour-hero']",
+    slide: 1,
   },
   {
-    id: "confirm",
-    title: "Review and confirm",
-    body: "Use the fixed bottom bar to place your order.",
-    selector: "[data-tour='tour-mobile-bar']",
+    id: "houston",
+    title: "Ruta Houston los Viernes",
+    body: "Entregas directas a andenes industriales en Houston todos los viernes en compras de Tarima Completa (256 rollos).",
+    selector: "[data-tour='tour-hero']",
+    slide: 2,
+  },
+  {
+    id: "nav",
+    title: "Navegación y Cotizaciones",
+    body: "Usa el menú lateral para navegar por categorías o calcular el peso y precio exacto de tus tarimas.",
+    selector: "[data-tour='tour-mobile-nav']",
+    slide: null,
   },
 ] as const;
 
@@ -513,52 +522,21 @@ export function OnboardingTour() {
     let cancelled = false;
     const step = MOBILE_STEPS[mobileStep];
 
-    const focusCheckout = (focus: "destination" | "confirm") => {
-      sessionStorage.setItem(MOBILE_TOUR_FOCUS_KEY, focus);
-      window.dispatchEvent(new CustomEvent("plastipac:mobile-tour-focus", { detail: focus }));
-    };
-
     void (async () => {
+      if (step.slide != null) {
+        window.dispatchEvent(new CustomEvent("plastipac:hero-slide", { detail: step.slide }));
+      }
+      if (step.slide != null && pathname !== "/") {
+        if (navigatedForStep.current !== mobileStep) {
+          navigatedForStep.current = mobileStep;
+          router.push("/");
+        }
+        return;
+      }
+
       const ready = await waitForSelector(step.selector, 900);
-      if (cancelled) return;
-      if (ready) {
-        scrollAboveTourCard(step.selector);
-        return;
-      }
-      if (navigatedForStep.current === mobileStep) return;
-
-      if (mobileStep === 0) {
-        navigatedForStep.current = mobileStep;
-        const link = document.querySelector(
-          "[data-tour='tour-catalog'] a[href^='/products/']"
-        ) as HTMLAnchorElement | null;
-        const href = link?.getAttribute("href");
-        if (href) {
-          router.push(href.split("?")[0]);
-          return;
-        }
-        if (!pathname.startsWith("/products/")) router.push("/products");
-        return;
-      }
-
-      if (mobileStep === 1) {
-        focusCheckout("destination");
-        if (!pathname.startsWith("/checkout")) {
-          navigatedForStep.current = mobileStep;
-          router.push("/checkout");
-          return;
-        }
-      } else {
-        focusCheckout("confirm");
-        if (!pathname.startsWith("/checkout")) {
-          navigatedForStep.current = mobileStep;
-          router.push("/checkout");
-          return;
-        }
-      }
-
-      const revealed = await waitForSelector(step.selector, 2000);
-      if (!cancelled && revealed) scrollAboveTourCard(step.selector);
+      if (cancelled || !ready) return;
+      if (step.id !== "nav") scrollAboveTourCard(step.selector);
     })();
 
     return () => {
@@ -585,6 +563,7 @@ export function OnboardingTour() {
   const closeMobileTour = () => {
     markTourCompleted();
     setTourOn(false);
+    window.dispatchEvent(new CustomEvent("plastipac:hero-slide-release"));
   };
 
   const goToMobileStep = (next: number) => {
@@ -607,7 +586,7 @@ export function OnboardingTour() {
 
   return (
     <div
-      className="fixed bottom-6 left-4 right-4 z-50 rounded-2xl border bg-white p-5 shadow-2xl md:hidden"
+      className="fixed bottom-6 left-4 right-4 z-50 border border-slate-800 bg-slate-900/95 text-white shadow-2xl rounded-2xl p-5 backdrop-blur-md md:hidden"
       role="dialog"
       aria-modal="false"
       aria-labelledby="mobile-tour-title"
@@ -622,46 +601,53 @@ export function OnboardingTour() {
         else if (delta >= 48) goToMobileStep(mobileStep - 1);
       }}
     >
-      <div className="flex items-start justify-between gap-3">
-        <h2 id="mobile-tour-title" className="text-base font-semibold text-slate-900">
+      <div key={current.id} className="animate-in fade-in duration-300">
+        <h2 id="mobile-tour-title" className="text-base font-semibold text-white">
           {current.title}
         </h2>
+        <p className="mt-2 text-sm leading-relaxed text-slate-200">{current.body}</p>
+      </div>
+      <div className="mt-4 flex justify-center gap-2">
+        {MOBILE_STEPS.map((step, index) => (
+          <button
+            key={step.id}
+            type="button"
+            aria-label={`Paso ${index + 1}`}
+            aria-current={index === mobileStep ? "step" : undefined}
+            onClick={() => goToMobileStep(index)}
+            className="flex h-8 w-8 items-center justify-center"
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${
+                index === mobileStep ? "bg-sky-400" : "bg-slate-600"
+              }`}
+            />
+          </button>
+        ))}
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-2">
         <button
           type="button"
           onClick={closeMobileTour}
-          className="text-xs text-gray-400"
+          className="text-xs font-medium text-slate-400 underline-offset-2 hover:text-white hover:underline"
         >
-          Skip
+          Omitir tutorial
         </button>
-      </div>
-      <p className="mt-2 text-sm leading-relaxed text-slate-600">{current.body}</p>
-      <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <span />
-        <div className="flex justify-center gap-2">
-          {MOBILE_STEPS.map((step, index) => (
-            <button
-              key={step.id}
-              type="button"
-              aria-label={`Step ${index + 1}`}
-              aria-current={index === mobileStep ? "step" : undefined}
-              onClick={() => goToMobileStep(index)}
-              className="flex h-8 w-8 items-center justify-center"
-            >
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  index === mobileStep ? "bg-black" : "bg-gray-300"
-                }`}
-              />
-            </button>
-          ))}
-        </div>
-        <div className="flex justify-end">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => goToMobileStep(mobileStep - 1)}
+            disabled={mobileStep === 0}
+            className="h-10 rounded-xl border border-slate-700 px-3 text-sm font-medium text-white transition-opacity disabled:opacity-40"
+          >
+            Atrás
+          </button>
           <button
             type="button"
             onClick={advanceMobileStep}
-            className="h-11 rounded-xl bg-black px-5 font-medium text-white"
+            className="h-10 rounded-xl bg-sky-500 px-4 text-sm font-semibold text-white"
           >
-            Next
+            Siguiente →
           </button>
         </div>
       </div>
