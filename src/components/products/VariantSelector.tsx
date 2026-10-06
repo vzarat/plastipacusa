@@ -526,10 +526,14 @@ export function VariantSelector({
     internalSelectedVariantId;
 
   const packageTier = getPackageTierKind(selectedVariant, isMachineFilm);
-  const isFixedTier = packageTier === "fixed_mid" || packageTier === "fixed_half";
   const isSingleUnitTier = packageTier === "single_unit";
   const isFullPalletTier = packageTier === "full_pallet";
-  const quantityEditable = !isFixedTier;
+  const isPalletPackage =
+    packageTier === "fixed_mid" ||
+    packageTier === "fixed_half" ||
+    packageTier === "full_pallet";
+  const packageBoxes = getBoxesCount(selectedVariant, isMachineFilm);
+  const packageRolls = getRollsCount(selectedVariant);
   const midTierVariant = findTierVariant(variants, "fixed_mid", isMachineFilm);
   const hasMidTierUpgrade = Boolean(midTierVariant) && !isMachineFilm;
   const baseUnitPrice = useMemo(
@@ -568,13 +572,6 @@ export function VariantSelector({
     setTierHint(`Switched to 16 ${unitLabelPlural} package for better bulk pricing.`);
   };
 
-  // Lock fixed tiers to qty 1 whenever they become active
-  useEffect(() => {
-    if (isFixedTier && quantity !== 1) {
-      setQuantity(1);
-    }
-  }, [isFixedTier, quantity, selectedVariantId]);
-
   const parsedUnitPrice = parseFloat(
     String(selectedVariant?.priceUsd ?? (selectedVariant as any)?.price ?? "")
   );
@@ -585,19 +582,44 @@ export function VariantSelector({
         ? Number(product.startingPrice)
         : 0;
   const unitPrice = applyDiscountToPrice(baseUnitPriceRaw, appliedDiscount);
-  const effectiveQuantity = isFixedTier ? 1 : quantity;
+  const effectiveQuantity = Math.max(1, Math.floor(quantity));
   const totalPrice = Number((unitPrice * effectiveQuantity).toFixed(2));
   const hasActiveDiscount = Boolean(appliedDiscount && baseUnitPriceRaw > 0);
+  const quantityNoun = isMachineFilm
+    ? isFullPalletTier
+      ? "Full Pallets"
+      : packageTier === "fixed_half"
+        ? "Half Pallets"
+        : "Rolls"
+    : isFullPalletTier
+      ? "Full Pallets"
+      : packageTier === "fixed_half"
+        ? "Half Pallets"
+        : packageTier === "fixed_mid"
+          ? "Layers"
+          : unitLabelPlural;
+  const quantitySingular =
+    quantityNoun === "Full Pallets"
+      ? "full pallet"
+      : quantityNoun === "Half Pallets"
+        ? "half pallet"
+        : quantityNoun === "Layers"
+          ? "layer"
+          : quantityNoun === "Rolls"
+            ? "roll"
+            : "box";
+  const incrementNote = isPalletPackage
+    ? isMachineFilm
+      ? `Each step adds 1 package (${packageRolls} rolls).`
+      : `Each step adds 1 package (${packageBoxes} boxes).`
+    : null;
 
   const handleQuantityDecrease = () => {
-    if (!quantityEditable) return;
-    setQuantity((prev) => Math.max(1, prev - 1));
+    setQuantity((prev) => Math.max(1, Math.floor(prev) - 1));
     setTierHint(null);
   };
 
   const handleQuantityIncrease = () => {
-    if (!quantityEditable) return;
-
     if (isSingleUnitTier && !isMachineFilm) {
       if (quantity >= 15) {
         if (midTierVariant) {
@@ -609,41 +631,12 @@ export function VariantSelector({
         setQuantity(15);
         return;
       }
-      setQuantity((prev) => Math.min(15, prev + 1));
+      setQuantity((prev) => Math.min(15, Math.floor(prev) + 1));
       setTierHint(null);
       return;
     }
 
-    // Full pallet / machine single roll / other flexible tiers
-    setQuantity((prev) => prev + 1);
-    setTierHint(null);
-  };
-
-  const handleQuantityInput = (raw: string) => {
-    if (!quantityEditable) return;
-    const parsed = parseInt(raw, 10);
-    if (!Number.isFinite(parsed)) {
-      setQuantity(1);
-      return;
-    }
-
-    if (isSingleUnitTier && !isMachineFilm) {
-      if (parsed >= 16) {
-        if (midTierVariant) {
-          selectVariant(midTierVariant, 1);
-          setTierHint(`Upgraded to 16 ${unitLabelPlural} package for higher volume.`);
-          return;
-        }
-        setTierHint(`For 16+ ${unitLabelPlural.toLowerCase()}, select the 16 ${unitLabelPlural} package`);
-        setQuantity(15);
-        return;
-      }
-      setQuantity(Math.max(1, Math.min(15, parsed)));
-      setTierHint(null);
-      return;
-    }
-
-    setQuantity(Math.max(1, parsed));
+    setQuantity((prev) => Math.floor(prev) + 1);
     setTierHint(null);
   };
 
@@ -977,59 +970,44 @@ export function VariantSelector({
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-slate-600 font-bold uppercase">
-                {t("products.quantity")}
-                {isFullPalletTier
-                  ? " (Full Pallets)"
-                  : isSingleUnitTier
-                    ? ` (${unitLabelPlural})`
-                    : ""}
-                :
+                {t("products.quantity")} ({quantityNoun}):
               </span>
-              {isFixedTier && (
-                <span className="inline-flex items-center rounded-lg bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
-                  Fixed Package (Qty: 1)
-                </span>
-              )}
             </div>
 
-            <div
-              className={`flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm ${
-                !quantityEditable ? "opacity-60" : ""
-              }`}
-            >
+            <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
               <button
                 type="button"
                 onClick={handleQuantityDecrease}
-                disabled={!quantityEditable || quantity <= 1}
+                disabled={effectiveQuantity <= 1}
+                aria-label={`Remove 1 ${quantitySingular}`}
                 className="w-8 h-8 flex items-center justify-center text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 font-bold disabled:opacity-40 disabled:pointer-events-none disabled:hover:bg-transparent"
               >
                 -
               </button>
-              <input
-                type="number"
-                min={1}
-                max={isSingleUnitTier && !isMachineFilm ? 15 : undefined}
-                value={effectiveQuantity}
-                readOnly={isFixedTier}
-                disabled={isFixedTier}
-                onChange={(e) => handleQuantityInput(e.target.value)}
-                className="w-12 bg-transparent text-center text-sm font-bold text-slate-900 focus:outline-none disabled:cursor-not-allowed"
-              />
+              <span
+                aria-live="polite"
+                className="w-12 text-center text-sm font-bold text-slate-900 tabular-nums"
+              >
+                {effectiveQuantity}
+              </span>
               <button
                 type="button"
                 onClick={handleQuantityIncrease}
                 disabled={
-                  !quantityEditable ||
-                  (isSingleUnitTier &&
-                    !isMachineFilm &&
-                    quantity >= 15 &&
-                    !hasMidTierUpgrade)
+                  isSingleUnitTier &&
+                  !isMachineFilm &&
+                  effectiveQuantity >= 15 &&
+                  !hasMidTierUpgrade
                 }
+                aria-label={`Add 1 ${quantitySingular}`}
                 className="w-8 h-8 flex items-center justify-center text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 font-bold disabled:opacity-40 disabled:pointer-events-none disabled:hover:bg-transparent"
               >
                 +
               </button>
             </div>
+            {incrementNote && (
+              <p className="text-[10px] font-medium text-slate-500">{incrementNote}</p>
+            )}
 
             {isSingleUnitTier && !isMachineFilm && quantity >= 15 && (
               <p className="text-[10px] font-medium text-sky-700">
