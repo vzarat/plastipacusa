@@ -499,7 +499,7 @@ function formatProduct(raw: any): ProductWithVariants {
             price: parseFloat(v.priceUsd),
           };
         })
-        .filter((option) => option.rolls === 1 || option.rolls === 20 || option.rolls === 40)
+        .filter((option) => option.rolls === 20 || option.rolls === 40)
         .sort((a, b) => a.rolls - b.rolls);
     } else if (productBasePrice !== null) {
       packageOptions = buildMachinePackageOptions({

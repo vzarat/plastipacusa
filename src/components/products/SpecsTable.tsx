@@ -17,9 +17,15 @@ import {
 import { isMachineFilm } from "@/lib/products";
 
 const MACHINE_MATRIX_TIERS = [
-  { rolls: 1, label: "1 Roll (1 Roll)" },
-  { rolls: 20, label: "Half Pallet (20 Rolls / 1 Layer)" },
-  { rolls: 40, label: "Full Pallet (40 Rolls / 2 Layers)" },
+  { rolls: 20, boxes: 0, label: "Half Pallet (20 Rolls / 1 Layer)", discountRate: 0 },
+  { rolls: 40, boxes: 0, label: "Full Pallet (40 Rolls / 2 Layers)", discountRate: 0 },
+] as const;
+
+const HAND_MATRIX_TIERS = [
+  { rolls: 4, boxes: 1, label: "1 Box (4 Rolls)", discountRate: 0 },
+  { rolls: 64, boxes: 16, label: "1 Layer (64 Rolls / 16 Boxes)", discountRate: 0.05 },
+  { rolls: 128, boxes: 32, label: "Half Pallet (128 Rolls / 32 Boxes)", discountRate: 0.0625 },
+  { rolls: 256, boxes: 64, label: "Full Pallet (256 Rolls / 64 Boxes)", discountRate: 0.10625 },
 ] as const;
 
 interface SpecsTableProps {
@@ -112,6 +118,69 @@ function machineMatrixRows(
   });
 }
 
+function roundMoney(amount: number): number {
+  return Math.round(amount * 100) / 100;
+}
+
+function handMatrixRows(
+  variants: ProductVariant[],
+  product: SpecsTableProps["product"]
+): ProductVariant[] {
+  const rollWeight = firstPositive(variants.map((variant) => variant.rollWeightLbs));
+  const boxWeight = firstPositive(variants.map((variant) => variant.boxWeightLbs));
+  const palletWeight = firstPositive(variants.map((variant) => variant.palletWeightLbs));
+  const sample = variants[0];
+  const boxVariant =
+    variants.find(
+      (variant) =>
+        (variantRollCount(variant) === 4 || Number(variant.boxes_count ?? variant.boxesCount) === 1) &&
+        Number(variant.priceUsd) > 0
+    ) || null;
+  const boxPrice = Number(boxVariant?.priceUsd) > 0 ? Number(boxVariant?.priceUsd) : 0;
+
+  return HAND_MATRIX_TIERS.map((tier) => {
+    const match =
+      variants.find(
+        (variant) =>
+          variantRollCount(variant) === tier.rolls && Number(variant.priceUsd) > 0
+      ) || null;
+    const price =
+      boxPrice > 0
+        ? roundMoney(boxPrice * tier.boxes * (1 - tier.discountRate))
+        : Number(match?.priceUsd) > 0
+          ? Number(match?.priceUsd)
+          : 0;
+    return {
+      ...(match || boxVariant || sample),
+      id: match?.id || `hand-${tier.rolls}`,
+      sku: match?.sku || boxVariant?.sku || "",
+      title: tier.label,
+      packageSize: tier.label,
+      rolls_count: tier.rolls,
+      rollsCount: tier.rolls,
+      rollsPerBox: tier.rolls,
+      boxes_count: tier.boxes,
+      boxesCount: tier.boxes,
+      rollsPerPallet: 256,
+      rollWeightLbs: match?.rollWeightLbs || boxVariant?.rollWeightLbs || rollWeight,
+      boxWeightLbs: match?.boxWeightLbs || boxVariant?.boxWeightLbs || boxWeight,
+      palletWeightLbs: match?.palletWeightLbs || boxVariant?.palletWeightLbs || palletWeight,
+      widthInches: String(
+        match?.widthInches ||
+          product?.widthInches ||
+          product?.width_inches ||
+          sample?.widthInches ||
+          ""
+      ),
+      gauge: Number(match?.gauge ?? product?.gauge ?? sample?.gauge ?? 0),
+      lengthFeet: Number(
+        match?.lengthFeet ?? product?.lengthFeet ?? product?.length_feet ?? sample?.lengthFeet ?? 0
+      ),
+      priceUsd: price > 0 ? price.toFixed(2) : "",
+    } as ProductVariant;
+  });
+}
+
 function packageTierLabel(variant: ProductVariant): string {
   const explicit = Number(variant.rolls_count ?? variant.rollsCount);
   const rolls = Number.isFinite(explicit) && explicit > 0 ? explicit : 0;
@@ -143,7 +212,11 @@ function safeLocaleNumber(value: unknown, suffix = ""): string {
 
 export function SpecsTable({ variants, product }: SpecsTableProps) {
   const source = Array.isArray(variants) ? variants.filter(Boolean) : [];
-  const rows = isMachineFilm(product) ? machineMatrixRows(source, product) : source;
+  const rows = isMachineFilm(product)
+    ? machineMatrixRows(source, product)
+    : source.length > 0
+      ? handMatrixRows(source, product)
+      : source;
 
   return (
     <div className="space-y-4">

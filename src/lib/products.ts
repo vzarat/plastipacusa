@@ -83,9 +83,8 @@ export function isMachineFilm(product: {
   );
 }
 
-/** Canonical machine film package tiers (no boxes). */
+/** Canonical machine film package tiers. Sold by the pallet, not by the roll. */
 export const MACHINE_PACKAGE_TIERS = [
-  { rolls: 1, label: "1 Roll (1 Roll)", suffix: "1R" },
   { rolls: 20, label: "Half Pallet (20 Rolls / 1 Layer)", suffix: "20R" },
   { rolls: 40, label: "Full Pallet (40 Rolls / 2 Layers)", suffix: "40R" },
 ] as const;
@@ -103,9 +102,6 @@ export function unitLabelForProduct(isMachine: boolean): string {
 
 export function normalizeMachinePackageLabel(rolls: number, label?: string): string {
   const upper = String(label || "").toUpperCase();
-  if (rolls === 1 || upper.includes("1 ROLL")) {
-    return "1 Roll (1 Roll)";
-  }
   if (rolls === 20 || upper.includes("20 ROLL")) {
     return "Half Pallet (20 Rolls / 1 Layer)";
   }
@@ -127,9 +123,8 @@ export function buildMachinePackageOptions(input: {
     suffix: string;
     price: number | null | undefined;
   }> = [
-    { ...MACHINE_PACKAGE_TIERS[0], price: input.price1 },
-    { ...MACHINE_PACKAGE_TIERS[1], price: input.price20 },
-    { ...MACHINE_PACKAGE_TIERS[2], price: input.price40 },
+    { ...MACHINE_PACKAGE_TIERS[0], price: input.price20 },
+    { ...MACHINE_PACKAGE_TIERS[1], price: input.price40 },
   ];
 
   return tiers
@@ -218,8 +213,8 @@ function buildGenesisMachineProduct(input: {
       ? "GENESIS High Performance machine film for high-throughput wrappers."
       : "GENESIS Standard machine film for high-speed turntable pallet wrappers.",
     shortDescription: isHp
-      ? '20" GENESIS High Performance — 1 / 20 / 40 roll pricing.'
-      : '20" GENESIS Standard — 1 / 20 / 40 roll pricing.',
+      ? '20" GENESIS High Performance — half pallet and full pallet.'
+      : '20" GENESIS Standard — half pallet and full pallet.',
     application: "machine",
     categorySlug: isHp ? "genesis-high-performance" : "genesis-standard",
     categoryId: isHp
@@ -229,7 +224,7 @@ function buildGenesisMachineProduct(input: {
     color: "Ultra Clear",
     features: [
       "Machine / automatic cast film",
-      "1 / 20 / 40 roll packaging tiers",
+      "Half pallet (20 rolls) and full pallet (40 rolls)",
       input.series,
     ],
     techSheetUrl: "/docs/plastipac-force-hand-film-specs.pdf",
@@ -239,7 +234,7 @@ function buildGenesisMachineProduct(input: {
     createdAt: new Date(),
     updatedAt: new Date(),
     variants,
-    startingPrice: input.price1,
+    startingPrice: input.price20,
     widthInches: 20,
     width_inches: "20.00",
     gauge: input.gauge,

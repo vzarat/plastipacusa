@@ -5,6 +5,7 @@ export const WOODEN_PALLET_LBS = 22.05;
 export const MACHINE_FILM_WEIGHT_SPECS = [
   { width: 20, gauge: 51, length: 7000, roll: 30.6, half: 634.1, full: 1246.1 },
   { width: 20, gauge: 51, length: 9000, roll: 38.78, half: 797.7, full: 1573.3 },
+  { width: 20, gauge: 60, length: 5000, roll: 25.9, half: 540.0, full: 1058.0 },
   { width: 20, gauge: 70, length: 5000, roll: 30.05, half: 623.1, full: 1224.1 },
   { width: 20, gauge: 80, length: 5000, roll: 34.06, half: 703.3, full: 1384.5 },
 ] as const;
@@ -53,7 +54,7 @@ function officialMachineWeight(
   if (!spec) return null;
   if (rolls >= 40) return spec.full;
   if (rolls === 20) return spec.half;
-  return spec.roll;
+  return null;
 }
 
 export function packageTotalWeightLbs(input: PackageWeightInput): number | null {
@@ -65,8 +66,8 @@ export function packageTotalWeightLbs(input: PackageWeightInput): number | null 
   const perRoll = rollWeight ?? (boxWeight != null && !input.machine ? boxWeight / 4 : boxWeight);
 
   if (input.machine) {
-    const official = officialMachineWeight(input, rolls || 1);
-    if (official != null && (rolls === 1 || rolls === 20 || rolls === 40 || rolls === 0)) {
+    const official = officialMachineWeight(input, rolls);
+    if (official != null && (rolls === 20 || rolls === 40)) {
       return official;
     }
     const machineRoll = rollWeight ?? boxWeight;

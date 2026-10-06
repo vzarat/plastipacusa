@@ -83,7 +83,6 @@ function getPackageTierKind(variant: any, isMachine: boolean): PackageTierKind {
   if (isMachine) {
     if (label.includes("FULL PALLET") || rolls === 40) return "full_pallet";
     if (label.includes("HALF PALLET") || rolls === 20) return "fixed_half";
-    if (label.includes("1 ROLL") || rolls === 1) return "single_unit";
     return "other";
   }
 
@@ -324,7 +323,7 @@ function displayPackageSubtext(variant: any, isMachine: boolean): string {
     const tierKind = getPackageTierKind(variant, true);
     if (tierKind === "fixed_half") return "20 Rolls included · 1 Layer";
     if (tierKind === "full_pallet") return "40 Rolls included · 2 Layers";
-    return "1 Roll";
+    return "";
   }
 
   const boxes = getBoxesCount(variant, false);
@@ -380,7 +379,7 @@ export function VariantSelector({
               slug: product?.slug,
               name: product?.title || product?.name,
             });
-            if (isMachineFilm && rolls !== 1 && rolls !== 20 && rolls !== 40) return null;
+            if (isMachineFilm && rolls !== 20 && rolls !== 40) return null;
             const label = isMachineFilm
               ? normalizeMachinePackageLabel(rolls, opt?.label)
               : opt?.label;
@@ -424,7 +423,7 @@ export function VariantSelector({
         .map((v: any) => {
           if (!isMachineFilm) return v;
           const rolls = getRollsCount(v);
-          const canonicalRolls = rolls === 1 || rolls === 20 || rolls === 40 ? rolls : 0;
+          const canonicalRolls = rolls === 20 || rolls === 40 ? rolls : 0;
           if (!canonicalRolls) return null;
           const label = normalizeMachinePackageLabel(canonicalRolls, v.title || v.packageSize);
           const normalizedRolls = canonicalRolls;
@@ -447,7 +446,7 @@ export function VariantSelector({
     }
 
     const machineTiers = mapped
-      .filter((variant: any) => [1, 20, 40].includes(getRollsCount(variant)))
+      .filter((variant: any) => [20, 40].includes(getRollsCount(variant)))
       .sort((a: any, b: any) => getRollsCount(a) - getRollsCount(b));
     const seenRolls = new Set<number>();
     return machineTiers.filter((variant: any) => {
@@ -586,9 +585,7 @@ export function VariantSelector({
   const quantityNoun = isMachineFilm
     ? isFullPalletTier
       ? "Full Pallets"
-      : packageTier === "fixed_half"
-        ? "Half Pallets"
-        : "Rolls"
+      : "Half Pallets"
     : isFullPalletTier
       ? "Full Pallets"
       : packageTier === "fixed_half"

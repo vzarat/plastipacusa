@@ -103,8 +103,8 @@ BEGIN
   END IF;
 END $$;
 
--- Automated machine film, 20" rolls. Half and full pallet include the 22.05 lb wooden pallet.
--- 1 roll is the sellable unit, so box_weight_lbs stores that single-roll weight.
+-- Automated machine film, 20" rolls. Sold as half pallet (20 rolls) and full pallet (40 rolls).
+-- Both package weights include the 22.05 lb wooden pallet.
 
 UPDATE public.products AS p
 SET
@@ -112,11 +112,12 @@ SET
   pallet_weight_lbs = spec.pallet_lbs
 FROM (
   VALUES
-    ('stretch-film-20-x-51-ga-x-7000ft', 20::numeric, 51::numeric, 7000::numeric, 30.60::numeric, 1246.1::numeric),
-    ('stretch-film-20-x-51-ga-x-9000ft', 20::numeric, 51::numeric, 9000::numeric, 38.78::numeric, 1573.3::numeric),
-    ('stretch-film-20-x-70-ga-x-5000ft', 20::numeric, 70::numeric, 5000::numeric, 30.05::numeric, 1224.1::numeric),
-    ('stretch-film-20-x-80-ga-x-5000ft', 20::numeric, 80::numeric, 5000::numeric, 34.06::numeric, 1384.5::numeric)
-) AS spec(slug, width_in, gauge, length_ft, roll_lbs, pallet_lbs)
+    ('stretch-film-20-x-51-ga-x-7000ft', 20::numeric, 51::numeric, 7000::numeric, 30.60::numeric, 634.1::numeric, 1246.1::numeric),
+    ('stretch-film-20-x-51-ga-x-9000ft', 20::numeric, 51::numeric, 9000::numeric, 38.78::numeric, 797.7::numeric, 1573.3::numeric),
+    ('stretch-film-20-x-60-ga-x-5000ft', 20::numeric, 60::numeric, 5000::numeric, 25.90::numeric, 540.0::numeric, 1058.0::numeric),
+    ('stretch-film-20-x-70-ga-x-5000ft', 20::numeric, 70::numeric, 5000::numeric, 30.05::numeric, 623.1::numeric, 1224.1::numeric),
+    ('stretch-film-20-x-80-ga-x-5000ft', 20::numeric, 80::numeric, 5000::numeric, 34.06::numeric, 703.3::numeric, 1384.5::numeric)
+) AS spec(slug, width_in, gauge, length_ft, roll_lbs, half_lbs, pallet_lbs)
 WHERE p.slug = spec.slug
    OR (
      ROUND(p.width_inches::numeric) = spec.width_in
@@ -132,18 +133,20 @@ SET
 FROM public.products AS p
 JOIN (
   VALUES
-    ('stretch-film-20-x-51-ga-x-7000ft', 20::numeric, 51::numeric, 7000::numeric, 30.60::numeric, 1246.1::numeric),
-    ('stretch-film-20-x-51-ga-x-9000ft', 20::numeric, 51::numeric, 9000::numeric, 38.78::numeric, 1573.3::numeric),
-    ('stretch-film-20-x-70-ga-x-5000ft', 20::numeric, 70::numeric, 5000::numeric, 30.05::numeric, 1224.1::numeric),
-    ('stretch-film-20-x-80-ga-x-5000ft', 20::numeric, 80::numeric, 5000::numeric, 34.06::numeric, 1384.5::numeric)
-) AS spec(slug, width_in, gauge, length_ft, roll_lbs, pallet_lbs)
+    ('stretch-film-20-x-51-ga-x-7000ft', 20::numeric, 51::numeric, 7000::numeric, 30.60::numeric, 634.1::numeric, 1246.1::numeric),
+    ('stretch-film-20-x-51-ga-x-9000ft', 20::numeric, 51::numeric, 9000::numeric, 38.78::numeric, 797.7::numeric, 1573.3::numeric),
+    ('stretch-film-20-x-60-ga-x-5000ft', 20::numeric, 60::numeric, 5000::numeric, 25.90::numeric, 540.0::numeric, 1058.0::numeric),
+    ('stretch-film-20-x-70-ga-x-5000ft', 20::numeric, 70::numeric, 5000::numeric, 30.05::numeric, 623.1::numeric, 1224.1::numeric),
+    ('stretch-film-20-x-80-ga-x-5000ft', 20::numeric, 80::numeric, 5000::numeric, 34.06::numeric, 703.3::numeric, 1384.5::numeric)
+) AS spec(slug, width_in, gauge, length_ft, roll_lbs, half_lbs, pallet_lbs)
   ON p.slug = spec.slug
   OR (
     ROUND(p.width_inches::numeric) = spec.width_in
     AND ROUND(p.gauge::numeric) = spec.gauge
     AND ROUND(p.length_feet::numeric) = spec.length_ft
   )
-WHERE v.product_id = p.id;
+WHERE v.product_id = p.id
+  AND COALESCE(v.rolls_count, 0) IN (20, 40);
 
 DO $$
 BEGIN
@@ -157,23 +160,24 @@ BEGIN
     UPDATE public.product_variants AS v
     SET weight_lbs = CASE
       WHEN COALESCE(v.rolls_count, 0) >= 40 THEN spec.pallet_lbs
-      WHEN COALESCE(v.rolls_count, 0) = 20 THEN ROUND(spec.roll_lbs * 20 + 22.05, 1)
-      ELSE spec.roll_lbs
+      ELSE spec.half_lbs
     END
     FROM public.products AS p
     JOIN (
       VALUES
-        ('stretch-film-20-x-51-ga-x-7000ft', 20::numeric, 51::numeric, 7000::numeric, 30.60::numeric, 1246.1::numeric),
-        ('stretch-film-20-x-51-ga-x-9000ft', 20::numeric, 51::numeric, 9000::numeric, 38.78::numeric, 1573.3::numeric),
-        ('stretch-film-20-x-70-ga-x-5000ft', 20::numeric, 70::numeric, 5000::numeric, 30.05::numeric, 1224.1::numeric),
-        ('stretch-film-20-x-80-ga-x-5000ft', 20::numeric, 80::numeric, 5000::numeric, 34.06::numeric, 1384.5::numeric)
-    ) AS spec(slug, width_in, gauge, length_ft, roll_lbs, pallet_lbs)
+        ('stretch-film-20-x-51-ga-x-7000ft', 20::numeric, 51::numeric, 7000::numeric, 30.60::numeric, 634.1::numeric, 1246.1::numeric),
+        ('stretch-film-20-x-51-ga-x-9000ft', 20::numeric, 51::numeric, 9000::numeric, 38.78::numeric, 797.7::numeric, 1573.3::numeric),
+        ('stretch-film-20-x-60-ga-x-5000ft', 20::numeric, 60::numeric, 5000::numeric, 25.90::numeric, 540.0::numeric, 1058.0::numeric),
+        ('stretch-film-20-x-70-ga-x-5000ft', 20::numeric, 70::numeric, 5000::numeric, 30.05::numeric, 623.1::numeric, 1224.1::numeric),
+        ('stretch-film-20-x-80-ga-x-5000ft', 20::numeric, 80::numeric, 5000::numeric, 34.06::numeric, 703.3::numeric, 1384.5::numeric)
+    ) AS spec(slug, width_in, gauge, length_ft, roll_lbs, half_lbs, pallet_lbs)
       ON p.slug = spec.slug
       OR (
         ROUND(p.width_inches::numeric) = spec.width_in
         AND ROUND(p.gauge::numeric) = spec.gauge
         AND ROUND(p.length_feet::numeric) = spec.length_ft
       )
-    WHERE v.product_id = p.id;
+    WHERE v.product_id = p.id
+      AND COALESCE(v.rolls_count, 0) IN (20, 40);
   END IF;
 END $$;
