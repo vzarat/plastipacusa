@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   USAMap,
   StateAbbreviations,
@@ -15,6 +15,7 @@ import {
 } from "@/lib/shipping/deliveryEstimates";
 import {
   CoverageStateTooltip,
+  useCoverageTooltipDismiss,
   CUSTOM_FREIGHT_BADGE,
   CUSTOM_FREIGHT_DESCRIPTION,
   CUSTOM_FREIGHT_TITLE,
@@ -142,6 +143,9 @@ function tierLabel(tier: DeliveryZone): string {
 export function USACoverageMap() {
   const [selected, setSelected] = useState<USAStateAbbreviation | null>("TX");
   const [hovered, setHovered] = useState<USAStateAbbreviation | null>(null);
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+  const dismissTooltip = useCallback(() => setTooltipOpen(false), []);
+  useCoverageTooltipDismiss(tooltipOpen, dismissTooltip);
 
   const activeAbbr = (hovered || selected) as string | null;
   const activeCoverage = activeAbbr ? getCoverage(activeAbbr) : null;
@@ -157,7 +161,6 @@ export function USACoverageMap() {
         onLeave: () => void;
         tooltip: {
           enabled: boolean;
-          render: (state: USAStateAbbreviation) => React.ReactNode;
         };
       }
     > = {};
@@ -190,16 +193,13 @@ export function USACoverageMap() {
       settings[state] = {
         fill,
         stroke,
-        onClick: (abbr) => setSelected(abbr),
+        onClick: (abbr) => {
+          setSelected(abbr);
+          setTooltipOpen(true);
+        },
         onHover: (abbr) => setHovered(abbr),
         onLeave: () => setHovered(null),
-        tooltip: {
-          enabled: true,
-          render: (abbr) => {
-            const info = getCoverage(abbr);
-            return <CoverageStateTooltip abbr={abbr} stateName={info.name} />;
-          },
-        },
+        tooltip: { enabled: false },
       };
     });
 
@@ -260,18 +260,27 @@ export function USACoverageMap() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <div className="lg:col-span-2 w-full overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/60 p-2 sm:p-4">
-          <div className="w-full [&_svg]:w-full [&_svg]:h-auto [&_svg]:max-h-[420px]">
+          <div className="relative w-full [&_svg]:w-full [&_svg]:h-auto [&_svg]:max-h-[420px]">
             <USAMap
               defaultState={{
                 fill: FILL_SECONDARY,
                 stroke: STROKE_DEFAULT,
                 label: { enabled: false },
-                tooltip: { enabled: true },
+                tooltip: { enabled: false },
               }}
               customStates={customStates}
               mapSettings={{ width: "100%", height: "auto" }}
               className="usa-coverage-map"
             />
+            {tooltipOpen && selected ? (
+              <div className="absolute left-2 top-2 z-20">
+                <CoverageStateTooltip
+                  abbr={selected}
+                  stateName={getCoverage(selected).name}
+                  onClose={dismissTooltip}
+                />
+              </div>
+            ) : null}
           </div>
         </div>
 

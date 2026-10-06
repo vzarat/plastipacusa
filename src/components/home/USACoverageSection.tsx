@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   USAMap,
   StateAbbreviations,
@@ -15,6 +15,7 @@ import {
 } from "@/lib/shipping/deliveryEstimates";
 import {
   CoverageStateTooltip,
+  useCoverageTooltipDismiss,
   CUSTOM_FREIGHT_DESCRIPTION,
   CUSTOM_FREIGHT_TITLE,
   HOUSTON_BADGE,
@@ -43,9 +44,13 @@ const HIGHLIGHT_BADGES = [
 export function USACoverageSection() {
   const [hovered, setHovered] = useState<USAStateAbbreviation | null>(null);
   const [selected, setSelected] = useState<USAStateAbbreviation | null>(null);
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+  const dismissTooltip = useCallback(() => setTooltipOpen(false), []);
+  useCoverageTooltipDismiss(tooltipOpen, dismissTooltip);
 
   const handleStateClick = (state: USAStateAbbreviation) => {
     setSelected(state);
+    setTooltipOpen(true);
     const zone = getDeliveryZone(state);
     if (zone === "texas") {
       toast.message(`${RGV_DESCRIPTION} ${HOUSTON_DESCRIPTION}`);
@@ -74,7 +79,6 @@ export function USACoverageSection() {
         onLeave: () => void;
         tooltip: {
           enabled: boolean;
-          render: (state: USAStateAbbreviation) => React.ReactNode;
         };
       }
     > = {};
@@ -101,10 +105,7 @@ export function USACoverageSection() {
         onClick: handleStateClick,
         onHover: (abbr) => setHovered(abbr),
         onLeave: () => setHovered(null),
-        tooltip: {
-          enabled: true,
-          render: (abbr) => <CoverageStateTooltip abbr={abbr} stateName={abbr} />,
-        },
+        tooltip: { enabled: false },
       };
     });
 
@@ -149,18 +150,27 @@ export function USACoverageSection() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
           <div className="lg:col-span-2 rounded-3xl border border-slate-200/80 bg-white p-3 sm:p-6 shadow-sm">
-            <div className="w-full [&_svg]:w-full [&_svg]:h-auto [&_svg]:max-h-[440px] transition-colors duration-200">
+            <div className="relative w-full [&_svg]:w-full [&_svg]:h-auto [&_svg]:max-h-[440px] transition-colors duration-200">
               <USAMap
                 defaultState={{
                   fill: STANDARD_FILL,
                   stroke: BORDER_WHITE,
                   label: { enabled: false },
-                  tooltip: { enabled: true },
+                  tooltip: { enabled: false },
                 }}
                 customStates={customStates}
                 mapSettings={{ width: "100%", height: "auto" }}
                 className="usa-coverage-home-map"
               />
+              {tooltipOpen && selected ? (
+                <div className="absolute left-2 top-2 z-20">
+                  <CoverageStateTooltip
+                    abbr={selected}
+                    stateName={selected}
+                    onClose={dismissTooltip}
+                  />
+                </div>
+              ) : null}
             </div>
 
             <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-[11px] font-bold text-slate-600">

@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
+import { X } from "lucide-react";
 import {
   getDeliveryLeadTime,
   getDeliveryZone,
@@ -22,18 +23,85 @@ export const CUSTOM_FREIGHT_TITLE = "Call to Check Freight Availability & Dates"
 export const CUSTOM_FREIGHT_DESCRIPTION =
   "For orders outside our fixed routes, we arrange consolidated freight and schedule direct delivery dates over the phone.";
 
+export function useCoverageTooltipDismiss(
+  open: boolean,
+  onClose: () => void
+) {
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    if (!open) return;
+    const handleScroll = () => onCloseRef.current();
+    window.addEventListener("scroll", handleScroll, { passive: true, capture: true });
+    return () => window.removeEventListener("scroll", handleScroll, { capture: true });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest("[data-coverage-tooltip]")) return;
+      if (target.closest("svg.usa-map .usa-state, svg.usa-map .dc2")) return;
+      onCloseRef.current();
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open]);
+}
+
+function TooltipCloseButton({ onClose }: { onClose: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label="Close"
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onClose();
+      }}
+      className="absolute right-1.5 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+    >
+      <X className="h-4 w-4" strokeWidth={2.5} />
+    </button>
+  );
+}
+
+function TooltipFrame({
+  className,
+  onClose,
+  children,
+}: {
+  className: string;
+  onClose?: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div data-coverage-tooltip className={`relative ${className}`}>
+      {onClose ? <TooltipCloseButton onClose={onClose} /> : null}
+      <div className={onClose ? "pr-7" : undefined}>{children}</div>
+    </div>
+  );
+}
+
 export function CoverageStateTooltip({
   abbr,
   stateName,
+  onClose,
 }: {
   abbr: string;
   stateName: string;
+  onClose?: () => void;
 }) {
   const zone = getDeliveryZone(abbr);
 
   if (zone === "texas") {
     return (
-      <div className="max-w-[280px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-left shadow-lg">
+      <TooltipFrame
+        onClose={onClose}
+        className="max-w-[280px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-left shadow-lg"
+      >
         <p className="text-xs font-black text-slate-900">{stateName}</p>
         <p className="mt-1.5 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800">
           {RGV_BADGE}
@@ -47,13 +115,16 @@ export function CoverageStateTooltip({
         <p className="mt-1 text-[11px] font-medium leading-snug text-slate-700">
           {HOUSTON_DESCRIPTION}
         </p>
-      </div>
+      </TooltipFrame>
     );
   }
 
   if (zone === "distant") {
     return (
-      <div className="max-w-[260px] rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left shadow-lg">
+      <TooltipFrame
+        onClose={onClose}
+        className="max-w-[260px] rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left shadow-lg"
+      >
         <p className="text-xs font-black text-slate-900">{stateName}</p>
         <p className="mt-1.5 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">
           {CUSTOM_FREIGHT_BADGE}
@@ -71,17 +142,20 @@ export function CoverageStateTooltip({
         >
           📞 Call Logistics: {LOGISTICS_PHONE_DISPLAY}
         </a>
-      </div>
+      </TooltipFrame>
     );
   }
 
   return (
-    <div className="max-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-left shadow-lg">
+    <TooltipFrame
+      onClose={onClose}
+      className="max-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-left shadow-lg"
+    >
       <p className="text-xs font-black text-slate-900">{stateName}</p>
       <p className="mt-0.5 text-[10px] font-bold text-sky-700">
         {getDeliveryLeadTime(abbr)}
       </p>
       <p className="mt-1 text-[10px] leading-snug text-slate-500">Neighboring States</p>
-    </div>
+    </TooltipFrame>
   );
 }
