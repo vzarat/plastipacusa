@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { StripeEmbeddedCheckout } from "@/components/checkout/StripeEmbeddedCheckout";
 import { Button } from "@/components/ui/button";
 import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
+import { TaxExemptionInformationButton } from "@/components/checkout/TaxExemptionModal";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { calculateOrderTotal } from "@/lib/sales-tax";
 import { deliveryMethodLabel } from "@/lib/shipping-method";
@@ -39,7 +40,7 @@ export function CheckoutPaymentStep({
   const subtotal = useCartStore((state) => state.getSubtotal());
   const discountAmount = useCartStore((state) => state.getDiscountAmount());
   const appliedCoupon = useCartStore((state) => state.appliedCoupon);
-  const { selectedAddress, deliveryMethod } = useCheckoutState();
+  const { selectedAddress, deliveryMethod, setTaxExemptRequested } = useCheckoutState();
   const quote = calculateOrderTotal({
     subtotal,
     discount: discountAmount,
@@ -96,11 +97,25 @@ export function CheckoutPaymentStep({
               {quote.shipping > 0 ? formatCurrency(quote.shipping) : "FREE"}
             </dd>
           </div>
-          <div className="flex items-center justify-between text-slate-600">
-            <dt>Estimated Tax</dt>
-            <dd className="font-semibold text-slate-900">
-              {formatCurrency(quote.tax)}
-            </dd>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-slate-600">
+              <dt>Estimated Tax</dt>
+              <dd className="font-semibold text-slate-900">
+                {formatCurrency(quote.tax)}
+              </dd>
+            </div>
+            <TaxExemptionInformationButton
+              companyName={selectedAddress?.companyName || shipping.fullName}
+              registrationState={selectedAddress?.state || shipping.state}
+              customerEmail={checkoutEmail}
+              customerName={selectedAddress?.fullName || shipping.fullName}
+              shippingSummary={
+                selectedAddress
+                  ? `${selectedAddress.city}, ${selectedAddress.state} ${selectedAddress.postalCode}`
+                  : `${shipping.city}, ${shipping.state} ${shipping.postalCode}`
+              }
+              onSubmitted={() => setTaxExemptRequested(true)}
+            />
           </div>
           <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-base font-black text-slate-900">
             <dt>Estimated total</dt>

@@ -19,6 +19,7 @@ import {
   type CheckoutStepId,
 } from "@/components/checkout/CheckoutStepper";
 import { Button } from "@/components/ui/button";
+import { TaxExemptionInformationButton } from "@/components/checkout/TaxExemptionModal";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { calculateOrderTotal, roundMoney } from "@/lib/sales-tax";
 import { formatCurrency } from "@/lib/utils";
@@ -74,6 +75,7 @@ function CheckoutPageInner() {
     deliveryMethod,
     setDeliveryMethod,
     taxExemptRequested,
+    setTaxExemptRequested,
   } = useCheckoutState();
 
   useEffect(() => {
@@ -414,11 +416,25 @@ function CheckoutPageInner() {
                     Tax exemption requested. Tax remains until verification.
                   </p>
                 )}
-                <div className="flex items-center justify-between text-slate-600">
-                  <span>Estimated Tax</span>
-                  <span className="font-semibold text-slate-800">
-                    {formatCurrency(quote.tax)}
-                  </span>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-slate-600">
+                    <span>Estimated Tax</span>
+                    <span className="font-semibold text-slate-800">
+                      {formatCurrency(quote.tax)}
+                    </span>
+                  </div>
+                  <TaxExemptionInformationButton
+                    companyName={selectedAddress?.companyName}
+                    registrationState={selectedAddress?.state}
+                    customerEmail={checkoutEmail}
+                    customerName={selectedAddress?.fullName}
+                    shippingSummary={
+                      selectedAddress
+                        ? `${selectedAddress.city}, ${selectedAddress.state} ${selectedAddress.postalCode}`
+                        : undefined
+                    }
+                    onSubmitted={() => setTaxExemptRequested(true)}
+                  />
                 </div>
               </>
             )}
