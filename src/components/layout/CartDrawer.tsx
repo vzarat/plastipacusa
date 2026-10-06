@@ -243,7 +243,11 @@ export function CartDrawer() {
                     {item.packageSize || item.pricingTier}
                   </Badge>
                   <span className="text-slate-500 text-[11px]">
-                    {item.totalRolls ? `${item.totalRolls} rolls / unit` : `${item.rollsPerBox} rolls`}
+                    {item.application === "machine" && item.totalRolls
+                      ? `${item.totalRolls} rolls`
+                      : item.totalRolls
+                        ? `${item.totalRolls} rolls / unit`
+                        : `${item.rollsPerBox} rolls`}
                   </span>
                 </div>
 
@@ -262,7 +266,8 @@ export function CartDrawer() {
                     <button
                       type="button"
                       onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                      disabled={item.application === "machine" && item.rollsPerBox === 20}
+                      className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                     >
                       <Plus className="w-3 h-3" />
                     </button>

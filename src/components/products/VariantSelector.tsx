@@ -584,7 +584,8 @@ export function VariantSelector({
         ? Number(product.startingPrice)
         : 0;
   const unitPrice = applyDiscountToPrice(baseUnitPriceRaw, appliedDiscount);
-  const effectiveQuantity = Math.max(1, Math.floor(quantity));
+  const machineHalfLocked = isMachineFilm && !isFullPalletTier;
+  const effectiveQuantity = machineHalfLocked ? 1 : Math.max(1, Math.floor(quantity));
   const totalPrice = Number((unitPrice * effectiveQuantity).toFixed(2));
   const hasActiveDiscount = Boolean(appliedDiscount && baseUnitPriceRaw > 0);
   const quantityNoun = isMachineFilm
@@ -608,18 +609,26 @@ export function VariantSelector({
           : quantityNoun === "Rolls"
             ? "roll"
             : "box";
-  const incrementNote = isPalletPackage
-    ? isMachineFilm
-      ? `Each step adds 1 package (${packageRolls} rolls).`
-      : `Each step adds 1 package (${packageBoxes} boxes).`
-    : null;
+  const incrementNote = isMachineFilm
+    ? isFullPalletTier
+      ? "Each step adds 1 full pallet (40 rolls)."
+      : null
+    : isPalletPackage
+      ? `Each step adds 1 package (${packageBoxes} boxes).`
+      : null;
+
+  useEffect(() => {
+    if (machineHalfLocked && quantity !== 1) setQuantity(1);
+  }, [machineHalfLocked, quantity]);
 
   const handleQuantityDecrease = () => {
+    if (machineHalfLocked) return;
     setQuantity((prev) => Math.max(1, Math.floor(prev) - 1));
     setTierHint(null);
   };
 
   const handleQuantityIncrease = () => {
+    if (machineHalfLocked) return;
     if (isSingleUnitTier && !isMachineFilm) {
       if (quantity >= 15) {
         if (midTierVariant) {
@@ -678,7 +687,7 @@ export function VariantSelector({
       productName: product.title || product.name || "Stretch Film",
       productImage: product.imageUrl || "",
       packageSize: displayPackageTitle(selectedVariant, isMachineFilm),
-      totalRolls: rolls,
+      totalRolls: isMachineFilm ? rolls * effectiveQuantity : rolls,
       totalBoxes: isMachineFilm ? 0 : getBoxesCount(selectedVariant, false),
       application: product.application === "machine" ? "machine" : "hand",
       variantId: selectedVariant.id,
@@ -978,7 +987,7 @@ export function VariantSelector({
               <button
                 type="button"
                 onClick={handleQuantityDecrease}
-                disabled={effectiveQuantity <= 1}
+                disabled={effectiveQuantity <= 1 || machineHalfLocked}
                 aria-label={`Remove 1 ${quantitySingular}`}
                 className="w-8 h-8 flex items-center justify-center text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 font-bold disabled:opacity-40 disabled:pointer-events-none disabled:hover:bg-transparent"
               >
@@ -994,10 +1003,11 @@ export function VariantSelector({
                 type="button"
                 onClick={handleQuantityIncrease}
                 disabled={
-                  isSingleUnitTier &&
-                  !isMachineFilm &&
-                  effectiveQuantity >= 15 &&
-                  !hasMidTierUpgrade
+                  machineHalfLocked ||
+                  (isSingleUnitTier &&
+                    !isMachineFilm &&
+                    effectiveQuantity >= 15 &&
+                    !hasMidTierUpgrade)
                 }
                 aria-label={`Add 1 ${quantitySingular}`}
                 className="w-8 h-8 flex items-center justify-center text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 font-bold disabled:opacity-40 disabled:pointer-events-none disabled:hover:bg-transparent"
@@ -1005,6 +1015,11 @@ export function VariantSelector({
                 +
               </button>
             </div>
+            {machineHalfLocked && (
+              <p className="text-[10px] font-medium text-slate-500">
+                For 2 or more pallets, select Full Pallet option.
+              </p>
+            )}
             {incrementNote && (
               <p className="text-[10px] font-medium text-slate-500">{incrementNote}</p>
             )}

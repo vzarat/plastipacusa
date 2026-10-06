@@ -132,7 +132,8 @@ export function CheckoutCartStep({
                       <button
                         type="button"
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="flex h-12 w-12 items-center justify-center rounded-lg text-slate-600 hover:bg-white md:h-7 md:w-7"
+                        disabled={item.application === "machine" && item.rollsPerBox === 20}
+                        className="flex h-12 w-12 items-center justify-center rounded-lg text-slate-600 hover:bg-white md:h-7 md:w-7 disabled:opacity-40 disabled:pointer-events-none"
                         aria-label="Increase quantity"
                       >
                         <Plus className="h-3.5 w-3.5" />

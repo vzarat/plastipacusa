@@ -4,6 +4,20 @@ import { CartItem } from "@/types";
 import type { AppliedCoupon } from "@/types/coupon";
 import { getCartDiscountAmount } from "@/lib/coupons";
 
+function machinePackageRolls(item: { application?: string; rollsPerBox?: number }): number {
+  if (item.application !== "machine") return 0;
+  const rolls = Number(item.rollsPerBox) || 0;
+  return rolls === 20 || rolls === 40 ? rolls : 0;
+}
+
+function machineLineQuantity(
+  item: { application?: string; rollsPerBox?: number },
+  quantity: number
+): number {
+  if (machinePackageRolls(item) === 20) return 1;
+  return Math.max(1, Math.floor(quantity) || 1);
+}
+
 interface CartState {
   items: CartItem[];
   isDrawerOpen: boolean;
@@ -40,18 +54,27 @@ export const useCartStore = create<CartState>()(
         if (existingIndex > -1) {
           const updatedItems = [...currentItems];
           const existingItem = updatedItems[existingIndex];
-          const newQty = existingItem.quantity + itemData.quantity;
+          const newQty = machineLineQuantity(
+            existingItem,
+            existingItem.quantity + itemData.quantity
+          );
+          const packageRolls = machinePackageRolls(existingItem);
           updatedItems[existingIndex] = {
             ...existingItem,
             quantity: newQty,
+            totalRolls: packageRolls > 0 ? packageRolls * newQty : existingItem.totalRolls,
             totalPrice: Number((newQty * existingItem.unitPrice).toFixed(2)),
           };
           set({ items: updatedItems, isDrawerOpen: true });
         } else {
+          const quantity = machineLineQuantity(itemData, itemData.quantity);
+          const packageRolls = machinePackageRolls(itemData);
           const newItem: CartItem = {
             ...itemData,
+            quantity,
+            totalRolls: packageRolls > 0 ? packageRolls * quantity : itemData.totalRolls,
             id,
-            totalPrice: Number((itemData.quantity * itemData.unitPrice).toFixed(2)),
+            totalPrice: Number((quantity * itemData.unitPrice).toFixed(2)),
           };
           set({ items: [...currentItems, newItem], isDrawerOpen: true });
         }
@@ -72,10 +95,13 @@ export const useCartStore = create<CartState>()(
         set((state) => ({
           items: state.items.map((item) => {
             if (item.id === id) {
+              const nextQty = machineLineQuantity(item, quantity);
+              const packageRolls = machinePackageRolls(item);
               return {
                 ...item,
-                quantity,
-                totalPrice: Number((quantity * item.unitPrice).toFixed(2)),
+                quantity: nextQty,
+                totalRolls: packageRolls > 0 ? packageRolls * nextQty : item.totalRolls,
+                totalPrice: Number((nextQty * item.unitPrice).toFixed(2)),
               };
             }
             return item;
