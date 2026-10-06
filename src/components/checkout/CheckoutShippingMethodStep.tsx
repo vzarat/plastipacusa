@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BadgeCheck, Calendar, Loader2, MapPin, Warehouse, X } from "lucide-react";
-import { toast } from "sonner";
-import { submitTaxExemptionRequest } from "@/actions/tax-exemption";
+import { Calendar, MapPin, Warehouse } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
 import { useCartStore } from "@/lib/store/useCartStore";
@@ -21,44 +19,19 @@ import {
 } from "@/lib/shipping-method";
 import { evalShippingEligibility } from "@/lib/shippingRules";
 
-const fieldClass =
-  "h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 md:h-auto md:py-2.5";
-
-const US_STATES = [
-  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS",
-  "KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY",
-  "NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV",
-  "WI","WY","DC",
-];
-
 interface CheckoutShippingMethodStepProps {
-  checkoutEmail: string;
   onBack: () => void;
   onProceed: () => void;
 }
 
 export function CheckoutShippingMethodStep({
-  checkoutEmail,
   onBack,
   onProceed,
 }: CheckoutShippingMethodStepProps) {
   const items = useCartStore((state) => state.items);
   const totalWeight = useCartStore((state) => state.getTotalWeight());
-  const {
-    selectedAddress,
-    deliveryMethod,
-    setDeliveryMethod,
-    taxExemptRequested,
-    setTaxExemptRequested,
-  } = useCheckoutState();
+  const { selectedAddress, deliveryMethod, setDeliveryMethod } = useCheckoutState();
   const [schedule, setSchedule] = useState<ShippingSchedule | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [companyName, setCompanyName] = useState(selectedAddress?.companyName || "");
-  const [taxId, setTaxId] = useState("");
-  const [registrationState, setRegistrationState] = useState(selectedAddress?.state || "");
-  const [note, setNote] = useState("");
-  const [certificate, setCertificate] = useState<File | null>(null);
 
   useEffect(() => {
     setSchedule(buildShippingSchedule(new Date()));
@@ -99,40 +72,6 @@ export function CheckoutShippingMethodStep({
   }, [activeMethod, deliveryMethod, setDeliveryMethod]);
 
   const shippingCost = estimateShippingCost(activeMethod, totalWeight, boxCount);
-
-  const submitExemption = async () => {
-    const formData = new FormData();
-    formData.set("companyName", companyName);
-    formData.set("taxId", taxId);
-    formData.set("registrationState", registrationState);
-    formData.set("note", note);
-    formData.set("customerEmail", checkoutEmail);
-    formData.set("customerName", selectedAddress?.fullName || "");
-    formData.set(
-      "shippingSummary",
-      selectedAddress
-        ? [
-            selectedAddress.fullName,
-            selectedAddress.streetAddress,
-            `${selectedAddress.city}, ${selectedAddress.state} ${selectedAddress.postalCode}`,
-          ].join(", ")
-        : ""
-    );
-    if (certificate) formData.set("certificate", certificate);
-
-    setSaving(true);
-    const result = await submitTaxExemptionRequest(formData);
-    setSaving(false);
-
-    if (!result.success) {
-      toast.error(result.error || "Could not send the tax exemption request.");
-      return;
-    }
-
-    setTaxExemptRequested(true);
-    setModalOpen(false);
-    toast.success("Tax exemption request sent for verification.");
-  };
 
   return (
     <div className="space-y-6">
@@ -267,24 +206,6 @@ export function CheckoutShippingMethodStep({
         </span>
       </div>
 
-      {taxExemptRequested ? (
-        <div className="flex items-start gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>
-            Tax exemption request sent. Sales tax stays on this order until the
-            team verifies the certificate.
-          </p>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="w-full rounded-2xl border border-sky-300 bg-sky-50 px-4 py-3 text-left text-sm font-black text-sky-800 hover:bg-sky-100"
-        >
-          Tax Exempt Customer?
-        </button>
-      )}
-
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
         <Button type="button" variant="outline" className="h-12 md:h-10" onClick={onBack}>
           Back to Address
@@ -299,129 +220,6 @@ export function CheckoutShippingMethodStep({
           Proceed to Payment
         </Button>
       </div>
-
-      {modalOpen && (
-        <div className="fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4">
-          <button
-            type="button"
-            className="absolute inset-0 bg-slate-900/50"
-            aria-label="Close tax exemption form"
-            onClick={() => setModalOpen(false)}
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="tax-exempt-title"
-            className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-5 shadow-xl sm:rounded-3xl sm:p-6"
-          >
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h3 id="tax-exempt-title" className="text-lg font-black text-slate-900">
-                  Tax exemption
-                </h3>
-                <p className="mt-1 text-xs text-slate-500">
-                  Send your resale certificate to the Plastipac team for verification.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setModalOpen(false)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <label className="block space-y-1.5">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  Company name *
-                </span>
-                <input
-                  className={fieldClass}
-                  value={companyName}
-                  onChange={(event) => setCompanyName(event.target.value)}
-                  autoComplete="organization"
-                  inputMode="text"
-                />
-              </label>
-              <label className="block space-y-1.5">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  Tax ID / resale certificate number *
-                </span>
-                <input
-                  className={fieldClass}
-                  value={taxId}
-                  onChange={(event) => setTaxId(event.target.value)}
-                  autoComplete="off"
-                  inputMode="text"
-                />
-              </label>
-              <label className="block space-y-1.5">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  State of registration *
-                </span>
-                <select
-                  className={fieldClass}
-                  value={registrationState}
-                  onChange={(event) => setRegistrationState(event.target.value)}
-                >
-                  <option value="">Select a state</option>
-                  {US_STATES.map((state) => (
-                    <option key={state} value={state}>
-                      {state}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block space-y-1.5">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  Certificate upload
-                </span>
-                <input
-                  type="file"
-                  accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp"
-                  className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-sky-50 file:px-3 file:py-2 file:text-xs file:font-bold file:text-sky-800"
-                  onChange={(event) => setCertificate(event.target.files?.[0] || null)}
-                />
-              </label>
-              <label className="block space-y-1.5">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  Note
-                </span>
-                <textarea
-                  className={`${fieldClass} min-h-24`}
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  placeholder="Optional details for the verification team"
-                />
-              </label>
-            </div>
-
-            <div className="mt-5 flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                variant="gradient"
-                disabled={saving}
-                onClick={() => void submitExemption()}
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending…
-                  </>
-                ) : (
-                  "Submit for verification"
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

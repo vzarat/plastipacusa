@@ -306,7 +306,6 @@ function CheckoutPageInner() {
           )}
           {step === 3 && (
             <CheckoutShippingMethodStep
-              checkoutEmail={checkoutEmail}
               onBack={() => setStep(2)}
               onProceed={proceedToPayment}
             />
