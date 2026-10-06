@@ -16,6 +16,7 @@ export function PalletizingSpecsPanel({
   lengthLabel,
 }: PalletizingSpecsPanelProps) {
   const filmBits = [widthLabel, gaugeLabel, lengthLabel].filter(Boolean).join(" · ");
+  const showRollsPerBox = specs.rollsPerBox > 1 && specs.fullPalletRolls !== 40;
 
   return (
     <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-7 shadow-sm space-y-5">
@@ -33,7 +34,7 @@ export function PalletizingSpecsPanel({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className={`grid grid-cols-2 ${showRollsPerBox ? "sm:grid-cols-4" : "sm:grid-cols-3"} gap-3`}>
         <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
             Full Pallet Rolls
@@ -58,14 +59,16 @@ export function PalletizingSpecsPanel({
             {specs.rollsPerLayer}
           </span>
         </div>
-        <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-            Rolls / Box
-          </span>
-          <span className="text-xl font-black text-slate-900 mt-1 block">
-            {specs.rollsPerBox}
-          </span>
-        </div>
+        {showRollsPerBox && (
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Rolls / Box
+            </span>
+            <span className="text-xl font-black text-slate-900 mt-1 block">
+              {specs.rollsPerBox}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 text-xs text-slate-600">

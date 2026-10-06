@@ -140,6 +140,16 @@ export function buildMachinePackageOptions(input: {
     }));
 }
 
+/**
+ * Full-pallet per-roll price compared with the half-pallet per-roll price.
+ * Matches the 20-roll and 40-roll tier columns (580.36 vs 1,099.64).
+ */
+const MACHINE_FULL_PALLET_UNIT_RATE = 1099.64 / (580.36 * 2);
+
+function roundTierMoney(amount: number): number {
+  return Math.round(amount * 100) / 100;
+}
+
 function firstPositiveAmount(values: unknown[]): number {
   for (const value of values) {
     const amount = typeof value === "number" ? value : parseFloat(String(value ?? ""));
@@ -205,16 +215,29 @@ export function buildMachineFilmSelectorTiers(product: any, variants?: any[] | n
   ]);
   const baseSku = String(product?.partNumber || product?.part_number || product?.slug || "MACHINE");
 
-  const halfPrice =
-    halfStored > 0 ? halfStored : unitRollPrice > 0 ? Math.round(unitRollPrice * 20 * 100) / 100 : 0;
-  const fullPrice =
-    fullStored > 0
-      ? fullStored
-      : unitRollPrice > 0
-        ? Math.round(unitRollPrice * 40 * 100) / 100
-        : halfPrice > 0
-          ? Math.round(halfPrice * 2 * 100) / 100
-          : 0;
+  const palletTotalMatchesUnit = (stored: number, rolls: number, unit: number) => {
+    if (!(stored > 0)) return false;
+    if (!(unit > 0)) return true;
+    const perRoll = stored / rolls;
+    return perRoll <= unit * 1.05 && perRoll >= unit * 0.5;
+  };
+
+  const halfPerRoll = palletTotalMatchesUnit(halfStored, 20, unitRollPrice)
+    ? halfStored / 20
+    : unitRollPrice;
+  const halfPrice = halfPerRoll > 0 ? roundTierMoney(halfPerRoll * 20) : 0;
+  const storedFullPerRoll = fullStored > 0 ? fullStored / 40 : 0;
+  const fullPerRoll =
+    palletTotalMatchesUnit(fullStored, 40, halfPerRoll) &&
+    storedFullPerRoll > 0 &&
+    storedFullPerRoll < halfPerRoll - 0.004
+      ? storedFullPerRoll
+      : halfPerRoll > 0
+        ? roundTierMoney(halfPerRoll * MACHINE_FULL_PALLET_UNIT_RATE)
+        : 0;
+  const fullPrice = fullPerRoll > 0 ? roundTierMoney(fullPerRoll * 40) : 0;
+  const fullPalletSavingsPerRoll =
+    halfPerRoll > 0 && fullPerRoll > 0 ? roundTierMoney(halfPerRoll - fullPerRoll) : 0;
 
   return MACHINE_PACKAGE_TIERS.map((tier) => {
     const price = tier.rolls === 40 ? fullPrice : halfPrice;
@@ -233,6 +256,10 @@ export function buildMachineFilmSelectorTiers(product: any, variants?: any[] | n
       title: tier.label,
       packageSize: tier.label,
       tierSubtext: tier.rolls === 20 ? "20 Rolls" : "40 Rolls",
+      tierBadges:
+        tier.rolls === 40 && fullPalletSavingsPerRoll >= 0.01
+          ? [`Save $${fullPalletSavingsPerRoll.toFixed(2)} / roll`]
+          : [],
       price,
       priceUsd: price > 0 ? price.toFixed(2) : "",
       rolls: tier.rolls,
