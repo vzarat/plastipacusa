@@ -6,9 +6,7 @@ import { toast } from "sonner";
 import { StripeEmbeddedCheckout } from "@/components/checkout/StripeEmbeddedCheckout";
 import { Button } from "@/components/ui/button";
 import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
-import { TaxExemptionInformationButton } from "@/components/checkout/TaxExemptionModal";
 import { useCartStore } from "@/lib/store/useCartStore";
-import { calculateOrderTotal } from "@/lib/sales-tax";
 import { countCartBoxes } from "@/lib/shipping-method";
 import { labelForShippingMethod } from "@/lib/shippingRules";
 import { formatCurrency } from "@/lib/utils";
@@ -38,10 +36,7 @@ export function CheckoutPaymentStep({
   onEditMethod,
 }: CheckoutPaymentStepProps) {
   const items = useCartStore((state) => state.items);
-  const subtotal = useCartStore((state) => state.getSubtotal());
-  const discountAmount = useCartStore((state) => state.getDiscountAmount());
-  const appliedCoupon = useCartStore((state) => state.appliedCoupon);
-  const { selectedAddress, deliveryMethod, setTaxExemptRequested } = useCheckoutState();
+  const { selectedAddress, deliveryMethod } = useCheckoutState();
   const boxCount = countCartBoxes(items);
   const shippingLabel = labelForShippingMethod(
     deliveryMethod,
@@ -50,12 +45,6 @@ export function CheckoutPaymentStep({
     selectedAddress?.state || shipping.state,
     boxCount
   );
-  const quote = calculateOrderTotal({
-    subtotal,
-    discount: discountAmount,
-    shipping: shippingAmount,
-  });
-
   return (
     <div className="space-y-6">
       <div>
@@ -67,71 +56,6 @@ export function CheckoutPaymentStep({
           Review the final total, then pay with the secure Stripe form.
         </p>
       </div>
-
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-          Order summary
-        </p>
-        <ul className="mt-3 space-y-2 border-b border-slate-100 pb-3">
-          {items.map((item) => (
-            <li key={item.id} className="flex items-start justify-between gap-3 text-sm">
-              <span className="text-slate-700">
-                {item.quantity} × {item.productName}
-              </span>
-              <span className="font-semibold text-slate-900">
-                {formatCurrency(item.totalPrice)}
-              </span>
-            </li>
-          ))}
-        </ul>
-        <dl className="mt-3 space-y-2 text-sm">
-          <div className="flex items-center justify-between text-slate-600">
-            <dt>Subtotal</dt>
-            <dd className="font-semibold text-slate-900">
-              {formatCurrency(quote.subtotal)}
-            </dd>
-          </div>
-          {quote.discount > 0 && (
-            <div className="flex items-center justify-between text-emerald-700">
-              <dt>
-                Discount
-                {appliedCoupon?.code ? ` (${appliedCoupon.code})` : ""}
-              </dt>
-              <dd className="font-semibold">- {formatCurrency(quote.discount)}</dd>
-            </div>
-          )}
-          <div className="flex items-center justify-between text-slate-600">
-            <dt>Estimated shipping</dt>
-            <dd className="font-semibold text-slate-900">
-              {quote.shipping > 0 ? formatCurrency(quote.shipping) : "FREE"}
-            </dd>
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-slate-600">
-              <dt>Estimated Tax</dt>
-              <dd className="font-semibold text-slate-900">
-                {formatCurrency(quote.tax)}
-              </dd>
-            </div>
-            <TaxExemptionInformationButton
-              companyName={selectedAddress?.companyName || shipping.fullName}
-              registrationState={selectedAddress?.state || shipping.state}
-              customerEmail={checkoutEmail}
-              customerName={selectedAddress?.fullName || shipping.fullName}
-              shippingSummary={
-                selectedAddress
-                  ? `${selectedAddress.city}, ${selectedAddress.state} ${selectedAddress.postalCode}`
-                  : `${shipping.city}, ${shipping.state} ${shipping.postalCode}`
-              }
-              onSubmitted={() => setTaxExemptRequested(true)}
-            />
-          </div>
-          <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-base font-black text-slate-900">
-            <dt>Estimated total</dt>
-            <dd>{formatCurrency(quote.total)}</dd>
-          </div>
-        </dl>
-      </section>
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -180,7 +104,7 @@ export function CheckoutPaymentStep({
             {shippingLabel}
           </p>
           <p className="mt-1 text-sm text-slate-600">
-            {quote.shipping > 0 ? formatCurrency(quote.shipping) : "FREE"}
+            {shippingAmount > 0 ? formatCurrency(shippingAmount) : "FREE"}
           </p>
         </div>
       </section>
