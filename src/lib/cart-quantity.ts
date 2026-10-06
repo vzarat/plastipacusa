@@ -5,7 +5,7 @@ export const LAYER_QTY_NOTE =
   "1 Layer option is limited to 1 unit. Select 'Full Pallet' for higher volume.";
 
 export const BOX_QTY_NOTE =
-  "16 boxes equal 1 Layer. Switch to '1 Layer' option for layer pricing.";
+  "16 boxes equal 1 Layer. Please switch to the '1 Layer' tier option.";
 
 export const TIER_MAX_ONE_WARNING =
   "Maximum 1 unit allowed for Half Pallet / Layer tiers. Please select Full Pallet for higher quantities.";

@@ -6,6 +6,7 @@ import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency, formatLocaleNumber } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
 import { ShoppingCart, CheckCircle2, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DirectCheckoutButton } from "@/components/checkout/DirectCheckoutButton";
@@ -20,11 +21,7 @@ import {
   normalizeMachinePackageLabel,
   unitLabelForProduct,
 } from "@/lib/products";
-import {
-  BOX_QTY_NOTE,
-  HALF_PALLET_QTY_NOTE,
-  LAYER_QTY_NOTE,
-} from "@/lib/cart-quantity";
+import { BOX_QTY_NOTE, HALF_PALLET_QTY_NOTE } from "@/lib/cart-quantity";
 
 type PackageTierKind =
   | "single_unit"
@@ -70,8 +67,19 @@ function isCompact1880Package(variant: any): boolean {
 }
 
 /** Classify package option into business-rule tiers. */
+const LAYER_LIMIT_NOTE =
+  "Maximum 1 Layer allowed. For higher quantities, select Half Pallet or Full Pallet.";
+
 function getPackageTierKind(variant: any, isMachine: boolean): PackageTierKind {
   if (!variant) return "other";
+
+  const tierKey = String(variant?.tierKey || "").toLowerCase();
+  if (tierKey === "full" || tierKey === "full_pallet") return "full_pallet";
+  if (tierKey === "half" || tierKey === "half_pallet" || tierKey === "fixed_half") {
+    return "fixed_half";
+  }
+  if (tierKey === "layer" || tierKey === "fixed_mid") return "fixed_mid";
+  if (tierKey === "box" || tierKey === "single_unit") return "single_unit";
 
   const label = getVariantLabel(variant);
   const rolls = getRollsCount(variant);
@@ -113,7 +121,12 @@ function getPackageTierKind(variant: any, isMachine: boolean): PackageTierKind {
     return "fixed_half";
   }
 
-  if (label.includes("16 BOXES") || rolls === 64 || boxes === 16) {
+  if (
+    label.includes("1 LAYER") ||
+    label.includes("16 BOXES") ||
+    rolls === 64 ||
+    boxes === 16
+  ) {
     return "fixed_mid";
   }
 
@@ -489,6 +502,13 @@ export function VariantSelector({
       return variants.find((variant: any) => getRollsCount(variant) === wanted) || variants[0];
     }
     if (!isMachineFilm && variants[0]?.tierKey) {
+      const byInternal = variants.find((variant: any) => {
+        const id = String(variant.id || variant.sku || "");
+        return (
+          id === internalSelectedVariantId || variant.tierKey === internalSelectedVariantId
+        );
+      });
+      if (byInternal) return byInternal;
       const sourceKey = propSelectedVariant?.tierKey;
       if (sourceKey) {
         return variants.find((variant: any) => variant.tierKey === sourceKey) || variants[0];
@@ -523,8 +543,31 @@ export function VariantSelector({
     internalSelectedVariantId;
 
   const packageTier = getPackageTierKind(selectedVariant, isMachineFilm);
-  const isSingleUnitTier = packageTier === "single_unit";
-  const isFullPalletTier = packageTier === "full_pallet";
+  const tierKey = String(selectedVariant?.tierKey || "").toLowerCase();
+  const tierLabel = getVariantLabel(selectedVariant);
+  const isFullPalletTier =
+    packageTier === "full_pallet" || tierKey === "full" || tierLabel.includes("FULL PALLET");
+  const isHalfPalletTier =
+    !isFullPalletTier &&
+    (packageTier === "fixed_half" ||
+      tierKey === "half" ||
+      tierLabel.includes("HALF PALLET"));
+  const isLayerTier =
+    !isFullPalletTier &&
+    !isHalfPalletTier &&
+    (packageTier === "fixed_mid" ||
+      tierKey === "layer" ||
+      tierLabel.includes("1 LAYER") ||
+      tierLabel.includes("LAYER") ||
+      tierLabel.includes("16 BOX"));
+  const isSingleUnitTier =
+    !isFullPalletTier &&
+    !isHalfPalletTier &&
+    !isLayerTier &&
+    (packageTier === "single_unit" ||
+      tierKey === "box" ||
+      tierLabel.includes("1 BOX") ||
+      getRollsCount(selectedVariant) === 4);
   const isPalletPackage =
     packageTier === "fixed_mid" ||
     packageTier === "fixed_half" ||
@@ -589,24 +632,25 @@ export function VariantSelector({
         ? Number(product.startingPrice)
         : 0;
   const unitPrice = applyDiscountToPrice(baseUnitPriceRaw, appliedDiscount);
-  const isHalfPalletTier = packageTier === "fixed_half";
-  const isLayerTier = packageTier === "fixed_mid";
   const quantityLocked = isHalfPalletTier || isLayerTier;
-  const quantityMax = quantityLocked ? 1 : isSingleUnitTier && !isMachineFilm ? 15 : undefined;
-  const effectiveQuantity = quantityLocked ? 1 : Math.max(1, Math.floor(quantity));
+  const isBoxTier = isSingleUnitTier && !isMachineFilm;
+  const quantityMax = quantityLocked ? 1 : isBoxTier ? 15 : undefined;
+  const effectiveQuantity = quantityLocked
+    ? 1
+    : isBoxTier
+      ? Math.min(15, Math.max(1, Math.floor(quantity) || 1))
+      : Math.max(1, Math.floor(quantity) || 1);
   const totalPrice = Number((unitPrice * effectiveQuantity).toFixed(2));
   const hasActiveDiscount = Boolean(appliedDiscount && baseUnitPriceRaw > 0);
-  const quantityNoun = isMachineFilm
-    ? isFullPalletTier
-      ? "Full Pallets"
-      : "Half Pallets"
-    : isFullPalletTier
-      ? "Full Pallets"
-      : packageTier === "fixed_half"
-        ? "Half Pallets"
-        : packageTier === "fixed_mid"
-          ? "Layers"
-          : unitLabelPlural;
+  const quantityNoun = isLayerTier
+    ? "Layers"
+    : isHalfPalletTier
+      ? "Half Pallets"
+      : isFullPalletTier
+        ? "Full Pallets"
+        : isMachineFilm
+          ? "Rolls"
+          : "Boxes";
   const quantitySingular =
     quantityNoun === "Full Pallets"
       ? "full pallet"
@@ -623,9 +667,17 @@ export function VariantSelector({
       : `Each step adds 1 full pallet (${packageBoxes} boxes).`
     : null;
 
+  const selectedTierIdentity = `${tierKey}:${selectedVariant?.id || selectedVariant?.sku || ""}`;
+
+  useEffect(() => {
+    setQuantity(1);
+    setTierHint(null);
+  }, [selectedTierIdentity]);
+
   useEffect(() => {
     if (quantityLocked && quantity !== 1) setQuantity(1);
-  }, [quantityLocked, quantity]);
+    if (isBoxTier && quantity > 15) setQuantity(15);
+  }, [quantityLocked, isBoxTier, quantity]);
 
   const handleQuantityDecrease = () => {
     if (quantityLocked) return;
@@ -640,9 +692,10 @@ export function VariantSelector({
       setQuantity(1);
       return;
     }
-    if (isSingleUnitTier && !isMachineFilm && next > 15) {
+    if (isBoxTier && next > 15) {
       setQuantity(15);
       setTierHint(BOX_QTY_NOTE);
+      toast.error(BOX_QTY_NOTE);
       return;
     }
     setQuantity(Math.max(1, next || 1));
@@ -651,10 +704,11 @@ export function VariantSelector({
 
   const handleQuantityIncrease = () => {
     if (quantityLocked) return;
-    if (isSingleUnitTier && !isMachineFilm) {
+    if (isBoxTier) {
       if (quantity >= 15) {
         setTierHint(BOX_QTY_NOTE);
         setQuantity(15);
+        toast.error(BOX_QTY_NOTE);
         return;
       }
       setQuantity((prev) => Math.min(15, Math.floor(prev) + 1));
@@ -1024,6 +1078,7 @@ export function VariantSelector({
                 inputMode="numeric"
                 min={1}
                 max={quantityMax}
+                readOnly={quantityLocked}
                 value={effectiveQuantity}
                 onChange={(event) => handleQuantityInput(event.target.value)}
                 aria-live="polite"
@@ -1047,7 +1102,7 @@ export function VariantSelector({
             )}
             {isLayerTier && (
               <p className="max-w-[220px] text-[10px] font-medium leading-snug text-amber-800">
-                {LAYER_QTY_NOTE}
+                {LAYER_LIMIT_NOTE}
               </p>
             )}
             {incrementNote && (
