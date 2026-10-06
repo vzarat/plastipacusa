@@ -2,7 +2,7 @@ export const HALF_PALLET_QTY_NOTE =
   "Half Pallet is limited to 1 unit. Select 'Full Pallet' to order 2 or more pallets.";
 
 export const LAYER_QTY_NOTE =
-  "1 Layer option is limited to 1 unit. Select 'Full Pallet' for larger volumes.";
+  "1 Layer option is limited to 1 unit. Select 'Full Pallet' for higher volume.";
 
 export const BOX_QTY_NOTE =
   "16 boxes equal 1 Layer. Switch to '1 Layer' option for layer pricing.";

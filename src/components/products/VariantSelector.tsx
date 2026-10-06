@@ -1001,21 +1001,21 @@ export function VariantSelector({
 
       {/* Quantity and subtotal, directly above the action buttons */}
       <div className="order-3 border-t border-slate-100 pt-2 md:order-none">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <div className="flex items-center gap-2">
               <span className="text-xs text-slate-600 font-bold uppercase">
                 {t("products.quantity")} ({quantityNoun}):
               </span>
             </div>
 
-            <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+            <div className="inline-flex w-36 max-w-[140px] shrink-0 items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
               <button
                 type="button"
                 onClick={handleQuantityDecrease}
                 disabled={effectiveQuantity <= 1 || quantityLocked}
                 aria-label={`Remove 1 ${quantitySingular}`}
-                className="w-8 h-8 flex items-center justify-center text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 font-bold disabled:opacity-40 disabled:pointer-events-none disabled:hover:bg-transparent"
+                className="h-8 w-8 shrink-0 flex items-center justify-center text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 font-bold disabled:opacity-40 disabled:pointer-events-none disabled:hover:bg-transparent"
               >
                 -
               </button>
@@ -1028,37 +1028,47 @@ export function VariantSelector({
                 onChange={(event) => handleQuantityInput(event.target.value)}
                 aria-live="polite"
                 aria-label={`Quantity of ${quantitySingular}`}
-                className="w-12 border-0 bg-transparent text-center text-sm font-bold text-slate-900 tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className="min-w-0 w-8 flex-1 border-0 bg-transparent text-center text-sm font-bold text-slate-900 tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
               <button
                 type="button"
                 onClick={handleQuantityIncrease}
                 disabled={quantityLocked}
                 aria-label={`Add 1 ${quantitySingular}`}
-                className="w-8 h-8 flex items-center justify-center text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 font-bold disabled:opacity-40 disabled:pointer-events-none disabled:hover:bg-transparent"
+                className="h-8 w-8 shrink-0 flex items-center justify-center text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 font-bold disabled:opacity-40 disabled:pointer-events-none disabled:hover:bg-transparent"
               >
                 +
               </button>
             </div>
             {isHalfPalletTier && (
-              <p className="text-[10px] font-medium text-amber-800">{HALF_PALLET_QTY_NOTE}</p>
+              <p className="max-w-[220px] text-[10px] font-medium leading-snug text-amber-800">
+                {HALF_PALLET_QTY_NOTE}
+              </p>
             )}
             {isLayerTier && (
-              <p className="text-[10px] font-medium text-amber-800">{LAYER_QTY_NOTE}</p>
+              <p className="max-w-[220px] text-[10px] font-medium leading-snug text-amber-800">
+                {LAYER_QTY_NOTE}
+              </p>
             )}
             {incrementNote && (
-              <p className="text-[10px] font-medium text-slate-500">{incrementNote}</p>
+              <p className="max-w-[220px] text-[10px] font-medium leading-snug text-slate-500">
+                {incrementNote}
+              </p>
             )}
 
             {isSingleUnitTier && !isMachineFilm && quantity >= 15 && (
-              <p className="text-[10px] font-medium text-amber-800">{BOX_QTY_NOTE}</p>
+              <p className="max-w-[220px] text-[10px] font-medium leading-snug text-amber-800">
+                {BOX_QTY_NOTE}
+              </p>
             )}
             {tierHint && (
-              <p className="text-[10px] font-medium text-sky-700">{tierHint}</p>
+              <p className="max-w-[220px] text-[10px] font-medium leading-snug text-sky-700">
+                {tierHint}
+              </p>
             )}
           </div>
 
-          <div className="text-right">
+          <div className="shrink-0 self-start text-right">
             <span className="text-[10px] text-slate-400 uppercase block font-semibold">
               {t("products.subtotal")}
             </span>
