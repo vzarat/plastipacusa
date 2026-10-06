@@ -10,6 +10,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+  formatPackageWeightLbs,
+  packageTotalWeightLbs,
+} from "@/lib/package-weight";
 
 interface SpecsTableProps {
   variants?: ProductVariant[] | null;
@@ -118,9 +122,16 @@ export function SpecsTable({ variants }: SpecsTableProps) {
                       {safeLocaleNumber(v?.lengthFeet, " ft")}
                     </TableCell>
                     <TableCell className="text-slate-600">
-                      {v?.weightLbs != null && v.weightLbs !== ""
-                        ? `${v.weightLbs} lbs`
-                        : "—"}
+                      {formatPackageWeightLbs(
+                        packageTotalWeightLbs({
+                          rolls: Number(rolls) || 0,
+                          boxes: Number(v?.boxes_count ?? v?.boxesCount) || 0,
+                          rollWeightLbs: v?.rollWeightLbs,
+                          boxWeightLbs: v?.boxWeightLbs,
+                          palletWeightLbs: v?.palletWeightLbs,
+                          weightLbs: v?.weightLbs,
+                        })
+                      )}
                     </TableCell>
                     <TableCell className="text-slate-600 font-sans font-medium">
                       {rolls != null ? `${rolls} rolls` : "—"}

@@ -20,6 +20,7 @@ import {
   resolvePalletizingSpecs,
   usesCompact1880Pallets,
 } from "@/lib/palletizing";
+import { packageTotalWeightLbs } from "@/lib/package-weight";
 import {
   HAND_FULL_PALLET,
   MACHINE_FILM_IMAGE_URL,
@@ -223,6 +224,22 @@ function formatProduct(raw: any): ProductWithVariants {
           (boxesCount === 1 ? "1 BOX WITH 4 ROLLS" : `${boxesCount} BOXES = ${rollsCount} ROLLS`)
       );
       const variantPrice = parsePositivePrice(v.price_usd, v.priceUsd, v.price);
+      const productRollWeight = Number(raw.roll_weight_lbs ?? raw.rollWeightLbs) || 0;
+      const productPalletWeight = Number(raw.pallet_weight_lbs ?? raw.palletWeightLbs) || 0;
+      const rollWeightLbs = Number(v.roll_weight_lbs ?? v.rollWeightLbs) || productRollWeight;
+      const boxWeightLbs =
+        Number(v.box_weight_lbs ?? v.boxWeightLbs) ||
+        (rollWeightLbs > 0 ? rollWeightLbs * 4 : 0);
+      const palletWeightLbs =
+        Number(v.pallet_weight_lbs ?? v.palletWeightLbs) || productPalletWeight;
+      const totalWeight = packageTotalWeightLbs({
+        rolls: rollsCount,
+        boxes: boxesCount,
+        rollWeightLbs,
+        boxWeightLbs,
+        palletWeightLbs,
+        weightLbs: v.weight_lbs ?? v.weightLbs,
+      });
 
       return {
         id: String(v.id || v.sku || index),
@@ -239,10 +256,10 @@ function formatProduct(raw: any): ProductWithVariants {
         lengthFeet: Number(v.length_feet || v.lengthFeet || raw.length_feet || 1000),
         rollsPerBox: rollsCount,
         rollsPerPallet: Number(v.rolls_per_pallet || v.rollsPerPallet || 256),
-        weightLbs: String(v.weight_lbs || v.weightLbs || "12.00"),
-        rollWeightLbs: Number(v.roll_weight_lbs ?? v.rollWeightLbs ?? 0),
-        boxWeightLbs: Number(v.box_weight_lbs ?? v.boxWeightLbs ?? 0),
-        palletWeightLbs: Number(v.pallet_weight_lbs ?? v.palletWeightLbs ?? 0),
+        weightLbs: totalWeight != null ? String(totalWeight) : "",
+        rollWeightLbs,
+        boxWeightLbs,
+        palletWeightLbs,
         priceUsd: variantPrice !== null ? String(variantPrice) : "0",
         casePriceUsd: v.case_price_usd ? String(v.case_price_usd) : (v.casePriceUsd ? String(v.casePriceUsd) : null),
         palletPriceUsd: v.pallet_price_usd ? String(v.pallet_price_usd) : (v.palletPriceUsd ? String(v.palletPriceUsd) : null),
