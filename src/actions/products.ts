@@ -211,12 +211,18 @@ function formatProduct(raw: any): ProductWithVariants {
   const sortedVariants: ProductVariant[] = rawVariants
     .map((v: any, index: number) => {
       const rollsCount = resolveRollsCount(v);
-      const boxesCount = Number(
-        v.boxes_count ??
-        v.boxesCount ??
-        (v.title || v.package_size || v.packageSize || "").match(/(\d+)\s*BOX/i)?.[1] ??
-        (rollsCount <= 4 ? 1 : Math.round(rollsCount / 4))
-      );
+      const widthInches = String(v.width_inches || v.widthInches || raw.width_inches || "18.00");
+      const machineVariant =
+        Math.round(Number(widthInches) || 0) === 20 ||
+        String(raw.application || raw.type || raw.film_type || raw.filmType || "").toLowerCase().includes("machine");
+      const boxesCount = machineVariant
+        ? 0
+        : Number(
+            v.boxes_count ??
+            v.boxesCount ??
+            (v.title || v.package_size || v.packageSize || "").match(/(\d+)\s*BOX/i)?.[1] ??
+            (rollsCount <= 4 ? 1 : Math.round(rollsCount / 4))
+          );
       const variantTitle = String(
         v.title ||
           v.package_size ||
@@ -226,10 +232,18 @@ function formatProduct(raw: any): ProductWithVariants {
       const variantPrice = parsePositivePrice(v.price_usd, v.priceUsd, v.price);
       const productRollWeight = Number(raw.roll_weight_lbs ?? raw.rollWeightLbs) || 0;
       const productPalletWeight = Number(raw.pallet_weight_lbs ?? raw.palletWeightLbs) || 0;
+      const gauge = Number(v.gauge || raw.gauge || 60);
+      const lengthFeet = Number(v.length_feet || v.lengthFeet || raw.length_feet || 1000);
       const rollWeightLbs = Number(v.roll_weight_lbs ?? v.rollWeightLbs) || productRollWeight;
+      const storedBoxWeight = Number(v.box_weight_lbs ?? v.boxWeightLbs) || 0;
       const boxWeightLbs =
-        Number(v.box_weight_lbs ?? v.boxWeightLbs) ||
-        (rollWeightLbs > 0 ? rollWeightLbs * 4 : 0);
+        storedBoxWeight > 0
+          ? storedBoxWeight
+          : machineVariant
+            ? rollWeightLbs
+            : rollWeightLbs > 0
+              ? rollWeightLbs * 4
+              : 0;
       const palletWeightLbs =
         Number(v.pallet_weight_lbs ?? v.palletWeightLbs) || productPalletWeight;
       const totalWeight = packageTotalWeightLbs({
@@ -239,6 +253,10 @@ function formatProduct(raw: any): ProductWithVariants {
         boxWeightLbs,
         palletWeightLbs,
         weightLbs: v.weight_lbs ?? v.weightLbs,
+        machine: machineVariant,
+        widthInches,
+        gauge,
+        lengthFeet,
       });
 
       return {
@@ -251,9 +269,9 @@ function formatProduct(raw: any): ProductWithVariants {
         boxesCount,
         rolls_count: rollsCount,
         boxes_count: boxesCount,
-        widthInches: String(v.width_inches || v.widthInches || raw.width_inches || "18.00"),
-        gauge: Number(v.gauge || raw.gauge || 60),
-        lengthFeet: Number(v.length_feet || v.lengthFeet || raw.length_feet || 1000),
+        widthInches,
+        gauge,
+        lengthFeet,
         rollsPerBox: rollsCount,
         rollsPerPallet: Number(v.rolls_per_pallet || v.rollsPerPallet || 256),
         weightLbs: totalWeight != null ? String(totalWeight) : "",
@@ -360,12 +378,13 @@ function formatProduct(raw: any): ProductWithVariants {
         (label.includes("FULL PALLET") ||
           (palletizing.fullPalletRolls === 40 && (rolls === 40 || label.includes("40 ROLLS"))));
 
+      const machinePack = palletizing.fullPalletRolls === 40;
       if (isFullPalletLabel) {
-        const fullLabel = isGenesis
-          ? `40 ROLLS (FULL PALLET)`
+        const fullLabel = machinePack
+          ? "Full Pallet (40 Rolls / 2 Layers)"
           : HAND_FULL_PALLET.label;
-        const fullRolls = isGenesis ? 40 : HAND_FULL_PALLET.rolls;
-        const fullBoxes = isGenesis ? 40 : HAND_FULL_PALLET.boxes;
+        const fullRolls = machinePack ? 40 : HAND_FULL_PALLET.rolls;
+        const fullBoxes = machinePack ? 0 : HAND_FULL_PALLET.boxes;
         return {
           ...v,
           rollsPerBox: fullRolls,
@@ -382,7 +401,7 @@ function formatProduct(raw: any): ProductWithVariants {
       return {
         ...v,
         rollsPerPallet: palletizing.fullPalletRolls,
-        ...(isGenesis
+        ...(machinePack
           ? {
               boxes_count: 0,
               boxesCount: 0,
@@ -480,6 +499,7 @@ function formatProduct(raw: any): ProductWithVariants {
             price: parseFloat(v.priceUsd),
           };
         })
+        .filter((option) => option.rolls === 1 || option.rolls === 20 || option.rolls === 40)
         .sort((a, b) => a.rolls - b.rolls);
     } else if (productBasePrice !== null) {
       packageOptions = buildMachinePackageOptions({

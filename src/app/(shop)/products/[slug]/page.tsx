@@ -267,7 +267,7 @@ export default async function ProductDetailPage({
             gaugeLabel={gaugeDisplay}
             lengthLabel={lengthDisplay}
           />
-          <SpecsTable variants={variants} />
+          <SpecsTable product={product} variants={variants} />
         </section>
       </div>
     </div>

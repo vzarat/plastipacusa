@@ -322,10 +322,9 @@ function displayPackageSubtext(variant: any, isMachine: boolean): string {
   const rolls = Math.max(0, getRollsCount(variant));
   if (isMachine) {
     const tierKind = getPackageTierKind(variant, true);
-    const rollLabel = `${rolls} ${rolls === 1 ? "Roll" : "Rolls"}`;
-    if (tierKind === "fixed_half") return `${rollLabel} (1 layer)`;
-    if (tierKind === "full_pallet") return `${rollLabel} (2 layers)`;
-    return rollLabel;
+    if (tierKind === "fixed_half") return "20 Rolls included · 1 Layer";
+    if (tierKind === "full_pallet") return "40 Rolls included · 2 Layers";
+    return "1 Roll";
   }
 
   const boxes = getBoxesCount(variant, false);
@@ -381,6 +380,7 @@ export function VariantSelector({
               slug: product?.slug,
               name: product?.title || product?.name,
             });
+            if (isMachineFilm && rolls !== 1 && rolls !== 20 && rolls !== 40) return null;
             const label = isMachineFilm
               ? normalizeMachinePackageLabel(rolls, opt?.label)
               : opt?.label;
@@ -424,14 +424,10 @@ export function VariantSelector({
         .map((v: any) => {
           if (!isMachineFilm) return v;
           const rolls = getRollsCount(v);
-          const label = normalizeMachinePackageLabel(rolls, v.title || v.packageSize);
-          const normalizedRolls = label.startsWith("1 ROLL")
-            ? 1
-            : label.includes("20 ROLLS")
-              ? 20
-              : label.includes("40 ROLLS")
-                ? 40
-                : rolls;
+          const canonicalRolls = rolls === 1 || rolls === 20 || rolls === 40 ? rolls : 0;
+          if (!canonicalRolls) return null;
+          const label = normalizeMachinePackageLabel(canonicalRolls, v.title || v.packageSize);
+          const normalizedRolls = canonicalRolls;
           return {
             ...v,
             packageSize: label,
@@ -442,22 +438,24 @@ export function VariantSelector({
             boxesCount: 0,
           };
         })
-        .filter((v: any, index: number, arr: any[]) => {
-          if (!isMachineFilm) return true;
-          // Prefer canonical machine tiers; drop non 1/20/40 when those exist
-          const rolls = getRollsCount(v);
-          const hasCanonical = arr.some((x) => [1, 20, 40].includes(getRollsCount(x)));
-          if (hasCanonical && ![1, 20, 40].includes(rolls)) return false;
-          // Dedupe by roll count (keep first/cheapest already sorted upstream)
-          return arr.findIndex((x) => getRollsCount(x) === rolls) === index;
-        });
+        .filter(Boolean);
     })();
 
     if (!isMachineFilm) {
       const standardTiers = buildStandardHandTiers(product, mapped);
       return standardTiers.length > 0 ? standardTiers : mapped;
     }
-    return [...mapped].sort((a: any, b: any) => getRollsCount(a) - getRollsCount(b));
+
+    const machineTiers = mapped
+      .filter((variant: any) => [1, 20, 40].includes(getRollsCount(variant)))
+      .sort((a: any, b: any) => getRollsCount(a) - getRollsCount(b));
+    const seenRolls = new Set<number>();
+    return machineTiers.filter((variant: any) => {
+      const rolls = getRollsCount(variant);
+      if (seenRolls.has(rolls)) return false;
+      seenRolls.add(rolls);
+      return true;
+    });
   }, [product, isMachineFilm]);
 
   const addItem = useCartStore((state) => state.addItem);

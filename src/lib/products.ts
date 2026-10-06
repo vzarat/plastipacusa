@@ -10,6 +10,7 @@ export {
 } from "@/lib/palletizing";
 
 import type { PackageOption, ProductVariant, ProductWithVariants } from "@/types";
+import { MACHINE_FILM_WEIGHT_SPECS } from "@/lib/package-weight";
 
 /** Remote fallback when a product row has no image_url. Never stored in /public. */
 export const STRETCH_FILM_PLACEHOLDER =
@@ -41,6 +42,8 @@ export function isMachineFilm(product: {
   name?: string | null;
   title?: string | null;
   brand?: string | null;
+  filmType?: string | null;
+  category?: { name?: string | null } | string | null;
   widthInches?: number | string | null;
   width_inches?: number | string | null;
 } | null | undefined): boolean {
@@ -55,8 +58,12 @@ export function isMachineFilm(product: {
   );
   if (width === 20) return true;
 
+  const categoryName =
+    typeof product.category === "string" ? product.category : product.category?.name;
   const haystack = [
     product.categorySlug,
+    categoryName,
+    product.filmType,
     product.slug,
     product.name,
     product.title,
@@ -78,9 +85,9 @@ export function isMachineFilm(product: {
 
 /** Canonical machine film package tiers (no boxes). */
 export const MACHINE_PACKAGE_TIERS = [
-  { rolls: 1, label: "1 ROLL", suffix: "1R" },
-  { rolls: 20, label: "20 ROLLS (HALF PALLET)", suffix: "20R" },
-  { rolls: 40, label: "40 ROLLS (FULL PALLET)", suffix: "40R" },
+  { rolls: 1, label: "1 Roll (1 Roll)", suffix: "1R" },
+  { rolls: 20, label: "Half Pallet (20 Rolls / 1 Layer)", suffix: "20R" },
+  { rolls: 40, label: "Full Pallet (40 Rolls / 2 Layers)", suffix: "40R" },
 ] as const;
 
 /** Canonical hand film full-pallet pack-out (3 layers × 64 rolls). */
@@ -96,25 +103,14 @@ export function unitLabelForProduct(isMachine: boolean): string {
 
 export function normalizeMachinePackageLabel(rolls: number, label?: string): string {
   const upper = String(label || "").toUpperCase();
-  if (rolls === 1 || upper.includes("1 ROLL") || (upper.includes("1 BOX") && rolls <= 4)) {
-    return "1 ROLL";
+  if (rolls === 1 || upper.includes("1 ROLL")) {
+    return "1 Roll (1 Roll)";
   }
-  if (rolls === 20 || upper.includes("HALF PALLET") || upper.includes("20 ROLL")) {
-    return "20 ROLLS (HALF PALLET)";
+  if (rolls === 20 || upper.includes("20 ROLL")) {
+    return "Half Pallet (20 Rolls / 1 Layer)";
   }
-  if (
-    rolls === 40 ||
-    upper.includes("FULL PALLET") ||
-    upper.includes("40 ROLL") ||
-    rolls === 256 ||
-    rolls === 192
-  ) {
-    return "40 ROLLS (FULL PALLET)";
-  }
-  if (upper.includes("BOX")) {
-    // Strip box language for machine films
-    if (rolls <= 1) return "1 ROLL";
-    return `${rolls} ROLLS`;
+  if (rolls === 40 || upper.includes("40 ROLL")) {
+    return "Full Pallet (40 Rolls / 2 Layers)";
   }
   return label || `${rolls} ROLLS`;
 }
@@ -180,6 +176,9 @@ function buildGenesisMachineProduct(input: {
     price40: input.price40,
   }) as PackageOption[];
 
+  const weightSpec = MACHINE_FILM_WEIGHT_SPECS.find(
+    (row) => row.width === 20 && row.gauge === input.gauge && row.length === input.lengthFeet
+  );
   const variants: ProductVariant[] = packageOptions.map((opt) => ({
     id: `${input.baseSku}-${opt.rolls}-${isHp ? "hp" : "st"}`,
     productId: input.id,
@@ -195,10 +194,12 @@ function buildGenesisMachineProduct(input: {
     lengthFeet: input.lengthFeet,
     rollsPerBox: opt.rolls,
     rollsPerPallet: 40,
-    weightLbs: "0.00",
-    rollWeightLbs: 0,
-    boxWeightLbs: 0,
-    palletWeightLbs: 0,
+    weightLbs: weightSpec
+      ? String(opt.rolls === 40 ? weightSpec.full : opt.rolls === 20 ? weightSpec.half : weightSpec.roll)
+      : "0.00",
+    rollWeightLbs: weightSpec?.roll ?? 0,
+    boxWeightLbs: weightSpec?.roll ?? 0,
+    palletWeightLbs: weightSpec?.full ?? 0,
     priceUsd: String(opt.price),
     casePriceUsd: null,
     palletPriceUsd: null,

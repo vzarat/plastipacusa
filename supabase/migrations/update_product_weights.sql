@@ -102,3 +102,78 @@ BEGIN
     WHERE v.product_id = p.id;
   END IF;
 END $$;
+
+-- Automated machine film, 20" rolls. Half and full pallet include the 22.05 lb wooden pallet.
+-- 1 roll is the sellable unit, so box_weight_lbs stores that single-roll weight.
+
+UPDATE public.products AS p
+SET
+  roll_weight_lbs = spec.roll_lbs,
+  pallet_weight_lbs = spec.pallet_lbs
+FROM (
+  VALUES
+    ('stretch-film-20-x-51-ga-x-7000ft', 20::numeric, 51::numeric, 7000::numeric, 30.60::numeric, 1246.1::numeric),
+    ('stretch-film-20-x-51-ga-x-9000ft', 20::numeric, 51::numeric, 9000::numeric, 38.78::numeric, 1573.3::numeric),
+    ('stretch-film-20-x-70-ga-x-5000ft', 20::numeric, 70::numeric, 5000::numeric, 30.05::numeric, 1224.1::numeric),
+    ('stretch-film-20-x-80-ga-x-5000ft', 20::numeric, 80::numeric, 5000::numeric, 34.06::numeric, 1384.5::numeric)
+) AS spec(slug, width_in, gauge, length_ft, roll_lbs, pallet_lbs)
+WHERE p.slug = spec.slug
+   OR (
+     ROUND(p.width_inches::numeric) = spec.width_in
+     AND ROUND(p.gauge::numeric) = spec.gauge
+     AND ROUND(p.length_feet::numeric) = spec.length_ft
+   );
+
+UPDATE public.product_variants AS v
+SET
+  roll_weight_lbs = spec.roll_lbs,
+  box_weight_lbs = spec.roll_lbs,
+  pallet_weight_lbs = spec.pallet_lbs
+FROM public.products AS p
+JOIN (
+  VALUES
+    ('stretch-film-20-x-51-ga-x-7000ft', 20::numeric, 51::numeric, 7000::numeric, 30.60::numeric, 1246.1::numeric),
+    ('stretch-film-20-x-51-ga-x-9000ft', 20::numeric, 51::numeric, 9000::numeric, 38.78::numeric, 1573.3::numeric),
+    ('stretch-film-20-x-70-ga-x-5000ft', 20::numeric, 70::numeric, 5000::numeric, 30.05::numeric, 1224.1::numeric),
+    ('stretch-film-20-x-80-ga-x-5000ft', 20::numeric, 80::numeric, 5000::numeric, 34.06::numeric, 1384.5::numeric)
+) AS spec(slug, width_in, gauge, length_ft, roll_lbs, pallet_lbs)
+  ON p.slug = spec.slug
+  OR (
+    ROUND(p.width_inches::numeric) = spec.width_in
+    AND ROUND(p.gauge::numeric) = spec.gauge
+    AND ROUND(p.length_feet::numeric) = spec.length_ft
+  )
+WHERE v.product_id = p.id;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'product_variants'
+      AND column_name = 'weight_lbs'
+  ) THEN
+    UPDATE public.product_variants AS v
+    SET weight_lbs = CASE
+      WHEN COALESCE(v.rolls_count, 0) >= 40 THEN spec.pallet_lbs
+      WHEN COALESCE(v.rolls_count, 0) = 20 THEN ROUND(spec.roll_lbs * 20 + 22.05, 1)
+      ELSE spec.roll_lbs
+    END
+    FROM public.products AS p
+    JOIN (
+      VALUES
+        ('stretch-film-20-x-51-ga-x-7000ft', 20::numeric, 51::numeric, 7000::numeric, 30.60::numeric, 1246.1::numeric),
+        ('stretch-film-20-x-51-ga-x-9000ft', 20::numeric, 51::numeric, 9000::numeric, 38.78::numeric, 1573.3::numeric),
+        ('stretch-film-20-x-70-ga-x-5000ft', 20::numeric, 70::numeric, 5000::numeric, 30.05::numeric, 1224.1::numeric),
+        ('stretch-film-20-x-80-ga-x-5000ft', 20::numeric, 80::numeric, 5000::numeric, 34.06::numeric, 1384.5::numeric)
+    ) AS spec(slug, width_in, gauge, length_ft, roll_lbs, pallet_lbs)
+      ON p.slug = spec.slug
+      OR (
+        ROUND(p.width_inches::numeric) = spec.width_in
+        AND ROUND(p.gauge::numeric) = spec.gauge
+        AND ROUND(p.length_feet::numeric) = spec.length_ft
+      )
+    WHERE v.product_id = p.id;
+  END IF;
+END $$;

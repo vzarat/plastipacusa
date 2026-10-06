@@ -14,9 +14,36 @@ import {
   formatPackageWeightLbs,
   packageTotalWeightLbs,
 } from "@/lib/package-weight";
+import { isMachineFilm } from "@/lib/products";
+
+const MACHINE_MATRIX_TIERS = [
+  { rolls: 1, label: "1 Roll (1 Roll)" },
+  { rolls: 20, label: "Half Pallet (20 Rolls / 1 Layer)" },
+  { rolls: 40, label: "Full Pallet (40 Rolls / 2 Layers)" },
+] as const;
 
 interface SpecsTableProps {
   variants?: ProductVariant[] | null;
+  product?: {
+    application?: string | null;
+    type?: string | null;
+    categorySlug?: string | null;
+    slug?: string | null;
+    name?: string | null;
+    title?: string | null;
+    brand?: string | null;
+    widthInches?: number | string | null;
+    width_inches?: number | string | null;
+    gauge?: number | null;
+    length_feet?: number | null;
+    lengthFeet?: number | null;
+    filmType?: string | null;
+    packageOptions?: Array<{
+      rolls: number;
+      sku: string;
+      price: number;
+    }> | null;
+  } | null;
 }
 
 function safeNumberDisplay(value: unknown, suffix = ""): string {
@@ -25,6 +52,64 @@ function safeNumberDisplay(value: unknown, suffix = ""): string {
     typeof value === "number" ? value : parseFloat(String(value).replace(/[^\d.-]/g, ""));
   if (!Number.isFinite(n)) return "—";
   return `${n}${suffix}`;
+}
+
+function variantRollCount(variant: ProductVariant): number {
+  const explicit = Number(variant.rolls_count ?? variant.rollsCount ?? variant.rollsPerBox);
+  return Number.isFinite(explicit) && explicit > 0 ? explicit : 0;
+}
+
+function firstPositive(values: Array<number | null | undefined>): number {
+  for (const value of values) {
+    const amount = Number(value);
+    if (Number.isFinite(amount) && amount > 0) return amount;
+  }
+  return 0;
+}
+
+function machineMatrixRows(
+  variants: ProductVariant[],
+  product: SpecsTableProps["product"]
+): ProductVariant[] {
+  const rollWeight = firstPositive(variants.map((variant) => variant.rollWeightLbs));
+  const palletWeight = firstPositive(variants.map((variant) => variant.palletWeightLbs));
+  const sample = variants[0];
+
+  return MACHINE_MATRIX_TIERS.map((tier) => {
+    const match =
+      variants.find(
+        (variant) =>
+          variantRollCount(variant) === tier.rolls && Number(variant.priceUsd) > 0
+      ) ||
+      variants.find((variant) => variantRollCount(variant) === tier.rolls) ||
+      null;
+    const option = product?.packageOptions?.find((entry) => entry.rolls === tier.rolls);
+    const price = Number(match?.priceUsd) > 0 ? match?.priceUsd : option?.price;
+    return {
+      ...(match || sample),
+      id: match?.id || option?.sku || `machine-${tier.rolls}`,
+      sku: match?.sku || option?.sku || "",
+      title: tier.label,
+      packageSize: tier.label,
+      rolls_count: tier.rolls,
+      rollsCount: tier.rolls,
+      rollsPerBox: tier.rolls,
+      boxes_count: 0,
+      boxesCount: 0,
+      rollsPerPallet: 40,
+      rollWeightLbs: match?.rollWeightLbs || rollWeight,
+      boxWeightLbs: match?.rollWeightLbs || rollWeight,
+      palletWeightLbs: match?.palletWeightLbs || palletWeight,
+      widthInches: String(
+        match?.widthInches || product?.widthInches || product?.width_inches || sample?.widthInches || ""
+      ),
+      gauge: Number(match?.gauge ?? product?.gauge ?? sample?.gauge ?? 0),
+      lengthFeet: Number(
+        match?.lengthFeet ?? product?.lengthFeet ?? product?.length_feet ?? sample?.lengthFeet ?? 0
+      ),
+      priceUsd: price != null && Number(price) > 0 ? String(price) : "",
+    } as ProductVariant;
+  });
 }
 
 function packageTierLabel(variant: ProductVariant): string {
@@ -56,8 +141,9 @@ function safeLocaleNumber(value: unknown, suffix = ""): string {
   return `${n.toLocaleString()}${suffix}`;
 }
 
-export function SpecsTable({ variants }: SpecsTableProps) {
-  const rows = Array.isArray(variants) ? variants.filter(Boolean) : [];
+export function SpecsTable({ variants, product }: SpecsTableProps) {
+  const source = Array.isArray(variants) ? variants.filter(Boolean) : [];
+  const rows = isMachineFilm(product) ? machineMatrixRows(source, product) : source;
 
   return (
     <div className="space-y-4">
@@ -130,6 +216,10 @@ export function SpecsTable({ variants }: SpecsTableProps) {
                           boxWeightLbs: v?.boxWeightLbs,
                           palletWeightLbs: v?.palletWeightLbs,
                           weightLbs: v?.weightLbs,
+                          machine: isMachineFilm(product),
+                          widthInches: v?.widthInches,
+                          gauge: v?.gauge,
+                          lengthFeet: v?.lengthFeet,
                         })
                       )}
                     </TableCell>
@@ -142,7 +232,9 @@ export function SpecsTable({ variants }: SpecsTableProps) {
                         : "—"}
                     </TableCell>
                     <TableCell className="text-right font-sans font-black text-slate-900 text-sm">
-                      {formatCurrency(v?.priceUsd ?? (v as any)?.price ?? 0)}
+                      {Number(v?.priceUsd ?? (v as { price?: number }).price) > 0
+                        ? formatCurrency(v?.priceUsd ?? (v as { price?: number }).price ?? 0)
+                        : "—"}
                     </TableCell>
                   </TableRow>
                 );
