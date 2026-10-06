@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, MapPin, Plus, Star, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -11,6 +11,10 @@ import {
 } from "@/actions/shipping-addresses";
 import { Button } from "@/components/ui/button";
 import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
+import { ShippingEligibilityAlert } from "@/components/checkout/ShippingEligibilityAlert";
+import { useCartStore } from "@/lib/store/useCartStore";
+import { countCartBoxes } from "@/lib/shipping-method";
+import { evalShippingEligibility } from "@/lib/shippingRules";
 import {
   validateShippingAddressInput,
   type SavedShippingAddress,
@@ -41,12 +45,29 @@ export function CheckoutAddressStep({
   onProceed,
 }: CheckoutAddressStepProps) {
   const { selectedAddress, setSelectedAddress } = useCheckoutState();
+  const cartItems = useCartStore((state) => state.items);
+  const cartBoxes = useMemo(() => countCartBoxes(cartItems), [cartItems]);
+  const selectedEligibility = useMemo(
+    () =>
+      evalShippingEligibility(
+        selectedAddress?.postalCode || "",
+        selectedAddress?.city || "",
+        selectedAddress?.state || "",
+        cartBoxes
+      ),
+    [selectedAddress, cartBoxes]
+  );
   const [addresses, setAddresses] = useState<SavedShippingAddress[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<ShippingAddressInput>(EMPTY_FORM);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const draftEligibility = useMemo(
+    () =>
+      evalShippingEligibility(form.postalCode, form.city, form.state, cartBoxes),
+    [form.postalCode, form.city, form.state, cartBoxes]
+  );
 
   const load = async () => {
     setLoading(true);
@@ -292,6 +313,8 @@ export function CheckoutAddressStep({
         </ul>
       )}
 
+      {selectedAddress && <ShippingEligibilityAlert eligibility={selectedEligibility} />}
+
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
         <Button type="button" variant="outline" className="h-12 md:h-10" onClick={onBack}>
           Back to Cart
@@ -430,6 +453,9 @@ export function CheckoutAddressStep({
                   />
                 </label>
               </div>
+              {(form.city.trim() || form.postalCode.trim()) && (
+                <ShippingEligibilityAlert eligibility={draftEligibility} />
+              )}
               <label className="flex items-center gap-2 text-sm text-slate-700">
                 <input
                   type="checkbox"

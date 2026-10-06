@@ -1,4 +1,5 @@
 import { roundMoney } from "@/lib/sales-tax";
+import { evalShippingEligibility } from "@/lib/shippingRules";
 
 export type DeliveryMethodId =
   | "ground"
@@ -239,36 +240,21 @@ export function estimateShippingCost(
 
 export function buildShippingOffer(input: ShippingDestination): ShippingOffer {
   const boxes = Math.max(0, input.boxCount || 0);
-  const destination = {
-    city: input.city,
-    state: input.state,
-    postalCode: input.postalCode,
-  };
-
-  if (isRioGrandeValley(destination) && boxes >= 1) {
-    return {
-      options: [methodById("rgv-express")],
-      defaultMethodId: "rgv-express",
-    };
-  }
-
-  if (isHoustonArea(destination) && boxes >= HALF_PALLET_BOXES) {
-    return {
-      options: [methodById("houston-friday")],
-      defaultMethodId: "houston-friday",
-    };
-  }
-
-  if (isSanAntonioArea(destination) && boxes >= HALF_PALLET_BOXES) {
-    return {
-      options: [methodById("san-antonio-tuesday")],
-      defaultMethodId: "san-antonio-tuesday",
-    };
-  }
+  const eligibility = evalShippingEligibility(
+    input.postalCode || "",
+    input.city || "",
+    input.state || "",
+    boxes
+  );
 
   return {
-    options: [methodById("ground"), methodById("freight")],
-    defaultMethodId: "ground",
+    options: eligibility.options.map((option) => ({
+      id: option.id,
+      label: option.label,
+      description: option.description,
+      scheduleNote: option.scheduleNote,
+    })),
+    defaultMethodId: eligibility.defaultMethodId,
   };
 }
 

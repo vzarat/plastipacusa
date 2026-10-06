@@ -9,7 +9,8 @@ import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
 import { TaxExemptionInformationButton } from "@/components/checkout/TaxExemptionModal";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { calculateOrderTotal } from "@/lib/sales-tax";
-import { deliveryMethodLabel } from "@/lib/shipping-method";
+import { countCartBoxes } from "@/lib/shipping-method";
+import { labelForShippingMethod } from "@/lib/shippingRules";
 import { formatCurrency } from "@/lib/utils";
 import type { CheckoutShippingAddress } from "@/lib/shipping-address";
 
@@ -41,6 +42,14 @@ export function CheckoutPaymentStep({
   const discountAmount = useCartStore((state) => state.getDiscountAmount());
   const appliedCoupon = useCartStore((state) => state.appliedCoupon);
   const { selectedAddress, deliveryMethod, setTaxExemptRequested } = useCheckoutState();
+  const boxCount = countCartBoxes(items);
+  const shippingLabel = labelForShippingMethod(
+    deliveryMethod,
+    selectedAddress?.postalCode || shipping.postalCode,
+    selectedAddress?.city || shipping.city,
+    selectedAddress?.state || shipping.state,
+    boxCount
+  );
   const quote = calculateOrderTotal({
     subtotal,
     discount: discountAmount,
@@ -168,7 +177,7 @@ export function CheckoutPaymentStep({
             </button>
           </div>
           <p className="mt-2 text-sm font-bold text-slate-900">
-            {deliveryMethodLabel(deliveryMethod)}
+            {shippingLabel}
           </p>
           <p className="mt-1 text-sm text-slate-600">
             {quote.shipping > 0 ? formatCurrency(quote.shipping) : "FREE"}

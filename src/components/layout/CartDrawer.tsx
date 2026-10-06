@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCartStore } from "@/lib/store/useCartStore";
@@ -20,6 +20,13 @@ import { Badge } from "@/components/ui/badge";
 import { DirectCheckoutButton } from "@/components/checkout/DirectCheckoutButton";
 import { CheckoutAuthRequiredModal } from "@/components/checkout/CheckoutAuthRequiredModal";
 import { PromoCodeInput } from "@/components/cart/PromoCodeInput";
+import { ShippingEligibilityAlert } from "@/components/checkout/ShippingEligibilityAlert";
+import {
+  readCheckoutShipping,
+  type CheckoutShippingAddress,
+} from "@/lib/shipping-address";
+import { countCartBoxes } from "@/lib/shipping-method";
+import { evalShippingEligibility } from "@/lib/shippingRules";
 import { createClient } from "@/lib/supabase/client";
 
 export function CartDrawer() {
@@ -40,9 +47,26 @@ export function CartDrawer() {
     getTotalWeight,
   } = useCartStore();
 
+  const [savedShipping, setSavedShipping] = useState<CheckoutShippingAddress | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isOpeningCheckout, setIsOpeningCheckout] = useState(false);
   const [awaitingCheckout, setAwaitingCheckout] = useState(false);
+
+  useEffect(() => {
+    if (!isDrawerOpen) return;
+    setSavedShipping(readCheckoutShipping());
+  }, [isDrawerOpen, items]);
+
+  const cartBoxes = useMemo(() => countCartBoxes(items), [items]);
+  const drawerEligibility = useMemo(() => {
+    if (!savedShipping?.postalCode && !savedShipping?.city) return null;
+    return evalShippingEligibility(
+      savedShipping.postalCode,
+      savedShipping.city,
+      savedShipping.state,
+      cartBoxes
+    );
+  }, [savedShipping, cartBoxes]);
 
   const goToCheckoutIfAuthenticated = async () => {
     if (isOpeningCheckout) return;
@@ -261,6 +285,10 @@ export function CartDrawer() {
         {items.length > 0 && (
           <div className="p-6 border-t border-slate-100 bg-slate-50/60 space-y-4 shrink-0">
             <PromoCodeInput compact />
+
+            {drawerEligibility && (
+              <ShippingEligibilityAlert eligibility={drawerEligibility} />
+            )}
 
             <div className="space-y-2 text-xs">
               <div className="flex justify-between text-slate-500">

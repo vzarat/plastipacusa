@@ -25,7 +25,8 @@ import { useCartStore } from "@/lib/store/useCartStore";
 import { calculateOrderTotal } from "@/lib/sales-tax";
 import { formatCurrency } from "@/lib/utils";
 import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
-import { deliveryMethodLabel } from "@/lib/shipping-method";
+import { countCartBoxes } from "@/lib/shipping-method";
+import { labelForShippingMethod } from "@/lib/shippingRules";
 
 const TEST_CARDS = [
   {
@@ -322,7 +323,13 @@ export function StripeEmbeddedCheckout({
         subtotal: quote.subtotal,
         discountAmount: quote.discount,
         shippingAmount: quote.shipping,
-        shippingMethod: deliveryMethodLabel(deliveryMethod),
+        shippingMethod: labelForShippingMethod(
+          deliveryMethod,
+          selectedAddress?.postalCode || shipping.postalCode,
+          selectedAddress?.city || shipping.city,
+          selectedAddress?.state || shipping.state,
+          countCartBoxes(items)
+        ),
         shippingAddressId: selectedAddress?.id,
         taxExemptRequested,
         lineItems: items.map((item) => ({

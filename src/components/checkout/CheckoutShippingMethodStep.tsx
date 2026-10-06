@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency } from "@/lib/utils";
+import { ShippingEligibilityAlert } from "@/components/checkout/ShippingEligibilityAlert";
 import {
   WAREHOUSE_ORIGIN,
   activeShippingMethod,
@@ -18,6 +19,7 @@ import {
   type DeliveryMethodId,
   type ShippingSchedule,
 } from "@/lib/shipping-method";
+import { evalShippingEligibility } from "@/lib/shippingRules";
 
 const fieldClass =
   "h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 md:h-auto md:py-2.5";
@@ -77,6 +79,16 @@ export function CheckoutShippingMethodStep({
         weightLbs: totalWeight,
       }),
     [selectedAddress, boxCount, totalWeight]
+  );
+  const shippingEligibility = useMemo(
+    () =>
+      evalShippingEligibility(
+        selectedAddress?.postalCode || "",
+        selectedAddress?.city || "",
+        selectedAddress?.state || "",
+        boxCount
+      ),
+    [selectedAddress, boxCount]
   );
   const activeMethod = activeShippingMethod(deliveryMethod, shippingOffer);
 
@@ -197,6 +209,8 @@ export function CheckoutShippingMethodStep({
         </div>
       </section>
 
+      <ShippingEligibilityAlert eligibility={shippingEligibility} />
+
       <section className="space-y-3">
         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
           Delivery method
@@ -227,7 +241,7 @@ export function CheckoutShippingMethodStep({
                         {method.label}
                       </span>
                       <span className="text-sm font-black text-slate-900">
-                        {cost <= 0 ? "FREE" : formatCurrency(cost)}
+                        {formatCurrency(cost)}
                       </span>
                     </span>
                     <span className="mt-1 block text-xs text-slate-500">
@@ -249,7 +263,7 @@ export function CheckoutShippingMethodStep({
       <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm">
         <span className="font-semibold text-slate-600">Estimated shipping</span>
         <span className="font-black text-slate-900">
-          {shippingCost <= 0 ? "FREE" : formatCurrency(shippingCost)}
+          {formatCurrency(shippingCost)}
         </span>
       </div>
 
