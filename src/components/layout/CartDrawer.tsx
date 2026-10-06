@@ -27,6 +27,7 @@ import {
 } from "@/lib/shipping-address";
 import { countCartBoxes } from "@/lib/shipping-method";
 import { evalShippingEligibility } from "@/lib/shippingRules";
+import { calculateOrderTotal } from "@/lib/sales-tax";
 import { createClient } from "@/lib/supabase/client";
 
 export function CartDrawer() {
@@ -42,7 +43,6 @@ export function CartDrawer() {
     clearCart,
     getSubtotal,
     getDiscountAmount,
-    getDiscountedTotal,
     appliedCoupon,
     getTotalWeight,
   } = useCartStore();
@@ -139,7 +139,12 @@ export function CartDrawer() {
 
   const subtotal = getSubtotal();
   const discountAmount = getDiscountAmount();
-  const discountedTotal = getDiscountedTotal();
+  const quote = calculateOrderTotal({
+    subtotal,
+    discount: discountAmount,
+    shipping: 0,
+  });
+  const discountedTotal = quote.total;
   const totalWeight = getTotalWeight();
 
   return (
@@ -324,14 +329,20 @@ export function CartDrawer() {
                   </div>
                 </>
               )}
+              <div className="flex justify-between text-slate-600">
+                <span>Estimated Tax ({(quote.taxRate * 100).toFixed(2)}%)</span>
+                <span className="font-bold text-slate-800">
+                  {formatCurrency(quote.tax)}
+                </span>
+              </div>
               <div className="flex justify-between text-sm font-bold text-slate-800 pt-1 border-t border-slate-200/80">
                 <span>Total</span>
                 <span className="text-xl font-black text-slate-900">
-                  {formatCurrency(discountedTotal)}
+                  {formatCurrency(quote.total)}
                 </span>
               </div>
               <p className="text-[10px] text-slate-400">
-                Shipping & taxes calculated at checkout
+                Shipping calculated at checkout
               </p>
             </div>
 

@@ -22,7 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { TaxExemptionInformationButton } from "@/components/checkout/TaxExemptionModal";
 import { useCartStore } from "@/lib/store/useCartStore";
-import { calculateOrderTotal, roundMoney } from "@/lib/sales-tax";
+import { calculateOrderTotal } from "@/lib/sales-tax";
 import { formatCurrency } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useCheckoutInactivity } from "@/hooks/useCheckoutInactivity";
@@ -180,10 +180,7 @@ function CheckoutPageInner() {
     discount: discountAmount,
     shipping: shippingEstimate,
   });
-  const showTax = step === 4;
-  const total = showTax
-    ? quote.total
-    : roundMoney(quote.subtotal - quote.discount + quote.shipping);
+  const total = quote.total;
 
   const goToStep = (next: CheckoutStepId) => {
     if (next > furthestStep) return;
@@ -455,35 +452,35 @@ function CheckoutPageInner() {
                 </span>
               </div>
             )}
-            {showTax && (
-              <>
-                {taxExemptRequested && (
-                  <p className="text-xs font-semibold text-emerald-700">
-                    Tax exemption requested. Tax remains until verification.
-                  </p>
-                )}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-slate-600">
-                    <span>Estimated Tax</span>
-                    <span className="font-semibold text-slate-800">
-                      {formatCurrency(quote.tax)}
-                    </span>
-                  </div>
-                  <TaxExemptionInformationButton
-                    companyName={selectedAddress?.companyName}
-                    registrationState={selectedAddress?.state}
-                    customerEmail={checkoutEmail}
-                    customerName={selectedAddress?.fullName}
-                    shippingSummary={
-                      selectedAddress
-                        ? `${selectedAddress.city}, ${selectedAddress.state} ${selectedAddress.postalCode}`
-                        : undefined
-                    }
-                    onSubmitted={() => setTaxExemptRequested(true)}
-                  />
-                </div>
-              </>
-            )}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-slate-600">
+                <span>
+                  Estimated Tax ({(quote.taxRate * 100).toFixed(2)}%)
+                </span>
+                <span className="font-semibold text-slate-800">
+                  {formatCurrency(quote.tax)}
+                </span>
+              </div>
+              {step === 4 && taxExemptRequested && (
+                <p className="text-xs font-semibold text-emerald-700">
+                  Tax exemption requested. Tax remains until verification.
+                </p>
+              )}
+              {step === 4 && (
+                <TaxExemptionInformationButton
+                  companyName={selectedAddress?.companyName}
+                  registrationState={selectedAddress?.state}
+                  customerEmail={checkoutEmail}
+                  customerName={selectedAddress?.fullName}
+                  shippingSummary={
+                    selectedAddress
+                      ? `${selectedAddress.city}, ${selectedAddress.state} ${selectedAddress.postalCode}`
+                      : undefined
+                  }
+                  onSubmitted={() => setTaxExemptRequested(true)}
+                />
+              )}
+            </div>
             <div className="flex items-center justify-between text-lg font-black text-slate-900">
               <span>Total</span>
               <span>{formatCurrency(total)}</span>

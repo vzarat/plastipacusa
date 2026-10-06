@@ -138,9 +138,10 @@ export async function createOrderFromCheckout(
 
     // Prefer Stripe-verified amount when cart was cleared after redirect.
     const cartTotal = (cartItems || []).reduce((sum: number, item: any) => {
-      const quantity = Number(item.quantity || 1);
-      const unitPrice = Number(item.totalPrice ?? item.unitPrice ?? 0);
-      return sum + unitPrice * quantity;
+      const quantity = Math.max(1, Number(item.quantity || 1));
+      const lineTotal = Number(item.totalPrice);
+      if (Number.isFinite(lineTotal) && lineTotal > 0) return sum + lineTotal;
+      return sum + Number(item.unitPrice || 0) * quantity;
     }, 0);
 
     const chargedUsd = roundMoney(
