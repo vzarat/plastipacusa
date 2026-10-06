@@ -79,7 +79,7 @@ function listPrice(product: ProductWithVariants): number {
   const start = Number(product.startingPrice);
   if (Number.isFinite(start) && start > 0) return start;
   const prices = (product.variants || [])
-    .map((variant) => Number(variant.priceUsd ?? variant.price))
+    .map((variant) => Number(variant.priceUsd))
     .filter((value) => Number.isFinite(value) && value > 0);
   if (prices.length > 0) return Math.min(...prices);
   return Number.POSITIVE_INFINITY;
