@@ -341,6 +341,7 @@ export function StripeEmbeddedCheckout({
           rollsPerBox: item.rollsPerBox,
           totalBoxes: item.totalBoxes,
           application: item.application,
+          tierType: item.tierType,
         })),
         shipping,
       });

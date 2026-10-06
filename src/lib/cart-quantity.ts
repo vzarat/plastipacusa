@@ -1,11 +1,14 @@
 export const HALF_PALLET_QTY_NOTE =
-  "Half Pallets are limited to 1 unit per order. Switch tier to Full Pallet to order higher volumes.";
+  "Half Pallet is limited to 1 unit. Select 'Full Pallet' to order 2 or more pallets.";
 
 export const LAYER_QTY_NOTE =
-  "1 Layer option is limited to 1 unit. Select Full Pallet for larger orders.";
+  "1 Layer option is limited to 1 unit. Select 'Full Pallet' for larger volumes.";
 
 export const BOX_QTY_NOTE =
-  "16 boxes equal 1 Layer. Please select the '1 Layer' tier option.";
+  "16 boxes equal 1 Layer. Switch to '1 Layer' option for layer pricing.";
+
+export const TIER_MAX_ONE_WARNING =
+  "Maximum 1 unit allowed for Half Pallet / Layer tiers. Please select Full Pallet for higher quantities.";
 
 export const HAND_BOX_MAX_QUANTITY = 15;
 
@@ -17,9 +20,17 @@ export interface CartPackageInput {
   pricingTier?: string | null;
   rollsPerBox?: number | null;
   totalBoxes?: number | null;
+  tierType?: string | null;
+  tier_type?: string | null;
 }
 
 export function cartPackageKind(item: CartPackageInput): CartPackageKind {
+  const tier = String(item.tierType || item.tier_type || "").toLowerCase();
+  if (tier === "half_pallet" || tier === "fixed_half" || tier === "half") return "half";
+  if (tier === "layer" || tier === "fixed_mid") return "layer";
+  if (tier === "box" || tier === "single_unit") return "box";
+  if (tier === "full_pallet" || tier === "full") return "full";
+
   const label = `${item.packageSize || ""} ${item.pricingTier || ""}`.toUpperCase();
   const rolls = Number(item.rollsPerBox) || 0;
   const boxes = Number(item.totalBoxes) || 0;
@@ -48,11 +59,8 @@ export function clampCartQuantity(
   if (!Number.isFinite(quantity) || quantity < 1) {
     return { quantity: 1, notice: null };
   }
-  if (kind === "half" && quantity > 1) {
-    return { quantity: 1, notice: HALF_PALLET_QTY_NOTE };
-  }
-  if (kind === "layer" && quantity > 1) {
-    return { quantity: 1, notice: LAYER_QTY_NOTE };
+  if ((kind === "half" || kind === "layer") && quantity > 1) {
+    return { quantity: 1, notice: TIER_MAX_ONE_WARNING };
   }
   if (kind === "box" && quantity > HAND_BOX_MAX_QUANTITY) {
     return { quantity: HAND_BOX_MAX_QUANTITY, notice: BOX_QTY_NOTE };
@@ -68,8 +76,15 @@ export function cartQuantityNote(item: CartPackageInput, quantity: number): stri
   return null;
 }
 
-export function canIncreaseCartQuantity(item: CartPackageInput, _quantity: number): boolean {
+export function cartQuantityMax(item: CartPackageInput): number | undefined {
   const kind = cartPackageKind(item);
-  if (kind === "half" || kind === "layer") return false;
+  if (kind === "half" || kind === "layer") return 1;
+  if (kind === "box") return HAND_BOX_MAX_QUANTITY;
+  return undefined;
+}
+
+export function canIncreaseCartQuantity(item: CartPackageInput, quantity: number): boolean {
+  const kind = cartPackageKind(item);
+  if ((kind === "half" || kind === "layer") && quantity >= 1) return false;
   return true;
 }

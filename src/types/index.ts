@@ -111,6 +111,8 @@ export interface CartItem {
   rollsPerPallet: number;
   weightLbs: string;
   pricingTier: string;
+  /** half_pallet | layer | box | full_pallet */
+  tierType?: string;
   unitPrice: number;
   quantity: number; // number of packages ordered
   totalPrice: number;

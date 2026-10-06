@@ -27,6 +27,7 @@ export interface CreatePaymentIntentOptions {
     rollsPerBox?: number;
     totalBoxes?: number;
     application?: string;
+    tierType?: string;
   }>;
   shipping?: {
     fullName?: string;
@@ -68,6 +69,7 @@ export async function createPaymentIntent(
           rollsPerBox: item.rollsPerBox,
           totalBoxes: item.totalBoxes,
           application: item.application,
+          tierType: item.tierType,
         },
         Number(item.quantity || 1)
       ).quantity;

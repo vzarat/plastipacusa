@@ -21,6 +21,7 @@ function applyPackageQuantity<T extends CartPackageInput>(
 
 function notifyQuantityLimit(notice: string | null) {
   if (!notice || typeof window === "undefined") return;
+  console.warn(notice);
   toast.error(notice);
 }
 
@@ -31,6 +32,7 @@ interface CartState {
   addItem: (item: Omit<CartItem, "id" | "totalPrice">) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
+  increaseQuantity: (id: string) => void;
   clearCart: () => void;
   openDrawer: () => void;
   closeDrawer: () => void;
@@ -69,6 +71,7 @@ export const useCartStore = create<CartState>()(
           const packageRolls = machinePackageRolls(existingItem);
           updatedItems[existingIndex] = {
             ...existingItem,
+            tierType: itemData.tierType || existingItem.tierType,
             quantity: newQty,
             totalRolls: packageRolls > 0 ? packageRolls * newQty : existingItem.totalRolls,
             totalPrice: Number((newQty * existingItem.unitPrice).toFixed(2)),
@@ -120,6 +123,12 @@ export const useCartStore = create<CartState>()(
             };
           }),
         }));
+      },
+
+      increaseQuantity: (id) => {
+        const current = get().items.find((item) => item.id === id);
+        if (!current) return;
+        get().updateQuantity(id, current.quantity + 1);
       },
 
       clearCart: () => {

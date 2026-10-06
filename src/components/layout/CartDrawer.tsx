@@ -27,7 +27,11 @@ import {
 } from "@/lib/shipping-address";
 import { countCartBoxes } from "@/lib/shipping-method";
 import { evalShippingEligibility } from "@/lib/shippingRules";
-import { canIncreaseCartQuantity, cartQuantityNote } from "@/lib/cart-quantity";
+import {
+  canIncreaseCartQuantity,
+  cartQuantityMax,
+  cartQuantityNote,
+} from "@/lib/cart-quantity";
 import { calculateOrderTotal } from "@/lib/sales-tax";
 import { createClient } from "@/lib/supabase/client";
 
@@ -41,6 +45,7 @@ export function CartDrawer() {
     closeDrawer,
     removeItem,
     updateQuantity,
+    increaseQuantity,
     clearCart,
     getSubtotal,
     getDiscountAmount,
@@ -266,12 +271,23 @@ export function CartDrawer() {
                     >
                       <Minus className="w-3 h-3" />
                     </button>
-                    <span className="text-xs font-bold text-slate-900 w-6 text-center">
-                      {item.quantity}
-                    </span>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      max={cartQuantityMax(item)}
+                      value={item.quantity}
+                      onChange={(event) => {
+                        const next = Math.floor(Number(event.target.value));
+                        if (!Number.isFinite(next)) return;
+                        updateQuantity(item.id, next);
+                      }}
+                      aria-label={`Quantity for ${item.productName}`}
+                      className="w-8 border-0 bg-transparent text-center text-xs font-bold text-slate-900 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
                     <button
                       type="button"
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      onClick={() => increaseQuantity(item.id)}
                       disabled={!canIncreaseCartQuantity(item, item.quantity)}
                       className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                     >

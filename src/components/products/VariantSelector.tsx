@@ -20,6 +20,11 @@ import {
   normalizeMachinePackageLabel,
   unitLabelForProduct,
 } from "@/lib/products";
+import {
+  BOX_QTY_NOTE,
+  HALF_PALLET_QTY_NOTE,
+  LAYER_QTY_NOTE,
+} from "@/lib/cart-quantity";
 
 type PackageTierKind =
   | "single_unit"
@@ -584,8 +589,11 @@ export function VariantSelector({
         ? Number(product.startingPrice)
         : 0;
   const unitPrice = applyDiscountToPrice(baseUnitPriceRaw, appliedDiscount);
-  const machineHalfLocked = isMachineFilm && !isFullPalletTier;
-  const effectiveQuantity = machineHalfLocked ? 1 : Math.max(1, Math.floor(quantity));
+  const isHalfPalletTier = packageTier === "fixed_half";
+  const isLayerTier = packageTier === "fixed_mid";
+  const quantityLocked = isHalfPalletTier || isLayerTier;
+  const quantityMax = quantityLocked ? 1 : isSingleUnitTier && !isMachineFilm ? 15 : undefined;
+  const effectiveQuantity = quantityLocked ? 1 : Math.max(1, Math.floor(quantity));
   const totalPrice = Number((unitPrice * effectiveQuantity).toFixed(2));
   const hasActiveDiscount = Boolean(appliedDiscount && baseUnitPriceRaw > 0);
   const quantityNoun = isMachineFilm
@@ -609,34 +617,43 @@ export function VariantSelector({
           : quantityNoun === "Rolls"
             ? "roll"
             : "box";
-  const incrementNote = isMachineFilm
-    ? isFullPalletTier
+  const incrementNote = isFullPalletTier
+    ? isMachineFilm
       ? "Each step adds 1 full pallet (40 rolls)."
-      : null
-    : isPalletPackage
-      ? `Each step adds 1 package (${packageBoxes} boxes).`
-      : null;
+      : `Each step adds 1 full pallet (${packageBoxes} boxes).`
+    : null;
 
   useEffect(() => {
-    if (machineHalfLocked && quantity !== 1) setQuantity(1);
-  }, [machineHalfLocked, quantity]);
+    if (quantityLocked && quantity !== 1) setQuantity(1);
+  }, [quantityLocked, quantity]);
 
   const handleQuantityDecrease = () => {
-    if (machineHalfLocked) return;
+    if (quantityLocked) return;
     setQuantity((prev) => Math.max(1, Math.floor(prev) - 1));
     setTierHint(null);
   };
 
+  const handleQuantityInput = (raw: string) => {
+    const next = Math.floor(Number(raw));
+    if (!Number.isFinite(next)) return;
+    if (quantityLocked) {
+      setQuantity(1);
+      return;
+    }
+    if (isSingleUnitTier && !isMachineFilm && next > 15) {
+      setQuantity(15);
+      setTierHint(BOX_QTY_NOTE);
+      return;
+    }
+    setQuantity(Math.max(1, next || 1));
+    setTierHint(null);
+  };
+
   const handleQuantityIncrease = () => {
-    if (machineHalfLocked) return;
+    if (quantityLocked) return;
     if (isSingleUnitTier && !isMachineFilm) {
       if (quantity >= 15) {
-        if (midTierVariant) {
-          selectVariant(midTierVariant, 1);
-          setTierHint(`Upgraded to 16 ${unitLabelPlural} package for higher volume.`);
-          return;
-        }
-        setTierHint(`For 16+ ${unitLabelPlural.toLowerCase()}, select the 16 ${unitLabelPlural} package`);
+        setTierHint(BOX_QTY_NOTE);
         setQuantity(15);
         return;
       }
@@ -702,6 +719,15 @@ export function VariantSelector({
         (isMachineFilm ? 40 : 192),
       weightLbs: String(selectedVariant?.weightLbs ?? "0.00"),
       pricingTier: displayPackageTitle(selectedVariant, isMachineFilm),
+      tierType: isHalfPalletTier
+        ? "half_pallet"
+        : isLayerTier
+          ? "layer"
+          : isSingleUnitTier
+            ? "box"
+            : isFullPalletTier
+              ? "full_pallet"
+              : undefined,
       unitPrice: cartUnitPrice,
       quantity: effectiveQuantity,
     });
@@ -987,47 +1013,45 @@ export function VariantSelector({
               <button
                 type="button"
                 onClick={handleQuantityDecrease}
-                disabled={effectiveQuantity <= 1 || machineHalfLocked}
+                disabled={effectiveQuantity <= 1 || quantityLocked}
                 aria-label={`Remove 1 ${quantitySingular}`}
                 className="w-8 h-8 flex items-center justify-center text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 font-bold disabled:opacity-40 disabled:pointer-events-none disabled:hover:bg-transparent"
               >
                 -
               </button>
-              <span
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={quantityMax}
+                value={effectiveQuantity}
+                onChange={(event) => handleQuantityInput(event.target.value)}
                 aria-live="polite"
-                className="w-12 text-center text-sm font-bold text-slate-900 tabular-nums"
-              >
-                {effectiveQuantity}
-              </span>
+                aria-label={`Quantity of ${quantitySingular}`}
+                className="w-12 border-0 bg-transparent text-center text-sm font-bold text-slate-900 tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
               <button
                 type="button"
                 onClick={handleQuantityIncrease}
-                disabled={
-                  machineHalfLocked ||
-                  (isSingleUnitTier &&
-                    !isMachineFilm &&
-                    effectiveQuantity >= 15 &&
-                    !hasMidTierUpgrade)
-                }
+                disabled={quantityLocked}
                 aria-label={`Add 1 ${quantitySingular}`}
                 className="w-8 h-8 flex items-center justify-center text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 font-bold disabled:opacity-40 disabled:pointer-events-none disabled:hover:bg-transparent"
               >
                 +
               </button>
             </div>
-            {machineHalfLocked && (
-              <p className="text-[10px] font-medium text-slate-500">
-                For 2 or more pallets, select Full Pallet option.
-              </p>
+            {isHalfPalletTier && (
+              <p className="text-[10px] font-medium text-amber-800">{HALF_PALLET_QTY_NOTE}</p>
+            )}
+            {isLayerTier && (
+              <p className="text-[10px] font-medium text-amber-800">{LAYER_QTY_NOTE}</p>
             )}
             {incrementNote && (
               <p className="text-[10px] font-medium text-slate-500">{incrementNote}</p>
             )}
 
             {isSingleUnitTier && !isMachineFilm && quantity >= 15 && (
-              <p className="text-[10px] font-medium text-sky-700">
-                For 16+ {unitLabelPlural.toLowerCase()}, select the 16 {unitLabelPlural} package
-              </p>
+              <p className="text-[10px] font-medium text-amber-800">{BOX_QTY_NOTE}</p>
             )}
             {tierHint && (
               <p className="text-[10px] font-medium text-sky-700">{tierHint}</p>

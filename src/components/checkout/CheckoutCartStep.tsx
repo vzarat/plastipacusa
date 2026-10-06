@@ -8,7 +8,11 @@ import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency } from "@/lib/utils";
 import type { CartItem } from "@/types";
-import { canIncreaseCartQuantity, cartQuantityNote } from "@/lib/cart-quantity";
+import {
+  canIncreaseCartQuantity,
+  cartQuantityMax,
+  cartQuantityNote,
+} from "@/lib/cart-quantity";
 
 function specBadges(item: CartItem): string[] {
   const badges: string[] = [];
@@ -34,6 +38,7 @@ export function CheckoutCartStep({
 }: CheckoutCartStepProps) {
   const items = useCartStore((state) => state.items);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
+  const increaseQuantity = useCartStore((state) => state.increaseQuantity);
   const removeItem = useCartStore((state) => state.removeItem);
 
   const proceed = () => {
@@ -127,12 +132,23 @@ export function CheckoutCartStep({
                       >
                         <Minus className="h-3.5 w-3.5" />
                       </button>
-                      <span className="w-8 text-center text-xs font-black text-slate-900">
-                        {item.quantity}
-                      </span>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        max={cartQuantityMax(item)}
+                        value={item.quantity}
+                        onChange={(event) => {
+                          const next = Math.floor(Number(event.target.value));
+                          if (!Number.isFinite(next)) return;
+                          updateQuantity(item.id, next);
+                        }}
+                        aria-label={`Quantity for ${item.productName}`}
+                        className="w-8 border-0 bg-transparent text-center text-xs font-black text-slate-900 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      />
                       <button
                         type="button"
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        onClick={() => increaseQuantity(item.id)}
                         disabled={!canIncreaseCartQuantity(item, item.quantity)}
                         className="flex h-12 w-12 items-center justify-center rounded-lg text-slate-600 hover:bg-white md:h-7 md:w-7 disabled:opacity-40 disabled:pointer-events-none"
                         aria-label="Increase quantity"

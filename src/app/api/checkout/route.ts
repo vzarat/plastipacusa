@@ -20,6 +20,8 @@ interface CheckoutLineItemInput {
   rollsPerBox?: number;
   totalBoxes?: number;
   application?: string;
+  tierType?: string;
+  tier_type?: string;
 }
 
 interface CheckoutRequestBody {
