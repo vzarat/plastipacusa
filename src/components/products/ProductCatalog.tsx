@@ -17,7 +17,10 @@ import {
   ProductFilters,
   type CatalogAppFilter,
 } from "@/components/products/ProductFilters";
-import { MobileFilterBar } from "@/components/products/MobileFilterBar";
+import {
+  MobileFilterBar,
+  type CatalogSort,
+} from "@/components/products/MobileFilterBar";
 import { ProductCatalogToolbar } from "@/components/products/ProductCatalogToolbar";
 import { useLanguage } from "@/context/LanguageContext";
 import type { ProductWithVariants } from "@/types";
@@ -62,6 +65,24 @@ function matchesCategory(
   const series = CATEGORY_SERIES_MAP[key];
   if (series && product.series === series) return true;
   return false;
+}
+
+function isFeaturedProduct(product: ProductWithVariants): boolean {
+  const record = product as ProductWithVariants & {
+    isFeatured?: boolean | null;
+    is_featured?: boolean | null;
+  };
+  return Boolean(record.isFeatured || record.is_featured);
+}
+
+function listPrice(product: ProductWithVariants): number {
+  const start = Number(product.startingPrice);
+  if (Number.isFinite(start) && start > 0) return start;
+  const prices = (product.variants || [])
+    .map((variant) => Number(variant.priceUsd ?? variant.price))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  if (prices.length > 0) return Math.min(...prices);
+  return Number.POSITIVE_INFINITY;
 }
 
 function matchesWidth(product: ProductWithVariants, targetWidth: number): boolean {
@@ -290,6 +311,7 @@ export function ProductCatalog({
   const [selectedLength, setSelectedLength] = useState(initialLength);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [currentPage, setCurrentPage] = useState(Math.max(1, initialPage));
+  const [selectedSort, setSelectedSort] = useState<CatalogSort | "all">("all");
   const gridTopRef = useRef<HTMLDivElement>(null);
   const lastPushedKeyRef = useRef(
     catalogStateKey({
@@ -457,7 +479,24 @@ export function ProductCatalog({
         return true;
       });
 
-    return sortProductsByDimensions(filtered);
+    const ordered = sortProductsByDimensions(filtered);
+    if (selectedSort === "price") {
+      return [...ordered].sort((a, b) => listPrice(a) - listPrice(b));
+    }
+    if (selectedSort === "featured") {
+      return [...ordered].sort((a, b) => {
+        const featuredDelta = Number(isFeaturedProduct(b)) - Number(isFeaturedProduct(a));
+        return featuredDelta;
+      });
+    }
+    if (selectedSort === "best-selling") {
+      return [...ordered].sort((a, b) => {
+        const availability = Number(Boolean(a.isSoldOut)) - Number(Boolean(b.isSoldOut));
+        if (availability !== 0) return availability;
+        return listPrice(a) - listPrice(b);
+      });
+    }
+    return ordered;
   }, [
     allProducts,
     selectedCategory,
@@ -466,6 +505,7 @@ export function ProductCatalog({
     selectedGauge,
     selectedLength,
     searchQuery,
+    selectedSort,
   ]);
 
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE) || 1;
@@ -564,8 +604,6 @@ export function ProductCatalog({
     );
   };
 
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [freeShippingOnly, setFreeShippingOnly] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleQueryChange = (value: string) => {
@@ -615,29 +653,15 @@ export function ProductCatalog({
         selectedWidth={selectedWidth}
         selectedGauge={selectedGauge}
         selectedLength={selectedLength}
-        freeShippingOnly={freeShippingOnly}
-        filtersPanelOpen={mobileFiltersOpen}
-        onToggleFiltersPanel={() => setMobileFiltersOpen((open) => !open)}
+        selectedSort={selectedSort}
         onAppChange={(value) => updateFilter("app", value)}
         onWidthChange={(value) => updateFilter("width", value)}
         onGaugeChange={(value) => updateFilter("gauge", value)}
         onLengthChange={(value) => updateFilter("length", value)}
-        onFreeShippingChange={setFreeShippingOnly}
-        filtersPanel={
-          <div className="px-3 pb-3">
-            <ProductFilters
-              selectedApp={selectedAppType}
-              selectedWidth={selectedWidth}
-              selectedGauge={selectedGauge}
-              selectedLength={selectedLength}
-              onAppChange={(value) => updateFilter("app", value)}
-              onWidthChange={(value) => updateFilter("width", value)}
-              onGaugeChange={(value) => updateFilter("gauge", value)}
-              onLengthChange={(value) => updateFilter("length", value)}
-              onReset={resetFilters}
-            />
-          </div>
-        }
+        onSortChange={(value) => {
+          setSelectedSort(value);
+          setCurrentPage(1);
+        }}
       />
 
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">

@@ -3,7 +3,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { CatalogAppFilter } from "@/components/products/ProductFilters";
 
-type AttributeKey = "gauge" | "length" | "width" | "app";
+export type CatalogSort = "featured" | "price" | "best-selling";
+
+type AttributeKey = "sort" | "gauge" | "length" | "width" | "app";
+
+const SORT_OPTIONS = [
+  { value: "featured" as const, label: "Featured" },
+  { value: "price" as const, label: "Price" },
+  { value: "best-selling" as const, label: "Best Selling" },
+];
 
 const GAUGE_OPTIONS = ["60", "70", "80"] as const;
 const LENGTH_OPTIONS = ["1000", "1500", "5000", "6000"] as const;
@@ -22,15 +30,12 @@ interface MobileFilterBarProps {
   selectedWidth: string;
   selectedGauge: string;
   selectedLength: string;
-  freeShippingOnly: boolean;
-  filtersPanelOpen: boolean;
-  onToggleFiltersPanel: () => void;
+  selectedSort: CatalogSort | "all";
   onAppChange: (value: CatalogAppFilter) => void;
   onWidthChange: (value: string) => void;
   onGaugeChange: (value: string) => void;
   onLengthChange: (value: string) => void;
-  onFreeShippingChange: (value: boolean) => void;
-  filtersPanel?: React.ReactNode;
+  onSortChange: (value: CatalogSort | "all") => void;
 }
 
 function chipClass(active: boolean) {
@@ -62,20 +67,16 @@ export function MobileFilterBar({
   selectedWidth,
   selectedGauge,
   selectedLength,
-  freeShippingOnly,
-  filtersPanelOpen,
-  onToggleFiltersPanel,
+  selectedSort,
   onAppChange,
   onWidthChange,
   onGaugeChange,
   onLengthChange,
-  onFreeShippingChange,
-  filtersPanel,
+  onSortChange,
 }: MobileFilterBarProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [openKey, setOpenKey] = useState<AttributeKey | null>(null);
   const [menuKey, setMenuKey] = useState<AttributeKey | null>(null);
-  const [sortVisible, setSortVisible] = useState(filtersPanelOpen);
   const [stuck, setStuck] = useState(false);
 
   useEffect(() => {
@@ -99,15 +100,6 @@ export function MobileFilterBar({
   }, [openKey]);
 
   useEffect(() => {
-    if (filtersPanelOpen) {
-      setSortVisible(true);
-      return;
-    }
-    const timer = window.setTimeout(() => setSortVisible(false), 200);
-    return () => window.clearTimeout(timer);
-  }, [filtersPanelOpen]);
-
-  useEffect(() => {
     if (!openKey) return;
     const onPointerDown = (event: MouseEvent) => {
       if (!rootRef.current?.contains(event.target as Node)) setOpenKey(null);
@@ -120,7 +112,6 @@ export function MobileFilterBar({
 
   const toggleAttribute = (key: AttributeKey) => {
     setOpenKey((current) => (current === key ? null : key));
-    if (filtersPanelOpen) onToggleFiltersPanel();
   };
 
   const choose = (current: string, value: string, apply: (next: string) => void) => {
@@ -128,16 +119,22 @@ export function MobileFilterBar({
     closeMenu();
   };
 
+  const sortLabel =
+    SORT_OPTIONS.find((option) => option.value === selectedSort)?.label ?? "Sort";
+
   const panelTitle =
-    menuKey === "width"
-      ? "Width"
-      : menuKey === "gauge"
-        ? "Gauge"
-        : menuKey === "length"
-          ? "Length"
-          : "Type";
+    menuKey === "sort"
+      ? "Sort By"
+      : menuKey === "width"
+        ? "Width"
+        : menuKey === "gauge"
+          ? "Gauge"
+          : menuKey === "length"
+            ? "Length"
+            : "Type";
 
   const clearOpenAttribute = () => {
+    if (menuKey === "sort") onSortChange("all");
     if (menuKey === "gauge") onGaugeChange("all");
     if (menuKey === "length") onLengthChange("all");
     if (menuKey === "width") onWidthChange("all");
@@ -153,6 +150,15 @@ export function MobileFilterBar({
       }`}
     >
       <div className="no-scrollbar flex gap-2 overflow-x-auto px-3 py-2">
+        <button
+          type="button"
+          aria-expanded={openKey === "sort"}
+          onClick={() => toggleAttribute("sort")}
+          className={chipClass(selectedSort !== "all" || openKey === "sort")}
+        >
+          {sortLabel}
+          {selectedSort !== "all" && <CountBadge />}
+        </button>
         <button
           type="button"
           aria-expanded={openKey === "width"}
@@ -193,24 +199,6 @@ export function MobileFilterBar({
               : "Type"}
           {selectedApp !== "all" && <CountBadge />}
         </button>
-        <button
-          type="button"
-          aria-expanded={filtersPanelOpen}
-          onClick={() => {
-            closeMenu();
-            onToggleFiltersPanel();
-          }}
-          className={chipClass(filtersPanelOpen)}
-        >
-          Sort
-        </button>
-        <button
-          type="button"
-          onClick={() => onFreeShippingChange(!freeShippingOnly)}
-          className={chipClass(freeShippingOnly)}
-        >
-          Free Shipping
-        </button>
       </div>
 
       <div
@@ -236,6 +224,23 @@ export function MobileFilterBar({
                 </button>
               </div>
               <div className="flex flex-col gap-1.5">
+                {menuKey === "sort" &&
+                  SORT_OPTIONS.map((option) => {
+                    const selected = selectedSort === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          onSortChange(selected ? "all" : option.value);
+                          closeMenu();
+                        }}
+                        className={optionClass(selected)}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
                 {menuKey === "width" &&
                   WIDTH_OPTIONS.map((value) => {
                     const selected = selectedWidth === value;
@@ -300,22 +305,6 @@ export function MobileFilterBar({
           )}
         </div>
       </div>
-
-      {sortVisible && (
-        <div
-          className={`px-0 transition-opacity duration-200 ease-out ${
-            filtersPanelOpen ? "opacity-100" : "pointer-events-none opacity-0"
-          }`}
-          onClick={(event) => {
-            if (!filtersPanelOpen) return;
-            if ((event.target as HTMLElement).closest("button")) {
-              onToggleFiltersPanel();
-            }
-          }}
-        >
-          {filtersPanel}
-        </div>
-      )}
     </div>
   );
 }
