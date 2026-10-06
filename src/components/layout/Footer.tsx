@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Clock3, Lock, Mail, MessageCircle, Phone, CreditCard } from "lucide-react";
+import { ChevronDown, Clock3, Lock, Mail, MapPin, MessageCircle, Phone, CreditCard } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
 const LOGO_SRC =
@@ -46,6 +46,24 @@ const PRODUCT_LINE_LINKS = [
     href: "/products?category=genesis-high-performance",
   },
 ] as const;
+
+function FooterAccordion({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <details className="group border-b border-slate-200">
+      <summary className="flex cursor-pointer list-none items-center justify-between py-3 text-sm font-semibold text-slate-900 [&::-webkit-details-marker]:hidden">
+        {title}
+        <ChevronDown className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
+      </summary>
+      <ul className="space-y-2 pb-3">{children}</ul>
+    </details>
+  );
+}
 
 function PaymentBadge({
   label,
@@ -140,8 +158,90 @@ export function Footer() {
 
   return (
     <footer className="bg-slate-50 border-t border-slate-200 text-slate-600">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-14">
+        <div className="block space-y-5 md:hidden">
+          <div className="space-y-3">
+            <Link href="/" className="inline-block">
+              <Image
+                src={LOGO_SRC}
+                alt="Plastipac USA"
+                width={180}
+                height={48}
+                className="h-10 w-auto object-contain"
+              />
+            </Link>
+            <p className="text-sm font-medium text-slate-700">
+              Plastipac USA - Stretch Film Manufacturer
+            </p>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <a
+                  href="tel:+19564003683"
+                  className="inline-flex items-center gap-2 font-semibold text-slate-800 hover:text-sky-700"
+                >
+                  <Phone className="h-4 w-4 shrink-0 text-sky-600" />
+                  (956) 400-3683
+                </a>
+              </li>
+              <li>
+                <a
+                  href="mailto:sales@plastipacusa.com"
+                  className="inline-flex items-center gap-2 text-slate-700 hover:text-sky-700"
+                >
+                  <Mail className="h-4 w-4 shrink-0 text-sky-600" />
+                  sales@plastipacusa.com
+                </a>
+              </li>
+              <li className="inline-flex items-center gap-2 text-slate-700">
+                <MapPin className="h-4 w-4 shrink-0 text-sky-600" />
+                Texas / RGV Region
+              </li>
+            </ul>
+          </div>
+
+          <div className="border-t border-slate-200">
+            <FooterAccordion title="Products">
+              {PRODUCT_LINE_LINKS.map((item) => (
+                <li key={item.href}>
+                  <Link href={item.href} className={linkClass}>
+                    {t(item.labelKey)}
+                  </Link>
+                </li>
+              ))}
+            </FooterAccordion>
+            <FooterAccordion title="Logistics">
+              <li>
+                <Link href="/shipping-policy" className={linkClass}>
+                  Shipping Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/#usa-coverage" className={linkClass}>
+                  USA Freight Coverage
+                </Link>
+              </li>
+            </FooterAccordion>
+            <FooterAccordion title="Tax & Legal">
+              <li>
+                <Link href="/terms-of-service" className={linkClass}>
+                  Terms of Service
+                </Link>
+              </li>
+              <li>
+                <Link href="/privacy-policy" className={linkClass}>
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/refund-policy" className={linkClass}>
+                  Refund Policy
+                </Link>
+              </li>
+            </FooterAccordion>
+          </div>
+        </div>
+
+        <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
           {/* Column 1 — Brand */}
           <div className="space-y-4">
             <Link href="/" className="inline-block">
@@ -296,24 +396,24 @@ export function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-10 pt-6 border-t border-slate-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-xs text-slate-500 text-center sm:text-left">
-            <p>{t("footer.rights").replace("{year}", String(year))}</p>
-            <span className="hidden sm:inline text-slate-300" aria-hidden>
-              |
-            </span>
-            <div className="flex items-center justify-center sm:justify-start gap-3">
+        <div className="mt-6 md:mt-10 pt-5 border-t border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex flex-col items-center gap-2 text-xs text-slate-500 md:flex-row md:gap-3 md:text-left">
+            <p>Copyright © {year} Plastipac USA LLC.</p>
+            <div className="flex items-center justify-center gap-2 md:justify-start">
               <Link href="/terms-of-service" className="hover:text-slate-700">
-                {t("footer.terms")}
+                Terms
               </Link>
+              <span aria-hidden className="text-slate-300">
+                ·
+              </span>
               <Link href="/privacy-policy" className="hover:text-slate-700">
-                {t("footer.privacy")}
+                Privacy Policy
               </Link>
             </div>
           </div>
 
           <div
-            className="flex flex-wrap items-center justify-center lg:justify-end gap-2"
+            className="hidden md:flex flex-wrap items-center justify-end gap-2"
             aria-label="Accepted payment methods"
           >
             <PaymentBadge label="Visa">
