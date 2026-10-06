@@ -336,6 +336,11 @@ export function StripeEmbeddedCheckout({
           productName: item.productName,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
+          packageSize: item.packageSize,
+          pricingTier: item.pricingTier,
+          rollsPerBox: item.rollsPerBox,
+          totalBoxes: item.totalBoxes,
+          application: item.application,
         })),
         shipping,
       });

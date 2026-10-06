@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { createServerClient } from "@/lib/supabase/server";
 import { getAppBaseUrl } from "@/lib/email";
 import { calculateOrderTotal } from "@/lib/sales-tax";
+import { clampCartQuantity } from "@/lib/cart-quantity";
 
 interface CheckoutLineItemInput {
   productName?: string;
@@ -14,6 +15,11 @@ interface CheckoutLineItemInput {
   gauge?: number;
   lengthFeet?: number;
   productSlug?: string;
+  packageSize?: string;
+  pricingTier?: string;
+  rollsPerBox?: number;
+  totalBoxes?: number;
+  application?: string;
 }
 
 interface CheckoutRequestBody {
@@ -90,10 +96,14 @@ export async function POST(request: NextRequest) {
     const authenticatedUserId = user.id;
     const authenticatedEmail = (user.email || "").trim().toLowerCase();
 
-    const subtotal = items.reduce((sum, item) => {
-      const line =
-        Number(item.totalPrice) ||
-        Number(item.unitPrice || 0) * Number(item.quantity || 1);
+    const normalizedItems = items.map((item) => {
+      const quantity = clampCartQuantity(item, Number(item.quantity || 1)).quantity;
+      return { ...item, quantity };
+    });
+    const subtotal = normalizedItems.reduce((sum, item) => {
+      const quantity = Number(item.quantity || 1);
+      const unit = Number(item.unitPrice || 0);
+      const line = unit > 0 ? unit * quantity : Number(item.totalPrice) || 0;
       return sum + line;
     }, 0);
 
@@ -114,7 +124,7 @@ export async function POST(request: NextRequest) {
     // Distribute discount across line items proportionally so Stripe totals match cart.
     const discountFactor = subtotal > 0 ? payable / subtotal : 1;
 
-    const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map(
+    const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = normalizedItems.map(
       (item) => {
         const qty = Math.max(1, Number(item.quantity || 1));
         const unit = Number(item.unitPrice || 0);
@@ -206,8 +216,8 @@ export async function POST(request: NextRequest) {
         shipping_address_id: String(body.shippingAddressId || ""),
         tax_exempt_requested: body.taxExemptRequested ? "true" : "false",
         order_total: quote.total.toFixed(2),
-        cart_item_count: String(items.length),
-        items_summary: items
+        cart_item_count: String(normalizedItems.length),
+        items_summary: normalizedItems
           .map(
             (item) =>
               `${item.quantity || 1}× ${item.productName || "Product"}`
@@ -230,7 +240,7 @@ export async function POST(request: NextRequest) {
           tax_rate: String(quote.taxRate),
           tax_exempt_requested: body.taxExemptRequested ? "true" : "false",
           total_amount: quote.total.toFixed(2),
-          items_summary: items
+          items_summary: normalizedItems
             .map(
               (item) =>
                 `${item.quantity || 1}× ${item.productName || "Product"}`

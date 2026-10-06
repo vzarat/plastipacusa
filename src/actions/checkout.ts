@@ -3,6 +3,7 @@
 import Stripe from "stripe";
 import { createServerClient } from "@/lib/supabase/server";
 import { calculateOrderTotal } from "@/lib/sales-tax";
+import { clampCartQuantity } from "@/lib/cart-quantity";
 
 export interface CreatePaymentIntentOptions {
   customerEmail?: string;
@@ -21,6 +22,11 @@ export interface CreatePaymentIntentOptions {
     productName?: string;
     quantity?: number;
     unitPrice?: number;
+    packageSize?: string;
+    pricingTier?: string;
+    rollsPerBox?: number;
+    totalBoxes?: number;
+    application?: string;
   }>;
   shipping?: {
     fullName?: string;
@@ -54,8 +60,25 @@ export async function createPaymentIntent(
       };
     }
 
+    const normalizedLines = (options.lineItems || []).map((item) => {
+      const quantity = clampCartQuantity(
+        {
+          packageSize: item.packageSize,
+          pricingTier: item.pricingTier,
+          rollsPerBox: item.rollsPerBox,
+          totalBoxes: item.totalBoxes,
+          application: item.application,
+        },
+        Number(item.quantity || 1)
+      ).quantity;
+      return { ...item, quantity };
+    });
+    const lineSubtotal = normalizedLines.reduce(
+      (sum, item) => sum + Number(item.unitPrice || 0) * item.quantity,
+      0
+    );
     const quote = calculateOrderTotal({
-      subtotal: Number(options.subtotal ?? amount ?? 0),
+      subtotal: lineSubtotal > 0 ? lineSubtotal : Number(options.subtotal ?? amount ?? 0),
       discount: Number(options.discountAmount || 0),
       shipping: Number(options.shippingAmount || 0),
     });
@@ -128,7 +151,7 @@ export async function createPaymentIntent(
         }).slice(0, 500)
       : "";
 
-    const lineItems = (options.lineItems || [])
+    const lineItems = normalizedLines
       .map((item) => ({
         n: String(item.productName || "Product").slice(0, 40),
         q: Math.max(1, Number(item.quantity || 1)),

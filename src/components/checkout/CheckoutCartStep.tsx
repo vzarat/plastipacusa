@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency } from "@/lib/utils";
 import type { CartItem } from "@/types";
+import { canIncreaseCartQuantity, cartQuantityNote } from "@/lib/cart-quantity";
 
 function specBadges(item: CartItem): string[] {
   const badges: string[] = [];
@@ -132,7 +133,7 @@ export function CheckoutCartStep({
                       <button
                         type="button"
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        disabled={item.application === "machine" && item.rollsPerBox === 20}
+                        disabled={!canIncreaseCartQuantity(item, item.quantity)}
                         className="flex h-12 w-12 items-center justify-center rounded-lg text-slate-600 hover:bg-white md:h-7 md:w-7 disabled:opacity-40 disabled:pointer-events-none"
                         aria-label="Increase quantity"
                       >
@@ -143,6 +144,11 @@ export function CheckoutCartStep({
                       {formatCurrency(item.totalPrice)}
                     </p>
                   </div>
+                  {cartQuantityNote(item, item.quantity) && (
+                    <p className="text-[11px] font-medium text-amber-800">
+                      {cartQuantityNote(item, item.quantity)}
+                    </p>
+                  )}
                 </div>
               </li>
             );

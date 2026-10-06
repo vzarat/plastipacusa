@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { TaxExemptionInformationButton } from "@/components/checkout/TaxExemptionModal";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { calculateOrderTotal } from "@/lib/sales-tax";
+import { cartQuantityNote } from "@/lib/cart-quantity";
 import { formatCurrency } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useCheckoutInactivity } from "@/hooks/useCheckoutInactivity";
@@ -405,6 +406,11 @@ function CheckoutPageInner() {
                   <p className="mt-1 text-xs text-slate-500">
                     {item.quantity} × {formatCurrency(item.unitPrice)}
                   </p>
+                  {cartQuantityNote(item, item.quantity) && (
+                    <p className="mt-1 text-[11px] font-medium text-amber-800">
+                      {cartQuantityNote(item, item.quantity)}
+                    </p>
+                  )}
                 </div>
                 <p className="text-sm font-bold text-slate-900">
                   {formatCurrency(item.totalPrice)}

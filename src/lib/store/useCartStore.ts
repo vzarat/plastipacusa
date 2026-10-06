@@ -3,6 +3,8 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { CartItem } from "@/types";
 import type { AppliedCoupon } from "@/types/coupon";
 import { getCartDiscountAmount } from "@/lib/coupons";
+import { clampCartQuantity, type CartPackageInput } from "@/lib/cart-quantity";
+import { toast } from "sonner";
 
 function machinePackageRolls(item: { application?: string; rollsPerBox?: number }): number {
   if (item.application !== "machine") return 0;
@@ -10,12 +12,16 @@ function machinePackageRolls(item: { application?: string; rollsPerBox?: number 
   return rolls === 20 || rolls === 40 ? rolls : 0;
 }
 
-function machineLineQuantity(
-  item: { application?: string; rollsPerBox?: number },
-  quantity: number
-): number {
-  if (machinePackageRolls(item) === 20) return 1;
-  return Math.max(1, Math.floor(quantity) || 1);
+function applyPackageQuantity<T extends CartPackageInput>(
+  item: T,
+  requested: number
+): { quantity: number; notice: string | null } {
+  return clampCartQuantity(item, requested);
+}
+
+function notifyQuantityLimit(notice: string | null) {
+  if (!notice || typeof window === "undefined") return;
+  toast.error(notice);
 }
 
 interface CartState {
@@ -54,10 +60,12 @@ export const useCartStore = create<CartState>()(
         if (existingIndex > -1) {
           const updatedItems = [...currentItems];
           const existingItem = updatedItems[existingIndex];
-          const newQty = machineLineQuantity(
+          const clamped = applyPackageQuantity(
             existingItem,
             existingItem.quantity + itemData.quantity
           );
+          notifyQuantityLimit(clamped.notice);
+          const newQty = clamped.quantity;
           const packageRolls = machinePackageRolls(existingItem);
           updatedItems[existingIndex] = {
             ...existingItem,
@@ -67,7 +75,9 @@ export const useCartStore = create<CartState>()(
           };
           set({ items: updatedItems, isDrawerOpen: true });
         } else {
-          const quantity = machineLineQuantity(itemData, itemData.quantity);
+          const clamped = applyPackageQuantity(itemData, itemData.quantity);
+          notifyQuantityLimit(clamped.notice);
+          const quantity = clamped.quantity;
           const packageRolls = machinePackageRolls(itemData);
           const newItem: CartItem = {
             ...itemData,
@@ -92,19 +102,22 @@ export const useCartStore = create<CartState>()(
           return;
         }
 
+        const current = get().items.find((item) => item.id === id);
+        if (!current) return;
+        const clamped = applyPackageQuantity(current, quantity);
+        notifyQuantityLimit(clamped.notice);
+        const nextQty = clamped.quantity;
+        const packageRolls = machinePackageRolls(current);
+
         set((state) => ({
           items: state.items.map((item) => {
-            if (item.id === id) {
-              const nextQty = machineLineQuantity(item, quantity);
-              const packageRolls = machinePackageRolls(item);
-              return {
-                ...item,
-                quantity: nextQty,
-                totalRolls: packageRolls > 0 ? packageRolls * nextQty : item.totalRolls,
-                totalPrice: Number((nextQty * item.unitPrice).toFixed(2)),
-              };
-            }
-            return item;
+            if (item.id !== id) return item;
+            return {
+              ...item,
+              quantity: nextQty,
+              totalRolls: packageRolls > 0 ? packageRolls * nextQty : item.totalRolls,
+              totalPrice: Number((nextQty * item.unitPrice).toFixed(2)),
+            };
           }),
         }));
       },
@@ -169,6 +182,26 @@ export const useCartStore = create<CartState>()(
         items: state.items,
         appliedCoupon: state.appliedCoupon,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (!state?.items?.length) return;
+        const items = state.items.map((item) => {
+          const clamped = applyPackageQuantity(item, item.quantity);
+          if (clamped.quantity === item.quantity) return item;
+          const packageRolls = machinePackageRolls(item);
+          return {
+            ...item,
+            quantity: clamped.quantity,
+            totalRolls:
+              packageRolls > 0 ? packageRolls * clamped.quantity : item.totalRolls,
+            totalPrice: Number((clamped.quantity * item.unitPrice).toFixed(2)),
+          };
+        });
+        if (items.some((item, index) => item !== state.items[index])) {
+          queueMicrotask(() => {
+            useCartStore.setState({ items });
+          });
+        }
+      },
     }
   )
 );
