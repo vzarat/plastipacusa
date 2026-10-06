@@ -198,7 +198,7 @@ const STANDARD_HAND_PACKAGE_TIERS = [
     boxes: 16,
     discountRate: 0.05,
     subtext: "64 Rolls included · Free RGV Freight Eligible",
-    badges: [] as string[],
+    badges: ["Save 5% OFF"],
     tag: "",
   },
   {
@@ -207,7 +207,7 @@ const STANDARD_HAND_PACKAGE_TIERS = [
     rolls: 128,
     boxes: 32,
     discountRate: 0.0625,
-    subtext: "128 Rolls included · Save 5% OFF",
+    subtext: "128 Rolls included",
     badges: ["Save 5% OFF"],
     tag: "",
   },
@@ -218,7 +218,7 @@ const STANDARD_HAND_PACKAGE_TIERS = [
     boxes: 64,
     discountRate: 0.10625,
     subtext: "256 Rolls included · Houston Friday Freight Eligible",
-    badges: ["Save 9% OFF"],
+    badges: [] as string[],
     tag: "BEST VALUE - MAX SAVINGS (~9% OFF)",
   },
 ] as const;
@@ -333,7 +333,7 @@ function displayPackageSubtext(variant: any, isMachine: boolean): string {
   if (rolls === 256 || boxes === 64) {
     return "256 Rolls included · Houston Friday Freight Eligible";
   }
-  if (rolls === 128 || boxes === 32) return "128 Rolls included · Save 5% OFF";
+  if (rolls === 128 || boxes === 32) return "128 Rolls included";
   if (kind === "fixed_mid" || rolls === 64 || boxes === 16) {
     return "64 Rolls included · Free RGV Freight Eligible";
   }
@@ -902,7 +902,7 @@ export function VariantSelector({
         </div>
       </div>
 
-      <div className="order-2 md:order-none">
+      <div className="order-2 hidden md:block">
         <ProductDiscountInput
           appliedDiscount={appliedDiscount}
           onApplied={handleDiscountApplied}
