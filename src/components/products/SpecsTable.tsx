@@ -163,7 +163,7 @@ function safeLocaleNumber(value: unknown, suffix = ""): string {
 export function SpecsTable({ variants, product }: SpecsTableProps) {
   const source = Array.isArray(variants) ? variants.filter(Boolean) : [];
   const rows = isMachineFilm(product)
-    ? (buildMachineFilmSelectorTiers(product, source) as ProductVariant[])
+    ? (buildMachineFilmSelectorTiers(product, source) as unknown as ProductVariant[])
     : source.length > 0
       ? handMatrixRows(source, product)
       : source;
