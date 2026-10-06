@@ -10,7 +10,7 @@ export {
 } from "@/lib/palletizing";
 
 import type { PackageOption, ProductVariant, ProductWithVariants } from "@/types";
-import { MACHINE_FILM_WEIGHT_SPECS } from "@/lib/package-weight";
+import { MACHINE_FILM_WEIGHT_SPECS, packageTotalWeightLbs } from "@/lib/package-weight";
 
 /** Remote fallback when a product row has no image_url. Never stored in /public. */
 export const STRETCH_FILM_PLACEHOLDER =
@@ -138,6 +138,121 @@ export function buildMachinePackageOptions(input: {
       sku: `${input.baseSku}-${tier.suffix}`,
       price: Number(tier.price),
     }));
+}
+
+function firstPositiveAmount(values: unknown[]): number {
+  for (const value of values) {
+    const amount = typeof value === "number" ? value : parseFloat(String(value ?? ""));
+    if (Number.isFinite(amount) && amount > 0) return amount;
+  }
+  return 0;
+}
+
+function sourceRolls(item: any): number {
+  return Number(item?.rolls ?? item?.rolls_count ?? item?.rollsCount ?? item?.rollsPerBox ?? 0);
+}
+
+function sourcePrice(item: any): number {
+  return firstPositiveAmount([item?.price, item?.priceUsd, item?.price_usd]);
+}
+
+/**
+ * Machine film is sold as a half pallet and a full pallet even when the
+ * database only has a single-roll price. Half pallet is first so it can be
+ * the default selection.
+ */
+export function buildMachineFilmSelectorTiers(product: any, variants?: any[] | null) {
+  const sources = [...(product?.packageOptions || []), ...(variants || product?.variants || [])];
+  const widthInches = String(product?.width_inches || product?.widthInches || sources[0]?.widthInches || "20.00");
+  const gauge = Number(product?.gauge || sources[0]?.gauge || 60);
+  const lengthFeet = Number(product?.length_feet || product?.lengthFeet || sources[0]?.lengthFeet || 0);
+  const singleRoll = sources.find((item) => sourceRolls(item) === 1 && sourcePrice(item) > 0);
+  const looseRoll = sources.find(
+    (item) => sourcePrice(item) > 0 && sourceRolls(item) > 0 && sourceRolls(item) < 20
+  );
+  const storedTierPrice = (rolls: number) => {
+    const match = sources.find((item) => sourceRolls(item) === rolls && sourcePrice(item) > 0);
+    if (match) return sourcePrice(match);
+    if (rolls === 20) {
+      return firstPositiveAmount([product?.price20Rolls, product?.price_20_rolls]);
+    }
+    return firstPositiveAmount([product?.price40Rolls, product?.price_40_rolls]);
+  };
+  const halfStored = storedTierPrice(20);
+  const fullStored = storedTierPrice(40);
+  const unitRollPrice =
+    sourcePrice(singleRoll) ||
+    firstPositiveAmount([product?.price6Rolls, product?.price_6_rolls, product?.price1]) ||
+    (halfStored > 0 || fullStored > 0
+      ? 0
+      : firstPositiveAmount([
+          product?.priceUsd,
+          product?.price_usd,
+          product?.price,
+          product?.startingPrice,
+        ])) ||
+    (looseRoll ? sourcePrice(looseRoll) / Math.max(1, sourceRolls(looseRoll)) : 0);
+  const rollWeight = firstPositiveAmount([
+    ...sources.map((item) => item?.rollWeightLbs ?? item?.roll_weight_lbs),
+    product?.rollWeightLbs,
+    product?.roll_weight_lbs,
+    MACHINE_FILM_WEIGHT_SPECS.find(
+      (row) =>
+        row.width === Math.round(Number(widthInches) || 0) &&
+        row.gauge === Math.round(gauge) &&
+        row.length === Math.round(lengthFeet)
+    )?.roll,
+  ]);
+  const baseSku = String(product?.partNumber || product?.part_number || product?.slug || "MACHINE");
+
+  const halfPrice =
+    halfStored > 0 ? halfStored : unitRollPrice > 0 ? Math.round(unitRollPrice * 20 * 100) / 100 : 0;
+  const fullPrice =
+    fullStored > 0
+      ? fullStored
+      : unitRollPrice > 0
+        ? Math.round(unitRollPrice * 40 * 100) / 100
+        : halfPrice > 0
+          ? Math.round(halfPrice * 2 * 100) / 100
+          : 0;
+
+  return MACHINE_PACKAGE_TIERS.map((tier) => {
+    const price = tier.rolls === 40 ? fullPrice : halfPrice;
+    const weight = packageTotalWeightLbs({
+      rolls: tier.rolls,
+      machine: true,
+      rollWeightLbs: rollWeight,
+      widthInches,
+      gauge,
+      lengthFeet,
+    });
+    return {
+      id: `${baseSku}-${tier.suffix}`,
+      sku: `${baseSku}-${tier.suffix}`,
+      tierKey: tier.rolls === 20 ? "fixed_half" : "full_pallet",
+      title: tier.label,
+      packageSize: tier.label,
+      tierSubtext: tier.rolls === 20 ? "20 Rolls" : "40 Rolls",
+      price,
+      priceUsd: price > 0 ? price.toFixed(2) : "",
+      rolls: tier.rolls,
+      rolls_count: tier.rolls,
+      rollsCount: tier.rolls,
+      rollsPerBox: tier.rolls,
+      boxes_count: 0,
+      boxesCount: 0,
+      rollsPerPallet: 40,
+      widthInches,
+      gauge,
+      lengthFeet,
+      weightLbs: weight != null ? String(weight) : "",
+      rollWeightLbs: rollWeight,
+      boxWeightLbs: rollWeight,
+      palletWeightLbs: tier.rolls === 40 && weight != null ? weight : 0,
+      stockStatus: "in_stock",
+      createdAt: new Date().toISOString(),
+    };
+  });
 }
 
 export const SERIES_FORCE_STANDARD = "FORCE Standard";

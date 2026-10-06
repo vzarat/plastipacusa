@@ -14,12 +14,7 @@ import {
   formatPackageWeightLbs,
   packageTotalWeightLbs,
 } from "@/lib/package-weight";
-import { isMachineFilm } from "@/lib/products";
-
-const MACHINE_MATRIX_TIERS = [
-  { rolls: 20, boxes: 0, label: "Half Pallet (20 Rolls / 1 Layer)", discountRate: 0 },
-  { rolls: 40, boxes: 0, label: "Full Pallet (40 Rolls / 2 Layers)", discountRate: 0 },
-] as const;
+import { buildMachineFilmSelectorTiers, isMachineFilm } from "@/lib/products";
 
 const HAND_MATRIX_TIERS = [
   { rolls: 4, boxes: 1, label: "1 Box (4 Rolls)", discountRate: 0 },
@@ -71,51 +66,6 @@ function firstPositive(values: Array<number | null | undefined>): number {
     if (Number.isFinite(amount) && amount > 0) return amount;
   }
   return 0;
-}
-
-function machineMatrixRows(
-  variants: ProductVariant[],
-  product: SpecsTableProps["product"]
-): ProductVariant[] {
-  const rollWeight = firstPositive(variants.map((variant) => variant.rollWeightLbs));
-  const palletWeight = firstPositive(variants.map((variant) => variant.palletWeightLbs));
-  const sample = variants[0];
-
-  return MACHINE_MATRIX_TIERS.map((tier) => {
-    const match =
-      variants.find(
-        (variant) =>
-          variantRollCount(variant) === tier.rolls && Number(variant.priceUsd) > 0
-      ) ||
-      variants.find((variant) => variantRollCount(variant) === tier.rolls) ||
-      null;
-    const option = product?.packageOptions?.find((entry) => entry.rolls === tier.rolls);
-    const price = Number(match?.priceUsd) > 0 ? match?.priceUsd : option?.price;
-    return {
-      ...(match || sample),
-      id: match?.id || option?.sku || `machine-${tier.rolls}`,
-      sku: match?.sku || option?.sku || "",
-      title: tier.label,
-      packageSize: tier.label,
-      rolls_count: tier.rolls,
-      rollsCount: tier.rolls,
-      rollsPerBox: tier.rolls,
-      boxes_count: 0,
-      boxesCount: 0,
-      rollsPerPallet: 40,
-      rollWeightLbs: match?.rollWeightLbs || rollWeight,
-      boxWeightLbs: match?.rollWeightLbs || rollWeight,
-      palletWeightLbs: match?.palletWeightLbs || palletWeight,
-      widthInches: String(
-        match?.widthInches || product?.widthInches || product?.width_inches || sample?.widthInches || ""
-      ),
-      gauge: Number(match?.gauge ?? product?.gauge ?? sample?.gauge ?? 0),
-      lengthFeet: Number(
-        match?.lengthFeet ?? product?.lengthFeet ?? product?.length_feet ?? sample?.lengthFeet ?? 0
-      ),
-      priceUsd: price != null && Number(price) > 0 ? String(price) : "",
-    } as ProductVariant;
-  });
 }
 
 function roundMoney(amount: number): number {
@@ -213,7 +163,7 @@ function safeLocaleNumber(value: unknown, suffix = ""): string {
 export function SpecsTable({ variants, product }: SpecsTableProps) {
   const source = Array.isArray(variants) ? variants.filter(Boolean) : [];
   const rows = isMachineFilm(product)
-    ? machineMatrixRows(source, product)
+    ? (buildMachineFilmSelectorTiers(product, source) as ProductVariant[])
     : source.length > 0
       ? handMatrixRows(source, product)
       : source;

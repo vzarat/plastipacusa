@@ -3,6 +3,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { ProductWithVariants, ProductVariant } from "@/types";
 import { VariantSelector } from "@/components/products/VariantSelector";
+import { buildMachineFilmSelectorTiers, isMachineFilm } from "@/lib/products";
 import { PhoneCall } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -23,6 +24,10 @@ function buildInitialVariant(product: ProductWithVariants): ProductVariant | any
   );
   const gauge = Number(product?.gauge ?? 60) || 60;
   const lengthFeet = Number(product?.length_feet ?? 1000) || 1000;
+
+  if (isMachineFilm(product)) {
+    return buildMachineFilmSelectorTiers(product)[0];
+  }
 
   const packageOptions = product.packageOptions || [];
   if (packageOptions.length > 0) {

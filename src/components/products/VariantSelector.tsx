@@ -15,6 +15,7 @@ import { applyDiscountToPrice, formatDiscountAppliedBadge } from "@/lib/discount
 import { usesCompact1880Pallets } from "@/lib/palletizing";
 import {
   HAND_FULL_PALLET,
+  buildMachineFilmSelectorTiers,
   isMachineFilm as detectMachineFilm,
   normalizeMachinePackageLabel,
   unitLabelForProduct,
@@ -321,8 +322,8 @@ function displayPackageSubtext(variant: any, isMachine: boolean): string {
   const rolls = Math.max(0, getRollsCount(variant));
   if (isMachine) {
     const tierKind = getPackageTierKind(variant, true);
-    if (tierKind === "fixed_half") return "20 Rolls included · 1 Layer";
-    if (tierKind === "full_pallet") return "40 Rolls included · 2 Layers";
+    if (tierKind === "fixed_half" || rolls === 20) return "20 Rolls";
+    if (tierKind === "full_pallet" || rolls === 40) return "40 Rolls";
     return "";
   }
 
@@ -365,6 +366,8 @@ export function VariantSelector({
 
   // Prefer configured package tiers when they carry real prices; otherwise use SKU variants.
   const variants = useMemo(() => {
+    if (isMachineFilm) return buildMachineFilmSelectorTiers(product);
+
     const mapped = (() => {
       if (product?.packageOptions?.length) {
         return product.packageOptions
@@ -440,21 +443,8 @@ export function VariantSelector({
         .filter(Boolean);
     })();
 
-    if (!isMachineFilm) {
-      const standardTiers = buildStandardHandTiers(product, mapped);
-      return standardTiers.length > 0 ? standardTiers : mapped;
-    }
-
-    const machineTiers = mapped
-      .filter((variant: any) => [20, 40].includes(getRollsCount(variant)))
-      .sort((a: any, b: any) => getRollsCount(a) - getRollsCount(b));
-    const seenRolls = new Set<number>();
-    return machineTiers.filter((variant: any) => {
-      const rolls = getRollsCount(variant);
-      if (seenRolls.has(rolls)) return false;
-      seenRolls.add(rolls);
-      return true;
-    });
+    const standardTiers = buildStandardHandTiers(product, mapped);
+    return standardTiers.length > 0 ? standardTiers : mapped;
   }, [product, isMachineFilm]);
 
   const addItem = useCartStore((state) => state.addItem);
@@ -488,6 +478,11 @@ export function VariantSelector({
   );
 
   const selectedVariant: ProductVariant = useMemo(() => {
+    if (isMachineFilm) {
+      const parentRolls = getRollsCount(propSelectedVariant);
+      const wanted = parentRolls === 40 ? 40 : 20;
+      return variants.find((variant: any) => getRollsCount(variant) === wanted) || variants[0];
+    }
     if (!isMachineFilm && variants[0]?.tierKey) {
       const sourceKey = propSelectedVariant?.tierKey;
       if (sourceKey) {
@@ -553,6 +548,16 @@ export function VariantSelector({
     },
     [onVariantChange]
   );
+
+  useEffect(() => {
+    if (!isMachineFilm || !onVariantChange) return;
+    const half = variants.find((variant: any) => getRollsCount(variant) === 20) || variants[0];
+    if (!half) return;
+    const parentRolls = getRollsCount(propSelectedVariant);
+    if (parentRolls === 20 || parentRolls === 40) return;
+    onVariantChange(half);
+    setInternalSelectedVariantId(String(half.id || half.sku));
+  }, [isMachineFilm, variants, propSelectedVariant, onVariantChange]);
 
   useEffect(() => {
     if (isMachineFilm || !selectedVariant?.tierKey || !onVariantChange) return;
