@@ -10,6 +10,7 @@ import { CheckoutPaymentStep } from "@/components/checkout/CheckoutPaymentStep";
 import { ShipmentOriginSummary } from "@/components/checkout/ShipmentOriginSummary";
 import { CheckoutAddressStep } from "@/components/checkout/CheckoutAddressStep";
 import { CheckoutShippingMethodStep } from "@/components/checkout/CheckoutShippingMethodStep";
+import { CheckoutSessionExpiredModal } from "@/components/checkout/CheckoutSessionExpiredModal";
 import {
   CheckoutStateProvider,
   useCheckoutState,
@@ -24,6 +25,7 @@ import { useCartStore } from "@/lib/store/useCartStore";
 import { calculateOrderTotal, roundMoney } from "@/lib/sales-tax";
 import { formatCurrency } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { useCheckoutInactivity } from "@/hooks/useCheckoutInactivity";
 import { savedAddressToCheckout } from "@/lib/saved-shipping-address";
 import {
   activeShippingMethod,
@@ -33,6 +35,7 @@ import {
 } from "@/lib/shipping-method";
 import {
   EMPTY_CHECKOUT_SHIPPING,
+  clearCheckoutShipping,
   persistCheckoutShipping,
   validateCheckoutShipping,
   type CheckoutShippingAddress,
@@ -72,11 +75,14 @@ function CheckoutPageInner() {
   const emptyCartRedirected = useRef(false);
   const {
     selectedAddress,
+    setSelectedAddress,
     deliveryMethod,
     setDeliveryMethod,
     taxExemptRequested,
     setTaxExemptRequested,
   } = useCheckoutState();
+  const { isSessionExpired, setIsSessionExpired } = useCheckoutInactivity();
+  const [restartingCheckout, setRestartingCheckout] = useState(false);
 
   useEffect(() => {
     const openDestination = () => {
@@ -223,6 +229,40 @@ function CheckoutPageInner() {
     setStep(3);
   };
 
+  const restartCheckout = async () => {
+    if (restartingCheckout) return;
+    setRestartingCheckout(true);
+    clearCheckoutShipping();
+    setSelectedAddress(null);
+    setDeliveryMethod("ground");
+    setTaxExemptRequested(false);
+    setAgreedToPolicies(false);
+    setShipping(EMPTY_CHECKOUT_SHIPPING);
+    setStep(1);
+    setFurthestStep(1);
+    setSummaryOpen(false);
+
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error || !data.session) {
+        setIsSessionExpired(false);
+        router.replace("/login?redirect=/checkout");
+        return;
+      }
+      if (data.session.user.email) {
+        setCheckoutEmail(data.session.user.email);
+      }
+      setIsSessionExpired(false);
+      router.replace("/checkout?step=cart");
+    } catch {
+      setIsSessionExpired(false);
+      router.replace("/login?redirect=/checkout");
+    } finally {
+      setRestartingCheckout(false);
+    }
+  };
+
   const proceedToPayment = () => {
     if (!selectedAddress) {
       toast.error("Select a shipping address before payment.");
@@ -235,12 +275,19 @@ function CheckoutPageInner() {
 
   if (authChecking || !isAuthenticated) {
     return (
-      <main className="mx-auto flex min-h-[50vh] max-w-4xl items-center justify-center px-6 py-16">
-        <div className="flex items-center gap-2 text-sm text-slate-600">
-          <Loader2 className="h-4 w-4 animate-spin text-sky-600" />
-          Verifying session…
-        </div>
-      </main>
+      <>
+        <main className="mx-auto flex min-h-[50vh] max-w-4xl items-center justify-center px-6 py-16">
+          <div className="flex items-center gap-2 text-sm text-slate-600">
+            <Loader2 className="h-4 w-4 animate-spin text-sky-600" />
+            Verifying session…
+          </div>
+        </main>
+        <CheckoutSessionExpiredModal
+          open={isSessionExpired}
+          onRestart={() => void restartCheckout()}
+          restarting={restartingCheckout}
+        />
+      </>
     );
   }
 
@@ -484,6 +531,11 @@ function CheckoutPageInner() {
           </Button>
         </div>
       </div>
+      <CheckoutSessionExpiredModal
+        open={isSessionExpired}
+        onRestart={() => void restartCheckout()}
+        restarting={restartingCheckout}
+      />
     </main>
   );
 }
