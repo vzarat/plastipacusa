@@ -24,6 +24,34 @@ const RATE_LIMIT_MAX = 20;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const PROVIDER_ERROR = "Assist AI could not finish that reply. Please try again.";
 
+function describeError(error: unknown): string {
+  const parts: string[] = [];
+  if (error instanceof Error) {
+    if (error.message.trim()) parts.push(error.message.trim());
+    const extra = error as Error & { statusCode?: number; responseBody?: string };
+    if (typeof extra.statusCode === "number") parts.push(`HTTP ${extra.statusCode}`);
+    if (typeof extra.responseBody === "string" && extra.responseBody.trim()) {
+      parts.push(extra.responseBody.trim());
+    }
+  } else if (typeof error === "string" && error.trim()) {
+    parts.push(error.trim());
+  } else {
+    try {
+      parts.push(JSON.stringify(error));
+    } catch {
+      parts.push(PROVIDER_ERROR);
+    }
+  }
+
+  const message = parts.join("\n")
+    .replace(/sk-[A-Za-z0-9_-]{8,}/g, "[redacted]")
+    .replace(/AIza[0-9A-Za-z_-]{8,}/g, "[redacted]")
+    .replace(/Bearer\s+\S+/gi, "Bearer [redacted]")
+    .replace(/(api[_-]?key|authorization)(["']?\s*[:=]\s*["']?)[^\s"',}]+/gi, "$1$2[redacted]");
+
+  return (message || PROVIDER_ERROR).slice(0, 800);
+}
+
 // TODO: El rate limit en memoria debe migrarse a Redis o Supabase si se despliega en serverless.
 const hits = new Map<string, number[]>();
 
@@ -156,8 +184,9 @@ export async function POST(req: Request) {
     const missing = usesGemini(provider)
       ? "GEMINI_API_KEY (GOOGLE_GENERATIVE_AI_API_KEY is also unset)"
       : "OPENAI_API_KEY";
-    console.error(`Assist AI provider "${provider}" is missing ${missing}.`);
-    return Response.json({ error: "Assist AI is unavailable right now." }, { status: 503 });
+    const detail = `Assist AI provider "${provider}" is missing ${missing}.`;
+    console.error(detail);
+    return Response.json({ error: detail }, { status: 503 });
   }
 
   let messages: UIMessage[];
@@ -182,8 +211,9 @@ export async function POST(req: Request) {
     }
     messages = await validateUIMessages({ messages: recent });
   } catch (error) {
-    console.error("Assist AI rejected the chat body", error);
-    return Response.json({ error: "Send a message to start." }, { status: 400 });
+    const detail = describeError(error);
+    console.error("Assist AI rejected the chat body", detail);
+    return Response.json({ error: detail }, { status: 400 });
   }
 
   try {
@@ -203,7 +233,7 @@ export async function POST(req: Request) {
         stream: result.stream,
         tools: assistantTools,
         originalMessages: messages,
-        onError: () => PROVIDER_ERROR,
+        onError: (error) => describeError(error),
         onFinish: async (event) => {
           if (!conversationId || event.isCancelled) return;
           const userMessage = [...event.messages].reverse().find((message) => message.role === "user");
@@ -221,7 +251,8 @@ export async function POST(req: Request) {
       }),
     });
   } catch (error) {
-    console.error("Assist AI provider error", error);
-    return Response.json({ error: PROVIDER_ERROR }, { status: 502 });
+    const detail = describeError(error);
+    console.error("Assist AI provider error", detail);
+    return Response.json({ error: detail }, { status: 502 });
   }
 }

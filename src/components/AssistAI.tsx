@@ -43,6 +43,18 @@ function welcomeMessage(): UIMessage {
   };
 }
 
+function chatErrorText(error: Error): string {
+  const raw = error.message.trim();
+  if (!raw) return "Assist AI is unavailable right now.";
+  try {
+    const parsed = JSON.parse(raw) as { error?: unknown };
+    if (typeof parsed.error === "string" && parsed.error.trim()) return parsed.error;
+  } catch {
+    // Stream errors are already plain text.
+  }
+  return raw;
+}
+
 function messageText(parts: { type: string; text?: string }[]): string {
   return parts
     .filter((part) => part.type === "text" && part.text)
@@ -338,8 +350,8 @@ export default function AssistAI() {
                   <p className="text-xs font-semibold text-slate-500">Assist AI is writing…</p>
                 )}
                 {error && (
-                  <p className="text-xs font-medium text-red-700">
-                    Assist AI is unavailable right now. Try again in a moment.
+                  <p className="mr-auto max-w-[90%] whitespace-pre-wrap break-words rounded-2xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-medium leading-relaxed text-red-700">
+                    {chatErrorText(error)}
                   </p>
                 )}
               </div>
