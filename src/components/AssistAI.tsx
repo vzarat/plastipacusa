@@ -27,6 +27,20 @@ const QUICK_ACTIONS = [
   },
 ] as const;
 
+const WELCOME_TEXT = "¿Ya cuentas con máquina envolvedora?";
+const WRAP_CHOICES = [
+  { label: "Sí, uso máquina", prompt: "Sí, uso máquina" },
+  { label: "No, envuelvo a mano", prompt: "No, envuelvo a mano" },
+] as const;
+
+function welcomeMessage(): UIMessage {
+  return {
+    id: "assist-welcome",
+    role: "assistant",
+    parts: [{ type: "text", text: WELCOME_TEXT }],
+  };
+}
+
 function messageText(parts: { type: string; text?: string }[]): string {
   return parts
     .filter((part) => part.type === "text" && part.text)
@@ -83,9 +97,10 @@ export default function AssistAI() {
         };
         if (token !== loadToken.current || busyRef.current) return;
         conversationIdRef.current = history.conversationId ?? null;
-        setMessages((history.messages ?? []) as UIMessage[]);
+        const loaded = (history.messages ?? []) as UIMessage[];
+        setMessages(loaded.length > 0 ? loaded : [welcomeMessage()]);
       } catch {
-        if (token === loadToken.current) setMessages([]);
+        if (token === loadToken.current) setMessages([welcomeMessage()]);
       } finally {
         if (token === loadToken.current) setHistoryReady(true);
       }
@@ -102,12 +117,14 @@ export default function AssistAI() {
       const created = (await response.json()) as { conversationId?: string };
       if (!created.conversationId || token !== loadToken.current) return;
       conversationIdRef.current = created.conversationId;
-      setMessages([]);
+      setMessages([welcomeMessage()]);
       setHistoryReady(true);
     } catch {
       if (token === loadToken.current) setHistoryReady(true);
     }
   };
+
+  const awaitingWrapChoice = historyReady && !messages.some((message) => message.role === "user");
 
   const submit = (text: string) => {
     const next = text.trim();
@@ -205,11 +222,20 @@ export default function AssistAI() {
               </div>
 
               <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-                {historyReady && messages.length === 0 && (
-                  <p className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-600">
-                    Ask about pallet quantities, gauge, or freight. Packaging limits are enforced
-                    for half pallets, layers, and boxes.
-                  </p>
+                {awaitingWrapChoice && (
+                  <div className="flex flex-col gap-2">
+                    {WRAP_CHOICES.map((choice) => (
+                      <button
+                        key={choice.label}
+                        type="button"
+                        disabled={busy}
+                        onClick={() => submit(choice.prompt)}
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-sm font-bold text-slate-900 transition hover:border-sky-300 hover:bg-sky-50 disabled:opacity-50"
+                      >
+                        {choice.label}
+                      </button>
+                    ))}
+                  </div>
                 )}
                 {messages.map((message) => {
                   const text = messageText(message.parts);

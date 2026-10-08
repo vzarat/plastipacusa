@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { estimateUsage } from "@/lib/assistant/estimate-usage";
 import { freightRateCheck } from "@/lib/assistant/freight-rate";
 import { gaugeAdvice } from "@/lib/assistant/gauge-advice";
 import { palletCalculator, type CatalogPrice } from "@/lib/assistant/pallet-calculator";
+import { USAGE_RATES } from "@/lib/assistant/usage-rates";
 import {
+  estimateUsageInputSchema,
   freightRateInputSchema,
   palletCalculatorInputSchema,
 } from "@/lib/assistant/tools";
@@ -321,6 +324,96 @@ describe("tool schemas", () => {
       state: "TX",
     });
     assert.equal(parsed.success, true);
+  });
+});
+
+describe("estimateUsage", () => {
+  it("rejects rates, prices, and identity on the schema", () => {
+    for (const field of ["rollsPerWrappedPallet", "poundsPerPallet", "price", "userId", "role", "discount"]) {
+      const parsed = estimateUsageInputSchema.safeParse({
+        method: "machine",
+        widthInches: 20,
+        palletsPerDay: 10,
+        daysPerMonth: 20,
+        [field]: 5,
+      });
+      assert.equal(parsed.success, false, field);
+    }
+  });
+
+  it("counts machine pallets and does not invent film per pallet", () => {
+    const result = estimateUsage({
+      method: "machine",
+      widthInches: 20,
+      palletsPerDay: 10,
+      daysPerMonth: 20,
+    });
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.palletsPerDay, 10);
+      assert.equal(result.palletsPerMonth, 200);
+      assert.equal(result.rollsPerMonth, null);
+      assert.equal(result.poundsPerMonth, null);
+      assert.equal(result.usage, "usage_unavailable");
+    }
+  });
+
+  it("uses a configured wrap rate and ignores a rate smuggled on the input", () => {
+    const input = {
+      method: "machine" as const,
+      widthInches: 20 as const,
+      palletsPerDay: 10,
+      daysPerMonth: 20,
+      rollsPerWrappedPallet: 99,
+    };
+    const result = estimateUsage(input, { ...USAGE_RATES, machineRollsPerWrappedPallet: 2 });
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.rollsPerDay, 20);
+      assert.equal(result.rollsPerMonth, 400);
+      assert.equal(result.usage, "calculated");
+      assert.notEqual(result.rollsPerMonth, 99 * 200);
+    }
+  });
+
+  it("asks instead of calculating when a machine figure is missing", () => {
+    const result = estimateUsage({ method: "machine", widthInches: 20, palletsPerDay: 10 });
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.deepEqual(result.missing, ["daysPerMonth"]);
+      assert.equal("palletsPerMonth" in result, false);
+    }
+  });
+
+  it("converts hand-film boxes with the package ladder", () => {
+    const result = estimateUsage({
+      method: "hand",
+      widthInches: 18,
+      monthlyUnit: "boxes",
+      monthlyAmount: 15,
+      daysPerMonth: 20,
+    });
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.rollsPerMonth, 60);
+      assert.equal(result.boxesPerMonth, 15);
+      assert.equal(result.rollsPerDay, 3);
+      assert.equal(result.rateSource, "hand-package-ladder");
+    }
+  });
+
+  it("does not round leftover hand-film rolls into boxes", () => {
+    const result = estimateUsage({
+      method: "hand",
+      monthlyUnit: "rolls",
+      monthlyAmount: 10,
+    });
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.rollsPerMonth, 10);
+      assert.equal(result.boxesPerMonth, null);
+      assert.equal(result.rollsPerDay, null);
+    }
   });
 });
 

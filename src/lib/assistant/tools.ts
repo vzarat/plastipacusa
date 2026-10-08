@@ -1,9 +1,11 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { lookupCatalogPrice } from "@/lib/assistant/catalog-price";
+import { estimateUsage } from "@/lib/assistant/estimate-usage";
 import { freightRateCheck } from "@/lib/assistant/freight-rate";
 import { gaugeAdvice } from "@/lib/assistant/gauge-advice";
 import { palletCalculator } from "@/lib/assistant/pallet-calculator";
+import { USAGE_RATES } from "@/lib/assistant/usage-rates";
 import {
   CATALOG_GAUGES,
   MAX_LENGTH_FEET,
@@ -44,6 +46,17 @@ export const gaugeAdviceInputSchema = z
   })
   .strict();
 
+export const estimateUsageInputSchema = z
+  .object({
+    method: z.enum(["machine", "hand"]),
+    widthInches: widthSchema.optional(),
+    palletsPerDay: z.number().int().min(1).max(2000).optional(),
+    daysPerMonth: z.number().int().min(1).max(31).optional(),
+    monthlyUnit: z.enum(["boxes", "rolls"]).optional(),
+    monthlyAmount: z.number().int().min(1).max(100000).optional(),
+  })
+  .strict();
+
 export const freightRateInputSchema = z
   .object({
     ...packageFields,
@@ -81,6 +94,19 @@ export const assistantTools = {
         return gaugeAdvice(input);
       } catch (error) {
         console.error("Assist AI gauge tool failed", error);
+        return toolFailure();
+      }
+    },
+  }),
+  estimateUsage: tool({
+    description:
+      "Calculate daily and monthly film use from the buyer's figures and configured rates only. Returns an error listing missing fields instead of guessing. Machine wrap yield is usage_unavailable until a catalog rate exists.",
+    inputSchema: estimateUsageInputSchema,
+    execute: async (input) => {
+      try {
+        return estimateUsage(input, USAGE_RATES);
+      } catch (error) {
+        console.error("Assist AI usage tool failed", error);
         return toolFailure();
       }
     },

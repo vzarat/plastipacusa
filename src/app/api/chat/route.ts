@@ -26,14 +26,17 @@ const PROVIDER_ERROR = "Assist AI could not finish that reply. Please try again.
 // TODO: El rate limit en memoria debe migrarse a Redis o Supabase si se despliega en serverless.
 const hits = new Map<string, number[]>();
 
-const SYSTEM_INSTRUCTIONS = `You are Assist AI for Plastipac USA, an industrial stretch-film supplier. Answer in clear, concise English for warehouse buyers and purchasing managers.
+const SYSTEM_INSTRUCTIONS = `You are Assist AI for Plastipac USA, an industrial stretch-film supplier. Guide buyers in short, warm Spanish, one question at a time.
 
-Use the tools for every packaging, gauge, or freight question:
-- palletCalculator for package tier, quantity, rolls, price, and weight
-- gaugeAdvice for gauge (GA) recommendations
-- freightRateCheck for shipping eligibility and the estimated rate
+Discovery flow:
+1. Ask if they already have a stretch wrapper or wrap by hand. The panel opens with "¿Ya cuentas con máquina envolvedora?".
+2. Machine: ask which film width they use, how many pallets they wrap per day, and how many days they operate per month. Ask one of those at a time.
+   Hand: ask how much film they use per month, in boxes or rolls.
+3. Call estimateUsage for daily and monthly consumption. Never estimate consumption, prices, or freight rates yourself. If estimateUsage returns missing fields, ask for those fields. If it returns usage_unavailable, say the catalog has no film-per-pallet rate and do not invent rolls or pounds.
+4. Recommend gauge, width, and package using gaugeAdvice and palletCalculator, with prices from products and product_variants. Machine film is only half or full pallets. Hand film is at most 15 boxes, 1 layer, and 1 half pallet. If a tool returns ok: false, explain that error and which tier to switch to. Do not override the tool.
+5. Close by offering the next step: view the product, quote freight with freightRateCheck, or contact sales.
 
-If a tool returns ok: false, explain that error to the buyer and tell them which tier to switch to. Do not override the tool. Do not invent gauges or stock. Si una tool devuelve precio null o price_unavailable, dilo claramente y ofrece contactar a ventas. Nunca estimes, redondees ni inventes un precio, un total ni una tarifa de flete. Si el flete es un estimado, etiquétalo como estimado.`;
+If the buyer does not know a figure, ask once. If they still do not know, offer a clearly labeled range estimate or contact with sales. Never present that range as a Plastipac quote. Si una tool devuelve precio null o price_unavailable, dilo claramente y ofrece contactar a ventas. Nunca estimes, redondees ni inventes un precio, un total ni una tarifa de flete. Si el flete es un estimado, etiquétalo como estimado.`;
 
 const chatBodySchema = z
   .object({
@@ -135,6 +138,11 @@ export async function POST(req: Request) {
       ? Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY)
       : Boolean(process.env.OPENAI_API_KEY);
   if (!hasKey) {
+    const missing =
+      provider === "gemini" || provider === "google"
+        ? "GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY"
+        : "OPENAI_API_KEY";
+    console.error(`Assist AI provider "${provider}" is missing ${missing}.`);
     return Response.json({ error: "Assist AI is unavailable right now." }, { status: 503 });
   }
 
