@@ -5,7 +5,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
 import { Calculator, Ruler, Send, Truck, X } from "lucide-react";
-import Aurora from "@/components/ui/Aurora";
+import GradientWaves from "@/components/ui/GradientWaves";
 import { useAssistStore } from "@/lib/store/useAssistStore";
 
 const QUICK_ACTIONS = [
@@ -186,37 +186,66 @@ export default function AssistAI() {
                 </div>
               </header>
 
-              <div className="relative flex min-h-0 flex-1 flex-col">
-                <div className="pointer-events-none absolute inset-0" aria-hidden>
-                  <Aurora
-                    colorStops={["#05cff1", "#1018ef", "#3002ec"]}
-                    blend={0.5}
-                    amplitude={1.0}
-                    speed={0.5}
-                    lightMode
-                  />
+              <div className="relative flex min-h-0 flex-1 flex-col bg-white">
+                <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+                  <div
+                    className="absolute inset-x-0 bottom-0 aspect-[5/3] max-h-[68%] w-full"
+                    style={{
+                      WebkitMaskImage:
+                        "linear-gradient(to top, #000 48%, rgba(0,0,0,0.55) 72%, transparent 100%)",
+                      maskImage:
+                        "linear-gradient(to top, #000 48%, rgba(0,0,0,0.55) 72%, transparent 100%)",
+                    }}
+                  >
+                    <GradientWaves
+                      horizonColor="#085de7"
+                      waveColor="#0629d4"
+                      crestColor="#06B6D4"
+                      speed={0.4}
+                      amplitude={2.5}
+                      waveScale={0.6}
+                      waveRatio={0.9}
+                      swell={35}
+                      turbulence={20}
+                      tilt={1.11}
+                      zoom={1}
+                      height={5.5}
+                      fogDepth={15}
+                      detail="medium"
+                      brightness={1}
+                      opacity={1}
+                      mouseInteraction={false}
+                      parallaxStrength={0.5}
+                      grain
+                      grainIntensity={0.05}
+                      className="gradient-waves-light"
+                    />
+                  </div>
                 </div>
 
-              <div className="relative z-10 shrink-0 border-b border-slate-100 px-4 py-3">
+              <div className="relative z-10 shrink-0 px-4 py-3">
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   Quick actions
                 </p>
                 <div className="grid grid-cols-1 gap-2">
-                  {QUICK_ACTIONS.map((action) => {
+                  {QUICK_ACTIONS.map((action, index) => {
                     const Icon = action.icon;
                     return (
-                      <button
+                      <motion.button
                         key={action.title}
                         type="button"
                         disabled={busy}
+                        initial={{ opacity: 0, y: -12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.35, delay: 0.06 + index * 0.07, ease: "easeOut" }}
                         onClick={() => submit(action.prompt)}
-                        className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-sm font-bold text-slate-900 transition hover:border-sky-300 hover:bg-sky-50 disabled:opacity-50"
+                        className="flex items-center gap-3 rounded-xl border border-white/80 bg-white/55 px-3 py-2.5 text-left text-sm font-bold text-slate-900 shadow-sm backdrop-blur-md transition hover:bg-white/80 disabled:opacity-50"
                       >
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white">
                           <Icon className="h-4 w-4" aria-hidden />
                         </span>
                         {action.title}
-                      </button>
+                      </motion.button>
                     );
                   })}
                 </div>
@@ -225,16 +254,19 @@ export default function AssistAI() {
               <div className="relative z-10 min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
                 {awaitingWrapChoice && (
                   <div className="flex flex-col gap-2">
-                    {WRAP_CHOICES.map((choice) => (
-                      <button
+                    {WRAP_CHOICES.map((choice, index) => (
+                      <motion.button
                         key={choice.label}
                         type="button"
                         disabled={busy}
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.35, delay: 0.28 + index * 0.07, ease: "easeOut" }}
                         onClick={() => submit(choice.prompt)}
-                        className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-sm font-bold text-slate-900 transition hover:border-sky-300 hover:bg-sky-50 disabled:opacity-50"
+                        className="rounded-xl border border-white/80 bg-white/55 px-3 py-2.5 text-left text-sm font-bold text-slate-900 shadow-sm backdrop-blur-md transition hover:bg-white/80 disabled:opacity-50"
                       >
                         {choice.label}
-                      </button>
+                      </motion.button>
                     ))}
                   </div>
                 )}
@@ -248,7 +280,7 @@ export default function AssistAI() {
                       className={`max-w-[90%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                         isUser
                           ? "ml-auto bg-slate-900 text-white"
-                          : "mr-auto border border-slate-200 bg-white text-slate-800"
+                          : "mr-auto border border-white/80 bg-white/70 text-slate-800 backdrop-blur-md"
                       }`}
                     >
                       {text}
@@ -266,13 +298,13 @@ export default function AssistAI() {
               </div>
 
               <form
-                className="relative z-10 shrink-0 border-t border-slate-200 bg-white/80 p-4 backdrop-blur-md"
+                className="relative z-10 shrink-0 px-3 pb-3 pt-1"
                 onSubmit={(event) => {
                   event.preventDefault();
                   submit(input);
                 }}
               >
-                <div className="flex items-end gap-2">
+                <div className="flex items-end gap-2 rounded-2xl border border-white/80 bg-white/45 p-2 shadow-lg shadow-sky-950/5 backdrop-blur-xl">
                   <label className="sr-only" htmlFor="assist-ai-input">
                     Message Assist AI
                   </label>
@@ -288,13 +320,13 @@ export default function AssistAI() {
                       }
                     }}
                     placeholder="Ask about pallets, gauge, or freight"
-                    className="min-h-12 flex-1 resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-500"
+                    className="min-h-12 flex-1 resize-none rounded-xl border border-white/70 bg-white/50 px-3 py-2 text-sm text-slate-900 outline-none backdrop-blur-md focus:border-sky-400"
                   />
                   {busy ? (
                     <button
                       type="button"
                       onClick={() => stop()}
-                      className="h-11 rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-700"
+                      className="h-11 rounded-xl border border-white/80 bg-white/60 px-3 text-xs font-bold text-slate-700 backdrop-blur-md"
                     >
                       Stop
                     </button>
