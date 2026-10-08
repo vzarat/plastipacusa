@@ -1,4 +1,5 @@
-import { createOpenAI, openai } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { openai } from "@ai-sdk/openai";
 import { resolveOwnedConversation, saveChatTurn } from "@/lib/assistant/persist";
 import { assistantTools } from "@/lib/assistant/tools";
 import { createServerClient } from "@/lib/supabase/server";
@@ -103,16 +104,33 @@ function withinRateLimit(userId: string): { ok: true } | { ok: false; retryAfter
   return { ok: true };
 }
 
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+
+function activeProvider() {
+  return (process.env.AI_PROVIDER || "openai").toLowerCase();
+}
+
+function usesGemini(provider = activeProvider()) {
+  return provider === "gemini" || provider === "google";
+}
+
+function geminiApiKey() {
+  const key = process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim();
+  return key || undefined;
+}
+
 function resolveModel() {
-  const provider = (process.env.AI_PROVIDER || "openai").toLowerCase();
-  if (provider === "gemini" || provider === "google") {
-    const gemini = createOpenAI({
-      apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-      baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
-    });
-    return gemini.chat(process.env.GEMINI_MODEL || "gemini-2.5-flash");
+  if (usesGemini()) {
+    const google = createGoogleGenerativeAI({ apiKey: geminiApiKey() });
+    return google(process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL);
   }
-  return openai(process.env.OPENAI_MODEL || "gpt-4o-mini");
+  return openai(process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini");
+}
+
+export async function GET() {
+  return Response.json({
+    poweredBy: usesGemini() ? "Google Gemini" : "OpenAI",
+  });
 }
 
 export async function POST(req: Request) {
@@ -132,16 +150,12 @@ export async function POST(req: Request) {
     );
   }
 
-  const provider = (process.env.AI_PROVIDER || "openai").toLowerCase();
-  const hasKey =
-    provider === "gemini" || provider === "google"
-      ? Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY)
-      : Boolean(process.env.OPENAI_API_KEY);
+  const provider = activeProvider();
+  const hasKey = usesGemini(provider) ? Boolean(geminiApiKey()) : Boolean(process.env.OPENAI_API_KEY?.trim());
   if (!hasKey) {
-    const missing =
-      provider === "gemini" || provider === "google"
-        ? "GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY"
-        : "OPENAI_API_KEY";
+    const missing = usesGemini(provider)
+      ? "GEMINI_API_KEY (GOOGLE_GENERATIVE_AI_API_KEY is also unset)"
+      : "OPENAI_API_KEY";
     console.error(`Assist AI provider "${provider}" is missing ${missing}.`);
     return Response.json({ error: "Assist AI is unavailable right now." }, { status: 503 });
   }

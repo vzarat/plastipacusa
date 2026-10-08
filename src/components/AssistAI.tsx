@@ -73,9 +73,23 @@ export default function AssistAI() {
   const open = useAssistStore((state) => state.open);
   const setOpen = useAssistStore((state) => state.setOpen);
   const [historyReady, setHistoryReady] = useState(false);
+  const [poweredBy, setPoweredBy] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const busy = status === "submitted" || status === "streaming";
   busyRef.current = busy;
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/chat")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { poweredBy?: string } | null) => {
+        if (!cancelled && typeof data?.poweredBy === "string") setPoweredBy(data.poweredBy);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -84,6 +98,36 @@ export default function AssistAI() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, setOpen]);
+
+  useEffect(() => {
+    if (!open) return;
+    const mobile = window.matchMedia("(max-width: 767px)");
+    if (!mobile.matches) return;
+
+    const scrollY = window.scrollY;
+    const { body, documentElement: html } = document;
+    const previous = {
+      htmlOverflow: html.style.overflow,
+      bodyOverflow: body.style.overflow,
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
+    };
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+
+    return () => {
+      html.style.overflow = previous.htmlOverflow;
+      body.style.overflow = previous.bodyOverflow;
+      body.style.position = previous.position;
+      body.style.top = previous.top;
+      body.style.width = previous.width;
+      window.scrollTo(0, scrollY);
+    };
   }, [open]);
 
   useEffect(() => {
@@ -144,7 +188,7 @@ export default function AssistAI() {
             <motion.button
               type="button"
               aria-label="Close Assist AI"
-              className="fixed inset-0 z-[90] bg-slate-950/40"
+              className="fixed inset-0 z-[90] hidden bg-slate-950/40 md:block"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -153,7 +197,7 @@ export default function AssistAI() {
             <motion.aside
               role="dialog"
               aria-label="Assist AI"
-              className="fixed inset-y-0 right-0 z-[91] flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl"
+              className="fixed inset-0 z-[91] flex h-dvh w-full flex-col overscroll-none bg-white md:inset-y-0 md:right-0 md:left-auto md:h-auto md:max-w-md md:border-l md:border-slate-200 md:shadow-2xl"
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
@@ -254,7 +298,7 @@ export default function AssistAI() {
                 </div>
               </div>
 
-              <div className="relative z-10 min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
+              <div className="relative z-10 min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4">
                 {awaitingWrapChoice && (
                   <div className="flex flex-col gap-2">
                     {WRAP_CHOICES.map((choice, index) => (
@@ -301,7 +345,7 @@ export default function AssistAI() {
               </div>
 
               <form
-                className="relative z-10 shrink-0 px-3 pb-3 pt-1"
+                className="relative z-10 shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-1"
                 onSubmit={(event) => {
                   event.preventDefault();
                   submit(input);
@@ -345,6 +389,11 @@ export default function AssistAI() {
                   )}
                 </div>
               </form>
+              {poweredBy ? (
+                <p className="relative z-10 px-4 pb-3 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                  Powered by {poweredBy}
+                </p>
+              ) : null}
               </div>
             </motion.aside>
           </>
