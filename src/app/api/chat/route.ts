@@ -132,7 +132,7 @@ function withinRateLimit(userId: string): { ok: true } | { ok: false; retryAfter
   return { ok: true };
 }
 
-const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
 
 function activeProvider() {
   return (process.env.AI_PROVIDER || "openai").toLowerCase();
