@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
-import { Calculator, Ruler, Send, Truck, X } from "lucide-react";
+import { Calculator, Ruler, Send, Sparkles, Truck, X } from "lucide-react";
 import GradientWaves from "@/components/ui/GradientWaves";
 import { useAssistStore } from "@/lib/store/useAssistStore";
 
@@ -164,7 +164,10 @@ export default function AssistAI() {
                   <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sky-700">
                     Plastipac USA
                   </p>
-                  <h2 className="text-lg font-black text-slate-900">Assist AI</h2>
+                  <h2 className="flex items-center gap-1.5 text-lg font-black text-slate-900">
+                    <Sparkles className="h-4 w-4 text-sky-600" aria-hidden />
+                    Assist AI
+                  </h2>
                 </div>
                 <div className="flex items-center gap-1">
                   <button
@@ -189,12 +192,12 @@ export default function AssistAI() {
               <div className="relative flex min-h-0 flex-1 flex-col bg-white">
                 <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
                   <div
-                    className="absolute inset-x-0 bottom-0 aspect-[5/3] max-h-[68%] w-full"
+                    className="absolute inset-x-0 bottom-0 aspect-[5/3] w-full origin-bottom scale-[1.28]"
                     style={{
                       WebkitMaskImage:
-                        "linear-gradient(to top, #000 48%, rgba(0,0,0,0.55) 72%, transparent 100%)",
+                        "linear-gradient(to top, #000 62%, rgba(0,0,0,0.5) 84%, transparent 100%)",
                       maskImage:
-                        "linear-gradient(to top, #000 48%, rgba(0,0,0,0.55) 72%, transparent 100%)",
+                        "linear-gradient(to top, #000 62%, rgba(0,0,0,0.5) 84%, transparent 100%)",
                     }}
                   >
                     <GradientWaves
@@ -241,7 +244,7 @@ export default function AssistAI() {
                         onClick={() => submit(action.prompt)}
                         className="flex items-center gap-3 rounded-xl border border-white/80 bg-white/55 px-3 py-2.5 text-left text-sm font-bold text-slate-900 shadow-sm backdrop-blur-md transition hover:bg-white/80 disabled:opacity-50"
                       >
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#085de7] text-white">
                           <Icon className="h-4 w-4" aria-hidden />
                         </span>
                         {action.title}
