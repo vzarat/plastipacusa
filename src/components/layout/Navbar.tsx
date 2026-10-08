@@ -220,7 +220,6 @@ export function Navbar() {
               >
                 <Search className="h-5 w-5" />
               </button>
-              {assistButton(true)}
               {mobileCartButton}
               {mobileMenuButton}
             </div>
@@ -263,7 +262,6 @@ export function Navbar() {
             />
           </Link>
           <div className="relative z-10 ml-auto flex items-center gap-1">
-            {assistButton(true)}
             {mobileCartButton}
             {mobileMenuButton}
           </div>

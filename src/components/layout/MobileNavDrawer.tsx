@@ -5,8 +5,9 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAssistStore } from "@/lib/store/useAssistStore";
 
 const LOGO_SRC =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PLASTIPAC_USA_LOGO%202.svg";
@@ -35,6 +36,7 @@ function isLinkActive(id: string, pathname: string, hash: string) {
 
 export function MobileNavDrawer({ open, onClose }: MobileNavDrawerProps) {
   const pathname = usePathname();
+  const openAssist = useAssistStore((state) => state.setOpen);
   const [hash, setHash] = useState("");
   const [mounted, setMounted] = useState(false);
 
@@ -130,12 +132,23 @@ export function MobileNavDrawer({ open, onClose }: MobileNavDrawerProps) {
           </nav>
         </div>
 
-        <div className="pt-6">
+        <div className="flex flex-col gap-3 pt-6">
           <Button asChild variant="gradient" className="h-11 w-full text-sm">
             <Link href="/#inquiry-form" onClick={onClose}>
               Request Quote
             </Link>
           </Button>
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              openAssist(true);
+            }}
+            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#085de7] text-sm font-bold text-white shadow-lg shadow-sky-900/25 transition active:scale-[0.98]"
+          >
+            <Sparkles className="h-4 w-4" aria-hidden />
+            Assist AI
+          </button>
         </div>
       </aside>
     </div>,
