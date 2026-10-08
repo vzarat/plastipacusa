@@ -90,6 +90,16 @@ export function Navbar() {
 
   const openCart = () => openDrawer();
 
+  const assistHintPopup = (
+    <div
+      role="status"
+      className="absolute left-0 top-full z-50 mt-2 w-56 rounded-xl border border-sky-100 bg-white px-3 py-2 text-left text-xs font-medium leading-snug text-slate-700 shadow-lg"
+    >
+      <span className="absolute -top-1 left-6 h-2 w-2 rotate-45 border-l border-t border-sky-100 bg-white" />
+      Use Assist AI to find the right film for your wrap.
+    </div>
+  );
+
   const assistButton = (compact: boolean) => (
     <button
       type="button"
@@ -151,6 +161,17 @@ export function Navbar() {
     pathname === "/catalog" ||
     pathname === "/products" ||
     pathname.startsWith("/products/");
+  const [assistHint, setAssistHint] = useState(false);
+
+  useEffect(() => {
+    if (!isCatalogPage) {
+      setAssistHint(false);
+      return;
+    }
+    setAssistHint(true);
+    const timer = window.setTimeout(() => setAssistHint(false), 5000);
+    return () => window.clearTimeout(timer);
+  }, [isCatalogPage]);
 
   const submitCatalogSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -176,7 +197,7 @@ export function Navbar() {
 
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-100 bg-white/95 backdrop-blur-md shadow-sm">
+    <header className="sticky top-0 z-40 w-full overflow-visible border-b border-slate-100 bg-white/95 backdrop-blur-md shadow-sm">
       {isCatalogPage ? (
         <div className="md:hidden">
           <div className="flex h-14 items-center justify-between px-4">
@@ -205,6 +226,14 @@ export function Navbar() {
             </div>
           </div>
           <form onSubmit={submitCatalogSearch} className="px-4 pb-3">
+            {assistHint && (
+              <p
+                role="status"
+                className="mb-2 rounded-xl border border-sky-100 bg-white px-3 py-2 text-xs font-medium leading-snug text-slate-700 shadow-md"
+              >
+                Use Assist AI to find the right film for your wrap.
+              </p>
+            )}
             <label className="relative block">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
@@ -242,8 +271,8 @@ export function Navbar() {
       )}
 
       {/* Desktop layout */}
-      <div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20 sm:h-24">
+      <div className="hidden overflow-visible md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between overflow-visible h-20 sm:h-24">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center group py-1.5">
               <Image
@@ -257,16 +286,19 @@ export function Navbar() {
             </Link>
 
             <nav className="flex items-center gap-1 lg:gap-1.5">
-              <Link
-                href="/products"
-                className={`px-3.5 py-2 text-sm font-semibold rounded-xl transition-all ${
-                  pathname === "/products"
-                    ? "text-sky-700 bg-sky-50/80"
-                    : "text-slate-600 hover:text-sky-600 hover:bg-sky-50/50"
-                }`}
-              >
-                {t("nav.products")}
-              </Link>
+              <div className="relative">
+                <Link
+                  href="/products"
+                  className={`px-3.5 py-2 text-sm font-semibold rounded-xl transition-all ${
+                    pathname === "/products" || pathname.startsWith("/products/")
+                      ? "text-sky-700 bg-sky-50/80"
+                      : "text-slate-600 hover:text-sky-600 hover:bg-sky-50/50"
+                  }`}
+                >
+                  {t("nav.products")}
+                </Link>
+                {assistHint && assistHintPopup}
+              </div>
 
               <Link
                 href={categoriesHref}

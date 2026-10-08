@@ -5,6 +5,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
 import { Calculator, Ruler, Send, Truck, X } from "lucide-react";
+import Aurora from "@/components/ui/Aurora";
 import { useAssistStore } from "@/lib/store/useAssistStore";
 
 const QUICK_ACTIONS = [
@@ -28,10 +29,10 @@ const QUICK_ACTIONS = [
   },
 ] as const;
 
-const WELCOME_TEXT = "¿Ya cuentas con máquina envolvedora?";
+const WELCOME_TEXT = "Do you already have a stretch wrapper?";
 const WRAP_CHOICES = [
-  { label: "Sí, uso máquina", prompt: "Sí, uso máquina" },
-  { label: "No, envuelvo a mano", prompt: "No, envuelvo a mano" },
+  { label: "Yes, I use a machine", prompt: "Yes, I use a machine" },
+  { label: "No, I wrap by hand", prompt: "No, I wrap by hand" },
 ] as const;
 
 function welcomeMessage(): UIMessage {
@@ -152,13 +153,13 @@ export default function AssistAI() {
             <motion.aside
               role="dialog"
               aria-label="Assist AI"
-              className="fixed inset-y-0 right-0 z-[91] flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl"
+              className="fixed inset-y-0 right-0 z-[91] flex w-full max-w-md flex-col border-l border-slate-200 bg-[#050816] shadow-2xl"
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "tween", duration: 0.28, ease: "easeOut" }}
             >
-              <header className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <header className="relative z-20 flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sky-700">
                     Plastipac USA
@@ -172,7 +173,7 @@ export default function AssistAI() {
                     disabled={busy}
                     className="rounded-lg px-2 py-1 text-xs font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-40"
                   >
-                    Nueva conversación
+                    New chat
                   </button>
                   <button
                     type="button"
@@ -185,8 +186,18 @@ export default function AssistAI() {
                 </div>
               </header>
 
-              <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              <div className="relative flex min-h-0 flex-1 flex-col">
+                <div className="pointer-events-none absolute inset-0" aria-hidden>
+                  <Aurora
+                    colorStops={["#05cff1", "#1018ef", "#3002ec"]}
+                    blend={0.5}
+                    amplitude={1.0}
+                    speed={0.5}
+                  />
+                </div>
+
+              <div className="relative z-10 shrink-0 border-b border-white/10 px-4 py-3">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/80">
                   Quick actions
                 </p>
                 <div className="grid grid-cols-1 gap-2">
@@ -210,7 +221,7 @@ export default function AssistAI() {
                 </div>
               </div>
 
-              <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+              <div className="relative z-10 min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
                 {awaitingWrapChoice && (
                   <div className="flex flex-col gap-2">
                     {WRAP_CHOICES.map((choice) => (
@@ -235,8 +246,8 @@ export default function AssistAI() {
                       key={message.id}
                       className={`max-w-[90%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                         isUser
-                          ? "ml-auto bg-slate-900 text-white"
-                          : "mr-auto border border-slate-200 bg-white text-slate-800"
+                          ? "ml-auto bg-white text-slate-900"
+                          : "mr-auto border border-white/70 bg-white/90 text-slate-800"
                       }`}
                     >
                       {text}
@@ -244,17 +255,17 @@ export default function AssistAI() {
                   );
                 })}
                 {busy && (
-                  <p className="text-xs font-semibold text-slate-400">Assist AI is writing…</p>
+                  <p className="text-xs font-semibold text-white">Assist AI is writing…</p>
                 )}
                 {error && (
-                  <p className="text-xs font-medium text-red-700">
+                  <p className="text-xs font-medium text-red-100">
                     Assist AI is unavailable right now. Try again in a moment.
                   </p>
                 )}
               </div>
 
               <form
-                className="border-t border-slate-200 p-4"
+                className="relative z-10 shrink-0 border-t border-white/15 bg-slate-950/35 p-4 backdrop-blur-md"
                 onSubmit={(event) => {
                   event.preventDefault();
                   submit(input);
@@ -298,6 +309,7 @@ export default function AssistAI() {
                   )}
                 </div>
               </form>
+              </div>
             </motion.aside>
           </>
         )}
