@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "framer-motion";
-import { Calculator, Ruler, Send, Sparkles, Truck, X } from "lucide-react";
+import { Calculator, Ruler, Send, Truck, X } from "lucide-react";
+import { useAssistStore } from "@/lib/store/useAssistStore";
 
 const QUICK_ACTIONS = [
   {
@@ -68,7 +69,8 @@ export default function AssistAI() {
     []
   );
   const { messages, sendMessage, status, error, stop, setMessages } = useChat({ transport });
-  const [open, setOpen] = useState(false);
+  const open = useAssistStore((state) => state.open);
+  const setOpen = useAssistStore((state) => state.setOpen);
   const [historyReady, setHistoryReady] = useState(false);
   const [input, setInput] = useState("");
   const busy = status === "submitted" || status === "streaming";
@@ -135,19 +137,6 @@ export default function AssistAI() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={`fixed bottom-5 right-5 z-[90] inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-slate-900/20 transition hover:bg-sky-700 ${
-          open ? "pointer-events-none opacity-0" : ""
-        }`}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-      >
-        <Sparkles className="h-4 w-4 text-sky-300" aria-hidden />
-        Assist AI
-      </button>
-
       <AnimatePresence>
         {open && (
           <>

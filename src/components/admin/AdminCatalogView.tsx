@@ -14,10 +14,8 @@ import {
   PackageX,
   Loader2,
   X,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminProduct } from "@/types/product";
@@ -32,19 +30,27 @@ interface AdminCatalogViewProps {
 
 type ApplicationFilter = "all" | "hand" | "machine";
 type StatusFilter = "all" | "active" | "inactive";
+type SpecFilter = number | "all";
 
-// Extracts a roll length in feet from a product title (e.g. "...X 1000FT" -> 1000)
-function extractLengthFeet(name: string): number | null {
-  const match = name.match(/(\d{3,5})\s*FT/i);
-  return match ? Number(match[1]) : null;
-}
-
-const FALLBACK_GAUGES = [60, 70, 80, 90];
-const FALLBACK_LENGTHS = [1000, 1500, 5000, 6000];
+const CATALOG_WIDTHS = [15, 18, 20, 30];
+const CATALOG_GAUGES = [60, 70, 80];
+const CATALOG_LENGTHS = [1000, 1500, 5000, 6000];
 
 // Resolves the best available image source across the various field shapes a product row may have
 function formatSpecInches(value: number): string {
   return Number.isInteger(value) ? String(value) : String(value);
+}
+
+function roundedSpec(value: number | null | undefined): number | null {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return Math.round(parsed);
+}
+
+function uniqueSorted(values: Array<number | null>): number[] {
+  return Array.from(new Set(values.filter((value): value is number => value != null))).sort(
+    (a, b) => a - b
+  );
 }
 
 function specNumber(value: number | null | undefined): number {
@@ -105,10 +111,10 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
   const [products, setProducts] = useState<AdminProduct[]>(initialProducts);
   const [search, setSearch] = useState("");
   const [filterApp, setFilterApp] = useState<ApplicationFilter>("all");
-  const [filterGauges, setFilterGauges] = useState<number[]>([]);
-  const [filterLength, setFilterLength] = useState<number | "all">("all");
+  const [filterWidth, setFilterWidth] = useState<SpecFilter>("all");
+  const [filterGauge, setFilterGauge] = useState<SpecFilter>("all");
+  const [filterLength, setFilterLength] = useState<SpecFilter>("all");
   const [filterStatus, setFilterStatus] = useState<StatusFilter>("all");
-  const [isGaugeMenuOpen, setIsGaugeMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -125,24 +131,24 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
     }
   };
 
-  const availableGauges = useMemo(() => {
-    const fromData = Array.from(new Set(products.map((p) => p.gauge).filter((g): g is number => !!g)));
-    const merged = Array.from(new Set([...fromData, ...FALLBACK_GAUGES]));
-    return merged.sort((a, b) => a - b);
-  }, [products]);
-
-  const availableLengths = useMemo(() => {
-    const fromData = products
-      .map((p) => extractLengthFeet(p.name))
-      .filter((l): l is number => !!l);
-    const merged = Array.from(new Set([...fromData, ...FALLBACK_LENGTHS]));
-    return merged.sort((a, b) => a - b);
-  }, [products]);
+  const availableWidths = useMemo(
+    () => uniqueSorted([...products.map((item) => roundedSpec(item.widthInches)), ...CATALOG_WIDTHS]),
+    [products]
+  );
+  const availableGauges = useMemo(
+    () => uniqueSorted([...products.map((item) => roundedSpec(item.gauge)), ...CATALOG_GAUGES]),
+    [products]
+  );
+  const availableLengths = useMemo(
+    () => uniqueSorted([...products.map((item) => roundedSpec(item.lengthFeet)), ...CATALOG_LENGTHS]),
+    [products]
+  );
 
   const hasActiveFilters =
     search.trim() !== "" ||
     filterApp !== "all" ||
-    filterGauges.length > 0 ||
+    filterWidth !== "all" ||
+    filterGauge !== "all" ||
     filterLength !== "all" ||
     filterStatus !== "all";
 
@@ -151,8 +157,9 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
       if (filterApp !== "all" && item.application !== filterApp) return false;
       if (filterStatus === "active" && !item.isActive) return false;
       if (filterStatus === "inactive" && item.isActive) return false;
-      if (filterGauges.length > 0 && (!item.gauge || !filterGauges.includes(item.gauge))) return false;
-      if (filterLength !== "all" && extractLengthFeet(item.name) !== filterLength) return false;
+      if (filterWidth !== "all" && roundedSpec(item.widthInches) !== filterWidth) return false;
+      if (filterGauge !== "all" && roundedSpec(item.gauge) !== filterGauge) return false;
+      if (filterLength !== "all" && roundedSpec(item.lengthFeet) !== filterLength) return false;
       if (search.trim()) {
         const q = search.trim().toLowerCase();
         const matches =
@@ -163,7 +170,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
       }
       return true;
     }).sort(compareProductsBySpecs);
-  }, [products, search, filterApp, filterGauges, filterLength, filterStatus]);
+  }, [products, search, filterApp, filterWidth, filterGauge, filterLength, filterStatus]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const page = Math.min(currentPage, totalPages);
@@ -171,25 +178,25 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filterApp, filterGauges, filterLength, filterStatus]);
+  }, [search, filterApp, filterWidth, filterGauge, filterLength, filterStatus]);
 
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
 
-  const toggleGauge = (gauge: number) => {
-    setFilterGauges((prev) =>
-      prev.includes(gauge) ? prev.filter((g) => g !== gauge) : [...prev, gauge]
-    );
-  };
-
   const clearFilters = () => {
     setSearch("");
     setFilterApp("all");
-    setFilterGauges([]);
+    setFilterWidth("all");
+    setFilterGauge("all");
     setFilterLength("all");
     setFilterStatus("all");
   };
+
+  const specChipClass = (active: boolean) =>
+    active
+      ? "rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm"
+      : "rounded-lg border border-transparent bg-slate-100/80 px-3 py-1.5 text-xs font-medium text-slate-600 transition-all hover:bg-slate-200/80";
 
   const handleAdd = () => {
     setEditingProduct(null);
@@ -335,44 +342,6 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
               ))}
             </div>
 
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setIsGaugeMenuOpen((v) => !v)}
-                className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 hover:bg-slate-50"
-              >
-                <SlidersHorizontal className="h-3.5 w-3.5 text-slate-400" />
-                {t("admin.gaugeFilter")}
-                {filterGauges.length > 0 ? ` (${filterGauges.length})` : ""}
-                <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-              </button>
-
-              {isGaugeMenuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-30"
-                    onClick={() => setIsGaugeMenuOpen(false)}
-                  />
-                  <div className="absolute left-0 z-40 mt-2 max-h-64 w-48 space-y-1 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
-                    {availableGauges.map((g) => (
-                      <label
-                        key={g}
-                        className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={filterGauges.includes(g)}
-                          onChange={() => toggleGauge(g)}
-                          className="h-3.5 w-3.5 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        {g} GA
-                      </label>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}
@@ -395,40 +364,59 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-          <span className="mr-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-            {t("admin.lengthLabel")}
-          </span>
-          <button
-            type="button"
-            onClick={() => setFilterLength("all")}
-            className={
-              filterLength === "all"
-                ? "rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm"
-                : "rounded-lg border border-transparent bg-slate-100/80 px-3 py-1.5 text-xs font-medium text-slate-600 transition-all hover:bg-slate-200/80"
-            }
-          >
-            {t("admin.all")}
-          </button>
-          {availableLengths.map((len) => {
-            const label = `${Number(len).toLocaleString("en-US")} FT`;
-            const active = filterLength === len;
-            return (
+        <div className="mt-3 space-y-3 border-t border-slate-100 pt-3">
+          {(
+            [
+              {
+                label: t("products.filmWidth"),
+                value: filterWidth,
+                options: availableWidths,
+                format: (value: number) => `${value}"`,
+                onChange: setFilterWidth,
+              },
+              {
+                label: t("products.targetGauge"),
+                value: filterGauge,
+                options: availableGauges,
+                format: (value: number) => `${value} GA`,
+                onChange: setFilterGauge,
+              },
+              {
+                label: t("products.rollLength"),
+                value: filterLength,
+                options: availableLengths,
+                format: (value: number) => `${value.toLocaleString("en-US")} FT`,
+                onChange: setFilterLength,
+              },
+            ] as const
+          ).map((group) => (
+            <div key={group.label} className="flex flex-wrap items-center gap-2">
+              <span className="mr-1 w-28 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                {group.label}
+              </span>
               <button
-                key={len}
                 type="button"
-                onClick={() => setFilterLength(active ? "all" : len)}
-                className={
-                  active
-                    ? "rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm"
-                    : "rounded-lg border border-transparent bg-slate-100/80 px-3 py-1.5 text-xs font-medium text-slate-600 transition-all hover:bg-slate-200/80"
-                }
+                onClick={() => group.onChange("all")}
+                className={specChipClass(group.value === "all")}
               >
-                {label}
+                {t("admin.all")}
               </button>
-            );
-          })}
-          <p className="ml-auto text-xs font-medium text-slate-500">
+              {group.options.map((option) => {
+                const active = group.value === option;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => group.onChange(active ? "all" : option)}
+                    className={specChipClass(active)}
+                  >
+                    {group.format(option)}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+          <p className="text-xs font-medium text-slate-500">
             {t("admin.showing")} {filtered.length} {t("admin.of")} {products.length}{" "}
             {t("admin.productsCount")}
           </p>
@@ -456,17 +444,26 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                 <X className="h-3 w-3 text-slate-400" />
               </button>
             )}
-            {filterGauges.map((gauge) => (
+            {filterWidth !== "all" && (
               <button
-                key={gauge}
                 type="button"
-                onClick={() => toggleGauge(gauge)}
+                onClick={() => setFilterWidth("all")}
                 className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200"
               >
-                {gauge} GA
+                {filterWidth}&quot;
                 <X className="h-3 w-3 text-slate-400" />
               </button>
-            ))}
+            )}
+            {filterGauge !== "all" && (
+              <button
+                type="button"
+                onClick={() => setFilterGauge("all")}
+                className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200"
+              >
+                {filterGauge} GA
+                <X className="h-3 w-3 text-slate-400" />
+              </button>
+            )}
             {filterLength !== "all" && (
               <button
                 type="button"

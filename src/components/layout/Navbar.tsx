@@ -15,14 +15,15 @@ import {
   LogOut,
   Building2,
   ShieldCheck,
-  PhoneCall,
   Menu,
+  Sparkles,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/context/LanguageContext";
 import { LanguageToggle } from "@/components/common/LanguageToggle";
 import { MobileNavDrawer } from "@/components/layout/MobileNavDrawer";
+import { useAssistStore } from "@/lib/store/useAssistStore";
 
 const LOGO_SRC =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PLASTIPAC_USA_LOGO%202.svg";
@@ -40,6 +41,7 @@ export function Navbar() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const items = useCartStore((state) => state.items);
   const openDrawer = useCartStore((state) => state.openDrawer);
+  const openAssist = useAssistStore((state) => state.setOpen);
 
   const totalItemsCount = items.reduce((acc, item) => acc + item.quantity, 0);
 
@@ -87,6 +89,22 @@ export function Navbar() {
   }`;
 
   const openCart = () => openDrawer();
+
+  const assistButton = (compact: boolean) => (
+    <button
+      type="button"
+      onClick={() => openAssist(true)}
+      className={
+        compact
+          ? "flex h-9 w-9 items-center justify-center rounded-full text-slate-700 transition-transform active:scale-95"
+          : "inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-slate-800 shadow-xs transition-all hover:border-sky-300 hover:bg-slate-50"
+      }
+      aria-label="Assist AI"
+    >
+      <Sparkles className={`${compact ? "h-5 w-5" : "h-4 w-4"} text-sky-600`} />
+      {!compact && <span className="text-xs font-semibold">Assist AI</span>}
+    </button>
+  );
 
   const mobileCartButton = (
     <button
@@ -181,6 +199,7 @@ export function Navbar() {
               >
                 <Search className="h-5 w-5" />
               </button>
+              {assistButton(true)}
               {mobileCartButton}
               {mobileMenuButton}
             </div>
@@ -215,6 +234,7 @@ export function Navbar() {
             />
           </Link>
           <div className="relative z-10 ml-auto flex items-center gap-1">
+            {assistButton(true)}
             {mobileCartButton}
             {mobileMenuButton}
           </div>
@@ -279,15 +299,6 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center gap-2 lg:gap-3">
-            <a
-              href="tel:+19564003683"
-              className="hidden lg:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 hover:text-sky-700 rounded-xl hover:bg-sky-50/60 transition-colors"
-              aria-label="Call Plastipac USA support"
-            >
-              <PhoneCall className="w-3.5 h-3.5 text-sky-600" />
-              (956) 400-3683
-            </a>
-
             <LanguageToggle />
 
             {currentUser ? (
@@ -392,6 +403,8 @@ export function Navbar() {
                 <span>{t("nav.signIn")}</span>
               </Link>
             )}
+
+            {assistButton(false)}
 
             {currentUser ? (
               <Link
