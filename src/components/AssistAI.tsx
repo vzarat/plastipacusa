@@ -153,7 +153,7 @@ export default function AssistAI() {
             <motion.aside
               role="dialog"
               aria-label="Assist AI"
-              className="fixed inset-y-0 right-0 z-[91] flex w-full max-w-md flex-col border-l border-slate-200 bg-[#050816] shadow-2xl"
+              className="fixed inset-y-0 right-0 z-[91] flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl"
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
@@ -193,11 +193,12 @@ export default function AssistAI() {
                     blend={0.5}
                     amplitude={1.0}
                     speed={0.5}
+                    lightMode
                   />
                 </div>
 
-              <div className="relative z-10 shrink-0 border-b border-white/10 px-4 py-3">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/80">
+              <div className="relative z-10 shrink-0 border-b border-slate-100 px-4 py-3">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   Quick actions
                 </p>
                 <div className="grid grid-cols-1 gap-2">
@@ -246,8 +247,8 @@ export default function AssistAI() {
                       key={message.id}
                       className={`max-w-[90%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                         isUser
-                          ? "ml-auto bg-white text-slate-900"
-                          : "mr-auto border border-white/70 bg-white/90 text-slate-800"
+                          ? "ml-auto bg-slate-900 text-white"
+                          : "mr-auto border border-slate-200 bg-white text-slate-800"
                       }`}
                     >
                       {text}
@@ -255,17 +256,17 @@ export default function AssistAI() {
                   );
                 })}
                 {busy && (
-                  <p className="text-xs font-semibold text-white">Assist AI is writing…</p>
+                  <p className="text-xs font-semibold text-slate-500">Assist AI is writing…</p>
                 )}
                 {error && (
-                  <p className="text-xs font-medium text-red-100">
+                  <p className="text-xs font-medium text-red-700">
                     Assist AI is unavailable right now. Try again in a moment.
                   </p>
                 )}
               </div>
 
               <form
-                className="relative z-10 shrink-0 border-t border-white/15 bg-slate-950/35 p-4 backdrop-blur-md"
+                className="relative z-10 shrink-0 border-t border-slate-200 bg-white/80 p-4 backdrop-blur-md"
                 onSubmit={(event) => {
                   event.preventDefault();
                   submit(input);
