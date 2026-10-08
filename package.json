@@ -15,6 +15,8 @@
     "db:fix-genesis-application": "tsx src/db/fix-genesis-application.ts"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^4.0.84",
+    "@ai-sdk/react": "^4.0.131",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@mirawision/usa-map-react": "^2.0.2",
     "@react-email/components": "^1.0.12",
@@ -24,13 +26,14 @@
     "@stripe/stripe-js": "^9.16.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.49.1",
+    "ai": "^7.0.128",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^16.4.7",
     "driver.js": "^1.8.0",
     "drizzle-orm": "^0.38.4",
-    "framer-motion": "^13.2.0",
-    "lucide-react": "^1.40.0",
+    "framer-motion": "^13.5.1",
+    "lucide-react": "^1.52.0",
     "next": "^15.3.9",
     "ogl": "^1.0.11",
     "pg": "^8.13.3",
@@ -41,6 +44,7 @@
     "stripe": "^22.6.2",
     "tailwind-merge": "^3.0.2",
     "three": "^0.180.0",
+    "zod": "^3.25.76",
     "zustand": "^5.0.3"
   },
   "devDependencies": {

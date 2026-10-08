@@ -28,6 +28,7 @@ const inter = Inter({
 });
 
 const CartDrawer = dynamic(() => import("@/components/layout/CartDrawer"));
+const AssistAI = dynamic(() => import("@/components/AssistAI"));
 
 const APP_ICON = `${SUPABASE_ORIGIN}/storage/v1/object/public/Products/ICON_APP.png`;
 const FAVICON = `${SUPABASE_ORIGIN}/storage/v1/object/public/Products/FAVICON.png`;
@@ -133,6 +134,7 @@ export default function RootLayout({
           <ClientPWAProvider />
           {children}
           <CartDrawer />
+          <AssistAI />
           <OnboardingTourWrapper />
           <Toaster closeButton position="top-right" richColors />
         </LanguageProvider>
