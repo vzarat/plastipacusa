@@ -15,7 +15,7 @@ export function GuidedTourBanner() {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.4 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
-      className="relative w-full overflow-hidden bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-800"
+      className="relative w-full overflow-hidden border-b border-slate-800 bg-[#07111f]"
       aria-label="Guided buying tour"
     >
       {/* Soft ambient glow — pure CSS, no canvas */}
@@ -43,7 +43,7 @@ export function GuidedTourBanner() {
         <button
           type="button"
           onClick={() => startGuidedTour()}
-          className="group relative inline-flex shrink-0 items-center justify-center gap-2 overflow-hidden rounded-xl bg-white px-4 py-2.5 text-xs font-extrabold uppercase tracking-wide text-blue-800 shadow-lg shadow-blue-950/25 transition-transform duration-200 hover:scale-[1.02] hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-blue-700 cursor-pointer sm:px-5 sm:text-[13px]"
+          className="group relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-xl bg-[#085de7] px-4 py-2.5 text-xs font-extrabold uppercase tracking-wide text-white shadow-lg shadow-blue-950/40 transition-transform duration-200 hover:scale-[1.02] hover:bg-[#0649b8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07111f] sm:px-5 sm:text-[13px]"
         >
           {/* Shine sweep */}
           <span

@@ -28,6 +28,8 @@ const HOUSTON_HIGHLIGHTS = [
 
 const WAREHOUSE_BG =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/warehouse_storage_background.png";
+const FORCE_HAND_IMAGE =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png";
 const HOUSTON_BG =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/Gemini_Generated_Image_2q84y2q84y2q84y2-artguru.jpeg";
 
@@ -140,7 +142,7 @@ export function Hero() {
 
   return (
     <section
-      className="relative isolate flex h-[480px] min-h-[480px] flex-col overflow-hidden border-b border-slate-800 bg-slate-950 px-5 [contain:strict] md:block md:h-[520px] md:min-h-[520px] md:px-0"
+      className="relative isolate flex h-[940px] min-h-[940px] flex-col overflow-hidden border-b border-slate-800 bg-[#07111f] px-5 [contain:strict] md:block md:h-[640px] md:min-h-[640px] md:px-0"
       aria-roledescription="carousel"
       aria-label="Featured"
       id="hero-carousel"
@@ -184,7 +186,7 @@ export function Hero() {
             sizes="100vw"
             className="object-cover object-center"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-900/90 to-slate-950" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#07111f] via-[#0a1730]/92 to-[#07111f] md:bg-gradient-to-r md:from-[#07111f] md:via-[#0a1730]/88 md:to-[#10284a]/75" />
         </div>
         <div
           className={`absolute inset-0 z-0 transition-opacity duration-700 ease-out ${
@@ -234,35 +236,23 @@ export function Hero() {
               exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
               className="mx-auto w-full max-w-7xl md:px-6 lg:px-8"
             >
-              <div className="grid grid-cols-1 items-center gap-2.5 md:grid-cols-12 md:gap-5">
+              <div className="grid grid-cols-1 items-center gap-8 md:grid-cols-12 md:gap-10 lg:gap-14">
                 <motion.div variants={fadeUp} className="md:col-span-7">
-                  <div className="rounded-2xl border border-slate-200 bg-white/95 p-3 text-left shadow-sm md:p-4">
-                    <div className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-semibold leading-snug text-sky-900">
-                      <Award className="h-3.5 w-3.5 shrink-0 text-sky-700" />
+                  <div className="max-w-xl space-y-5 text-left">
+                    <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-sky-100">
+                      <Award className="h-3.5 w-3.5 shrink-0 text-sky-300" />
                       <span>Serving the industry since 2008</span>
                     </div>
 
-                    <h1 className="mt-2 text-left text-[1.45rem] font-bold uppercase leading-[1.15] tracking-tight text-slate-950 md:text-3xl md:font-extrabold lg:text-[2rem]">
+                    <h1 className="text-left text-[2rem] font-extrabold leading-[1.05] tracking-tight text-white sm:text-4xl lg:text-5xl">
                       Performance you can wrap around every load
                     </h1>
 
-                    <p className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs leading-snug text-slate-700 md:text-sm">
+                    <p className="max-w-xl text-left text-sm leading-relaxed text-slate-300 sm:text-base">
                       From superior load containment and exceptional puncture resistance to optimized material usage, our films are designed to deliver consistent performance, greater efficiency, and dependable protection — load after load.
                     </p>
 
-                    <div className="mt-3 flex flex-col items-stretch gap-2 md:flex-row md:flex-wrap md:items-center md:justify-start">
-                      <Button
-                        asChild
-                        size="lg"
-                        variant="gradient"
-                        className="flex h-10 w-full items-center justify-center gap-2 px-4 text-sm font-semibold text-white shadow-sm md:w-auto"
-                      >
-                        <Link href="/#inquiry-form">
-                          <span>Contact us</span>
-                          <ArrowRight className="h-4 w-4" />
-                        </Link>
-                      </Button>
-
+                    <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                       <Link
                         href="/#product-catalog-section"
                         onClick={(event) => {
@@ -271,45 +261,69 @@ export function Hero() {
                           event.preventDefault();
                           target.scrollIntoView({ behavior: "smooth", block: "start" });
                         }}
-                        className="inline-flex h-10 cursor-pointer items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:bg-slate-50"
+                        className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#085de7] px-5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-colors hover:bg-[#0649b8]"
                       >
                         Explore catalog
+                        <ArrowRight className="h-4 w-4" />
                       </Link>
+                      <Button
+                        asChild
+                        size="lg"
+                        variant="outline"
+                        className="h-11 w-full border-white/30 bg-transparent px-5 text-sm font-semibold text-white shadow-none hover:bg-white/10 hover:text-white sm:w-auto"
+                      >
+                        <Link href="/#inquiry-form">
+                          <span>Contact us</span>
+                        </Link>
+                      </Button>
                     </div>
                   </div>
                 </motion.div>
 
                 <motion.div variants={fadeRight} className="md:col-span-5">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm md:p-4">
-                    <p className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-800">
-                      <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-                      Featured Product
-                    </p>
-                    <h3 className="mt-2 text-sm font-bold text-slate-950 md:text-base">
-                      FORCE™ Hand Stretch Film
-                    </h3>
-                    <p className="mt-1 text-xs font-medium text-slate-600">
-                      1 Box (4 Rolls) · 18&quot; x 80 Ga x 1500 ft
-                    </p>
-                    <ul className="mt-3 space-y-1.5">
-                      {(
-                        [
-                          ["300%+ Pre-Stretch Yield", Zap],
-                          ["Extreme Puncture Hold", ShieldCheck],
-                          ["Factory Direct Pricing", CheckCircle2],
-                        ] as const
-                      ).map(([label, Icon]) => (
-                        <li
-                          key={label}
-                          className="flex items-center gap-2 rounded-lg border border-slate-200 bg-blue-50/50 px-2.5 py-1.5"
-                        >
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-emerald-600 shadow-sm">
-                            <Icon className="h-3.5 w-3.5" />
-                          </span>
-                          <span className="text-[11px] font-semibold text-slate-800 md:text-xs">{label}</span>
-                        </li>
-                      ))}
-                    </ul>
+                  <div className="group relative">
+                    <div
+                      className="pointer-events-none absolute -inset-4 rounded-[2rem] bg-gradient-to-br from-sky-400/30 via-[#085de7]/20 to-transparent blur-2xl"
+                      aria-hidden
+                    />
+                    <div className="relative overflow-hidden rounded-2xl border border-white/70 bg-white text-left shadow-xl shadow-slate-950/30 transition-transform duration-300 ease-out group-hover:-translate-y-1">
+                      <div className="relative h-44 bg-gradient-to-b from-slate-50 to-slate-100 sm:h-52">
+                        <Image
+                          src={FORCE_HAND_IMAGE}
+                          alt="FORCE™ Hand Stretch Film"
+                          fill
+                          sizes="(min-width: 768px) 420px, 100vw"
+                          className="object-contain p-4"
+                        />
+                      </div>
+                      <div className="space-y-3 p-4 sm:p-5">
+                        <p className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-sky-800">
+                          <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+                          Featured Product
+                        </p>
+                        <div>
+                          <h3 className="text-lg font-bold tracking-tight text-slate-950">
+                            FORCE™ Hand Stretch Film
+                          </h3>
+                          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
+                            <Zap className="h-3.5 w-3.5 shrink-0 text-[#085de7]" />
+                            1 Box (4 Rolls) · 18&quot; x 80 Ga x 1500 ft
+                          </p>
+                        </div>
+                        <ul className="space-y-2">
+                          {["300%+ Pre-Stretch Yield", "Extreme Puncture Hold", "Factory Direct Pricing"].map(
+                            (label) => (
+                              <li key={label} className="flex items-center gap-2.5 text-sm font-medium text-slate-800">
+                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                </span>
+                                {label}
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    </div>
                   </div>
                 </motion.div>
               </div>
