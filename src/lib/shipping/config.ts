@@ -4,11 +4,11 @@
  */
 
 /** Warehouse already shown on checkout as Mission, TX. */
-export const WARP_ORIGIN_ZIP = "78572";
+export const WARP_ORIGIN_ZIP: string = "78572";
 
-export const WARP_ORIGIN_CITY = "Mission";
+export const WARP_ORIGIN_CITY: string = "Mission";
 
-export const WARP_ORIGIN_STATE = "TX";
+export const WARP_ORIGIN_STATE: string = "TX";
 
 /** Percent added on top of a Warp quote. 0 means the quoted amount is unchanged. */
 export const SHIPPING_MARKUP_PERCENT = 0;
@@ -16,31 +16,12 @@ export const SHIPPING_MARKUP_PERCENT = 0;
 /** Rolls required before RGV local delivery is free. */
 export const FREE_LOCAL_DELIVERY_MIN_ROLLS = 64;
 
-/**
- * Loaded pallet size in inches, including the wooden pallet.
- * Full pallet matches the catalog size 48 x 48 x 78.
- * One layer is 16 boxes. Half pallet is 2 layers. Full pallet is 4 layers.
- * Pallet deck is 6 inches. Each film layer is 18 inches.
- */
-export const HAND_FREIGHT_DIMENSIONS_IN = {
-  loose: { lengthIn: 48, widthIn: 48, heightIn: 24 },
-  layer: { lengthIn: 48, widthIn: 48, heightIn: 24 },
-  half: { lengthIn: 48, widthIn: 48, heightIn: 42 },
-  full: { lengthIn: 48, widthIn: 48, heightIn: 78 },
-} as const;
-
-export type HandFreightTier = keyof typeof HAND_FREIGHT_DIMENSIONS_IN;
-
-export function handFreightTier(boxes: number): HandFreightTier {
-  if (boxes >= 64) return "full";
-  if (boxes >= 32) return "half";
-  if (boxes >= 16) return "layer";
-  return "loose";
-}
-
-export function handFreightDimensions(boxes: number) {
-  return HAND_FREIGHT_DIMENSIONS_IN[handFreightTier(boxes)];
-}
+export {
+  HAND_FREIGHT_DIMENSIONS_IN,
+  handFreightDimensions,
+  handFreightTier,
+  type HandFreightTier,
+} from "@/lib/shipping/hand-freight";
 
 const WARP_BASE_URLS = {
   staging: "https://stg.wearewarp.com/api/v1",

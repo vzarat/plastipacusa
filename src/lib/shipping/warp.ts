@@ -73,20 +73,33 @@ async function quoteVehicle(input: {
         deliveryInfo: { zipcode: input.destinationZip },
         shipmentType: input.vehicle.shipmentType,
         vehicleType: { code: input.vehicle.code },
-        listItems: [
-          {
-            name: "Stretch film",
-            length: input.freight.lengthIn,
-            width: input.freight.widthIn,
-            height: input.freight.heightIn,
-            sizeUnit: "IN",
-            totalWeight: input.freight.weightLbs,
-            weightUnit: "lbs",
-            quantity: input.freight.palletCount,
-            packaging: "pallet",
-            stackable: false,
-          },
-        ],
+        listItems: (input.freight.pieces?.length
+          ? input.freight.pieces
+          : [
+              {
+                lengthIn: input.freight.lengthIn,
+                widthIn: input.freight.widthIn,
+                heightIn: input.freight.heightIn,
+                weightLbs: input.freight.weightLbs,
+                quantity: input.freight.palletCount,
+                packaging: "pallet" as const,
+              },
+            ]
+        ).map((piece) => ({
+          name: "Stretch film",
+          length: piece.lengthIn,
+          width: piece.widthIn,
+          height: piece.heightIn,
+          sizeUnit: "IN",
+          totalWeight:
+            piece.quantity > 1
+              ? Math.round((piece.weightLbs / piece.quantity) * 10) / 10
+              : piece.weightLbs,
+          weightUnit: "lbs",
+          quantity: piece.quantity,
+          packaging: piece.packaging,
+          stackable: false,
+        })),
       }),
     });
 

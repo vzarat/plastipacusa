@@ -44,6 +44,8 @@ export function CheckoutShippingMethodStep({
     selectedShippingOption,
     setSelectedShippingOption,
     setShipmentWeightLbs,
+    setShipmentDimensions,
+    setShipmentWeightDetail,
     setDeliveryMethod,
   } = useCheckoutState();
   const [loading, setLoading] = useState(false);
@@ -108,10 +110,14 @@ export function CheckoutShippingMethodStep({
           weightLbs?: number;
           freeLocal?: ShippingOption | null;
           options?: ShippingOption[];
+          dimensions?: string[];
+          weightDetail?: string[];
           message?: string | null;
         };
         if (cancelled) return;
         if (typeof payload.weightLbs === "number") setShipmentWeightLbs(payload.weightLbs);
+        setShipmentDimensions(payload.dimensions || []);
+        setShipmentWeightDetail(payload.weightDetail || []);
         const local = payload.freeLocal || null;
         const warpOptions = payload.options || [];
         setFreeLocal(local);
@@ -143,6 +149,8 @@ export function CheckoutShippingMethodStep({
     setDeliveryMethod,
     setSelectedShippingOption,
     setShipmentWeightLbs,
+    setShipmentDimensions,
+    setShipmentWeightDetail,
   ]);
 
   const cards = useMemo(() => {

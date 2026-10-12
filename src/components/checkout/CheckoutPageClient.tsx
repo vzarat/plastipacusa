@@ -75,8 +75,12 @@ function CheckoutPageInner() {
     setDeliveryMethod,
     setSelectedShippingOption,
     setShipmentWeightLbs,
+    setShipmentDimensions,
+    setShipmentWeightDetail,
     selectedShippingOption,
     shipmentWeightLbs,
+    shipmentDimensions,
+    shipmentWeightDetail,
     taxExemptRequested,
     setTaxExemptRequested,
   } = useCheckoutState();
@@ -215,6 +219,8 @@ function CheckoutPageInner() {
     setDeliveryMethod("ground");
     setSelectedShippingOption(null);
     setShipmentWeightLbs(null);
+    setShipmentDimensions([]);
+    setShipmentWeightDetail([]);
     setTaxExemptRequested(false);
     setAgreedToPolicies(false);
     setShipping(EMPTY_CHECKOUT_SHIPPING);
@@ -419,10 +425,22 @@ function CheckoutPageInner() {
           {(step === 3 || step === 4) && <ShipmentOriginSummary />}
 
           <div className="mt-6 space-y-3 border-t border-slate-200 pt-4 text-sm">
-            <div className="flex items-center justify-between text-slate-600">
-              <span>Weight</span>
-              <span className="font-semibold text-slate-800">
-                {totalWeight > 0 ? formatPackageWeightLbs(totalWeight) : "0 lbs"}
+            {shipmentDimensions.length > 0 && (
+              <div className="flex items-center justify-between text-slate-600">
+                <span>Dimensions</span>
+                <span className="text-right font-semibold text-slate-800">
+                  {shipmentDimensions.join(", ")}
+                </span>
+              </div>
+            )}
+            <div className="flex items-start justify-between gap-3 text-slate-600">
+              <span>Total Weight</span>
+              <span className="text-right font-semibold text-slate-800">
+                {shipmentWeightDetail.length > 0
+                  ? shipmentWeightDetail.join("; ")
+                  : totalWeight > 0
+                    ? formatPackageWeightLbs(totalWeight)
+                    : "0 lbs"}
               </span>
             </div>
             <div className="flex items-center justify-between text-slate-600">

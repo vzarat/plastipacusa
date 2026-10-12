@@ -19,6 +19,17 @@ export interface ShippingOption {
   destinationZip: string;
 }
 
+export interface FreightPiece {
+  lengthIn: number;
+  widthIn: number;
+  heightIn: number;
+  weightLbs: number;
+  quantity: number;
+  packaging: "pallet" | "box";
+  dimensionLabel: string;
+  weightLabel: string;
+}
+
 export interface ShipmentFreight {
   weightLbs: number;
   palletCount: number;
@@ -27,6 +38,7 @@ export interface ShipmentFreight {
   heightIn: number;
   rolls: number;
   boxes: number;
+  pieces: FreightPiece[];
 }
 
 export type ShippingQuoteErrorCode =

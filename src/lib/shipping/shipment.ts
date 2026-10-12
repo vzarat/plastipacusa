@@ -1,10 +1,12 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { packageTotalWeightLbs } from "@/lib/package-weight";
-import { handFreightDimensions } from "@/lib/shipping/config";
-import type { ShipmentFreight, ShippingQuoteLine } from "@/lib/shipping/types";
-
-/** Hand film full pallet from the existing package ladder. */
-const HAND_BOXES_PER_PALLET = 64;
+import {
+  formatFreightDimensions,
+  formatFreightWeightLabel,
+  handHandlingUnit,
+  machineHandlingUnit,
+} from "@/lib/shipping/hand-freight";
+import type { FreightPiece, ShipmentFreight, ShippingQuoteLine } from "@/lib/shipping/types";
 
 export class ShipmentDataError extends Error {
   weightLbs = 0;
@@ -132,7 +134,7 @@ export async function buildShipmentFreight(
   let palletCount = 0;
   let rolls = 0;
   let boxes = 0;
-  let dimensions = handFreightDimensions(0);
+  const pieces: FreightPiece[] = [];
 
   for (const line of requested) {
     const quantity = Math.max(1, Math.round(Number(line.quantity) || 1));
@@ -163,18 +165,31 @@ export async function buildShipmentFreight(
     }
 
     const lineBoxes = packageBoxes * quantity;
-    const dims =
+    const lineRolls = packageRolls * quantity;
+    const catalogDims = parsePalletDimensions(product?.pallet_dimensions);
+    const unit =
       application === "machine"
-        ? handFreightDimensions(64)
-        : handFreightDimensions(lineBoxes);
-    if (dims.heightIn > dimensions.heightIn) dimensions = dims;
-    weightLbs += unitWeight * quantity;
-    rolls += packageRolls * quantity;
-    boxes += packageBoxes * quantity;
-    palletCount +=
-      application === "machine"
-        ? quantity
-        : Math.max(1, Math.ceil(Math.max(lineBoxes, 1) / HAND_BOXES_PER_PALLET));
+        ? {
+            ...machineHandlingUnit(packageRolls, Number(product?.width_inches) || 0),
+            ...(catalogDims ?? {}),
+            quantity,
+          }
+        : handHandlingUnit(lineBoxes);
+    const lineWeight = Math.round(unitWeight * quantity * 10) / 10;
+    pieces.push({
+      lengthIn: unit.lengthIn,
+      widthIn: unit.widthIn,
+      heightIn: unit.heightIn,
+      weightLbs: lineWeight,
+      quantity: unit.quantity,
+      packaging: unit.packaging,
+      dimensionLabel: formatFreightDimensions(unit),
+      weightLabel: formatFreightWeightLabel(lineWeight, unit),
+    });
+    weightLbs += lineWeight;
+    rolls += lineRolls;
+    boxes += lineBoxes;
+    palletCount += unit.packaging === "pallet" ? unit.quantity : 0;
   }
 
   if (weightLbs <= 0) {
@@ -185,13 +200,15 @@ export async function buildShipmentFreight(
     );
   }
 
+  const primary = pieces[0];
   return {
     weightLbs: Math.round(weightLbs * 10) / 10,
-    palletCount: Math.max(1, palletCount),
-    lengthIn: dimensions.lengthIn,
-    widthIn: dimensions.widthIn,
-    heightIn: dimensions.heightIn,
+    palletCount: Math.max(1, palletCount || pieces.length),
+    lengthIn: primary?.lengthIn ?? 0,
+    widthIn: primary?.widthIn ?? 0,
+    heightIn: primary?.heightIn ?? 0,
     rolls,
     boxes,
+    pieces,
   };
 }

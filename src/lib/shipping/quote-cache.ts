@@ -22,9 +22,11 @@ export function freightCacheKey(zip: string, freight: ShipmentFreight): string {
     zip,
     freight.palletCount,
     freight.weightLbs,
-    freight.lengthIn,
-    freight.widthIn,
-    freight.heightIn,
+    (freight.pieces || [])
+      .map((piece) =>
+        [piece.lengthIn, piece.widthIn, piece.heightIn, piece.weightLbs, piece.quantity].join("x")
+      )
+      .join(","),
     "none",
   ].join("|");
 }
@@ -48,9 +50,6 @@ export async function getCachedWarpOptions(
       (option) => !option.expiresAt || Date.parse(option.expiresAt) > Date.now()
     );
     if (live.length > 0 && live.length === cached.options.length) return live;
-  }
-  if (WARP_ORIGIN_ZIP === "00000" || WARP_ORIGIN_ZIP === "TODO") {
-    throw new Error("origin_missing");
   }
   const options = await quoteWarpFreight({
     originZip: WARP_ORIGIN_ZIP,

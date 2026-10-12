@@ -91,6 +91,7 @@ async function main() {
     heightIn: dims.heightIn,
     rolls: 256,
     boxes: 64,
+    pieces: [],
   };
 
   console.log(

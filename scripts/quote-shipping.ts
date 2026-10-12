@@ -5,7 +5,7 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import { packageTotalWeightLbs } from "../src/lib/package-weight";
-import { WARP_ORIGIN_CITY, WARP_ORIGIN_STATE, WARP_ORIGIN_ZIP } from "../src/lib/shipping/config";
+import { WARP_ORIGIN_ZIP } from "../src/lib/shipping/config";
 import { quoteWarpFreight } from "../src/lib/shipping/warp";
 
 const DESTINATIONS = [
@@ -28,13 +28,6 @@ function parsePalletDimensions(value: unknown) {
 }
 
 async function main() {
-  if (WARP_ORIGIN_ZIP === "00000" || WARP_ORIGIN_CITY === "TODO") {
-    console.error(
-      `Fill WARP_ORIGIN_ZIP, WARP_ORIGIN_CITY, and WARP_ORIGIN_STATE in src/lib/shipping/config.ts (currently ${WARP_ORIGIN_CITY}, ${WARP_ORIGIN_STATE} ${WARP_ORIGIN_ZIP}).`
-    );
-    process.exit(1);
-  }
-
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) {
@@ -103,6 +96,7 @@ async function main() {
     heightIn: dims.heightIn,
     rolls: 256,
     boxes: 64,
+    pieces: [],
   };
 
   console.log(

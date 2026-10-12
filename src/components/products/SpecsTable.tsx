@@ -10,10 +10,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { packageTotalWeightLbs } from "@/lib/package-weight";
 import {
-  formatPackageWeightLbs,
-  packageTotalWeightLbs,
-} from "@/lib/package-weight";
+  formatFreightDimensions,
+  formatFreightWeightLabel,
+  handHandlingUnit,
+  machineHandlingUnit,
+} from "@/lib/shipping/hand-freight";
 import { buildMachineFilmSelectorTiers, formatBoxRollLabel, isMachineFilm } from "@/lib/products";
 
 const HAND_MATRIX_TIERS = [
@@ -131,6 +134,14 @@ function handMatrixRows(
   });
 }
 
+function boxesForRolls(rolls: number): number {
+  if (rolls >= 256) return 64;
+  if (rolls >= 128) return 32;
+  if (rolls >= 64) return 16;
+  if (rolls >= 4) return Math.round(rolls / 4);
+  return 0;
+}
+
 function packageTierLabel(variant: ProductVariant): string {
   const explicit = Number(variant.rolls_count ?? variant.rollsCount);
   const rolls = Number.isFinite(explicit) && explicit > 0 ? explicit : 0;
@@ -189,6 +200,7 @@ export function SpecsTable({ variants, product }: SpecsTableProps) {
                 <TableHead>Width</TableHead>
                 <TableHead>Gauge</TableHead>
                 <TableHead>Length</TableHead>
+                <TableHead>Dimensions</TableHead>
                 <TableHead>Total Weight</TableHead>
                 <TableHead>Total Rolls</TableHead>
                 <TableHead>Full Pallet</TableHead>
@@ -201,6 +213,23 @@ export function SpecsTable({ variants, product }: SpecsTableProps) {
                   (v as any)?.rolls_count ||
                   (v as any)?.rollsCount ||
                   v?.rollsPerBox;
+                const boxes = Number(v?.boxes_count ?? v?.boxesCount) || boxesForRolls(Number(rolls) || 0);
+                const machine = isMachineFilm(product);
+                const gross = packageTotalWeightLbs({
+                  rolls: Number(rolls) || 0,
+                  boxes,
+                  rollWeightLbs: v?.rollWeightLbs,
+                  boxWeightLbs: v?.boxWeightLbs,
+                  palletWeightLbs: v?.palletWeightLbs,
+                  weightLbs: v?.weightLbs,
+                  machine,
+                  widthInches: v?.widthInches,
+                  gauge: v?.gauge,
+                  lengthFeet: v?.lengthFeet,
+                });
+                const unit = machine
+                  ? machineHandlingUnit(Number(rolls) || 0, Number(v?.widthInches) || 0)
+                  : handHandlingUnit(boxes);
                 return (
                   <TableRow
                     key={v?.id || v?.sku || index}
@@ -221,21 +250,13 @@ export function SpecsTable({ variants, product }: SpecsTableProps) {
                     <TableCell className="text-slate-600">
                       {safeLocaleNumber(v?.lengthFeet, " ft")}
                     </TableCell>
-                    <TableCell className="text-slate-600">
-                      {formatPackageWeightLbs(
-                        packageTotalWeightLbs({
-                          rolls: Number(rolls) || 0,
-                          boxes: Number(v?.boxes_count ?? v?.boxesCount) || 0,
-                          rollWeightLbs: v?.rollWeightLbs,
-                          boxWeightLbs: v?.boxWeightLbs,
-                          palletWeightLbs: v?.palletWeightLbs,
-                          weightLbs: v?.weightLbs,
-                          machine: isMachineFilm(product),
-                          widthInches: v?.widthInches,
-                          gauge: v?.gauge,
-                          lengthFeet: v?.lengthFeet,
-                        })
-                      )}
+                    <TableCell className="text-slate-700 font-sans">
+                      {formatFreightDimensions(unit)}
+                    </TableCell>
+                    <TableCell className="text-slate-600 font-sans">
+                      {gross == null
+                        ? "—"
+                        : formatFreightWeightLabel(gross, unit)}
                     </TableCell>
                     <TableCell className="text-slate-600 font-sans font-medium">
                       {rolls != null ? `${rolls} rolls` : "—"}

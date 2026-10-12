@@ -103,9 +103,9 @@ export function packageTotalWeightLbs(input: PackageWeightInput): number | null 
 
   if (isLayer) {
     if (filmOnPallet != null && filmOnPallet > 0) {
-      return roundLbs(filmOnPallet * (64 / 256) + WOODEN_PALLET_LBS, 1);
+      return roundLbs(filmOnPallet * (64 / 256), 1);
     }
-    if (perRoll != null) return roundLbs(perRoll * 64 + WOODEN_PALLET_LBS, 1);
+    if (perRoll != null) return roundLbs(perRoll * 64, 1);
   }
 
   if (isBox) {
@@ -127,4 +127,13 @@ export function formatPackageWeightLbs(weight: number | null): string {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   })} lbs`;
+}
+
+/** Film weight plus the wooden pallet, only after a half or full pallet. */
+export function formatPalletizedWeight(grossLbs: number, palletCount = 1): string {
+  const pallets = Math.max(1, palletCount);
+  const film = Math.max(0, grossLbs - WOODEN_PALLET_LBS * pallets);
+  const filmLabel = formatPackageWeightLbs(film);
+  if (pallets === 1) return `${filmLabel} + 22.05 lbs (Pallet Base)`;
+  return `${filmLabel} + ${pallets} × 22.05 lbs (Pallet Base)`;
 }

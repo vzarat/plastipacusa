@@ -21,6 +21,10 @@ interface CheckoutStateValue {
   setSelectedShippingOption: Dispatch<SetStateAction<ShippingOption | null>>;
   shipmentWeightLbs: number | null;
   setShipmentWeightLbs: Dispatch<SetStateAction<number | null>>;
+  shipmentDimensions: string[];
+  setShipmentDimensions: Dispatch<SetStateAction<string[]>>;
+  shipmentWeightDetail: string[];
+  setShipmentWeightDetail: Dispatch<SetStateAction<string[]>>;
   taxExemptRequested: boolean;
   setTaxExemptRequested: Dispatch<SetStateAction<boolean>>;
 }
@@ -38,6 +42,8 @@ export function CheckoutStateProvider({
   const [selectedShippingOption, setSelectedShippingOption] =
     useState<ShippingOption | null>(null);
   const [shipmentWeightLbs, setShipmentWeightLbs] = useState<number | null>(null);
+  const [shipmentDimensions, setShipmentDimensions] = useState<string[]>([]);
+  const [shipmentWeightDetail, setShipmentWeightDetail] = useState<string[]>([]);
   const [taxExemptRequested, setTaxExemptRequested] = useState(false);
 
   const value = useMemo(
@@ -50,6 +56,10 @@ export function CheckoutStateProvider({
       setSelectedShippingOption,
       shipmentWeightLbs,
       setShipmentWeightLbs,
+      shipmentDimensions,
+      setShipmentDimensions,
+      shipmentWeightDetail,
+      setShipmentWeightDetail,
       taxExemptRequested,
       setTaxExemptRequested,
     }),
@@ -58,6 +68,8 @@ export function CheckoutStateProvider({
       deliveryMethod,
       selectedShippingOption,
       shipmentWeightLbs,
+      shipmentDimensions,
+      shipmentWeightDetail,
       taxExemptRequested,
     ]
   );
