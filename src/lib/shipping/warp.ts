@@ -29,10 +29,36 @@ const VEHICLES = [
 
 export class WarpQuoteError extends Error {
   constructor(
-    readonly code: "timeout" | "rate_limit" | "unavailable" | "invalid_zip"
+    readonly code: "timeout" | "rate_limit" | "unavailable" | "invalid_zip" | "provider",
+    readonly status?: number,
+    readonly detail?: string
   ) {
-    super(code);
+    super(detail || code);
   }
+}
+
+function finiteNumber(value: unknown): number {
+  const amount = typeof value === "number" ? value : parseFloat(String(value ?? ""));
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function wholeNumber(value: unknown): number {
+  const amount = parseInt(String(finiteNumber(value)), 10);
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function warpErrorDetail(status: number, raw: string): string {
+  let text = raw.trim().slice(0, 500);
+  try {
+    const parsed = JSON.parse(raw) as { message?: unknown; error?: unknown; code?: unknown };
+    const candidate = parsed.message ?? parsed.error ?? parsed.code;
+    if (typeof candidate === "string" && candidate.trim()) text = candidate.trim();
+    else if (candidate != null) text = JSON.stringify(candidate).slice(0, 300);
+  } catch {
+    text = raw.trim().slice(0, 300);
+  }
+  text = text.replace(/apikey["']?\s*[:=]\s*\S+/gi, "apikey=[redacted]");
+  return `Warp ${status}: ${text || "request rejected"}`;
 }
 
 function nextPickupDate(): string {
@@ -85,27 +111,32 @@ async function quoteVehicle(input: {
                 packaging: "pallet" as const,
               },
             ]
-        ).map((piece) => ({
-          name: "Stretch film",
-          length: piece.lengthIn,
-          width: piece.widthIn,
-          height: piece.heightIn,
-          sizeUnit: "IN",
-          totalWeight:
-            piece.quantity > 1
-              ? Math.round((piece.weightLbs / piece.quantity) * 10) / 10
-              : piece.weightLbs,
-          weightUnit: "lbs",
-          quantity: piece.quantity,
-          packaging: piece.packaging,
-          stackable: false,
+        ).map((piece) => {
+          const quantity = Math.max(1, wholeNumber(piece.quantity));
+          const lineWeight = finiteNumber(piece.weightLbs);
+          const totalWeight =
+            quantity > 1 ? Math.round((lineWeight / quantity) * 10) / 10 : lineWeight;
+          return {
+            name: "Stretch film",
+            length: finiteNumber(piece.lengthIn),
+            width: finiteNumber(piece.widthIn),
+            height: finiteNumber(piece.heightIn),
+            sizeUnit: "IN",
+            totalWeight,
+            weightUnit: "lbs",
+            quantity,
+            packaging: piece.packaging,
+            stackable: false,
+          };
         })),
       }),
     });
 
-    if (response.status === 429) throw new WarpQuoteError("rate_limit");
-    if (response.status === 400) return null;
-    if (!response.ok) throw new WarpQuoteError("unavailable");
+    if (response.status === 429) throw new WarpQuoteError("rate_limit", 429, "Warp 429: rate limit");
+    if (!response.ok) {
+      const raw = await response.text();
+      throw new WarpQuoteError("provider", response.status, warpErrorDetail(response.status, raw));
+    }
 
     const body = (await response.json()) as {
       quote_id?: string;
@@ -114,7 +145,9 @@ async function quoteVehicle(input: {
       expiration_time_utc?: number;
       status?: string;
     };
-    if (body.status && body.status !== "ACCEPT") return null;
+    if (body.status && body.status !== "ACCEPT") {
+      throw new WarpQuoteError("provider", response.status, `Warp ${response.status}: ${body.status}`);
+    }
     const amount = Number(body.price?.amount);
     const quoteId = String(body.quote_id || "");
     if (!quoteId || !Number.isFinite(amount) || amount <= 0) return null;
@@ -138,9 +171,10 @@ async function quoteVehicle(input: {
   } catch (error) {
     if (error instanceof WarpQuoteError) throw error;
     if (error instanceof Error && error.name === "AbortError") {
-      throw new WarpQuoteError("timeout");
+      throw new WarpQuoteError("timeout", undefined, "Warp timeout");
     }
-    throw new WarpQuoteError("unavailable");
+    const detail = error instanceof Error ? error.message : "request failed";
+    throw new WarpQuoteError("unavailable", undefined, `Warp request failed: ${detail}`);
   } finally {
     clearTimeout(timer);
   }
@@ -152,20 +186,34 @@ export async function quoteWarpFreight(input: {
   freight: ShipmentFreight;
 }): Promise<ShippingOption[]> {
   const { baseUrl, apiKey } = getWarpConfig();
-  const results = await Promise.all(
-    VEHICLES.map((vehicle) =>
-      quoteVehicle({
-        baseUrl,
-        apiKey,
-        originZip: input.originZip,
-        destinationZip: input.destinationZip,
-        freight: input.freight,
-        vehicle,
-      }).catch((error: unknown) => {
-        if (error instanceof WarpQuoteError && error.code !== "unavailable") throw error;
-        return null;
-      })
-    )
+  const attempts = await Promise.all(
+    VEHICLES.map(async (vehicle) => {
+      try {
+        const option = await quoteVehicle({
+          baseUrl,
+          apiKey,
+          originZip: input.originZip,
+          destinationZip: input.destinationZip,
+          freight: input.freight,
+          vehicle,
+        });
+        return { option, error: null as WarpQuoteError | null };
+      } catch (error) {
+        const failure =
+          error instanceof WarpQuoteError
+            ? error
+            : new WarpQuoteError("unavailable", undefined, "Warp request failed");
+        return { option: null as ShippingOption | null, error: failure };
+      }
+    })
   );
-  return results.filter((option): option is ShippingOption => option != null);
+  const options = attempts
+    .map((attempt) => attempt.option)
+    .filter((option): option is ShippingOption => option != null);
+  if (options.length > 0) return options;
+  const failure =
+    attempts.find((attempt) => attempt.error?.detail)?.error ||
+    attempts.find((attempt) => attempt.error)?.error;
+  if (failure) throw failure;
+  return [];
 }

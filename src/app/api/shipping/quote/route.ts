@@ -94,16 +94,23 @@ export async function POST(request: Request) {
         weightDetail: freight.pieces.map((piece) => piece.weightLabel),
         freeLocal,
         options,
-        message: options.length === 0 && !freeLocal ? publicMessage("no_options") : null,
+        code: options.length === 0 && !freeLocal ? "empty" : null,
+        message:
+          options.length === 0 && !freeLocal
+            ? "Warp returned no rates for this shipment."
+            : null,
       });
     } catch (error) {
-      const code =
-        error instanceof WarpQuoteError
-          ? error.code
-          : error instanceof Error && error.message === "origin_missing"
-            ? "origin_missing"
-            : "unavailable";
-      console.error("shipping quote failed", code);
+      const warp = error instanceof WarpQuoteError ? error : null;
+      const code = warp
+        ? warp.status
+          ? String(warp.status)
+          : warp.code
+        : error instanceof Error && error.message === "origin_missing"
+          ? "origin_missing"
+          : "unavailable";
+      const message = warp?.detail || publicMessage(warp?.code || code);
+      console.error("shipping quote failed", code, message);
       if (freeLocal) {
         return NextResponse.json({
           ok: true,
@@ -113,13 +120,19 @@ export async function POST(request: Request) {
           weightDetail: freight.pieces.map((piece) => piece.weightLabel),
           freeLocal,
           options: [],
-          message: publicMessage(code),
+          code,
+          message,
         });
       }
-      return NextResponse.json(
-        { ok: false, code, message: publicMessage(code), weightLbs: freight.weightLbs },
-        { status: code === "rate_limit" ? 429 : 502 }
-      );
+      return NextResponse.json({
+        ok: false,
+        code,
+        message,
+        weightLbs: freight.weightLbs,
+        dimensions: freight.pieces.map((piece) => piece.dimensionLabel),
+        weightDetail: freight.pieces.map((piece) => piece.weightLabel),
+        options: [],
+      });
     }
   } catch (error) {
     if (error instanceof ShipmentDataError && error.code === "missing_dims" && zip) {
@@ -157,10 +170,12 @@ export async function POST(request: Request) {
         { status: 422 }
       );
     }
-    console.error("shipping quote failed");
-    return NextResponse.json(
-      { ok: false, code: "unavailable", message: publicMessage("unavailable") },
-      { status: 500 }
-    );
+    console.error("shipping quote failed", error instanceof Error ? error.message : error);
+    const detail = error instanceof Error ? error.message : "unavailable";
+    return NextResponse.json({
+      ok: false,
+      code: "unavailable",
+      message: detail,
+    });
   }
 }

@@ -112,6 +112,7 @@ export function CheckoutShippingMethodStep({
           options?: ShippingOption[];
           dimensions?: string[];
           weightDetail?: string[];
+          code?: string | null;
           message?: string | null;
         };
         if (cancelled) return;
@@ -126,9 +127,10 @@ export function CheckoutShippingMethodStep({
         const next = local || warpOptions.slice().sort((a, b) => a.price - b.price)[0] || null;
         setSelectedShippingOption(next);
         setDeliveryMethod(next?.id === "rgv-local" ? "rgv-express" : "freight");
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setMessage("We couldn't calculate shipping automatically.");
+          const detail = error instanceof Error ? error.message : "Network error";
+          setMessage(detail);
           setOptions([]);
           setFreeLocal(null);
           setSelectedShippingOption(null);
@@ -341,7 +343,8 @@ export function CheckoutShippingMethodStep({
         )}
         {!loading && freeLocal && options.length === 0 && (
           <p className="text-xs text-slate-500">
-            Other carrier options are unavailable right now.{" "}
+            Other carrier options are unavailable right now.
+            {message ? ` ${message}` : ""}{" "}
             <button
               type="button"
               className="font-semibold text-sky-700 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
