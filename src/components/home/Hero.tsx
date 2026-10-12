@@ -8,9 +8,9 @@ import {
   ArrowRight,
   Building2,
   CheckCircle2,
+  Clock,
+  Package,
   ShieldCheck,
-  Truck,
-  Warehouse,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -48,20 +48,19 @@ const RGV_MOBILE_CITIES = ["McAllen", "Pharr", "Brownsville", "Harlingen"] as co
 
 const LOGISTICS = [
   {
-    icon: Truck,
-    title: "Direct Plant-to-Dock Shipping",
-    detail: "No cross-dock delays; straight from warehouse to your facility.",
+    icon: Clock,
+    title: "On-Time Deliveries",
+    detail: "Routes planned to reach your dock on schedule.",
   },
   {
     icon: Building2,
-    title: "Industrial Park Coverage",
-    detail:
-      "Serving Sharyland, McAllen NW, Mid-Valley, & Valley International Trade parks.",
+    title: "Serving the Industrial Parks in the Rio Grande Valley",
+    detail: "Local coverage across the Valley’s main industrial corridors.",
   },
   {
-    icon: Warehouse,
-    title: "Bulk Volume Freight Waiver",
-    detail: "Free delivery from 16 Boxes (64 Rolls) through 64 Boxes (256 Rolls).",
+    icon: Package,
+    title: "Minimum Purchase of 10 Boxes",
+    detail: "Regional orders start at 10 boxes.",
   },
 ] as const;
 
@@ -458,10 +457,7 @@ export function Hero() {
 
                 <motion.div variants={fadeRight} className="hidden md:col-span-5 md:block">
                   <div className="rounded-2xl border border-white/20 bg-slate-950/45 p-3 shadow-2xl shadow-black/30 backdrop-blur-sm lg:p-4">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-sky-200">
-                      Regional Fleet & Supply Highlights
-                    </p>
-                    <ul className="mt-2 space-y-1.5">
+                    <ul className="space-y-1.5">
                       {LOGISTICS.map((item) => {
                         const Icon = item.icon;
                         return (
