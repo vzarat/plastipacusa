@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { presentPackageLabel } from "@/lib/products";
+import { formatOrderId } from "@/lib/utils";
 import {
   fetchPlastipacLogoForPdf,
   generateInvoicePdf,

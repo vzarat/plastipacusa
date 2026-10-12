@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { CalendarDays, CheckCircle2, Mail, MapPin, Package, Phone, ShieldCheck, Truck, User, X } from "lucide-react";
 import { presentPackageLabel } from "@/lib/products";
+import { formatCurrency, formatOrderId } from "@/lib/utils";
 
 export interface OrderDetailAddress {
   full_name?: string | null;

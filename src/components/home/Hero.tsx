@@ -168,7 +168,7 @@ export function Hero() {
         }, 4000);
       }}
     >
-      <div className="relative mx-auto w-full max-w-[1400px] overflow-hidden rounded-[28px] bg-[#031433] shadow-[0_28px_80px_-28px_rgba(3,20,51,0.65)] md:rounded-[32px]">
+      <div className="relative mx-auto h-[640px] w-full max-w-[1400px] overflow-hidden rounded-[28px] bg-[#031433] md:h-[480px] md:rounded-[32px] lg:h-[440px]">
       <div className="pointer-events-none absolute inset-0">
         <div
           className={`absolute inset-0 transition-opacity duration-700 ease-out ${
@@ -217,8 +217,7 @@ export function Hero() {
         </div>
       </div>
 
-      <div className="relative z-10 flex flex-col px-5 py-8 sm:px-8 md:px-10 md:py-10 lg:px-12 lg:py-12">
-        <div className="flex w-full flex-1 flex-col justify-center">
+      <div className="relative z-10 h-full">
         <AnimatePresence mode="wait">
           {index === 0 ? (
             <motion.div
@@ -226,7 +225,7 @@ export function Hero() {
               initial="hidden"
               animate="show"
               exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
-              className="w-full"
+              className="absolute inset-0 flex items-center overflow-hidden px-5 py-5 sm:px-8 md:px-10 lg:px-12"
             >
               <div className="grid grid-cols-1 items-center gap-4 lg:grid-cols-[minmax(0,55%)_minmax(0,45%)] lg:gap-6">
                 <motion.div variants={fadeUp} className="text-left">
@@ -284,15 +283,15 @@ export function Hero() {
                 </motion.div>
 
                 <motion.div variants={fadeRight} className="relative">
-                  <div className="relative mx-auto flex h-[180px] w-full items-end justify-center lg:h-[340px]">
+                  <div className="relative mx-auto flex h-[150px] w-full items-end justify-center lg:h-[240px]">
                     <Image
                       src={FORCE_HAND_IMAGE}
                       alt="FORCE™ Hand Stretch Film"
                       width={640}
                       height={640}
                       priority
-                      sizes="(max-width: 1024px) 70vw, 380px"
-                      className="relative z-10 h-[180px] w-auto max-w-full translate-y-3 object-contain object-bottom lg:h-[340px] lg:max-h-[360px] lg:translate-y-6"
+                      sizes="(max-width: 1024px) 70vw, 320px"
+                      className="relative z-10 h-[140px] w-auto max-w-full object-contain object-bottom lg:h-[220px]"
                     />
                     <motion.div
                       animate={reduceMotion ? undefined : { y: [0, -6, 0] }}
@@ -346,14 +345,14 @@ export function Hero() {
               initial="hidden"
               animate="show"
               exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
-              className="mx-auto w-full max-w-7xl md:px-6 lg:px-8"
+              className="absolute inset-0 flex items-center overflow-hidden px-5 py-5 sm:px-8 md:px-10 lg:px-12"
             >
               <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-12 md:gap-6">
                 <motion.div
                   variants={fadeUp}
-                  className="space-y-3 text-center md:col-span-7 md:space-y-2.5 md:text-left"
+                  className="space-y-2 text-left md:col-span-7"
                 >
-                  <div className="mx-auto inline-flex max-w-full items-center gap-2 rounded-full border border-sky-400/30 bg-slate-950/50 px-3 py-1 text-center text-[11px] font-semibold leading-snug text-sky-200 shadow-sm">
+                  <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-sky-400/30 bg-slate-950/50 px-3 py-1 text-[11px] font-semibold leading-snug text-sky-200 shadow-sm">
                     <Zap className="h-3.5 w-3.5 shrink-0 text-sky-300" />
                     <span>Direct Regional Distribution · From 16 Boxes Up</span>
                   </div>
@@ -374,7 +373,7 @@ export function Hero() {
                   <p className="mx-auto max-w-2xl text-sm leading-snug text-slate-100 md:mx-0">
                     $0 Freight Fee across the RGV starting from 16 Boxes (64 Rolls) up to 64 Boxes (256 Rolls).
                   </p>
-                  <p className="mx-auto inline-flex max-w-full items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-200 md:mx-0">
+                  <p className="inline-flex max-w-full items-center rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-200">
                     ✓ Free Local Delivery on 64+ Rolls
                   </p>
 
@@ -388,7 +387,7 @@ export function Hero() {
                       </span>
                     ))}
                   </div>
-                  <div className="hidden flex-wrap items-center justify-center gap-1.5 md:flex md:justify-start">
+                  <div className="hidden flex-wrap items-center justify-start gap-1.5 md:flex">
                     {RGV_CITIES.map((city) => (
                       <span
                         key={city}
@@ -470,11 +469,11 @@ export function Hero() {
               initial="hidden"
               animate="show"
               exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
-              className="relative w-full md:h-full md:self-stretch"
+              className="absolute inset-0 flex items-center overflow-hidden px-5 py-5 sm:px-8 md:px-10 lg:px-12"
             >
               <div className="relative z-20 mx-auto flex w-full max-w-7xl items-center md:h-full md:px-6 lg:px-8">
-                <motion.div variants={fadeUp} className="w-full max-w-xl space-y-3 text-center md:space-y-2.5 md:text-left">
-                  <div className="mx-auto inline-flex max-w-full items-center gap-2 rounded-full border border-sky-400/30 bg-slate-950/50 px-3 py-1 text-center text-[11px] font-semibold leading-snug text-sky-200 shadow-sm">
+                <motion.div variants={fadeUp} className="w-full max-w-xl space-y-2 text-left">
+                  <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-sky-400/30 bg-slate-950/50 px-3 py-1 text-[11px] font-semibold leading-snug text-sky-200 shadow-sm">
                     <Zap className="h-3.5 w-3.5 shrink-0 text-sky-300" />
                     <span>Weekly Texas Freight Route</span>
                   </div>
@@ -505,7 +504,7 @@ export function Hero() {
                     ))}
                   </ul>
 
-                  <div className="flex justify-center md:justify-start">
+                  <div className="flex justify-start">
                     <Button
                       asChild
                       size="lg"
@@ -536,32 +535,32 @@ export function Hero() {
             </motion.div>
           )}
         </AnimatePresence>
-        </div>
 
-        <div className="mt-6 flex shrink-0 items-center justify-center gap-2" aria-label="Hero slides">
+        <div
+          className="absolute bottom-4 right-4 z-30 flex items-center gap-1.5 rounded-full bg-white/10 px-2 py-1 backdrop-blur lg:bottom-5 lg:right-6"
+          aria-label="Hero slides"
+        >
           {Array.from({ length: SLIDE_COUNT }, (_, dot) => {
             const active = index === dot;
             return (
               <button
                 key={dot}
                 type="button"
-                aria-label={`Show slide ${dot + 1}`}
+                aria-label={`Go to slide ${dot + 1}`}
                 aria-current={active ? "true" : undefined}
                 onClick={() => goTo(dot)}
-                className="flex h-6 w-8 items-center justify-center"
+                className="flex h-6 w-6 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
               >
                 <span
-                  className={`h-2.5 rounded-full border transition-all duration-300 ease-out ${
-                    active
-                      ? "w-6 border-sky-400 bg-sky-400"
-                      : "w-2.5 border-white/50 bg-transparent"
+                  className={`rounded-full transition-all duration-300 ease-out ${
+                    active ? "h-2 w-5 bg-sky-400" : "h-2 w-2 bg-white/55"
                   }`}
                 />
               </button>
             );
           })}
         </div>
-        </div>
+      </div>
       </div>
     </section>
   );

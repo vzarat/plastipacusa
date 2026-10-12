@@ -36,6 +36,7 @@ export function Navbar() {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [compactLogo, setCompactLogo] = useState(false);
   const [currentUser, setCurrentUser] = useState<CurrentUserResponse | null>(null);
+  const [scrolled, setScrolled] = useState(false);
 
   const userMenuRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -54,6 +55,13 @@ export function Navbar() {
       isActive = false;
     };
   }, [pathname]);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -197,7 +205,13 @@ export function Navbar() {
 
 
   return (
-    <header className="sticky top-0 z-40 w-full overflow-visible border-b border-slate-100 bg-white/95 backdrop-blur-md shadow-sm">
+    <header
+      className={`sticky top-0 z-50 w-full overflow-visible border-b transition-all duration-200 ${
+        scrolled
+          ? "border-slate-200 bg-white/90 shadow-sm backdrop-blur"
+          : "border-transparent bg-white shadow-none"
+      }`}
+    >
       {isCatalogPage ? (
         <div className="md:hidden">
           <div className="flex h-14 items-center justify-between px-4">
