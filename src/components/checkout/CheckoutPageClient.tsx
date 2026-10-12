@@ -25,6 +25,7 @@ import { TaxExemptionInformationButton } from "@/components/checkout/TaxExemptio
 import { useCartStore } from "@/lib/store/useCartStore";
 import { calculateOrderTotal } from "@/lib/sales-tax";
 import { formatCurrency } from "@/lib/utils";
+import { formatPackageWeightLbs } from "@/lib/package-weight";
 import { createClient } from "@/lib/supabase/client";
 import { useCheckoutInactivity } from "@/hooks/useCheckoutInactivity";
 import { savedAddressToCheckout } from "@/lib/saved-shipping-address";
@@ -421,7 +422,7 @@ function CheckoutPageInner() {
             <div className="flex items-center justify-between text-slate-600">
               <span>Weight</span>
               <span className="font-semibold text-slate-800">
-                {totalWeight} lbs
+                {totalWeight > 0 ? formatPackageWeightLbs(totalWeight) : "0 lbs"}
               </span>
             </div>
             <div className="flex items-center justify-between text-slate-600">

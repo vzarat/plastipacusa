@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency, formatRollDimensions } from "@/lib/utils";
+import { formatPackageWeightLbs } from "@/lib/package-weight";
 import {
   X,
   Trash2,
@@ -333,7 +334,9 @@ export function CartDrawer() {
                 <span className="flex items-center gap-1.5 font-medium">
                   <Weight className="w-3.5 h-3.5 text-slate-400" /> Total Weight
                 </span>
-                <span className="font-bold text-slate-800">{totalWeight} lbs</span>
+                <span className="font-bold text-slate-800">
+                  {totalWeight > 0 ? formatPackageWeightLbs(totalWeight) : "0 lbs"}
+                </span>
               </div>
               <div className="flex justify-between text-sm font-bold text-slate-800">
                 <span>Subtotal</span>

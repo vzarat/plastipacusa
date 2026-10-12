@@ -1,10 +1,6 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { packageTotalWeightLbs } from "@/lib/package-weight";
-import {
-  TODO_PALLET_HEIGHT_IN,
-  TODO_PALLET_LENGTH_IN,
-  TODO_PALLET_WIDTH_IN,
-} from "@/lib/shipping/config";
+import { handFreightDimensions } from "@/lib/shipping/config";
 import type { ShipmentFreight, ShippingQuoteLine } from "@/lib/shipping/types";
 
 /** Hand film full pallet from the existing package ladder. */
@@ -47,21 +43,6 @@ export function parsePalletDimensions(value: unknown): {
   const heightIn = Number(match[3]);
   if (lengthIn <= 0 || widthIn <= 0 || heightIn <= 0) return null;
   return { lengthIn, widthIn, heightIn };
-}
-
-function todoPalletInches() {
-  if (
-    TODO_PALLET_LENGTH_IN == null ||
-    TODO_PALLET_WIDTH_IN == null ||
-    TODO_PALLET_HEIGHT_IN == null
-  ) {
-    return null;
-  }
-  return {
-    lengthIn: TODO_PALLET_LENGTH_IN,
-    widthIn: TODO_PALLET_WIDTH_IN,
-    heightIn: TODO_PALLET_HEIGHT_IN,
-  };
 }
 
 interface FreightProduct {
@@ -151,8 +132,7 @@ export async function buildShipmentFreight(
   let palletCount = 0;
   let rolls = 0;
   let boxes = 0;
-  let dimensions: { lengthIn: number; widthIn: number; heightIn: number } | null = null;
-  let missingDims = false;
+  let dimensions = handFreightDimensions(0);
 
   for (const line of requested) {
     const quantity = Math.max(1, Math.round(Number(line.quantity) || 1));
@@ -182,16 +162,15 @@ export async function buildShipmentFreight(
       );
     }
 
-    const dims = parsePalletDimensions(product?.pallet_dimensions) || todoPalletInches();
-    if (!dims) {
-      missingDims = true;
-    } else {
-      dimensions = dims;
-    }
+    const lineBoxes = packageBoxes * quantity;
+    const dims =
+      application === "machine"
+        ? handFreightDimensions(64)
+        : handFreightDimensions(lineBoxes);
+    if (dims.heightIn > dimensions.heightIn) dimensions = dims;
     weightLbs += unitWeight * quantity;
     rolls += packageRolls * quantity;
     boxes += packageBoxes * quantity;
-    const lineBoxes = packageBoxes * quantity;
     palletCount +=
       application === "machine"
         ? quantity
@@ -203,15 +182,6 @@ export async function buildShipmentFreight(
     throw new ShipmentDataError(
       "missing_weight",
       "Product weight is missing, so shipping can't be calculated yet."
-    );
-  }
-
-  if (missingDims || !dimensions) {
-    console.error("MISSING_DIMS");
-    throw new ShipmentDataError(
-      "missing_dims",
-      "Pallet dimensions are missing, so shipping can't be calculated yet.",
-      { weightLbs: Math.round(weightLbs * 10) / 10, rolls, boxes }
     );
   }
 

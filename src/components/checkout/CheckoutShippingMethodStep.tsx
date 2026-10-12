@@ -331,7 +331,19 @@ export function CheckoutShippingMethodStep({
             })}
           </div>
         )}
-        {!loading && message && (
+        {!loading && freeLocal && options.length === 0 && (
+          <p className="text-xs text-slate-500">
+            Other carrier options are unavailable right now.{" "}
+            <button
+              type="button"
+              className="font-semibold text-sky-700 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+              onClick={() => setReloadKey((value) => value + 1)}
+            >
+              Retry
+            </button>
+          </p>
+        )}
+        {!loading && !freeLocal && cards.length === 0 && message && (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
             <p>{message}</p>
             <div className="mt-3 flex flex-wrap gap-2">

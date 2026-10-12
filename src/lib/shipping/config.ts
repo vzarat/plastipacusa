@@ -3,13 +3,11 @@
  * Origin, markup, and the free-delivery minimum are constants here.
  */
 
-/** TODO: replace with the warehouse origin ZIP. */
-export const WARP_ORIGIN_ZIP = "00000";
+/** Warehouse already shown on checkout as Mission, TX. */
+export const WARP_ORIGIN_ZIP = "78572";
 
-/** TODO: replace with the warehouse origin city. */
-export const WARP_ORIGIN_CITY = "TODO";
+export const WARP_ORIGIN_CITY = "Mission";
 
-/** TODO: replace with the warehouse origin state. */
 export const WARP_ORIGIN_STATE = "TX";
 
 /** Percent added on top of a Warp quote. 0 means the quoted amount is unchanged. */
@@ -19,12 +17,30 @@ export const SHIPPING_MARKUP_PERCENT = 0;
 export const FREE_LOCAL_DELIVERY_MIN_ROLLS = 64;
 
 /**
- * TODO: pallet length, width, and height in inches are not stored on products.
- * Leave these null. Do not put a guessed pallet size here.
+ * Loaded pallet size in inches, including the wooden pallet.
+ * Full pallet matches the catalog size 48 x 48 x 78.
+ * One layer is 16 boxes. Half pallet is 2 layers. Full pallet is 4 layers.
+ * Pallet deck is 6 inches. Each film layer is 18 inches.
  */
-export const TODO_PALLET_LENGTH_IN: number | null = null;
-export const TODO_PALLET_WIDTH_IN: number | null = null;
-export const TODO_PALLET_HEIGHT_IN: number | null = null;
+export const HAND_FREIGHT_DIMENSIONS_IN = {
+  loose: { lengthIn: 48, widthIn: 48, heightIn: 24 },
+  layer: { lengthIn: 48, widthIn: 48, heightIn: 24 },
+  half: { lengthIn: 48, widthIn: 48, heightIn: 42 },
+  full: { lengthIn: 48, widthIn: 48, heightIn: 78 },
+} as const;
+
+export type HandFreightTier = keyof typeof HAND_FREIGHT_DIMENSIONS_IN;
+
+export function handFreightTier(boxes: number): HandFreightTier {
+  if (boxes >= 64) return "full";
+  if (boxes >= 32) return "half";
+  if (boxes >= 16) return "layer";
+  return "loose";
+}
+
+export function handFreightDimensions(boxes: number) {
+  return HAND_FREIGHT_DIMENSIONS_IN[handFreightTier(boxes)];
+}
 
 const WARP_BASE_URLS = {
   staging: "https://stg.wearewarp.com/api/v1",
