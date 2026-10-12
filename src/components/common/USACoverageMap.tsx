@@ -30,8 +30,6 @@ import {
 /** Plastipac brand blues for active shipping zones */
 const FILL_PRIMARY = "#0052CC";
 const FILL_PRIMARY_HOVER = "#0066FF";
-const FILL_REGIONAL = "#38BDF8";
-const FILL_REGIONAL_HOVER = "#0EA5E9";
 const FILL_SECONDARY = "#E2E8F0";
 const FILL_SECONDARY_HOVER = "#CBD5E1";
 const FILL_SELECTED = "#0284C7";
@@ -111,7 +109,7 @@ function getCoverage(abbr: string): StateCoverage {
       tier,
       leadTime,
       detail:
-        "Factory-direct dispatch from our South Texas hub. Full-pallet & truckload priority lanes.",
+        "Texas includes direct local delivery in the RGV, a fixed weekly Friday route to Houston, and a freight quote for every other Texas destination.",
     };
   }
 
@@ -133,9 +131,8 @@ function getCoverage(abbr: string): StateCoverage {
 }
 
 function tierLabel(tier: DeliveryZone): string {
-  if (tier === "texas") return "Texas Hub";
-  if (tier === "regional") return "Neighboring States";
-  return "Distant States";
+  if (tier === "texas") return "RGV & Houston routes";
+  return "Freight Quote Required";
 }
 
 export function USACoverageMap() {
@@ -174,9 +171,6 @@ export function USACoverageMap() {
       if (coverage.tier === "texas") {
         fill = FILL_PRIMARY;
         stroke = STROKE_PRIMARY;
-      } else if (coverage.tier === "regional") {
-        fill = FILL_REGIONAL;
-        stroke = STROKE_PRIMARY;
       }
 
       if (isSelected) {
@@ -184,7 +178,6 @@ export function USACoverageMap() {
         stroke = STROKE_PRIMARY;
       } else if (isHovered) {
         if (coverage.tier === "texas") fill = FILL_PRIMARY_HOVER;
-        else if (coverage.tier === "regional") fill = FILL_REGIONAL_HOVER;
         else fill = FILL_SECONDARY_HOVER;
       }
 
@@ -235,15 +228,7 @@ export function USACoverageMap() {
               style={{ backgroundColor: FILL_PRIMARY }}
               aria-hidden
             />
-            RGV & Houston routes
-          </span>
-          <span className="inline-flex items-center gap-1.5 text-slate-700">
-            <span
-              className="h-3 w-3 rounded-sm"
-              style={{ backgroundColor: FILL_REGIONAL }}
-              aria-hidden
-            />
-            Freight quote required
+            Texas — RGV local delivery and Houston Friday route
           </span>
           <span className="inline-flex items-center gap-1.5 text-slate-700">
             <span
@@ -251,7 +236,7 @@ export function USACoverageMap() {
               style={{ backgroundColor: FILL_SECONDARY }}
               aria-hidden
             />
-            Freight quote required
+            All other states — Freight Quote Required
           </span>
         </div>
       </div>
@@ -314,16 +299,16 @@ export function USACoverageMap() {
 
               {activeCoverage.tier === "texas" ? (
                 <div className="space-y-2">
-                  <div className="rounded-xl border border-sky-100 bg-white px-3 py-2.5">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-sky-700">
+                  <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
                       {RGV_BADGE}
                     </p>
                     <p className="mt-1 text-sm font-semibold leading-snug text-slate-800">
                       {RGV_DESCRIPTION}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-sky-100 bg-white px-3 py-2.5">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-sky-700">
+                  <div className="rounded-xl border border-cyan-100 bg-cyan-50/70 px-3 py-2.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-800">
                       {HOUSTON_BADGE}
                     </p>
                     <p className="mt-1 text-sm font-semibold leading-snug text-slate-800">

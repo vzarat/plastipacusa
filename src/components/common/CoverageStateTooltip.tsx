@@ -11,17 +11,17 @@ export const LOGISTICS_PHONE_DISPLAY = "(956) 400-3683";
 export const LOGISTICS_PHONE_HREF = "tel:+19564003683";
 export const LOGISTICS_PHONE_LABEL = `📞 Call Logistics: ${LOGISTICS_PHONE_DISPLAY}`;
 
-export const RGV_BADGE = "Free Local Delivery";
+export const RGV_BADGE = "Direct Local Delivery";
 export const RGV_DESCRIPTION =
-  "Free delivery across the RGV starting at 1 Layer (64 rolls / 16 boxes).";
-export const HOUSTON_BADGE = "Friday Corridor Route";
+  "Direct local delivery and special local freight across the Rio Grande Valley, including McAllen, Pharr, Edinburg, Mission, and Brownsville.";
+export const HOUSTON_BADGE = "Weekly Houston Route";
 export const HOUSTON_DESCRIPTION =
-  "Free Friday delivery to industrial docks on Full Pallet orders (256 rolls).";
+  "Scheduled Houston delivery is available only on the fixed weekly Friday route.";
 
 export const CUSTOM_FREIGHT_BADGE = "Freight Quote Required";
-export const CUSTOM_FREIGHT_TITLE = "Freight quote required";
+export const CUSTOM_FREIGHT_TITLE = "Freight Quote Required";
 export const CUSTOM_FREIGHT_DESCRIPTION =
-  "A freight quote is required for deliveries outside Texas, and for other parts of Texas outside the RGV and Greater Houston.";
+  "Pallet and box freight outside the RGV and the Houston route — including the rest of Texas and the rest of the U.S. — is quoted for the destination state and calculated at checkout via API.";
 
 export function useCoverageTooltipDismiss(
   open: boolean,
@@ -103,13 +103,13 @@ export function CoverageStateTooltip({
         className="max-w-[280px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-left shadow-lg"
       >
         <p className="text-xs font-black text-slate-900">{stateName}</p>
-        <p className="mt-1.5 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800">
+        <p className="mt-1.5 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
           {RGV_BADGE}
         </p>
         <p className="mt-1 text-[11px] font-medium leading-snug text-slate-700">
           {RGV_DESCRIPTION}
         </p>
-        <p className="mt-2 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800">
+        <p className="mt-2 inline-flex rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-bold text-cyan-900">
           {HOUSTON_BADGE}
         </p>
         <p className="mt-1 text-[11px] font-medium leading-snug text-slate-700">

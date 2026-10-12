@@ -10,7 +10,6 @@ import { toast } from "sonner";
 import {
   getDeliveryLeadTime,
   getDeliveryZone,
-  isRegionalState,
   isTexasState,
 } from "@/lib/shipping/deliveryEstimates";
 import {
@@ -28,16 +27,14 @@ import {
 
 const HUB_FILL = "#2563EB";
 const HUB_HOVER = "#1D4ED8";
-const REGIONAL_FILL = "#38BDF8";
-const REGIONAL_HOVER = "#0EA5E9";
 const STANDARD_FILL = "#CBD5E1";
 const STANDARD_HOVER = "#64748B";
 const BORDER_WHITE = "#FFFFFF";
 const SELECTED_FILL = "#1D4ED8";
 
 const HIGHLIGHT_BADGES = [
-  { label: "Free Local Delivery (RGV)", icon: "⚡" },
-  { label: "Friday Route (Greater Houston)", icon: "📦" },
+  { label: "RGV — Direct Local Delivery", icon: "⚡" },
+  { label: "Houston — Weekly Friday Route", icon: "📦" },
   { label: "Freight Quote Required", icon: "🚛" },
 ] as const;
 
@@ -79,17 +76,14 @@ export function USACoverageSection() {
 
     StateAbbreviations.forEach((state) => {
       const isTexas = isTexasState(state);
-      const isRegional = isRegionalState(state);
       const isHovered = hovered === state;
       const isSelected = selected === state;
 
       let fill = STANDARD_FILL;
       if (isTexas) fill = HUB_FILL;
-      else if (isRegional) fill = REGIONAL_FILL;
 
       if (isSelected || isHovered) {
         if (isTexas) fill = isSelected ? SELECTED_FILL : HUB_HOVER;
-        else if (isRegional) fill = REGIONAL_HOVER;
         else fill = STANDARD_HOVER;
       }
 
@@ -174,15 +168,7 @@ export function USACoverageSection() {
                   style={{ backgroundColor: HUB_FILL }}
                   aria-hidden
                 />
-                RGV & Houston routes
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span
-                  className="h-3 w-3 rounded-sm"
-                  style={{ backgroundColor: REGIONAL_FILL }}
-                  aria-hidden
-                />
-                Freight quote required
+                Texas — RGV local delivery and Houston Friday route
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span
@@ -190,7 +176,7 @@ export function USACoverageSection() {
                   style={{ backgroundColor: STANDARD_FILL }}
                   aria-hidden
                 />
-                Freight quote required
+                All other states — Freight Quote Required
               </span>
             </div>
           </div>
@@ -208,16 +194,16 @@ export function USACoverageSection() {
                 <h3 className="text-2xl font-black text-slate-900">{selected}</h3>
                 {getDeliveryZone(selected) === "texas" ? (
                   <div className="space-y-2">
-                    <div className="rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-blue-700">
+                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 px-4 py-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
                         {RGV_BADGE}
                       </p>
                       <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-800">
                         {RGV_DESCRIPTION}
                       </p>
                     </div>
-                    <div className="rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-blue-700">
+                    <div className="rounded-2xl border border-cyan-100 bg-cyan-50/80 px-4 py-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-800">
                         {HOUSTON_BADGE}
                       </p>
                       <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-800">
