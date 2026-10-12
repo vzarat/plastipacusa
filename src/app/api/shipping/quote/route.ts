@@ -45,6 +45,14 @@ function freeLocalOption(zip: string): ShippingOption {
 }
 
 export async function POST(request: Request) {
+  let body: {
+    postalCode?: string;
+    city?: string;
+    state?: string;
+    lines?: ShippingQuoteLine[];
+  } = {};
+  let zip: string | null = null;
+
   try {
     const supabase = await createServerClient();
     const {
@@ -57,13 +65,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = (await request.json()) as {
-      postalCode?: string;
-      city?: string;
-      state?: string;
-      lines?: ShippingQuoteLine[];
-    };
-    const zip = zipCode(body.postalCode);
+    body = (await request.json()) as typeof body;
+    zip = zipCode(body.postalCode);
     if (!zip) {
       return NextResponse.json(
         { ok: false, code: "invalid_zip", message: publicMessage("invalid_zip") },
@@ -115,7 +118,7 @@ export async function POST(request: Request) {
       );
     }
   } catch (error) {
-    if (error instanceof ShipmentDataError && error.code === "missing_dims") {
+    if (error instanceof ShipmentDataError && error.code === "missing_dims" && zip) {
       const freeLocal =
         isRioGrandeValley({
           postalCode: zip,
