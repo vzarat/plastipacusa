@@ -1,4 +1,4 @@
-import { WARP_ORIGIN_ZIP, shippingDebugVisible } from "@/lib/shipping/config";
+import { WARP_ORIGIN_ZIP, normalizeWarpEnv, shippingDebugVisible } from "@/lib/shipping/config";
 import type { ShipmentFreight, ShippingQuoteDebug, ShippingQuoteErrorBody, ShippingQuoteErrorCode } from "@/lib/shipping/types";
 
 export const WARP_QUOTE_PATH = "/freights/quote";
@@ -20,10 +20,7 @@ export function redactSecrets(value: string): string {
 }
 
 export function warpEnvironment(): ShippingQuoteDebug["environment"] {
-  if (process.env.WARP_ENV === "staging" || process.env.WARP_ENV === "production") {
-    return process.env.WARP_ENV;
-  }
-  return "unset";
+  return normalizeWarpEnv(process.env.WARP_ENV) ?? "unset";
 }
 
 export function freightSummary(
@@ -130,14 +127,14 @@ export function buildQuoteFailure(input: {
   const visible = shippingDebugVisible();
   const error: ShippingQuoteErrorBody = {
     code: input.code,
-    message: visible ? message : "We couldn't calculate shipping automatically.",
     requestId: input.requestId,
   };
+  if (visible || input.code === "CONFIG") {
+    error.message = input.code === "CONFIG" ? providerMessage || message : message;
+  }
   if (visible) {
     if (input.httpStatus) error.httpStatus = input.httpStatus;
-    if (providerMessage) error.providerMessage = providerMessage;
-  } else {
-    delete error.message;
+    if (providerMessage && input.code !== "CONFIG") error.providerMessage = providerMessage;
   }
   return {
     error,

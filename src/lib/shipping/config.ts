@@ -40,10 +40,85 @@ function assertServerOnly(): void {
   }
 }
 
+export function normalizeWarpEnv(value: string | undefined): WarpEnv | null {
+  const env = value?.trim().replace(/^['"]|['"]$/g, "").trim().toLowerCase();
+  if (env === "staging" || env === "production") return env;
+  return null;
+}
+
+export type WarpSettingStatus = "OK" | "MISSING" | "INVALID";
+
+function settingStatus(value: string | undefined, valid: (trimmed: string) => boolean): WarpSettingStatus {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return "MISSING";
+  return valid(trimmed) ? "OK" : "INVALID";
+}
+
+export function inspectWarpSettings(): {
+  VERCEL_ENV: "production" | "preview" | "development" | "unset";
+  keyRead: "WARP_API_KEY_STAGING" | "WARP_API_KEY_PRODUCTION" | null;
+  settings: {
+    WARP_ENV: WarpSettingStatus;
+    WARP_API_KEY_STAGING: WarpSettingStatus;
+    WARP_API_KEY_PRODUCTION: WarpSettingStatus;
+    WARP_ORIGIN_ZIP: WarpSettingStatus;
+    WARP_ORIGIN_CITY: WarpSettingStatus;
+    WARP_ORIGIN_STATE: WarpSettingStatus;
+  };
+  warnings: string[];
+} {
+  const warpEnv = normalizeWarpEnv(process.env.WARP_ENV);
+  const envStatus: WarpSettingStatus = !process.env.WARP_ENV?.trim()
+    ? "MISSING"
+    : warpEnv
+      ? "OK"
+      : "INVALID";
+  const keyRead =
+    warpEnv === "production"
+      ? "WARP_API_KEY_PRODUCTION"
+      : warpEnv === "staging"
+        ? "WARP_API_KEY_STAGING"
+        : null;
+  const vercel = process.env.VERCEL_ENV;
+  const vercelEnv =
+    vercel === "production" || vercel === "preview" || vercel === "development" ? vercel : "unset";
+  const warnings: string[] = [];
+  if (warpEnv === "production" && vercelEnv === "preview") {
+    warnings.push(
+      'WARP_ENV is "production" while VERCEL_ENV is "preview". Preview deployments only receive variables scoped to Preview.'
+    );
+  }
+  return {
+    VERCEL_ENV: vercelEnv,
+    keyRead,
+    settings: {
+      WARP_ENV: envStatus,
+      WARP_API_KEY_STAGING: settingStatus(process.env.WARP_API_KEY_STAGING, () => true),
+      WARP_API_KEY_PRODUCTION: settingStatus(process.env.WARP_API_KEY_PRODUCTION, () => true),
+      WARP_ORIGIN_ZIP: settingStatus(WARP_ORIGIN_ZIP, (value) => /^\d{5}$/.test(value)),
+      WARP_ORIGIN_CITY: settingStatus(WARP_ORIGIN_CITY, (value) => value.length > 0),
+      WARP_ORIGIN_STATE: settingStatus(WARP_ORIGIN_STATE, (value) => /^[A-Za-z]{2}$/.test(value)),
+    },
+    warnings,
+  };
+}
+
+/** Names only. No values. */
+export function warpConfigProblemNames(): string[] {
+  const report = inspectWarpSettings();
+  const names: string[] = [];
+  if (report.settings.WARP_ENV !== "OK") names.push("WARP_ENV");
+  if (report.keyRead && report.settings[report.keyRead] !== "OK") names.push(report.keyRead);
+  if (report.settings.WARP_ORIGIN_ZIP !== "OK") names.push("WARP_ORIGIN_ZIP");
+  if (report.settings.WARP_ORIGIN_CITY !== "OK") names.push("WARP_ORIGIN_CITY");
+  if (report.settings.WARP_ORIGIN_STATE !== "OK") names.push("WARP_ORIGIN_STATE");
+  return names;
+}
+
 export function readWarpEnv(): WarpEnv {
-  const env = process.env.WARP_ENV;
-  if (env !== "staging" && env !== "production") {
-    throw new Error('WARP_ENV must be "staging" or "production".');
+  const env = normalizeWarpEnv(process.env.WARP_ENV);
+  if (!env) {
+    throw new Error(`Missing or invalid: ${warpConfigProblemNames().join(", ") || "WARP_ENV"}`);
   }
   return env;
 }
@@ -55,6 +130,10 @@ export function readWarpEnv(): WarpEnv {
  */
 export function getWarpConfig(): { env: WarpEnv; baseUrl: string; apiKey: string } {
   assertServerOnly();
+  const problems = warpConfigProblemNames();
+  if (problems.length > 0) {
+    throw new Error(`Missing or invalid: ${problems.join(", ")}`);
+  }
   const env = readWarpEnv();
   if (env === "staging" && !loggedStagingQuotes) {
     loggedStagingQuotes = true;
@@ -64,7 +143,7 @@ export function getWarpConfig(): { env: WarpEnv; baseUrl: string; apiKey: string
   const keyName = env === "staging" ? "WARP_API_KEY_STAGING" : "WARP_API_KEY_PRODUCTION";
   const apiKey = process.env[keyName]?.trim() ?? "";
   if (!apiKey) {
-    throw new Error(`${keyName} is required when WARP_ENV is "${env}".`);
+    throw new Error(`Missing or invalid: ${keyName}`);
   }
 
   return {
@@ -74,18 +153,22 @@ export function getWarpConfig(): { env: WarpEnv; baseUrl: string; apiKey: string
   };
 }
 
-/** Flip to true to show full Warp diagnostics in production checkout. */
-export const SHOW_SHIPPING_DEBUG = false;
+/**
+ * Flip to true to open /api/shipping/config-check and full checkout diagnostics.
+ * Set this back to false after checking Vercel, then redeploy.
+ */
+export const SHOW_SHIPPING_DEBUG = true;
 
 /** Full diagnostics in local development, staging, or when the flag above is on. */
 export function shippingDebugVisible(): boolean {
   if (SHOW_SHIPPING_DEBUG) return true;
   if (process.env.NODE_ENV === "development") return true;
-  if (process.env.WARP_ENV === "staging") return true;
+  if (normalizeWarpEnv(process.env.WARP_ENV) === "staging") return true;
   return false;
 }
+
 export function stagingQuotesNote(): string | null {
   if (process.env.NODE_ENV === "production") return null;
-  if (process.env.WARP_ENV !== "staging") return null;
+  if (normalizeWarpEnv(process.env.WARP_ENV) !== "staging") return null;
   return STAGING_QUOTES_NOTE;
 }

@@ -58,7 +58,7 @@ function classifyFailure(error: unknown): {
       providerMessage: error.message,
     };
   }
-  if (error instanceof Error && /WARP_ENV|WARP_API_KEY/.test(error.message)) {
+  if (error instanceof Error && /Missing or invalid:|WARP_ENV|WARP_API_KEY/.test(error.message)) {
     return { code: "CONFIG", providerMessage: error.message };
   }
   if (error instanceof Error) {
