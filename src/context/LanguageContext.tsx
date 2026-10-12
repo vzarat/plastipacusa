@@ -386,7 +386,7 @@ export const translations = {
     "home.clientLogosTitle": "Industry leaders that trust our high-performance packaging solutions",
 
     // Announcement / US Pride Banner
-    "banner.usPride": "Leading manufacturer of stretch film",
+    "banner.usPride": "Leader manufacturer of stretch film",
 
     // Footer
     "footer.tagline":

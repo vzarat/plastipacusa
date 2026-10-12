@@ -239,43 +239,41 @@ export function Hero() {
                 >
                   <div className="mx-auto inline-flex max-w-full items-center gap-2 rounded-full border border-blue-500/30 bg-blue-950/60 px-3 py-1 text-center text-[11px] font-semibold leading-snug text-blue-300 shadow-sm backdrop-blur-xs">
                     <Zap className="h-3.5 w-3.5 shrink-0 text-blue-400" />
-                    <span>Serving the industry since 2008</span>
+                    <span className="text-sky-100">Serving the industry since 2008</span>
                   </div>
 
-                  <h1 className="text-2xl font-bold leading-[1.15] tracking-tight text-white md:text-3xl md:font-extrabold lg:text-4xl">
-                    High quality and protection in all of your shipments!
-                    <br />
-                    <Link href="/#inquiry-form" className="text-blue-400 hover:text-blue-300">
-                      Contact us
-                    </Link>
+                  <h1 className="text-[1.65rem] font-extrabold leading-[1.15] tracking-tight text-white md:text-3xl lg:text-4xl">
+                    Performance you can wrap around every load
                   </h1>
+
+                  <p className="mx-auto max-w-2xl text-sm font-medium leading-relaxed text-slate-100 md:mx-0 md:text-base">
+                    From superior load containment and exceptional puncture resistance to optimized material usage, our films are designed to deliver consistent performance, greater efficiency, and dependable protection — load after load.
+                  </p>
 
                   <div className="flex flex-col items-stretch justify-center gap-2 md:flex-row md:flex-wrap md:items-center md:justify-start">
                     <Button
                       asChild
                       size="lg"
                       variant="gradient"
-                      className="flex h-10 w-full items-center justify-center gap-2 px-3 text-sm shadow-lg shadow-sky-500/20 md:h-10 md:w-auto md:px-4"
+                      className="flex h-11 w-full items-center justify-center gap-2 px-4 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 md:h-10 md:w-auto"
                     >
-                      <Link
-                        href="/#product-catalog-section"
-                        onClick={(event) => {
-                          const target = document.getElementById("product-catalog-section");
-                          if (!target) return;
-                          event.preventDefault();
-                          target.scrollIntoView({ behavior: "smooth", block: "start" });
-                        }}
-                      >
-                        <span>Explore Product Catalog</span>
+                      <Link href="/#inquiry-form">
+                        <span>Contact us</span>
                         <ArrowRight className="h-4 w-4" />
                       </Link>
                     </Button>
 
                     <Link
-                      href="/#inquiry-form"
-                      className="inline-flex h-10 cursor-pointer items-center justify-center rounded-xl border border-white/30 bg-white/5 px-4 text-sm font-medium text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/10"
+                      href="/#product-catalog-section"
+                      onClick={(event) => {
+                        const target = document.getElementById("product-catalog-section");
+                        if (!target) return;
+                        event.preventDefault();
+                        target.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }}
+                      className="inline-flex h-11 cursor-pointer items-center justify-center rounded-xl border border-white/70 bg-white/10 px-4 text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/20 md:h-10"
                     >
-                      Request Wholesale Quote
+                      Explore catalog
                     </Link>
                   </div>
                 </motion.div>
