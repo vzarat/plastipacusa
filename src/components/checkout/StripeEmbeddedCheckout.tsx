@@ -25,8 +25,6 @@ import { useCartStore } from "@/lib/store/useCartStore";
 import { calculateOrderTotal } from "@/lib/sales-tax";
 import { formatCurrency } from "@/lib/utils";
 import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
-import { countCartBoxes } from "@/lib/shipping-method";
-import { labelForShippingMethod } from "@/lib/shippingRules";
 
 const TEST_CARDS = [
   {
@@ -263,13 +261,13 @@ export function StripeEmbeddedCheckout({
   onRequireAgreement,
 }: StripeEmbeddedCheckoutProps) {
   const items = useCartStore((s) => s.items);
-  const { selectedAddress, deliveryMethod, taxExemptRequested } = useCheckoutState();
+  const { selectedAddress, selectedShippingOption, taxExemptRequested } = useCheckoutState();
   const subtotal = useCartStore((s) => s.getSubtotal());
   const discountAmount = useCartStore((s) => s.getDiscountAmount());
   const quote = calculateOrderTotal({
     subtotal,
     discount: discountAmount,
-    shipping: shippingAmount,
+    shipping: selectedShippingOption?.price ?? shippingAmount,
   });
   const amount = quote.total;
 
@@ -322,14 +320,8 @@ export function StripeEmbeddedCheckout({
         productSlugs: items.map((item) => item.productSlug).filter(Boolean),
         subtotal: quote.subtotal,
         discountAmount: quote.discount,
-        shippingAmount: quote.shipping,
-        shippingMethod: labelForShippingMethod(
-          deliveryMethod,
-          selectedAddress?.postalCode || shipping.postalCode,
-          selectedAddress?.city || shipping.city,
-          selectedAddress?.state || shipping.state,
-          countCartBoxes(items)
-        ),
+        shippingQuoteId: selectedShippingOption?.id,
+        shippingMethod: selectedShippingOption?.serviceName,
         shippingAddressId: selectedAddress?.id,
         taxExemptRequested,
         lineItems: items.map((item) => ({
@@ -342,6 +334,14 @@ export function StripeEmbeddedCheckout({
           totalBoxes: item.totalBoxes,
           application: item.application,
           tierType: item.tierType,
+        })),
+        quoteLines: items.map((item) => ({
+          sku: item.sku,
+          productSlug: item.productSlug,
+          quantity: item.quantity,
+          totalBoxes: item.totalBoxes,
+          totalRolls: item.totalRolls,
+          application: item.application,
         })),
         shipping,
       });
@@ -370,7 +370,7 @@ export function StripeEmbeddedCheckout({
     items,
     itemsSummary,
     stripePromise,
-    deliveryMethod,
+    selectedShippingOption?.id,
     taxExemptRequested,
     selectedAddress?.id,
     shipping.fullName,

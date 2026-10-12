@@ -4,6 +4,8 @@ import Stripe from "stripe";
 import { createServerClient } from "@/lib/supabase/server";
 import { calculateOrderTotal } from "@/lib/sales-tax";
 import { clampCartQuantity } from "@/lib/cart-quantity";
+import { resolveShippingCharge } from "@/lib/shipping/quote-cache";
+import type { ShippingQuoteLine } from "@/lib/shipping/types";
 
 export interface CreatePaymentIntentOptions {
   customerEmail?: string;
@@ -15,6 +17,7 @@ export interface CreatePaymentIntentOptions {
   subtotal?: number;
   discountAmount?: number;
   shippingAmount?: number;
+  shippingQuoteId?: string;
   shippingMethod?: string;
   shippingAddressId?: string;
   taxExemptRequested?: boolean;
@@ -29,6 +32,7 @@ export interface CreatePaymentIntentOptions {
     application?: string;
     tierType?: string;
   }>;
+  quoteLines?: ShippingQuoteLine[];
   shipping?: {
     fullName?: string;
     line1?: string;
@@ -49,6 +53,7 @@ export async function createPaymentIntent(
   clientSecret?: string;
   paymentIntentId?: string;
   error?: string;
+  expired?: boolean;
 }> {
   try {
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -79,12 +84,49 @@ export async function createPaymentIntent(
       (sum, item) => sum + Number(item.unitPrice || 0) * item.quantity,
       0
     );
+    if (!options.shippingQuoteId) {
+      return { success: false, error: "Choose a shipping option before payment." };
+    }
     const quote = calculateOrderTotal({
       subtotal: lineSubtotal > 0 ? lineSubtotal : Number(options.subtotal ?? amount ?? 0),
       discount: Number(options.discountAmount || 0),
-      shipping: Number(options.shippingAmount || 0),
+      shipping: 0,
     });
-    const normalizedAmount = Math.round(quote.total * 100);
+    let shippingOption: {
+      id: string;
+      provider: string;
+      mode: string;
+      serviceName: string;
+      price: number;
+      transitDays: number;
+      destinationZip: string;
+    } | null = null;
+    if (options.shippingQuoteId) {
+      try {
+        const resolved = await resolveShippingCharge({
+          quoteId: options.shippingQuoteId,
+          postalCode: options.shipping?.postalCode || "",
+          city: options.shipping?.city,
+          state: options.shipping?.state,
+          lines: options.quoteLines || [],
+        });
+        if ("error" in resolved) {
+          return { success: false, error: resolved.error, expired: resolved.expired };
+        }
+        shippingOption = resolved.option;
+      } catch {
+        return {
+          success: false,
+          error: "We couldn't confirm this shipping quote. Please choose it again.",
+        };
+      }
+    }
+    const priced = calculateOrderTotal({
+      subtotal: quote.subtotal,
+      discount: quote.discount,
+      shipping: shippingOption ? shippingOption.price : 0,
+    });
+    const normalizedAmount = Math.round(priced.total * 100);
     if (!Number.isFinite(normalizedAmount) || normalizedAmount < 50) {
       return {
         success: false,
@@ -197,15 +239,21 @@ export async function createPaymentIntent(
         ),
         company_name: String(options.companyName || ""),
         items_summary: String(options.itemsSummary || "").slice(0, 450),
-        subtotal: quote.subtotal.toFixed(2),
-        discount_amount: quote.discount.toFixed(2),
-        shipping_amount: quote.shipping.toFixed(2),
-        shipping_cost: quote.shipping.toFixed(2),
-        shipping_method: String(options.shippingMethod || "").slice(0, 80),
+        subtotal: priced.subtotal.toFixed(2),
+        discount_amount: priced.discount.toFixed(2),
+        shipping_amount: priced.shipping.toFixed(2),
+        shipping_cost: priced.shipping.toFixed(2),
+        shipping_method: String(shippingOption?.serviceName || options.shippingMethod || "").slice(0, 80),
+        shipping_provider: String(shippingOption?.provider || "").slice(0, 40),
+        shipping_mode: String(shippingOption?.mode || "").slice(0, 40),
+        shipping_service: String(shippingOption?.serviceName || "").slice(0, 80),
+        shipping_quote_id: String(shippingOption?.id || "").slice(0, 120),
+        shipping_transit_days: String(shippingOption?.transitDays ?? ""),
+        destination_zip: String(shippingOption?.destinationZip || options.shipping?.postalCode || "").slice(0, 12),
         shipping_address_id: String(options.shippingAddressId || ""),
-        tax_amount: (Math.round(quote.tax * 100) / 100).toFixed(2),
-        tax_rate: String(quote.taxRate),
-        total_amount: (Math.round(quote.total * 100) / 100).toFixed(2),
+        tax_amount: (Math.round(priced.tax * 100) / 100).toFixed(2),
+        tax_rate: String(priced.taxRate),
+        total_amount: (Math.round(priced.total * 100) / 100).toFixed(2),
         tax_exempt_requested: options.taxExemptRequested ? "true" : "false",
         line_items: lineItemsMeta,
         shipping_address: shippingMeta,

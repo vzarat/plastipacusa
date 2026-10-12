@@ -18,6 +18,14 @@ export const SHIPPING_MARKUP_PERCENT = 0;
 /** Rolls required before RGV local delivery is free. */
 export const FREE_LOCAL_DELIVERY_MIN_ROLLS = 64;
 
+/**
+ * TODO: pallet length, width, and height in inches are not stored on products.
+ * Leave these null. Do not put a guessed pallet size here.
+ */
+export const TODO_PALLET_LENGTH_IN: number | null = null;
+export const TODO_PALLET_WIDTH_IN: number | null = null;
+export const TODO_PALLET_HEIGHT_IN: number | null = null;
+
 const WARP_BASE_URLS = {
   staging: "https://stg.wearewarp.com/api/v1",
   production: "https://gw.wearewarp.com/api/v1",

@@ -264,6 +264,16 @@ export async function createOrderFromCheckout(
         paymentIntentDetails?.metadata?.shipping_method ||
         shippingDetails?.shipping_method ||
         null,
+      shipping_provider: paymentIntentDetails?.metadata?.shipping_provider || null,
+      shipping_mode: paymentIntentDetails?.metadata?.shipping_mode || null,
+      shipping_service: paymentIntentDetails?.metadata?.shipping_service || null,
+      shipping_quote_id: paymentIntentDetails?.metadata?.shipping_quote_id || null,
+      shipping_price: paymentIntentDetails?.metadata?.shipping_amount || null,
+      shipping_transit_days: paymentIntentDetails?.metadata?.shipping_transit_days || null,
+      destination_zip:
+        paymentIntentDetails?.metadata?.destination_zip ||
+        paymentIntentDetails?.shipping?.address?.postal_code ||
+        null,
       shipping_address_id:
         paymentIntentDetails?.metadata?.shipping_address_id ||
         shippingDetails?.shipping_address_id ||

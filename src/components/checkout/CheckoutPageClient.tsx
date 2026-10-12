@@ -29,12 +29,6 @@ import { createClient } from "@/lib/supabase/client";
 import { useCheckoutInactivity } from "@/hooks/useCheckoutInactivity";
 import { savedAddressToCheckout } from "@/lib/saved-shipping-address";
 import {
-  activeShippingMethod,
-  buildShippingOffer,
-  countCartBoxes,
-  estimateShippingCost,
-} from "@/lib/shipping-method";
-import {
   EMPTY_CHECKOUT_SHIPPING,
   clearCheckoutShipping,
   persistCheckoutShipping,
@@ -77,8 +71,11 @@ function CheckoutPageInner() {
   const {
     selectedAddress,
     setSelectedAddress,
-    deliveryMethod,
     setDeliveryMethod,
+    setSelectedShippingOption,
+    setShipmentWeightLbs,
+    selectedShippingOption,
+    shipmentWeightLbs,
     taxExemptRequested,
     setTaxExemptRequested,
   } = useCheckoutState();
@@ -156,26 +153,8 @@ function CheckoutPageInner() {
   const itemCount = items.reduce((count, item) => count + item.quantity, 0);
   const subtotal = getSubtotal();
   const discountAmount = getDiscountAmount();
-  const totalWeight = getTotalWeight();
-  const boxCount = countCartBoxes(items);
-  const shippingOffer = buildShippingOffer({
-    city: selectedAddress?.city,
-    state: selectedAddress?.state,
-    postalCode: selectedAddress?.postalCode,
-    boxCount,
-    weightLbs: totalWeight,
-  });
-  const activeMethod = activeShippingMethod(deliveryMethod, shippingOffer);
-  const shippingEstimate =
-    furthestStep >= 3
-      ? estimateShippingCost(activeMethod, totalWeight, boxCount)
-      : 0;
-
-  useEffect(() => {
-    if (deliveryMethod !== activeMethod) {
-      setDeliveryMethod(activeMethod);
-    }
-  }, [activeMethod, deliveryMethod, setDeliveryMethod]);
+  const totalWeight = shipmentWeightLbs ?? getTotalWeight();
+  const shippingEstimate = selectedShippingOption?.price ?? 0;
   const quote = calculateOrderTotal({
     subtotal,
     discount: discountAmount,
@@ -233,6 +212,8 @@ function CheckoutPageInner() {
     clearCheckoutShipping();
     setSelectedAddress(null);
     setDeliveryMethod("ground");
+    setSelectedShippingOption(null);
+    setShipmentWeightLbs(null);
     setTaxExemptRequested(false);
     setAgreedToPolicies(false);
     setShipping(EMPTY_CHECKOUT_SHIPPING);
@@ -265,6 +246,17 @@ function CheckoutPageInner() {
     if (!selectedAddress) {
       toast.error("Select a shipping address before payment.");
       setStep(2);
+      return;
+    }
+    if (!selectedShippingOption) {
+      toast.error("Choose a delivery method before payment.");
+      return;
+    }
+    if (
+      selectedShippingOption.expiresAt &&
+      Date.parse(selectedShippingOption.expiresAt) <= Date.now()
+    ) {
+      toast.error("This quote expired. Review the updated price before continuing.");
       return;
     }
     setFurthestStep((current) => (current < 4 ? 4 : current));
@@ -308,6 +300,7 @@ function CheckoutPageInner() {
   const mobileActionDisabled =
     (step === 1 && items.length === 0) ||
     ((step === 2 || step === 3) && !selectedAddress) ||
+    (step === 3 && !selectedShippingOption) ||
     (step === 4 && !agreedToPolicies);
 
   return (
@@ -351,6 +344,7 @@ function CheckoutPageInner() {
           )}
           {step === 3 && (
             <CheckoutShippingMethodStep
+              checkoutEmail={checkoutEmail}
               onBack={() => setStep(2)}
               onProceed={proceedToPayment}
             />
@@ -453,12 +447,16 @@ function CheckoutPageInner() {
               </>
             )}
             {furthestStep >= 3 && (
-              <div className="flex items-center justify-between text-slate-600">
-                <span>Estimated shipping</span>
-                <span className="font-semibold text-slate-800">
-                  {quote.shipping > 0 ? formatCurrency(quote.shipping) : "FREE"}
-                </span>
-              </div>
+            <div className="flex items-center justify-between text-slate-600" aria-live="polite">
+              <span>Estimated shipping</span>
+              <span className="font-semibold text-slate-800">
+                {selectedShippingOption
+                  ? quote.shipping > 0
+                    ? formatCurrency(quote.shipping)
+                    : "$0.00"
+                  : "—"}
+              </span>
+            </div>
             )}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-slate-600">
