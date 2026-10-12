@@ -272,16 +272,17 @@ export function Hero() {
                     ? undefined
                     : { duration: 4.2, repeat: Infinity, ease: "easeInOut" }
                 }
-                className="absolute right-6 top-16 z-20 max-w-[200px] rounded-2xl border border-white/70 bg-white/90 px-2.5 py-1.5 text-left shadow-md backdrop-blur-md lg:top-8"
+                className="absolute right-6 top-16 z-20 max-w-[240px] rounded-2xl border-[1.5px] border-sky-400/70 bg-white/10 px-4 py-3 text-left shadow-[0_8px_32px_rgba(2,11,31,0.35),0_0_24px_rgba(56,189,248,0.25),inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur-xl lg:top-8"
+                style={{ WebkitBackdropFilter: "blur(24px)" }}
               >
-                <p className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-sky-700">
+                <p className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-sky-300">
                   <ShieldCheck className="h-3 w-3 shrink-0" />
                   Featured Product
                 </p>
-                <p className="text-xs font-bold tracking-tight text-slate-950">
+                <p className="text-xs font-bold tracking-tight text-white">
                   FORCE™ Hand Stretch Film
                 </p>
-                <p className="text-[10px] font-medium text-slate-600">
+                <p className="text-[10px] font-medium text-white/70">
                   1 Box (4 Rolls) · 18&quot; x 80 Ga x 1500 ft
                 </p>
               </motion.div>
@@ -292,35 +293,37 @@ export function Hero() {
                     ? undefined
                     : { duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.4 }
                 }
-                className="absolute bottom-14 right-6 z-20 max-w-[min(28rem,calc(100%-4.5rem))] rounded-2xl border border-white/70 bg-white/90 px-2.5 py-1.5 shadow-md backdrop-blur-md"
+                className="absolute bottom-14 right-6 z-20 max-w-[min(28rem,calc(100%-3rem))] rounded-2xl border-[1.5px] border-transparent bg-white/[0.12] px-4 py-3 shadow-[0_8px_32px_rgba(2,11,31,0.35),0_0_24px_rgba(56,189,248,0.25),inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur-xl [background-clip:padding-box,border-box] [background-image:linear-gradient(rgba(255,255,255,0.12),rgba(255,255,255,0.12)),linear-gradient(90deg,rgba(56,189,248,0.85),rgba(37,99,235,0.9))] [background-origin:border-box]"
+                style={{ WebkitBackdropFilter: "blur(24px)" }}
               >
-                <ul className="flex flex-wrap items-center justify-end gap-x-2 gap-y-0.5">
+                <ul className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
                   {["300%+ Pre-Stretch Yield", "Extreme Puncture Hold", "Factory Direct Pricing"].map(
                     (label) => (
-                      <li key={label} className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-800">
-                        <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-600" />
+                      <li key={label} className="inline-flex items-center gap-1 text-[10px] font-semibold text-white">
+                        <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" />
                         {label}
                       </li>
                     )
                   )}
                 </ul>
               </motion.div>
-              <motion.div variants={fadeUp} className="relative z-20 flex h-full max-w-xl flex-col justify-start px-5 pb-56 pt-6 text-left sm:px-8 md:px-10 lg:w-[48%] lg:max-w-[34rem] lg:justify-center lg:px-12 lg:pb-5 lg:pt-5">
-                  <div>
+              <motion.div variants={fadeUp} className="relative z-20 flex h-full w-full max-w-[620px] flex-col justify-center px-5 py-5 pb-52 text-left sm:px-8 md:px-10 lg:w-[55%] lg:max-w-[620px] lg:px-12 lg:pb-5">
+                  <div className="max-w-[560px] space-y-2">
                     <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-300">
                       <span className="h-1.5 w-1.5 rounded-full bg-sky-300" aria-hidden />
                       Serving the industry since 2008
                     </p>
 
-                    <h1 className="mt-2.5 max-w-none text-left text-4xl font-extrabold leading-[1.05] tracking-tight text-white lg:text-5xl">
+                    <h1 className="max-w-[560px] text-left text-[1.65rem] font-extrabold uppercase leading-[1.15] tracking-tight text-white md:text-3xl">
                       Performance you can wrap around every load
                     </h1>
 
-                    <p className="mt-3 max-w-xl text-left text-base font-normal leading-snug text-sky-100/80">
+                    <p className="max-w-[460px] text-left text-sm font-normal leading-snug text-white/75">
                       From superior load containment and exceptional puncture resistance to optimized material usage, our films are designed to deliver consistent performance, greater efficiency, and dependable protection — load after load.
                     </p>
 
-                    <div className="mt-5 flex flex-col items-start gap-3 lg:flex-row lg:flex-wrap lg:items-center">
+                    <div className="max-w-[560px] space-y-2 pt-1">
+                      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                       <Link
                         href="/#product-catalog-section"
                         onClick={(event) => {
@@ -329,7 +332,7 @@ export function Hero() {
                           event.preventDefault();
                           target.scrollIntoView({ behavior: "smooth", block: "start" });
                         }}
-                        className="group inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-full bg-white px-5 text-sm font-semibold text-slate-950 shadow-md transition duration-200 hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a3a9a]"
+                        className="group inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-slate-950 shadow-md transition duration-200 hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a3a9a]"
                       >
                         Explore catalog
                         <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
@@ -338,13 +341,14 @@ export function Hero() {
                         asChild
                         size="lg"
                         variant="outline"
-                        className="h-10 w-full rounded-full border-white/40 bg-transparent px-5 text-sm font-semibold text-white shadow-none hover:-translate-y-0.5 hover:bg-white/10 hover:text-white focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a3a9a] sm:w-auto"
+                        className="h-10 w-full rounded-full border-white/40 bg-transparent px-4 text-sm font-semibold text-white shadow-none hover:-translate-y-0.5 hover:bg-white/10 hover:text-white focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a3a9a] sm:w-auto"
                       >
                         <Link href="/#inquiry-form">
                           <span>Contact us</span>
                         </Link>
                       </Button>
-                      <p className="text-sm text-sky-100/85">
+                      </div>
+                      <p className="max-w-[560px] text-sm text-sky-100/85">
                         Need help placing your first B2B order?{" "}
                         <button
                           type="button"
