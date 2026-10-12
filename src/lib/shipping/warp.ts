@@ -128,7 +128,7 @@ async function quoteVehicle(input: {
             packaging: piece.packaging,
             stackable: false,
           };
-        })),
+        }),
       }),
     });
 
