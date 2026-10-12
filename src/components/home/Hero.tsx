@@ -227,9 +227,9 @@ export function Hero() {
               exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
               className="absolute inset-0 flex items-center overflow-hidden px-5 py-5 sm:px-8 md:px-10 lg:px-12"
             >
-              <div className="grid w-full grid-cols-1 items-center gap-4 lg:grid-cols-[minmax(0,46%)_minmax(0,54%)] lg:gap-4">
-                <motion.div variants={fadeRight} className="relative order-2 lg:order-1">
-                  <div className="relative -ml-10 flex h-[150px] w-[125%] items-center justify-start lg:-ml-16 lg:h-[280px] lg:w-[130%]">
+              <div className="grid w-full grid-cols-1 items-center gap-4 lg:grid-cols-[minmax(0,54%)_minmax(0,46%)] lg:gap-4">
+                <motion.div variants={fadeRight} className="relative order-2 flex justify-end">
+                  <div className="relative -mr-8 w-fit lg:-mr-14">
                     <Image
                       src={FORCE_HAND_IMAGE}
                       alt="FORCE™ Hand Stretch Film"
@@ -237,7 +237,7 @@ export function Hero() {
                       height={480}
                       priority
                       sizes="(max-width: 1024px) 90vw, 560px"
-                      className="h-[150px] w-auto max-w-none object-contain object-left mix-blend-screen lg:h-[280px]"
+                      className="h-[150px] w-auto max-w-none object-contain object-right mix-blend-screen lg:h-[280px]"
                     />
                     <motion.div
                       animate={reduceMotion ? undefined : { y: [0, -6, 0] }}
@@ -246,7 +246,7 @@ export function Hero() {
                           ? undefined
                           : { duration: 4.2, repeat: Infinity, ease: "easeInOut" }
                       }
-                      className="absolute left-8 top-0 z-20 max-w-[200px] rounded-xl border border-white/70 bg-white/90 px-2.5 py-1.5 text-left shadow-md backdrop-blur-md lg:left-14"
+                      className="absolute left-2 top-0 z-20 max-w-[200px] rounded-xl border border-white/70 bg-white/90 px-2.5 py-1.5 text-left shadow-md backdrop-blur-md"
                     >
                       <p className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-sky-700">
                         <ShieldCheck className="h-3 w-3 shrink-0" />
@@ -266,7 +266,7 @@ export function Hero() {
                           ? undefined
                           : { duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.4 }
                       }
-                      className="absolute bottom-1 left-8 z-20 max-w-full rounded-full border border-white/70 bg-white/90 px-2 py-1 shadow-md backdrop-blur-md lg:left-14"
+                      className="absolute bottom-1 left-2 z-20 max-w-full rounded-full border border-white/70 bg-white/90 px-2 py-1 shadow-md backdrop-blur-md"
                     >
                       <ul className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                         {["300%+ Pre-Stretch Yield", "Extreme Puncture Hold", "Factory Direct Pricing"].map(
@@ -282,7 +282,7 @@ export function Hero() {
                   </div>
                 </motion.div>
 
-                <motion.div variants={fadeUp} className="relative z-10 order-1 text-left lg:order-2">
+                <motion.div variants={fadeUp} className="relative z-10 order-1 text-left">
                   <div>
                     <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-300">
                       <span className="h-1.5 w-1.5 rounded-full bg-sky-300" aria-hidden />
