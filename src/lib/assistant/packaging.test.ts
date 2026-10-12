@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import {
+  applyCustomerProfilePatch,
+  emptyCustomerProfile,
+  updateCustomerProfileInputSchema,
+} from "@/lib/assistant/customer-profile";
 import { estimateUsage } from "@/lib/assistant/estimate-usage";
 import { freightRateCheck } from "@/lib/assistant/freight-rate";
 import { gaugeAdvice } from "@/lib/assistant/gauge-advice";
 import { palletCalculator, type CatalogPrice } from "@/lib/assistant/pallet-calculator";
+import { recommendProduct, usageFromProfile } from "@/lib/assistant/recommend-product";
 import { USAGE_RATES } from "@/lib/assistant/usage-rates";
 import {
   estimateUsageInputSchema,
@@ -504,5 +510,82 @@ describe("freightRateCheck", () => {
       quantity: 1,
     });
     assert.equal(result.ok, false);
+  });
+});
+
+describe("recommendProduct", () => {
+  it("asks for missing profile fields and does not invent a price", () => {
+    const result = recommendProduct(emptyCustomerProfile());
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.match(result.error, /missing profile fields/);
+  });
+
+  it("recommends one machine half pallet from the saved profile", () => {
+    const result = recommendProduct({
+      usa_maquina: true,
+      ancho: 20,
+      pallets_por_dia: 10,
+      dias_al_mes: 20,
+      calibre: 60,
+    });
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.equal(result.tier, "half_pallet");
+    assert.equal(result.quantity, 1);
+    assert.equal(result.gauge, 60);
+    assert.equal("price" in result, false);
+    assert.equal("unitPrice" in result, false);
+  });
+
+  it("rejects machine film that is not 20 inches", () => {
+    const result = recommendProduct({
+      usa_maquina: true,
+      ancho: 15,
+      pallets_por_dia: 10,
+      dias_al_mes: 20,
+      calibre: 60,
+    });
+    assert.equal(result.ok, false);
+  });
+});
+
+describe("usageFromProfile", () => {
+  it("counts pallets from the profile and does not invent rolls", () => {
+    const result = usageFromProfile({
+      usa_maquina: true,
+      ancho: 20,
+      pallets_por_dia: 10,
+      dias_al_mes: 20,
+      calibre: 60,
+    });
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.equal(result.palletsPerMonth, 200);
+    assert.equal(result.usage, "usage_unavailable");
+  });
+});
+
+describe("updateCustomerProfile", () => {
+  it("rejects extra fields and a client user_id", () => {
+    assert.equal(
+      updateCustomerProfileInputSchema.safeParse({ user_id: "attacker", usa_maquina: true }).success,
+      false
+    );
+    assert.equal(updateCustomerProfileInputSchema.safeParse({ usa_maquina: true, role: "admin" }).success, false);
+    assert.equal(updateCustomerProfileInputSchema.safeParse({ usa_maquina: true, price: 1 }).success, false);
+    const applied = applyCustomerProfilePatch(emptyCustomerProfile(), {
+      user_id: "attacker",
+      usa_maquina: true,
+    });
+    assert.equal(applied.ok, false);
+  });
+
+  it("saves only the allowed profile fields", () => {
+    const applied = applyCustomerProfilePatch(emptyCustomerProfile(), { usa_maquina: true, ancho: 20 });
+    assert.equal(applied.ok, true);
+    if (!applied.ok) return;
+    assert.equal(applied.profile.usa_maquina, true);
+    assert.equal(applied.profile.ancho, 20);
+    assert.equal("user_id" in applied.profile, false);
   });
 });

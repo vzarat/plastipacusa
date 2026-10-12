@@ -239,18 +239,16 @@ export function Hero() {
                 >
                   <div className="mx-auto inline-flex max-w-full items-center gap-2 rounded-full border border-blue-500/30 bg-blue-950/60 px-3 py-1 text-center text-[11px] font-semibold leading-snug text-blue-300 shadow-sm backdrop-blur-xs">
                     <Zap className="h-3.5 w-3.5 shrink-0 text-blue-400" />
-                    <span>Engineered for Maximum Load Containment</span>
+                    <span>Serving the industry since 2008</span>
                   </div>
 
                   <h1 className="text-2xl font-bold leading-[1.15] tracking-tight text-white md:text-3xl md:font-extrabold lg:text-4xl">
-                    Industrial Strength.
+                    High quality and protection in all of your shipments!
                     <br />
-                    <span className="text-blue-400">Precision Stretch Film.</span>
+                    <Link href="/#inquiry-form" className="text-blue-400 hover:text-blue-300">
+                      Contact us
+                    </Link>
                   </h1>
-
-                  <p className="mx-auto max-w-2xl text-xs leading-snug text-slate-200 md:mx-0 md:text-sm md:leading-relaxed">
-                    Factory-direct high-yield hand & machine stretch film designed for high-tension pallet wrapping and zero puncture failures.
-                  </p>
 
                   <div className="flex flex-col items-stretch justify-center gap-2 md:flex-row md:flex-wrap md:items-center md:justify-start">
                     <Button

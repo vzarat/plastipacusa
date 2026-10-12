@@ -1,11 +1,13 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { lookupCatalogPrice } from "@/lib/assistant/catalog-price";
-import { estimateUsage } from "@/lib/assistant/estimate-usage";
+import { updateCustomerProfileInputSchema } from "@/lib/assistant/customer-profile";
+import { missingProfileFields } from "@/lib/assistant/customer-profile";
 import { freightRateCheck } from "@/lib/assistant/freight-rate";
 import { gaugeAdvice } from "@/lib/assistant/gauge-advice";
 import { palletCalculator } from "@/lib/assistant/pallet-calculator";
-import { USAGE_RATES } from "@/lib/assistant/usage-rates";
+import { readCustomerProfile, writeCustomerProfile } from "@/lib/assistant/profile-store";
+import { recommendProduct, usageFromProfile } from "@/lib/assistant/recommend-product";
 import {
   CATALOG_GAUGES,
   MAX_LENGTH_FEET,
@@ -70,7 +72,10 @@ function toolFailure() {
   return { ok: false as const, error: "That request could not be completed. Please try again." };
 }
 
-export const assistantTools = {
+const profileOnlySchema = z.object({}).strict();
+
+export function createAssistantTools(userId: string) {
+  return {
   palletCalculator: tool({
     description:
       "Calculate a valid Plastipac package. Enforces machine-film half/full pallet limits and hand-film box, layer, and half-pallet limits. Returns an error when the request breaks a rule. Prices come from the catalog, not from the conversation.",
@@ -100,15 +105,38 @@ export const assistantTools = {
   }),
   estimateUsage: tool({
     description:
-      "Calculate daily and monthly film use from the buyer's figures and configured rates only. Returns an error listing missing fields instead of guessing. Machine wrap yield is usage_unavailable until a catalog rate exists.",
-    inputSchema: estimateUsageInputSchema,
-    execute: async (input) => {
+      "Calculate daily and monthly film use from the saved customer profile only. Returns missing fields instead of guessing. Do not pass quantities, rates, or prices.",
+    inputSchema: profileOnlySchema,
+    execute: async () => {
       try {
-        return estimateUsage(input, USAGE_RATES);
+        return usageFromProfile(readCustomerProfile(userId));
       } catch (error) {
         console.error("Assist AI usage tool failed", error);
         return toolFailure();
       }
+    },
+  }),
+  recommendProduct: tool({
+    description:
+      "Recommend a film, width, gauge, and package tier from the saved customer profile. Does not return a price.",
+    inputSchema: profileOnlySchema,
+    execute: async () => {
+      try {
+        return recommendProduct(readCustomerProfile(userId));
+      } catch (error) {
+        console.error("Assist AI recommend tool failed", error);
+        return toolFailure();
+      }
+    },
+  }),
+  updateCustomerProfile: tool({
+    description:
+      "Save profile facts the buyer stated: usa_maquina, ancho, pallets_por_dia, dias_al_mes, or calibre. Do not send user_id, price, discount, or role.",
+    inputSchema: updateCustomerProfileInputSchema,
+    execute: async (input) => {
+      const saved = writeCustomerProfile(userId, input);
+      if (!saved.ok) return saved;
+      return { ok: true as const, profile: saved.profile, missing: missingProfileFields(saved.profile) };
     },
   }),
   freightRateCheck: tool({
@@ -125,4 +153,5 @@ export const assistantTools = {
       }
     },
   }),
-};
+  };
+}

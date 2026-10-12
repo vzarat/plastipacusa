@@ -9,30 +9,23 @@ import GradientWaves from "@/components/ui/GradientWaves";
 import { useAssistStore } from "@/lib/store/useAssistStore";
 
 const QUICK_ACTIONS = [
-  {
-    title: "Pallet Calculator",
-    prompt:
-      "Help me calculate a Plastipac order. Ask whether I need hand film (15\" or 18\") or machine film (20\"), then tell me which package tier and quantity I should use.",
-    icon: Calculator,
-  },
-  {
-    title: "Gauge Advice (GA)",
-    prompt:
-      "Which gauge (GA) should I choose for my load? Ask about film width, load weight, and whether the freight is hand wrap or an automated machine.",
-    icon: Ruler,
-  },
-  {
-    title: "Freight Rate Check",
-    prompt:
-      "Explain Plastipac freight eligibility. I want to know when RGV and Houston shipping are included based on boxes or pallet size.",
-    icon: Truck,
-  },
+  { title: "Pallet Calculator", action: "pallet", icon: Calculator },
+  { title: "Gauge Advice (GA)", action: "recommend", icon: Ruler },
+  { title: "Freight Rate Check", action: "freight", icon: Truck },
 ] as const;
+
+type AssistProfile = {
+  usa_maquina: boolean | null;
+  ancho: 15 | 18 | 20 | null;
+  pallets_por_dia: number | null;
+  dias_al_mes: number | null;
+  calibre: 51 | 60 | 70 | 80 | null;
+};
 
 const WELCOME_TEXT = "Do you already have a stretch wrapper?";
 const WRAP_CHOICES = [
-  { label: "Yes, I use a machine", prompt: "Yes, I use a machine" },
-  { label: "No, I wrap by hand", prompt: "No, I wrap by hand" },
+  { label: "Yes, I use a machine", usa_maquina: true },
+  { label: "No, I wrap by hand", usa_maquina: false },
 ] as const;
 
 function welcomeMessage(): UIMessage {
@@ -86,6 +79,12 @@ export default function AssistAI() {
   const setOpen = useAssistStore((state) => state.setOpen);
   const [historyReady, setHistoryReady] = useState(false);
   const [poweredBy, setPoweredBy] = useState<string | null>(null);
+  const [profile, setProfile] = useState<AssistProfile | null>(null);
+  const [wizardNote, setWizardNote] = useState<string | null>(null);
+  const [postalCode, setPostalCode] = useState("");
+  const [palletsPerDay, setPalletsPerDay] = useState("");
+  const [daysPerMonth, setDaysPerMonth] = useState("");
+  const [rulesOnly, setRulesOnly] = useState(false);
   const [input, setInput] = useState("");
   const busy = status === "submitted" || status === "streaming";
   busyRef.current = busy;
@@ -184,6 +183,43 @@ export default function AssistAI() {
   };
 
   const awaitingWrapChoice = historyReady && !messages.some((message) => message.role === "user");
+
+  useEffect(() => {
+    if (!error) return;
+    const text = chatErrorText(error);
+    if (text.toLowerCase().includes("sign in")) return;
+    setRulesOnly(true);
+    setWizardNote(text);
+  }, [error]);
+
+  const runWizard = async (body: Record<string, unknown>) => {
+    try {
+      const response = await fetch("/api/assistant/wizard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = (await response.json()) as { error?: string; profile?: AssistProfile; summary?: string };
+      if (response.status === 401) {
+        setWizardNote(data.error || "Sign in to use Assist AI.");
+        return;
+      }
+      if (data.profile) setProfile(data.profile);
+      setWizardNote(data.summary || data.error || "That step could not be completed.");
+    } catch {
+      setWizardNote("That step could not be completed.");
+    }
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    void fetch("/api/assistant/wizard")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { profile?: AssistProfile } | null) => {
+        if (data?.profile) setProfile(data.profile);
+      })
+      .catch(() => undefined);
+  }, [open]);
 
   const submit = (text: string) => {
     const next = text.trim();
@@ -297,7 +333,16 @@ export default function AssistAI() {
                         initial={{ opacity: 0, y: -12 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.35, delay: 0.06 + index * 0.07, ease: "easeOut" }}
-                        onClick={() => submit(action.prompt)}
+                        onClick={() =>
+                          void runWizard(
+                            action.action === "freight"
+                              ? {
+                                  action: "freight",
+                                  ...(postalCode.trim() ? { postalCode: postalCode.trim() } : {}),
+                                }
+                              : { action: action.action }
+                          )
+                        }
                         className="flex items-center gap-3 rounded-xl border border-white/80 bg-white/55 px-3 py-2.5 text-left text-sm font-bold text-slate-900 shadow-sm backdrop-blur-md transition hover:bg-white/80 disabled:opacity-50"
                       >
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#085de7] text-white">
@@ -308,6 +353,73 @@ export default function AssistAI() {
                     );
                   })}
                 </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(profile?.usa_maquina == null ? [15, 18, 20] : profile.usa_maquina ? [20] : [15, 18]).map((width) => (
+                    <button
+                      key={width}
+                      type="button"
+                      onClick={() => void runWizard({ action: "save", ancho: width })}
+                      className="rounded-full border border-white/80 bg-white/70 px-3 py-1 text-xs font-bold text-slate-800"
+                    >
+                      {width}"
+                    </button>
+                  ))}
+                  {[51, 60, 70, 80].map((gauge) => (
+                    <button
+                      key={gauge}
+                      type="button"
+                      onClick={() => void runWizard({ action: "recommend", calibre: gauge })}
+                      className="rounded-full border border-white/80 bg-white/70 px-3 py-1 text-xs font-bold text-[#085de7]"
+                    >
+                      {gauge} GA
+                    </button>
+                  ))}
+                </div>
+                {profile?.usa_maquina === true && (
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <input
+                      value={palletsPerDay}
+                      onChange={(event) => setPalletsPerDay(event.target.value)}
+                      inputMode="numeric"
+                      placeholder="Pallets / day"
+                      className="h-9 rounded-xl border border-white/80 bg-white/70 px-3 text-sm text-slate-900"
+                    />
+                    <input
+                      value={daysPerMonth}
+                      onChange={(event) => setDaysPerMonth(event.target.value)}
+                      inputMode="numeric"
+                      placeholder="Days / month"
+                      className="h-9 rounded-xl border border-white/80 bg-white/70 px-3 text-sm text-slate-900"
+                    />
+                    <button
+                      type="button"
+                      className="col-span-2 rounded-xl bg-[#085de7] px-3 py-2 text-xs font-bold text-white"
+                      onClick={() => {
+                        const pallets = Number(palletsPerDay);
+                        const days = Number(daysPerMonth);
+                        void runWizard({
+                          action: "usage",
+                          usa_maquina: true,
+                          ...(Number.isInteger(pallets) && pallets >= 1 ? { pallets_por_dia: pallets } : {}),
+                          ...(Number.isInteger(days) && days >= 1 && days <= 31 ? { dias_al_mes: days } : {}),
+                        });
+                      }}
+                    >
+                      Calculate usage
+                    </button>
+                  </div>
+                )}
+                <label className="mt-2 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  Freight ZIP
+                  <input
+                    value={postalCode}
+                    onChange={(event) => setPostalCode(event.target.value)}
+                    inputMode="numeric"
+                    maxLength={5}
+                    placeholder="78501"
+                    className="mt-1 h-9 w-full rounded-xl border border-white/80 bg-white/70 px-3 text-sm font-semibold normal-case tracking-normal text-slate-900"
+                  />
+                </label>
               </div>
 
               <div className="relative z-10 min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4">
@@ -321,7 +433,7 @@ export default function AssistAI() {
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.35, delay: 0.28 + index * 0.07, ease: "easeOut" }}
-                        onClick={() => submit(choice.prompt)}
+                        onClick={() => void runWizard({ action: "usage", usa_maquina: choice.usa_maquina })}
                         className="rounded-xl border border-white/80 bg-white/55 px-3 py-2.5 text-left text-sm font-bold text-slate-900 shadow-sm backdrop-blur-md transition hover:bg-white/80 disabled:opacity-50"
                       >
                         {choice.label}
@@ -349,7 +461,12 @@ export default function AssistAI() {
                 {busy && (
                   <p className="text-xs font-semibold text-slate-500">Assist AI is writing…</p>
                 )}
-                {error && (
+                {wizardNote && (
+                  <p className="mr-auto max-w-[90%] whitespace-pre-wrap break-words rounded-2xl border border-white/80 bg-white/80 px-3.5 py-2.5 text-sm leading-relaxed text-slate-800">
+                    {wizardNote}
+                  </p>
+                )}
+                {error && !rulesOnly && (
                   <p className="mr-auto max-w-[90%] whitespace-pre-wrap break-words rounded-2xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-medium leading-relaxed text-red-700">
                     {chatErrorText(error)}
                   </p>
@@ -378,8 +495,9 @@ export default function AssistAI() {
                         submit(input);
                       }
                     }}
-                    placeholder="Ask about pallets, gauge, or freight"
-                    className="min-h-12 flex-1 resize-none rounded-xl border border-white/70 bg-white/50 px-3 py-2 text-sm text-slate-900 outline-none backdrop-blur-md focus:border-sky-400"
+                    placeholder={rulesOnly ? "Assist AI is offline. Use the steps above." : "Ask about pallets, gauge, or freight"}
+                    disabled={rulesOnly}
+                    className="min-h-12 flex-1 resize-none rounded-xl border border-white/70 bg-white/50 px-3 py-2 text-sm text-slate-900 outline-none backdrop-blur-md focus:border-sky-400 disabled:opacity-60"
                   />
                   {busy ? (
                     <button

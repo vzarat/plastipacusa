@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { PhoneCall } from "lucide-react";
+import { Mail, PhoneCall } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
 function UsFlagIcon({ className = "h-4 w-5" }: { className?: string }) {
@@ -43,6 +43,13 @@ export function AnnouncementBar() {
           >
             <PhoneCall className="w-3.5 h-3.5 text-sky-200" />
             (956) 400-3683
+          </a>
+          <a
+            href="mailto:sales@plastipacusa.com"
+            className="flex items-center gap-1 text-white hover:text-sky-100 transition-colors font-semibold"
+          >
+            <Mail className="w-3.5 h-3.5 text-sky-200" />
+            sales@plastipacusa.com
           </a>
         </div>
       </div>
