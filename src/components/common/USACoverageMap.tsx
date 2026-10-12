@@ -120,8 +120,7 @@ function getCoverage(abbr: string): StateCoverage {
       name,
       tier,
       leadTime,
-      detail:
-        "Neighboring-state freight from the South Texas plant with scheduled LTL and FTL options.",
+      detail: CUSTOM_FREIGHT_DESCRIPTION,
     };
   }
 
@@ -129,8 +128,7 @@ function getCoverage(abbr: string): StateCoverage {
     name,
     tier,
     leadTime,
-    detail:
-      "Nationwide USA shipping for full-pallet and truckload orders. Prices in USD.",
+    detail: CUSTOM_FREIGHT_DESCRIPTION,
   };
 }
 
@@ -237,7 +235,7 @@ export function USACoverageMap() {
               style={{ backgroundColor: FILL_PRIMARY }}
               aria-hidden
             />
-            Free Local Delivery (RGV)
+            RGV & Houston routes
           </span>
           <span className="inline-flex items-center gap-1.5 text-slate-700">
             <span
@@ -245,7 +243,7 @@ export function USACoverageMap() {
               style={{ backgroundColor: FILL_REGIONAL }}
               aria-hidden
             />
-            Friday Route (Greater Houston)
+            Freight quote required
           </span>
           <span className="inline-flex items-center gap-1.5 text-slate-700">
             <span
@@ -253,7 +251,7 @@ export function USACoverageMap() {
               style={{ backgroundColor: FILL_SECONDARY }}
               aria-hidden
             />
-            Custom Freight (Call for Schedule)
+            Freight quote required
           </span>
         </div>
       </div>
@@ -330,6 +328,14 @@ export function USACoverageMap() {
                     </p>
                     <p className="mt-1 text-sm font-semibold leading-snug text-slate-800">
                       {HOUSTON_DESCRIPTION}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                      {CUSTOM_FREIGHT_TITLE}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold leading-snug text-slate-800">
+                      {CUSTOM_FREIGHT_DESCRIPTION}
                     </p>
                   </div>
                 </div>

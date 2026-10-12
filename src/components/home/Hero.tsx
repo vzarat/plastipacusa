@@ -6,8 +6,10 @@ import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
+  Award,
   Building2,
   CheckCircle2,
+  ShieldCheck,
   Truck,
   Warehouse,
   Zap,
@@ -232,76 +234,82 @@ export function Hero() {
               exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
               className="mx-auto w-full max-w-7xl md:px-6 lg:px-8"
             >
-              <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-12 md:gap-6">
-                <motion.div
-                  variants={fadeUp}
-                  className="space-y-3 text-left md:col-span-7 md:space-y-2.5"
-                >
-                  <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-sky-400/30 bg-slate-950/50 px-3 py-1 text-[11px] font-semibold leading-snug text-sky-200 shadow-sm">
-                    <Zap className="h-3.5 w-3.5 shrink-0 text-sky-300" />
-                    <span>Serving the industry since 2008</span>
-                  </div>
+              <div className="grid grid-cols-1 items-center gap-2.5 md:grid-cols-12 md:gap-5">
+                <motion.div variants={fadeUp} className="md:col-span-7">
+                  <div className="rounded-2xl border border-slate-200 bg-white/95 p-3 text-left shadow-sm md:p-4">
+                    <div className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-semibold leading-snug text-sky-900">
+                      <Award className="h-3.5 w-3.5 shrink-0 text-sky-700" />
+                      <span>Serving the industry since 2008</span>
+                    </div>
 
-                  <h1 className="text-left text-[1.65rem] font-bold uppercase leading-[1.15] tracking-tight text-white md:text-3xl md:font-extrabold lg:text-4xl">
-                    Performance you can wrap around every load
-                  </h1>
+                    <h1 className="mt-2 text-left text-[1.45rem] font-bold uppercase leading-[1.15] tracking-tight text-slate-950 md:text-3xl md:font-extrabold lg:text-[2rem]">
+                      Performance you can wrap around every load
+                    </h1>
 
-                  <p className="max-w-2xl text-left text-sm leading-snug text-white md:text-base">
-                    From superior load containment and exceptional puncture resistance to optimized material usage, our films are designed to deliver consistent performance, greater efficiency, and dependable protection — load after load.
-                  </p>
+                    <p className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs leading-snug text-slate-700 md:text-sm">
+                      From superior load containment and exceptional puncture resistance to optimized material usage, our films are designed to deliver consistent performance, greater efficiency, and dependable protection — load after load.
+                    </p>
 
-                  <div className="flex flex-col items-stretch gap-2 md:flex-row md:flex-wrap md:items-center md:justify-start">
-                    <Button
-                      asChild
-                      size="lg"
-                      variant="gradient"
-                      className="flex h-11 w-full items-center justify-center gap-2 px-4 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 md:h-10 md:w-auto"
-                    >
-                      <Link href="/#inquiry-form">
-                        <span>Contact us</span>
-                        <ArrowRight className="h-4 w-4" />
+                    <div className="mt-3 flex flex-col items-stretch gap-2 md:flex-row md:flex-wrap md:items-center md:justify-start">
+                      <Button
+                        asChild
+                        size="lg"
+                        variant="gradient"
+                        className="flex h-10 w-full items-center justify-center gap-2 px-4 text-sm font-semibold text-white shadow-sm md:w-auto"
+                      >
+                        <Link href="/#inquiry-form">
+                          <span>Contact us</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      </Button>
+
+                      <Link
+                        href="/#product-catalog-section"
+                        onClick={(event) => {
+                          const target = document.getElementById("product-catalog-section");
+                          if (!target) return;
+                          event.preventDefault();
+                          target.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }}
+                        className="inline-flex h-10 cursor-pointer items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:bg-slate-50"
+                      >
+                        Explore catalog
                       </Link>
-                    </Button>
-
-                    <Link
-                      href="/#product-catalog-section"
-                      onClick={(event) => {
-                        const target = document.getElementById("product-catalog-section");
-                        if (!target) return;
-                        event.preventDefault();
-                        target.scrollIntoView({ behavior: "smooth", block: "start" });
-                      }}
-                      className="inline-flex h-11 cursor-pointer items-center justify-center rounded-xl border border-white/70 bg-white/10 px-4 text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/20 md:h-10"
-                    >
-                      Explore catalog
-                    </Link>
+                    </div>
                   </div>
                 </motion.div>
 
                 <motion.div variants={fadeRight} className="md:col-span-5">
-                  <div className="rounded-2xl border border-white/20 bg-white/95 p-3 text-left shadow-2xl shadow-black/40 backdrop-blur-md md:p-5">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-sky-600">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm md:p-4">
+                    <p className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-800">
+                      <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
                       Featured Product
                     </p>
-                    <h3 className="mt-1 text-sm font-bold text-slate-900 md:text-base">
+                    <h3 className="mt-2 text-sm font-bold text-slate-950 md:text-base">
                       FORCE™ Hand Stretch Film
                     </h3>
                     <p className="mt-1 text-xs font-medium text-slate-600">
                       1 Box (4 Rolls) · 18&quot; x 80 Ga x 1500 ft
                     </p>
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {["300%+ Pre-Stretch Yield", "Extreme Puncture Hold", "Factory Direct Pricing"].map(
-                        (label) => (
-                          <span
-                            key={label}
-                            className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-800 md:text-[11px]"
-                          >
-                            <CheckCircle2 className="h-3 w-3 shrink-0" />
-                            {label}
+                    <ul className="mt-3 space-y-1.5">
+                      {(
+                        [
+                          ["300%+ Pre-Stretch Yield", Zap],
+                          ["Extreme Puncture Hold", ShieldCheck],
+                          ["Factory Direct Pricing", CheckCircle2],
+                        ] as const
+                      ).map(([label, Icon]) => (
+                        <li
+                          key={label}
+                          className="flex items-center gap-2 rounded-lg border border-slate-200 bg-blue-50/50 px-2.5 py-1.5"
+                        >
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-emerald-600 shadow-sm">
+                            <Icon className="h-3.5 w-3.5" />
                           </span>
-                        )
-                      )}
-                    </div>
+                          <span className="text-[11px] font-semibold text-slate-800 md:text-xs">{label}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </motion.div>
               </div>

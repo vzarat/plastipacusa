@@ -18,10 +18,10 @@ export const HOUSTON_BADGE = "Friday Corridor Route";
 export const HOUSTON_DESCRIPTION =
   "Free Friday delivery to industrial docks on Full Pallet orders (256 rolls).";
 
-export const CUSTOM_FREIGHT_BADGE = "Custom Shipping Zone";
-export const CUSTOM_FREIGHT_TITLE = "Call to Check Freight Availability & Dates";
+export const CUSTOM_FREIGHT_BADGE = "Freight Quote Required";
+export const CUSTOM_FREIGHT_TITLE = "Freight quote required";
 export const CUSTOM_FREIGHT_DESCRIPTION =
-  "For orders outside our fixed routes, we arrange consolidated freight and schedule direct delivery dates over the phone.";
+  "A freight quote is required for deliveries outside Texas, and for other parts of Texas outside the RGV and Greater Houston.";
 
 export function useCoverageTooltipDismiss(
   open: boolean,
@@ -115,6 +115,12 @@ export function CoverageStateTooltip({
         <p className="mt-1 text-[11px] font-medium leading-snug text-slate-700">
           {HOUSTON_DESCRIPTION}
         </p>
+        <p className="mt-2 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">
+          {CUSTOM_FREIGHT_BADGE}
+        </p>
+        <p className="mt-1 text-[11px] font-medium leading-snug text-slate-700">
+          {CUSTOM_FREIGHT_DESCRIPTION}
+        </p>
       </TooltipFrame>
     );
   }
@@ -155,7 +161,12 @@ export function CoverageStateTooltip({
       <p className="mt-0.5 text-[10px] font-bold text-sky-700">
         {getDeliveryLeadTime(abbr)}
       </p>
-      <p className="mt-1 text-[10px] leading-snug text-slate-500">Neighboring States</p>
+      <p className="mt-1.5 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">
+        {CUSTOM_FREIGHT_BADGE}
+      </p>
+      <p className="mt-1 text-[10px] leading-snug text-slate-600">
+        {CUSTOM_FREIGHT_DESCRIPTION}
+      </p>
     </TooltipFrame>
   );
 }

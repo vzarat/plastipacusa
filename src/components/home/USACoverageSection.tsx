@@ -38,7 +38,7 @@ const SELECTED_FILL = "#1D4ED8";
 const HIGHLIGHT_BADGES = [
   { label: "Free Local Delivery (RGV)", icon: "⚡" },
   { label: "Friday Route (Greater Houston)", icon: "📦" },
-  { label: "Custom Freight (Call for Schedule)", icon: "🚛" },
+  { label: "Freight Quote Required", icon: "🚛" },
 ] as const;
 
 export function USACoverageSection() {
@@ -53,18 +53,12 @@ export function USACoverageSection() {
     setTooltipOpen(true);
     const zone = getDeliveryZone(state);
     if (zone === "texas") {
-      toast.message(`${RGV_DESCRIPTION} ${HOUSTON_DESCRIPTION}`);
-      return;
-    }
-    if (zone === "distant") {
-      toast.message(
-        `${CUSTOM_FREIGHT_TITLE}. Call Logistics: ${LOGISTICS_PHONE_DISPLAY}`
-      );
+      toast.message(`${RGV_DESCRIPTION} ${HOUSTON_DESCRIPTION} ${CUSTOM_FREIGHT_DESCRIPTION}`);
       return;
     }
     const leadTime = getDeliveryLeadTime(state);
     toast.message(
-      `Estimated Delivery to ${state}: ${leadTime}. Free freight available on Full Pallet orders.`
+      `Estimated delivery to ${state}: ${leadTime}. ${CUSTOM_FREIGHT_DESCRIPTION}`
     );
   };
 
@@ -180,7 +174,7 @@ export function USACoverageSection() {
                   style={{ backgroundColor: HUB_FILL }}
                   aria-hidden
                 />
-                Free Local Delivery (RGV)
+                RGV & Houston routes
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span
@@ -188,7 +182,7 @@ export function USACoverageSection() {
                   style={{ backgroundColor: REGIONAL_FILL }}
                   aria-hidden
                 />
-                Friday Route (Greater Houston)
+                Freight quote required
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span
@@ -196,7 +190,7 @@ export function USACoverageSection() {
                   style={{ backgroundColor: STANDARD_FILL }}
                   aria-hidden
                 />
-                Custom Freight (Call for Schedule)
+                Freight quote required
               </span>
             </div>
           </div>
@@ -230,6 +224,14 @@ export function USACoverageSection() {
                         {HOUSTON_DESCRIPTION}
                       </p>
                     </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                        {CUSTOM_FREIGHT_TITLE}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-800">
+                        {CUSTOM_FREIGHT_DESCRIPTION}
+                      </p>
+                    </div>
                   </div>
                 ) : getDeliveryZone(selected) === "distant" ? (
                   <div className="space-y-3">
@@ -247,9 +249,13 @@ export function USACoverageSection() {
                     </a>
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3 text-sm font-semibold leading-relaxed text-blue-900">
-                    Estimated Delivery to {selected}: {getDeliveryLeadTime(selected)}. Free
-                    freight available on Full Pallet orders.
+                  <div className="space-y-3">
+                    <div className="rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3 text-sm font-semibold leading-relaxed text-blue-900">
+                      Estimated delivery to {selected}: {getDeliveryLeadTime(selected)}.
+                    </div>
+                    <p className="text-sm font-semibold leading-snug text-slate-900">
+                      {CUSTOM_FREIGHT_DESCRIPTION}
+                    </p>
                   </div>
                 )}
               </div>
