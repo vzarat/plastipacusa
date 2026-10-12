@@ -2,13 +2,13 @@ export const HALF_PALLET_QTY_NOTE =
   "Half Pallet is limited to 1 unit. Select 'Full Pallet' to order 2 or more pallets.";
 
 export const LAYER_QTY_NOTE =
-  "1 Layer option is limited to 1 unit. Select 'Full Pallet' for higher volume.";
+  "16 Boxes (64 Rolls) is limited to 1 unit. Select 64 Boxes (256 Rolls) for higher volume.";
 
 export const BOX_QTY_NOTE =
-  "16 boxes equal 1 Layer. Please switch to the '1 Layer' tier option.";
+  "A box order allows 1 to 15 boxes. Switch to 16 Boxes (64 Rolls).";
 
 export const TIER_MAX_ONE_WARNING =
-  "Maximum 1 unit allowed for Half Pallet / Layer tiers. Please select Full Pallet for higher quantities.";
+  "Maximum 1 unit allowed for 16 Boxes (64 Rolls) and 32 Boxes (128 Rolls). Please select 64 Boxes (256 Rolls) for higher quantities.";
 
 export const HAND_BOX_MAX_QUANTITY = 15;
 

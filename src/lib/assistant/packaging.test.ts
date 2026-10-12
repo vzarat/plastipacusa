@@ -133,7 +133,7 @@ describe("palletCalculator", () => {
     });
     assert.equal(result.ok, false);
     if (!result.ok) {
-      assert.match(result.error, /1 Layer/);
+      assert.match(result.error, /16 Boxes \(64 Rolls\)/);
     }
   });
 
@@ -498,7 +498,7 @@ describe("freightRateCheck", () => {
       quantity: 16,
     });
     assert.equal(result.ok, false);
-    if (!result.ok) assert.match(result.error, /1 Layer/);
+    if (!result.ok) assert.match(result.error, /16 Boxes \(64 Rolls\)/);
   });
 
   it("rejects an invalid postal code", () => {

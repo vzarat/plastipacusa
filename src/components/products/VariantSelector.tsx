@@ -19,6 +19,7 @@ import {
   buildMachineFilmSelectorTiers,
   isMachineFilm as detectMachineFilm,
   normalizeMachinePackageLabel,
+  formatBoxRollLabel,
   unitLabelForProduct,
 } from "@/lib/products";
 import { BOX_QTY_NOTE, HALF_PALLET_QTY_NOTE } from "@/lib/cart-quantity";
@@ -68,7 +69,7 @@ function isCompact1880Package(variant: any): boolean {
 
 /** Classify package option into business-rule tiers. */
 const LAYER_LIMIT_NOTE =
-  "Maximum 1 Layer allowed. For higher quantities, select Half Pallet or Full Pallet.";
+  "Maximum 1 unit of 16 Boxes (64 Rolls). For higher quantities, select 32 Boxes (128 Rolls) or 64 Boxes (256 Rolls).";
 
 function getPackageTierKind(variant: any, isMachine: boolean): PackageTierKind {
   if (!variant) return "other";
@@ -211,7 +212,7 @@ const STANDARD_HAND_PACKAGE_TIERS = [
   },
   {
     key: "layer",
-    title: "1 Layer (64 Rolls / 16 Boxes)",
+    title: "16 Boxes (64 Rolls)",
     rolls: 64,
     boxes: 16,
     discountRate: 0.05,
@@ -221,7 +222,7 @@ const STANDARD_HAND_PACKAGE_TIERS = [
   },
   {
     key: "half",
-    title: "Half Pallet (128 Rolls / 32 Boxes)",
+    title: "32 Boxes (128 Rolls)",
     rolls: 128,
     boxes: 32,
     discountRate: 0.0625,
@@ -231,7 +232,7 @@ const STANDARD_HAND_PACKAGE_TIERS = [
   },
   {
     key: "full",
-    title: "Full Pallet (256 Rolls / 64 Boxes)",
+    title: "64 Boxes (256 Rolls)",
     rolls: 256,
     boxes: 64,
     discountRate: 0.10625,
@@ -316,22 +317,11 @@ function displayPackageTitle(variant: any, isMachine: boolean): string {
   const kind = getPackageTierKind(variant, false);
   const rolls = Math.max(0, getRollsCount(variant));
   const boxes = getBoxesCount(variant, false);
-
-  if (rolls === 256 || boxes === 64) return "Full Pallet (256 Rolls / 64 Boxes)";
-  if (rolls === 128 || boxes === 32) return "Half Pallet (128 Rolls / 32 Boxes)";
-  if (kind === "fixed_mid" || rolls === 64 || boxes === 16) {
-    return "1 Layer (64 Rolls / 16 Boxes)";
+  if (boxes > 0) {
+    const rollCount = rolls > 0 ? rolls : boxes * 4;
+    return formatBoxRollLabel(boxes, rollCount);
   }
-  if (kind === "single_unit" || boxes === 1) {
-    const rollCount = rolls > 0 ? rolls : 4;
-    return rollCount === 4 ? "1 Box (4 Rolls)" : `1 Box (${rollCount} Rolls)`;
-  }
-  if (kind === "fixed_half") {
-    return rolls > 0 ? `${rolls} Rolls (Half Pallet)` : raw;
-  }
-  if (kind === "full_pallet") {
-    return rolls > 0 ? `${rolls} Rolls (Full Pallet)` : raw;
-  }
+  if (kind === "single_unit") return "1 Box (4 Rolls)";
   if (rolls > 0) return `${rolls} Rolls`;
   return raw;
 }
@@ -1162,7 +1152,7 @@ export function VariantSelector({
                 You have selected{" "}
                 <span className="font-bold text-slate-900">{quantity}</span>{" "}
                 {unitLabelPlural.toLowerCase()}. Upgrading to the{" "}
-                <span className="font-bold text-slate-900">1 Layer (64 Rolls / 16 Boxes)</span> package
+                <span className="font-bold text-slate-900">16 Boxes (64 Rolls)</span> package
                 offers better bulk pricing and lower unit cost.
               </p>
               <button
@@ -1170,7 +1160,7 @@ export function VariantSelector({
                 onClick={handleSwitchToMidTier}
                 className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 hover:text-blue-800 underline underline-offset-2 decoration-blue-300 hover:decoration-blue-500 transition-colors cursor-pointer"
               >
-                Switch to 1 Layer →
+                Switch to 16 Boxes (64 Rolls) →
               </button>
             </div>
           </div>

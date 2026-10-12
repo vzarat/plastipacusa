@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { CalendarDays, CheckCircle2, Mail, MapPin, Package, Phone, ShieldCheck, Truck, User, X } from "lucide-react";
-import { formatCurrency, formatOrderId } from "@/lib/utils";
+import { presentPackageLabel } from "@/lib/products";
 
 export interface OrderDetailAddress {
   full_name?: string | null;
@@ -252,7 +252,11 @@ export default function OrderDetailModal({ open, order, onClose }: OrderDetailMo
                           <p className="text-[11px] text-slate-500">
                             {item.gauge ? `Gauge: ${item.gauge}G` : "Gauge: —"}
                             {item.widthInches ? ` • ${item.widthInches}" width` : ""}
-                            {item.packageSize ? ` • ${item.packageSize}` : ""}
+                            {(item.packageSize || item.package_size)
+                              ? ` • ${presentPackageLabel({
+                                  label: item.packageSize || item.package_size,
+                                })}`
+                              : ""}
                           </p>
                           <p className="text-[11px] text-slate-500">
                             {item.quantity || 1} × {formatCurrency(Number(item.unitPrice ?? item.unit_price ?? 0))}

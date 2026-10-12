@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency } from "@/lib/utils";
 import type { CartItem } from "@/types";
+import { presentPackageLabel } from "@/lib/products";
 import {
   canIncreaseCartQuantity,
   cartQuantityMax,
@@ -94,6 +95,14 @@ export function CheckoutCartStep({
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-slate-900">
                         {item.productName}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {presentPackageLabel({
+                          label: item.packageSize || item.pricingTier,
+                          boxes: item.totalBoxes,
+                          rolls: item.rollsPerBox,
+                          application: item.application,
+                        })}
                       </p>
                       <p className="mt-0.5 text-xs text-slate-500">
                         {formatCurrency(item.unitPrice)} each

@@ -122,14 +122,14 @@ export function validatePackageQuantity(
       return {
         ok: false,
         error:
-          "16 boxes equal 1 Layer. 1 Box allows 1 to 15 boxes. Switch to the 1 Layer tier.",
+          "16 boxes equal 16 Boxes (64 Rolls). 1 Box allows 1 to 15 boxes. Switch to the 16 Boxes (64 Rolls) tier.",
       };
     }
     if (input.tier === "layer") {
       return {
         ok: false,
         error:
-          "1 Layer is limited to 1 unit. Select Half Pallet or Full Pallet for higher quantities.",
+          "16 Boxes (64 Rolls) is limited to 1 unit. Select 32 Boxes (128 Rolls) or 64 Boxes (256 Rolls) for higher quantities.",
       };
     }
     return {

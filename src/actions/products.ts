@@ -381,7 +381,7 @@ function formatProduct(raw: any): ProductWithVariants {
       const machinePack = palletizing.fullPalletRolls === 40;
       if (isFullPalletLabel) {
         const fullLabel = machinePack
-          ? "Full Pallet (40 Rolls / 2 Layers)"
+          ? "Full Pallet (40 Rolls)"
           : HAND_FULL_PALLET.label;
         const fullRolls = machinePack ? 40 : HAND_FULL_PALLET.rolls;
         const fullBoxes = machinePack ? 0 : HAND_FULL_PALLET.boxes;
@@ -513,8 +513,8 @@ function formatProduct(raw: any): ProductWithVariants {
     const tiers: Array<{ rolls: number; label: string; suffix: string; price: number | null }> = [
       { rolls: 6, label: "6 ROLLS", suffix: "6R", price: price6Rolls },
       { rolls: 12, label: "12 ROLLS", suffix: "12R", price: price12Rolls },
-      { rolls: 20, label: "20 ROLLS (HALF PALLET)", suffix: "20R", price: price20Rolls },
-      { rolls: 40, label: "40 ROLLS (FULL PALLET)", suffix: "40R", price: price40Rolls },
+      { rolls: 20, label: "Half Pallet (20 Rolls)", suffix: "20R", price: price20Rolls },
+      { rolls: 40, label: "Full Pallet (40 Rolls)", suffix: "40R", price: price40Rolls },
     ];
     packageOptions = tiers
       .filter((tier) => tier.price !== null)

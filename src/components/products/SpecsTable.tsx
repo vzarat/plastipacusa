@@ -14,13 +14,13 @@ import {
   formatPackageWeightLbs,
   packageTotalWeightLbs,
 } from "@/lib/package-weight";
-import { buildMachineFilmSelectorTiers, isMachineFilm } from "@/lib/products";
+import { buildMachineFilmSelectorTiers, formatBoxRollLabel, isMachineFilm } from "@/lib/products";
 
 const HAND_MATRIX_TIERS = [
   { rolls: 4, boxes: 1, label: "1 Box (4 Rolls)", discountRate: 0 },
-  { rolls: 64, boxes: 16, label: "1 Layer (64 Rolls / 16 Boxes)", discountRate: 0.05 },
-  { rolls: 128, boxes: 32, label: "Half Pallet (128 Rolls / 32 Boxes)", discountRate: 0.0625 },
-  { rolls: 256, boxes: 64, label: "Full Pallet (256 Rolls / 64 Boxes)", discountRate: 0.10625 },
+  { rolls: 64, boxes: 16, label: "16 Boxes (64 Rolls)", discountRate: 0.05 },
+  { rolls: 128, boxes: 32, label: "32 Boxes (128 Rolls)", discountRate: 0.0625 },
+  { rolls: 256, boxes: 64, label: "64 Boxes (256 Rolls)", discountRate: 0.10625 },
 ] as const;
 
 interface SpecsTableProps {
@@ -135,20 +135,11 @@ function packageTierLabel(variant: ProductVariant): string {
   const explicit = Number(variant.rolls_count ?? variant.rollsCount);
   const rolls = Number.isFinite(explicit) && explicit > 0 ? explicit : 0;
   const boxes = Number(variant.boxes_count ?? variant.boxesCount) || 0;
-  const stored = `${variant.title || ""} ${variant.packageSize || ""}`.toUpperCase();
-
-  if (rolls === 256 || boxes === 64 || stored.includes("256 ROLLS")) {
-    return "Full Pallet (256 Rolls / 64 Boxes)";
-  }
-  if (rolls === 128 || boxes === 32 || stored.includes("128 ROLLS")) {
-    return "Half Pallet (128 Rolls / 32 Boxes)";
-  }
-  if (rolls === 64 || boxes === 16 || stored.includes("64 ROLLS") || stored.includes("16 BOX")) {
-    return "1 Layer (64 Rolls / 16 Boxes)";
-  }
-  if (rolls === 4 || boxes === 1 || stored.includes("1 BOX")) {
-    return "1 Box (4 Rolls)";
-  }
+  if (boxes > 0 && rolls > 0) return formatBoxRollLabel(boxes, rolls);
+  if (rolls === 256 || boxes === 64) return formatBoxRollLabel(64, 256);
+  if (rolls === 128 || boxes === 32) return formatBoxRollLabel(32, 128);
+  if (rolls === 64 || boxes === 16) return formatBoxRollLabel(16, 64);
+  if (rolls === 4 || boxes === 1) return formatBoxRollLabel(1, 4);
   return variant.title || variant.packageSize || variant.sku || "—";
 }
 

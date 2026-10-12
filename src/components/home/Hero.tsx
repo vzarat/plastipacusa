@@ -59,7 +59,7 @@ const LOGISTICS = [
   {
     icon: Warehouse,
     title: "Bulk Volume Freight Waiver",
-    detail: "Free delivery from 1 Layer (64 Rolls / 16 Boxes) through Full Pallet orders.",
+    detail: "Free delivery from 16 Boxes (64 Rolls) through 64 Boxes (256 Rolls).",
   },
 ] as const;
 
@@ -355,7 +355,7 @@ export function Hero() {
                 >
                   <div className="mx-auto inline-flex max-w-full items-center gap-2 rounded-full border border-sky-400/30 bg-slate-950/50 px-3 py-1 text-center text-[11px] font-semibold leading-snug text-sky-200 shadow-sm">
                     <Zap className="h-3.5 w-3.5 shrink-0 text-sky-300" />
-                    <span>Direct Regional Distribution · From 1 Layer Up</span>
+                    <span>Direct Regional Distribution · From 16 Boxes Up</span>
                   </div>
 
                   <h2 className="text-[1.65rem] font-bold leading-[1.15] tracking-tight text-white md:text-3xl md:font-extrabold lg:text-4xl">
@@ -372,7 +372,7 @@ export function Hero() {
                   </h2>
 
                   <p className="mx-auto max-w-2xl text-sm leading-snug text-slate-100 md:mx-0">
-                    $0 Freight Fee across the RGV starting from 1 Layer (64 Rolls / 16 Boxes) up to Full Pallet orders.
+                    $0 Freight Fee across the RGV starting from 16 Boxes (64 Rolls) up to 64 Boxes (256 Rolls).
                   </p>
                   <p className="mx-auto inline-flex max-w-full items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-200 md:mx-0">
                     ✓ Free Local Delivery on 64+ Rolls

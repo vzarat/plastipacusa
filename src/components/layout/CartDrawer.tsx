@@ -21,6 +21,7 @@ import { DirectCheckoutButton } from "@/components/checkout/DirectCheckoutButton
 import { CheckoutAuthRequiredModal } from "@/components/checkout/CheckoutAuthRequiredModal";
 import { PromoCodeInput } from "@/components/cart/PromoCodeInput";
 import { ShippingEligibilityAlert } from "@/components/checkout/ShippingEligibilityAlert";
+import { presentPackageLabel } from "@/lib/products";
 import {
   readCheckoutShipping,
   type CheckoutShippingAddress,
@@ -251,7 +252,12 @@ export function CartDrawer() {
 
                 <div className="flex items-center gap-2 text-xs text-slate-600">
                   <Badge variant="default" className="text-[10px] font-bold">
-                    {item.packageSize || item.pricingTier}
+                    {presentPackageLabel({
+                      label: item.packageSize || item.pricingTier,
+                      boxes: item.totalBoxes,
+                      rolls: item.rollsPerBox,
+                      application: item.application,
+                    })}
                   </Badge>
                   <span className="text-slate-500 text-[11px]">
                     {item.application === "machine" && item.totalRolls

@@ -85,16 +85,85 @@ export function isMachineFilm(product: {
 
 /** Canonical machine film package tiers. Sold by the pallet, not by the roll. */
 export const MACHINE_PACKAGE_TIERS = [
-  { rolls: 20, label: "Half Pallet (20 Rolls / 1 Layer)", suffix: "20R" },
-  { rolls: 40, label: "Full Pallet (40 Rolls / 2 Layers)", suffix: "40R" },
+  { rolls: 20, label: "Half Pallet (20 Rolls)", suffix: "20R" },
+  { rolls: 40, label: "Full Pallet (40 Rolls)", suffix: "40R" },
 ] as const;
 
 /** Canonical hand film full-pallet pack-out (3 layers × 64 rolls). */
 export const HAND_FULL_PALLET = {
   boxes: 48,
   rolls: 192,
-  label: "48 BOXES = 192 ROLLS (FULL PALLET)",
+  label: "48 Boxes (192 Rolls)",
 } as const;
+
+export function formatBoxRollLabel(boxes: number, rolls: number): string {
+  const boxCount = Math.max(0, Math.round(boxes));
+  const rollCount = Math.max(0, Math.round(rolls));
+  const boxWord = boxCount === 1 ? "Box" : "Boxes";
+  const rollWord = rollCount === 1 ? "Roll" : "Rolls";
+  return `${boxCount} ${boxWord} (${rollCount} ${rollWord})`;
+}
+
+/** Customer-facing package name. Hand film leads with boxes; machine film stays in rolls. */
+export function presentPackageLabel(input: {
+  label?: string | null;
+  boxes?: number | null;
+  rolls?: number | null;
+  application?: string | null;
+}): string {
+  const label = String(input.label || "").trim();
+  const upper = label.toUpperCase();
+  const rolls = Number(input.rolls) || 0;
+  const boxes = Number(input.boxes) || 0;
+  const machine =
+    input.application === "machine" ||
+    upper.includes("20 ROLL") ||
+    upper.includes("40 ROLL") ||
+    (upper.includes("2 LAYER") && upper.includes("FULL"));
+
+  if (machine) {
+    if (rolls === 40 || upper.includes("40 ROLL") || upper.includes("2 LAYER")) {
+      return "Full Pallet (40 Rolls)";
+    }
+    if (rolls === 20 || upper.includes("20 ROLL") || upper.includes("1 LAYER")) {
+      return "Half Pallet (20 Rolls)";
+    }
+  }
+
+  const boxMatch = upper.match(/(\d+)\s*BOX/);
+  const rollMatch = upper.match(/(\d+)\s*ROLL/);
+  if (boxMatch && rollMatch) {
+    return formatBoxRollLabel(Number(boxMatch[1]), Number(rollMatch[1]));
+  }
+
+  if (boxes > 0 && rolls > 0 && rolls !== 4) {
+    return formatBoxRollLabel(boxes, rolls);
+  }
+
+  if (rolls === 256 || boxes === 64 || upper.includes("256 ROLL") || upper.includes("64 BOX")) {
+    return formatBoxRollLabel(64, 256);
+  }
+  if (rolls === 192 || boxes === 48 || upper.includes("192 ROLL") || upper.includes("48 BOX")) {
+    return formatBoxRollLabel(48, 192);
+  }
+  if (rolls === 128 || boxes === 32 || upper.includes("128 ROLL") || upper.includes("32 BOX")) {
+    return formatBoxRollLabel(32, 128);
+  }
+  if (
+    rolls === 64 ||
+    boxes === 16 ||
+    upper.includes("1 LAYER") ||
+    upper.includes("16 BOX") ||
+    upper.includes("64 ROLL")
+  ) {
+    return formatBoxRollLabel(16, 64);
+  }
+  if (rolls === 4 || boxes === 1 || upper.includes("1 BOX")) {
+    return formatBoxRollLabel(1, rolls === 4 || rolls <= 0 ? 4 : rolls);
+  }
+
+  return label;
+}
 
 export function unitLabelForProduct(isMachine: boolean): string {
   return isMachine ? "Roll" : "Box";
@@ -103,10 +172,10 @@ export function unitLabelForProduct(isMachine: boolean): string {
 export function normalizeMachinePackageLabel(rolls: number, label?: string): string {
   const upper = String(label || "").toUpperCase();
   if (rolls === 20 || upper.includes("20 ROLL")) {
-    return "Half Pallet (20 Rolls / 1 Layer)";
+    return "Half Pallet (20 Rolls)";
   }
   if (rolls === 40 || upper.includes("40 ROLL")) {
-    return "Full Pallet (40 Rolls / 2 Layers)";
+    return "Full Pallet (40 Rolls)";
   }
   return label || `${rolls} ROLLS`;
 }

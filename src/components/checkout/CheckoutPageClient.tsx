@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { presentPackageLabel } from "@/lib/products";
 import { CheckoutCartStep } from "@/components/checkout/CheckoutCartStep";
 import { CheckoutPaymentStep } from "@/components/checkout/CheckoutPaymentStep";
 import { ShipmentOriginSummary } from "@/components/checkout/ShipmentOriginSummary";
@@ -403,6 +404,13 @@ function CheckoutPageInner() {
                     {item.productName}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
+                    {presentPackageLabel({
+                      label: item.packageSize || item.pricingTier,
+                      boxes: item.totalBoxes,
+                      rolls: item.rollsPerBox,
+                      application: item.application,
+                    })}
+                    {" · "}
                     {item.quantity} × {formatCurrency(item.unitPrice)}
                   </p>
                 </div>

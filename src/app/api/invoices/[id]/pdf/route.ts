@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
-import { formatOrderId } from "@/lib/utils";
+import { presentPackageLabel } from "@/lib/products";
 import {
   fetchPlastipacLogoForPdf,
   generateInvoicePdf,
@@ -40,7 +40,12 @@ function mapOrderItems(rawItems: unknown, fallbackTotal: number): InvoicePdfItem
             item?.lengthFeet || ""
           } FT`.replace(/\s+/g, " ")
         : "";
-    const packageSize = item?.packageSize || item?.package_size || item?.pricingTier || "";
+    const packageSize = presentPackageLabel({
+      label: item?.packageSize || item?.package_size || item?.pricingTier || "",
+      boxes: item?.totalBoxes,
+      rolls: item?.rollsPerBox,
+      application: item?.application,
+    });
     const description = `${name}${dims}${packageSize ? ` (${packageSize})` : ""}`.trim();
 
     return {

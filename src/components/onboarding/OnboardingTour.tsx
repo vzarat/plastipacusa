@@ -29,7 +29,7 @@ const MOBILE_STEPS = [
   {
     id: "rgv",
     title: "Free RGV Local Shipping",
-    body: "Qualified orders starting from 1 Layer (64 rolls / 16 boxes) get $0 freight delivery across the Rio Grande Valley.",
+    body: "Qualified orders starting from 16 Boxes (64 Rolls) get $0 freight delivery across the Rio Grande Valley.",
     selector: "#rgv-shipping, [data-tour='rgv-shipping']",
     slide: 1 as number | null,
   },
