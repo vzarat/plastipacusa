@@ -2,7 +2,6 @@ import React from "react";
 import dynamic from "next/dynamic";
 import { getProducts } from "@/actions/products";
 import { HeroBanner } from "@/components/home/HeroBanner";
-import { GuidedTourBanner } from "@/components/home/GuidedTourBanner";
 
 /** Below-the-fold / heavy interactive sections — code-split off the LCP path. */
 const ClientLogosBanner = dynamic(
@@ -95,9 +94,6 @@ export default async function HomePage() {
     <div className="space-y-0">
       {/* 1. Hero Section — kept static for LCP discovery */}
       <HeroBanner />
-
-      {/* 1b. Guided buying tour CTA — lightweight CSS + Framer fade */}
-      <GuidedTourBanner />
 
       {/* 2. Client Logos Marquee Banner */}
       <ClientLogosBanner />

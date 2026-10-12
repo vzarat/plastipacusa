@@ -6,7 +6,6 @@ import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
-  Award,
   Building2,
   CheckCircle2,
   ShieldCheck,
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GradientWaves from "@/components/ui/GradientWaves";
+import { startGuidedTour } from "@/lib/onboarding-tour";
 
 const SLIDE_COUNT = 3;
 const AUTO_MS = 6000;
@@ -26,8 +26,6 @@ const HOUSTON_HIGHLIGHTS = [
   "Direct Industrial Dock Unloading",
 ] as const;
 
-const WAREHOUSE_BG =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/warehouse_storage_background.png";
 const FORCE_HAND_IMAGE =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png";
 const HOUSTON_BG =
@@ -142,7 +140,7 @@ export function Hero() {
 
   return (
     <section
-      className="relative isolate flex h-[940px] min-h-[940px] flex-col overflow-hidden border-b border-slate-800 bg-[#07111f] px-5 [contain:strict] md:block md:h-[640px] md:min-h-[640px] md:px-0"
+      className="bg-white px-4 py-4 sm:px-6 sm:py-6"
       aria-roledescription="carousel"
       aria-label="Featured"
       id="hero-carousel"
@@ -170,23 +168,17 @@ export function Hero() {
         }, 4000);
       }}
     >
-      <div className="pointer-events-none absolute inset-0 -z-10">
+      <div className="relative mx-auto min-h-[560px] w-full max-w-[1400px] overflow-hidden rounded-[32px] bg-[#031433] shadow-[0_28px_80px_-28px_rgba(3,20,51,0.65)] md:rounded-[40px]">
+      <div className="pointer-events-none absolute inset-0">
         <div
           className={`absolute inset-0 transition-opacity duration-700 ease-out ${
             index === 0 ? "opacity-100" : "opacity-0"
           }`}
+          aria-hidden
         >
-          <Image
-            src={WAREHOUSE_BG}
-            alt="Plastipac warehouse storage"
-            fill
-            priority
-            fetchPriority="high"
-            quality={75}
-            sizes="100vw"
-            className="object-cover object-center"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#07111f] via-[#0a1730]/92 to-[#07111f] md:bg-gradient-to-r md:from-[#07111f] md:via-[#0a1730]/88 md:to-[#10284a]/75" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#02102c] via-[#0a3a9a] to-[#1560d4]" />
+          <div className="absolute inset-0 bg-[linear-gradient(118deg,transparent_0%,transparent_36%,rgba(255,255,255,0.16)_46%,transparent_52%,transparent_62%,rgba(186,220,255,0.2)_74%,transparent_80%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:56px_56px] opacity-40" />
         </div>
         <div
           className={`absolute inset-0 z-0 transition-opacity duration-700 ease-out ${
@@ -225,8 +217,8 @@ export function Hero() {
         </div>
       </div>
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col md:block md:h-full md:pb-8">
-        <div className="flex min-h-0 w-full flex-1 flex-col justify-center md:flex md:h-full md:items-center">
+      <div className="relative z-10 flex flex-col px-5 py-8 sm:px-8 md:px-10 md:py-12 lg:px-16 lg:py-14">
+        <div className="flex w-full flex-1 flex-col justify-center">
         <AnimatePresence mode="wait">
           {index === 0 ? (
             <motion.div
@@ -234,25 +226,25 @@ export function Hero() {
               initial="hidden"
               animate="show"
               exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
-              className="mx-auto w-full max-w-7xl md:px-6 lg:px-8"
+              className="w-full"
             >
-              <div className="grid grid-cols-1 items-center gap-8 md:grid-cols-12 md:gap-10 lg:gap-14">
-                <motion.div variants={fadeUp} className="md:col-span-7">
-                  <div className="max-w-xl space-y-5 text-left">
-                    <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-sky-100">
-                      <Award className="h-3.5 w-3.5 shrink-0 text-sky-300" />
-                      <span>Serving the industry since 2008</span>
-                    </div>
+              <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-6">
+                <motion.div variants={fadeUp} className="text-left lg:col-span-7">
+                  <div className="max-w-2xl">
+                    <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-300">
+                      <span className="h-1.5 w-1.5 rounded-full bg-sky-300" aria-hidden />
+                      Serving the industry since 2008
+                    </p>
 
-                    <h1 className="text-left text-[2rem] font-extrabold leading-[1.05] tracking-tight text-white sm:text-4xl lg:text-5xl">
+                    <h1 className="mt-4 max-w-3xl text-left text-4xl font-extrabold leading-[1.02] tracking-tight text-white sm:text-5xl lg:text-6xl xl:text-7xl">
                       Performance you can wrap around every load
                     </h1>
 
-                    <p className="max-w-xl text-left text-sm leading-relaxed text-slate-300 sm:text-base">
+                    <p className="mt-5 max-w-xl text-left text-sm font-normal leading-relaxed text-sky-100/80 sm:text-base">
                       From superior load containment and exceptional puncture resistance to optimized material usage, our films are designed to deliver consistent performance, greater efficiency, and dependable protection — load after load.
                     </p>
 
-                    <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                    <div className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
                       <Link
                         href="/#product-catalog-section"
                         onClick={(event) => {
@@ -261,69 +253,90 @@ export function Hero() {
                           event.preventDefault();
                           target.scrollIntoView({ behavior: "smooth", block: "start" });
                         }}
-                        className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#085de7] px-5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-colors hover:bg-[#0649b8]"
+                        className="group inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-semibold text-slate-950 shadow-md transition duration-200 hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a3a9a]"
                       >
                         Explore catalog
-                        <ArrowRight className="h-4 w-4" />
+                        <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                       </Link>
                       <Button
                         asChild
                         size="lg"
                         variant="outline"
-                        className="h-11 w-full border-white/30 bg-transparent px-5 text-sm font-semibold text-white shadow-none hover:bg-white/10 hover:text-white sm:w-auto"
+                        className="h-12 w-full rounded-full border-white/40 bg-transparent px-6 text-sm font-semibold text-white shadow-none hover:-translate-y-0.5 hover:bg-white/10 hover:text-white focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a3a9a] sm:w-auto"
                       >
                         <Link href="/#inquiry-form">
                           <span>Contact us</span>
                         </Link>
                       </Button>
                     </div>
+
+                    <div className="mt-6 border-t border-white/15 pt-4">
+                      <p className="text-sm text-sky-100/85">
+                        Need help placing your first B2B order?{" "}
+                        <button
+                          type="button"
+                          onClick={() => startGuidedTour()}
+                          className="group inline-flex cursor-pointer items-center gap-1 font-semibold text-white underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a3a9a]"
+                        >
+                          Start Guided Tour
+                          <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+                        </button>
+                      </p>
+                    </div>
                   </div>
                 </motion.div>
 
-                <motion.div variants={fadeRight} className="md:col-span-5">
-                  <div className="group relative">
-                    <div
-                      className="pointer-events-none absolute -inset-4 rounded-[2rem] bg-gradient-to-br from-sky-400/30 via-[#085de7]/20 to-transparent blur-2xl"
-                      aria-hidden
+                <motion.div variants={fadeRight} className="relative lg:col-span-5">
+                  <div className="relative mx-auto flex min-h-[280px] w-full items-end justify-center sm:min-h-[360px] lg:min-h-[440px]">
+                    <Image
+                      src={FORCE_HAND_IMAGE}
+                      alt="FORCE™ Hand Stretch Film"
+                      width={640}
+                      height={640}
+                      priority
+                      sizes="(max-width: 1024px) 80vw, 460px"
+                      className="relative z-10 h-auto w-[min(100%,340px)] translate-y-4 object-contain object-bottom sm:w-[400px] lg:w-[440px] lg:translate-y-8"
                     />
-                    <div className="relative overflow-hidden rounded-2xl border border-white/70 bg-white text-left shadow-xl shadow-slate-950/30 transition-transform duration-300 ease-out group-hover:-translate-y-1">
-                      <div className="relative h-44 bg-gradient-to-b from-slate-50 to-slate-100 sm:h-52">
-                        <Image
-                          src={FORCE_HAND_IMAGE}
-                          alt="FORCE™ Hand Stretch Film"
-                          fill
-                          sizes="(min-width: 768px) 420px, 100vw"
-                          className="object-contain p-4"
-                        />
-                      </div>
-                      <div className="space-y-3 p-4 sm:p-5">
-                        <p className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-sky-800">
-                          <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-                          Featured Product
-                        </p>
-                        <div>
-                          <h3 className="text-lg font-bold tracking-tight text-slate-950">
-                            FORCE™ Hand Stretch Film
-                          </h3>
-                          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
-                            <Zap className="h-3.5 w-3.5 shrink-0 text-[#085de7]" />
-                            1 Box (4 Rolls) · 18&quot; x 80 Ga x 1500 ft
-                          </p>
-                        </div>
-                        <ul className="space-y-2">
-                          {["300%+ Pre-Stretch Yield", "Extreme Puncture Hold", "Factory Direct Pricing"].map(
-                            (label) => (
-                              <li key={label} className="flex items-center gap-2.5 text-sm font-medium text-slate-800">
-                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                                  <CheckCircle2 className="h-3.5 w-3.5" />
-                                </span>
-                                {label}
-                              </li>
-                            )
-                          )}
-                        </ul>
-                      </div>
-                    </div>
+                    <motion.div
+                      animate={reduceMotion ? undefined : { y: [0, -8, 0] }}
+                      transition={
+                        reduceMotion
+                          ? undefined
+                          : { duration: 4.2, repeat: Infinity, ease: "easeInOut" }
+                      }
+                      className="absolute left-0 top-2 z-20 max-w-[240px] rounded-2xl border border-white/70 bg-white/90 px-4 py-3 text-left shadow-lg backdrop-blur-md sm:top-6"
+                    >
+                      <p className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-sky-700">
+                        <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+                        Featured Product
+                      </p>
+                      <p className="mt-1 text-sm font-bold tracking-tight text-slate-950">
+                        FORCE™ Hand Stretch Film
+                      </p>
+                      <p className="mt-0.5 text-xs font-medium text-slate-600">
+                        1 Box (4 Rolls) · 18&quot; x 80 Ga x 1500 ft
+                      </p>
+                    </motion.div>
+                    <motion.div
+                      animate={reduceMotion ? undefined : { y: [0, -6, 0] }}
+                      transition={
+                        reduceMotion
+                          ? undefined
+                          : { duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.4 }
+                      }
+                      className="absolute bottom-6 right-0 z-20 max-w-[230px] rounded-2xl border border-white/70 bg-white/90 p-3 text-left shadow-lg backdrop-blur-md sm:bottom-10"
+                    >
+                      <ul className="space-y-1.5">
+                        {["300%+ Pre-Stretch Yield", "Extreme Puncture Hold", "Factory Direct Pricing"].map(
+                          (label) => (
+                            <li key={label} className="flex items-center gap-2 text-xs font-semibold text-slate-800">
+                              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                              {label}
+                            </li>
+                          )
+                        )}
+                      </ul>
+                    </motion.div>
                   </div>
                 </motion.div>
               </div>
@@ -528,7 +541,7 @@ export function Hero() {
         </AnimatePresence>
         </div>
 
-        <div className="mt-5 flex shrink-0 items-center justify-center gap-2 md:absolute md:bottom-3 md:left-0 md:right-0 md:z-20 md:mt-0" aria-label="Hero slides">
+        <div className="mt-6 flex shrink-0 items-center justify-center gap-2" aria-label="Hero slides">
           {Array.from({ length: SLIDE_COUNT }, (_, dot) => {
             const active = index === dot;
             return (
@@ -550,6 +563,7 @@ export function Hero() {
               </button>
             );
           })}
+        </div>
         </div>
       </div>
     </section>
