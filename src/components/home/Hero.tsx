@@ -28,6 +28,8 @@ const HOUSTON_HIGHLIGHTS = [
 
 const FORCE_HAND_IMAGE =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/Group%2088.png";
+const WAREHOUSE_BG =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/warehouse_storage_background.png";
 const HOUSTON_BG =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/Gemini_Generated_Image_2q84y2q84y2q84y2-artguru.jpeg";
 
@@ -176,9 +178,32 @@ export function Hero() {
           }`}
           aria-hidden
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-[#02102c] via-[#0a3a9a] to-[#1560d4]" />
-          <div className="absolute inset-0 bg-[linear-gradient(118deg,transparent_0%,transparent_36%,rgba(255,255,255,0.16)_46%,transparent_52%,transparent_62%,rgba(186,220,255,0.2)_74%,transparent_80%)]" />
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:56px_56px] opacity-40" />
+          <Image
+            src={WAREHOUSE_BG}
+            alt=""
+            fill
+            priority
+            sizes="(max-width: 1400px) 100vw, 1400px"
+            className="object-cover object-center"
+          />
+          <div
+            className="absolute inset-0 lg:hidden"
+            style={{ background: "rgba(4,20,52,0.72)" }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(90deg, rgba(2,11,31,0.95) 0%, rgba(4,20,52,0.85) 35%, rgba(6,26,63,0.55) 65%, rgba(2,11,31,0.80) 100%)",
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse at 70% 50%, rgba(10,60,140,0.25) 0%, transparent 60%), linear-gradient(to top, rgba(2,11,31,0.72), transparent 42%), linear-gradient(to right, rgba(2,11,31,0.35), transparent 28%, transparent 78%, rgba(2,11,31,0.55))",
+            }}
+          />
         </div>
         <div
           className={`absolute inset-0 z-0 transition-opacity duration-700 ease-out ${
@@ -225,64 +250,62 @@ export function Hero() {
               initial="hidden"
               animate="show"
               exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
-              className="absolute inset-0 flex items-center overflow-hidden px-5 py-5 sm:px-8 md:px-10 lg:px-12"
+              className="absolute inset-0 overflow-hidden"
             >
-              <div className="grid w-full grid-cols-1 items-center gap-4 lg:grid-cols-[minmax(0,54%)_minmax(0,46%)] lg:gap-4">
-                <motion.div variants={fadeRight} className="relative order-2 flex justify-end">
-                  <div className="relative -mr-8 w-fit lg:-mr-14">
-                    <Image
-                      src={FORCE_HAND_IMAGE}
-                      alt="FORCE™ Hand Stretch Film"
-                      width={1200}
-                      height={480}
-                      priority
-                      sizes="(max-width: 1024px) 90vw, 560px"
-                      className="h-[150px] w-auto max-w-none object-contain object-right mix-blend-screen lg:h-[280px]"
-                    />
-                    <motion.div
-                      animate={reduceMotion ? undefined : { y: [0, -6, 0] }}
-                      transition={
-                        reduceMotion
-                          ? undefined
-                          : { duration: 4.2, repeat: Infinity, ease: "easeInOut" }
-                      }
-                      className="absolute left-2 top-0 z-20 max-w-[200px] rounded-xl border border-white/70 bg-white/90 px-2.5 py-1.5 text-left shadow-md backdrop-blur-md"
-                    >
-                      <p className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-sky-700">
-                        <ShieldCheck className="h-3 w-3 shrink-0" />
-                        Featured Product
-                      </p>
-                      <p className="text-xs font-bold tracking-tight text-slate-950">
-                        FORCE™ Hand Stretch Film
-                      </p>
-                      <p className="text-[10px] font-medium text-slate-600">
-                        1 Box (4 Rolls) · 18&quot; x 80 Ga x 1500 ft
-                      </p>
-                    </motion.div>
-                    <motion.div
-                      animate={reduceMotion ? undefined : { y: [0, -4, 0] }}
-                      transition={
-                        reduceMotion
-                          ? undefined
-                          : { duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.4 }
-                      }
-                      className="absolute bottom-1 left-2 z-20 max-w-full rounded-full border border-white/70 bg-white/90 px-2 py-1 shadow-md backdrop-blur-md"
-                    >
-                      <ul className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                        {["300%+ Pre-Stretch Yield", "Extreme Puncture Hold", "Factory Direct Pricing"].map(
-                          (label) => (
-                            <li key={label} className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-800">
-                              <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-600" />
-                              {label}
-                            </li>
-                          )
-                        )}
-                      </ul>
-                    </motion.div>
-                  </div>
-                </motion.div>
-
-                <motion.div variants={fadeUp} className="relative z-10 order-1 text-left">
+              <div className="pointer-events-none absolute inset-y-0 left-0 z-[1] hidden w-[52%] backdrop-blur-[3px] lg:block" aria-hidden />
+              <motion.div variants={fadeRight} className="pointer-events-none absolute bottom-14 right-0 z-10 lg:bottom-0 lg:h-full lg:w-[58%]">
+                <div className="absolute bottom-3 right-10 h-8 w-[68%] rounded-full bg-[#020B1F]/80 blur-2xl lg:bottom-6" aria-hidden />
+                <Image
+                  src={FORCE_HAND_IMAGE}
+                  alt="FORCE™ Hand Stretch Film"
+                  width={1400}
+                  height={560}
+                  priority
+                  sizes="(max-width: 1024px) 80vw, 720px"
+                  className="relative ml-auto h-[200px] w-auto max-w-[92%] object-contain object-right drop-shadow-[0_18px_28px_rgba(2,11,31,0.55)] lg:absolute lg:bottom-0 lg:right-0 lg:h-[118%] lg:max-w-none lg:translate-x-6 lg:translate-y-5"
+                />
+              </motion.div>
+              <motion.div
+                animate={reduceMotion ? undefined : { y: [0, -6, 0] }}
+                transition={
+                  reduceMotion
+                    ? undefined
+                    : { duration: 4.2, repeat: Infinity, ease: "easeInOut" }
+                }
+                className="absolute right-6 top-16 z-20 max-w-[200px] rounded-2xl border border-white/70 bg-white/90 px-2.5 py-1.5 text-left shadow-md backdrop-blur-md lg:top-8"
+              >
+                <p className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-sky-700">
+                  <ShieldCheck className="h-3 w-3 shrink-0" />
+                  Featured Product
+                </p>
+                <p className="text-xs font-bold tracking-tight text-slate-950">
+                  FORCE™ Hand Stretch Film
+                </p>
+                <p className="text-[10px] font-medium text-slate-600">
+                  1 Box (4 Rolls) · 18&quot; x 80 Ga x 1500 ft
+                </p>
+              </motion.div>
+              <motion.div
+                animate={reduceMotion ? undefined : { y: [0, -4, 0] }}
+                transition={
+                  reduceMotion
+                    ? undefined
+                    : { duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.4 }
+                }
+                className="absolute bottom-14 right-6 z-20 max-w-[min(28rem,calc(100%-4.5rem))] rounded-2xl border border-white/70 bg-white/90 px-2.5 py-1.5 shadow-md backdrop-blur-md"
+              >
+                <ul className="flex flex-wrap items-center justify-end gap-x-2 gap-y-0.5">
+                  {["300%+ Pre-Stretch Yield", "Extreme Puncture Hold", "Factory Direct Pricing"].map(
+                    (label) => (
+                      <li key={label} className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-800">
+                        <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-600" />
+                        {label}
+                      </li>
+                    )
+                  )}
+                </ul>
+              </motion.div>
+              <motion.div variants={fadeUp} className="relative z-20 flex h-full max-w-xl flex-col justify-start px-5 pb-56 pt-6 text-left sm:px-8 md:px-10 lg:w-[48%] lg:max-w-[34rem] lg:justify-center lg:px-12 lg:pb-5 lg:pt-5">
                   <div>
                     <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-300">
                       <span className="h-1.5 w-1.5 rounded-full bg-sky-300" aria-hidden />
@@ -335,7 +358,6 @@ export function Hero() {
                     </div>
                   </div>
                 </motion.div>
-              </div>
             </motion.div>
           ) : index === 1 ? (
             <motion.div
