@@ -235,41 +235,22 @@ export function Hero() {
               <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-12 md:gap-6">
                 <motion.div
                   variants={fadeUp}
-                  className="space-y-2 text-justify md:col-span-7 md:space-y-3"
+                  className="space-y-3 text-left md:col-span-7 md:space-y-2.5"
                 >
-                  <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-blue-500/30 bg-blue-950/60 px-3 py-1 text-[11px] font-semibold leading-snug text-blue-300 shadow-sm backdrop-blur-xs">
-                    <Zap className="h-3.5 w-3.5 shrink-0 text-blue-400" />
-                    <span className="text-sky-100">Serving the industry since 2008</span>
+                  <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-sky-400/30 bg-slate-950/50 px-3 py-1 text-[11px] font-semibold leading-snug text-sky-200 shadow-sm">
+                    <Zap className="h-3.5 w-3.5 shrink-0 text-sky-300" />
+                    <span>Serving the industry since 2008</span>
                   </div>
 
-                  <motion.h1
-                    initial={reduceMotion ? false : { opacity: 0, y: 36 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={
-                      reduceMotion
-                        ? { duration: 0 }
-                        : { duration: 0.9, ease: [0.22, 1, 0.36, 1] }
-                    }
-                    className="text-[1.65rem] font-extrabold uppercase leading-[1.15] tracking-tight md:text-3xl lg:text-4xl"
-                  >
-                    <motion.span
-                      className="block bg-gradient-to-r from-white via-sky-200 to-cyan-300 bg-clip-text text-justify text-transparent drop-shadow-[0_12px_24px_rgba(56,189,248,0.5)]"
-                      animate={reduceMotion ? undefined : { y: [0, -8, 0] }}
-                      transition={
-                        reduceMotion
-                          ? undefined
-                          : { duration: 3.2, repeat: Infinity, ease: "easeInOut", delay: 0.9 }
-                      }
-                    >
-                      Performance you can wrap around every load
-                    </motion.span>
-                  </motion.h1>
+                  <h1 className="text-left text-[1.65rem] font-bold uppercase leading-[1.15] tracking-tight text-white md:text-3xl md:font-extrabold lg:text-4xl">
+                    Performance you can wrap around every load
+                  </h1>
 
-                  <p className="max-w-2xl text-justify text-sm font-medium leading-relaxed text-slate-100 md:text-base">
+                  <p className="max-w-2xl text-left text-sm leading-snug text-white md:text-base">
                     From superior load containment and exceptional puncture resistance to optimized material usage, our films are designed to deliver consistent performance, greater efficiency, and dependable protection — load after load.
                   </p>
 
-                  <div className="flex flex-col items-stretch justify-center gap-2 md:flex-row md:flex-wrap md:items-center md:justify-start">
+                  <div className="flex flex-col items-stretch gap-2 md:flex-row md:flex-wrap md:items-center md:justify-start">
                     <Button
                       asChild
                       size="lg"
