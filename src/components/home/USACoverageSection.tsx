@@ -6,7 +6,6 @@ import {
   StateAbbreviations,
   type USAStateAbbreviation,
 } from "@mirawision/usa-map-react";
-import { toast } from "sonner";
 import {
   getDeliveryLeadTime,
   getDeliveryZone,
@@ -48,15 +47,6 @@ export function USACoverageSection() {
   const handleStateClick = (state: USAStateAbbreviation) => {
     setSelected(state);
     setTooltipOpen(true);
-    const zone = getDeliveryZone(state);
-    if (zone === "texas") {
-      toast.message(`${RGV_DESCRIPTION} ${HOUSTON_DESCRIPTION} ${CUSTOM_FREIGHT_DESCRIPTION}`);
-      return;
-    }
-    const leadTime = getDeliveryLeadTime(state);
-    toast.message(
-      `Estimated delivery to ${state}: ${leadTime}. ${CUSTOM_FREIGHT_DESCRIPTION}`
-    );
   };
 
   const customStates = useMemo(() => {
