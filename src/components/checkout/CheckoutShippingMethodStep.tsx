@@ -11,13 +11,89 @@ import { formatCurrency } from "@/lib/utils";
 import { ShippingEligibilityAlert } from "@/components/checkout/ShippingEligibilityAlert";
 import { WAREHOUSE_ORIGIN } from "@/lib/shipping-method";
 import { scheduleFromTransitDays } from "@/lib/shipping/dates";
-import type { ShippingOption } from "@/lib/shipping/types";
+import type { ShippingOption, ShippingQuoteDebug, ShippingQuoteErrorBody } from "@/lib/shipping/types";
 import { evalShippingEligibility } from "@/lib/shippingRules";
 
 interface CheckoutShippingMethodStepProps {
   checkoutEmail: string;
   onBack: () => void;
   onProceed: () => void;
+}
+
+function quoteDetailsText(
+  error: ShippingQuoteErrorBody,
+  debug?: ShippingQuoteDebug | null
+): string {
+  const lines = [`code: ${error.code}`, `requestId: ${error.requestId}`];
+  if (error.message) lines.push(`message: ${error.message}`);
+  if (error.httpStatus) lines.push(`httpStatus: ${error.httpStatus}`);
+  if (error.providerMessage) lines.push(`providerMessage: ${error.providerMessage}`);
+  if (debug) {
+    lines.push(`environment: ${debug.environment}`);
+    lines.push(`endpoint: ${debug.endpoint}`);
+    lines.push(`requestSummary: ${JSON.stringify(debug.requestSummary)}`);
+    if (debug.missingFields.length > 0) lines.push(`missingFields: ${debug.missingFields.join(", ")}`);
+  }
+  return lines.join("\n");
+}
+
+function ShippingErrorDetails({
+  error,
+  debug,
+  compact = false,
+}: {
+  error: ShippingQuoteErrorBody;
+  debug?: ShippingQuoteDebug | null;
+  compact?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const text = quoteDetailsText(error, debug);
+  const panel = open ? (
+    <div className="mt-3 w-full basis-full rounded-2xl border border-slate-200 bg-white">
+      <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-xs text-slate-800">
+        {text}
+      </pre>
+      <div className="border-t border-slate-200 px-3 py-2">
+        <Button
+          type="button"
+          variant="outline"
+          className="h-9"
+          onClick={() => {
+            void navigator.clipboard.writeText(text).then(
+              () => toast.success("Error details copied."),
+              () => toast.error("Could not copy error details.")
+            );
+          }}
+        >
+          Copy details
+        </Button>
+      </div>
+    </div>
+  ) : null;
+
+  if (compact) {
+    return (
+      <div className="mt-2">
+        <button
+          type="button"
+          className="font-semibold text-sky-700 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          onClick={() => setOpen((value) => !value)}
+        >
+          {open ? "Hide error details" : "Show error details"}
+        </button>
+        {panel}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Button type="button" variant="outline" className="h-10" onClick={() => setOpen((value) => !value)}>
+        {open ? "Hide error details" : "Show error details"}
+      </Button>
+      {panel}
+    </>
+  );
 }
 
 function tagOptions(options: ShippingOption[]) {
@@ -52,6 +128,8 @@ export function CheckoutShippingMethodStep({
   const [options, setOptions] = useState<ShippingOption[]>([]);
   const [freeLocal, setFreeLocal] = useState<ShippingOption | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [quoteError, setQuoteError] = useState<ShippingQuoteErrorBody | null>(null);
+  const [quoteDebug, setQuoteDebug] = useState<ShippingQuoteDebug | null>(null);
   const [requesting, setRequesting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -114,6 +192,8 @@ export function CheckoutShippingMethodStep({
           weightDetail?: string[];
           code?: string | null;
           message?: string | null;
+          error?: ShippingQuoteErrorBody | null;
+          debug?: ShippingQuoteDebug | null;
         };
         if (cancelled) return;
         if (typeof payload.weightLbs === "number") setShipmentWeightLbs(payload.weightLbs);
@@ -123,14 +203,22 @@ export function CheckoutShippingMethodStep({
         const warpOptions = payload.options || [];
         setFreeLocal(local);
         setOptions(warpOptions);
-        setMessage(payload.message || null);
+        setQuoteError(payload.error || null);
+        setQuoteDebug(payload.debug || null);
+        setMessage(payload.message || payload.error?.message || null);
         const next = local || warpOptions.slice().sort((a, b) => a.price - b.price)[0] || null;
         setSelectedShippingOption(next);
         setDeliveryMethod(next?.id === "rgv-local" ? "rgv-express" : "freight");
       } catch (error) {
         if (!cancelled) {
           const detail = error instanceof Error ? error.message : "Network error";
-          setMessage(detail);
+          setQuoteError({
+            code: "UNKNOWN",
+            message: detail,
+            requestId: "local",
+          });
+          setQuoteDebug(null);
+          setMessage("We couldn't calculate shipping automatically.");
           setOptions([]);
           setFreeLocal(null);
           setSelectedShippingOption(null);
@@ -342,21 +430,25 @@ export function CheckoutShippingMethodStep({
           </div>
         )}
         {!loading && freeLocal && options.length === 0 && (
-          <p className="text-xs text-slate-500">
-            Other carrier options are unavailable right now.
-            {message ? ` ${message}` : ""}{" "}
-            <button
-              type="button"
-              className="font-semibold text-sky-700 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-              onClick={() => setReloadKey((value) => value + 1)}
-            >
-              Retry
-            </button>
-          </p>
+          <div className="text-xs text-slate-500">
+            <p>
+              Other carrier options are unavailable right now.{" "}
+              <button
+                type="button"
+                className="font-semibold text-sky-700 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                onClick={() => setReloadKey((value) => value + 1)}
+              >
+                Retry
+              </button>
+            </p>
+            {quoteError && (
+              <ShippingErrorDetails error={quoteError} debug={quoteDebug} compact />
+            )}
+          </div>
         )}
-        {!loading && !freeLocal && cards.length === 0 && message && (
+        {!loading && !freeLocal && cards.length === 0 && (message || quoteError) && (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-            <p>{message}</p>
+            <p>{message || "We couldn't calculate shipping automatically."}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button type="button" variant="outline" className="h-10" onClick={() => setReloadKey((value) => value + 1)}>
                 Retry
@@ -370,6 +462,7 @@ export function CheckoutShippingMethodStep({
               >
                 Request a manual shipping quote
               </Button>
+              {quoteError && <ShippingErrorDetails error={quoteError} debug={quoteDebug} />}
             </div>
           </div>
         )}

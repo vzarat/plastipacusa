@@ -42,10 +42,44 @@ export interface ShipmentFreight {
 }
 
 export type ShippingQuoteErrorCode =
-  | "invalid_zip"
-  | "missing_weight"
-  | "missing_dims"
-  | "timeout"
-  | "rate_limit"
-  | "unavailable"
-  | "no_options";
+  | "MISSING_DIMS"
+  | "WARP_AUTH"
+  | "WARP_HTTP_ERROR"
+  | "WARP_TIMEOUT"
+  | "INVALID_ZIP"
+  | "NO_OPTIONS"
+  | "VALIDATION"
+  | "CONFIG"
+  | "UNKNOWN";
+
+export interface ShippingQuoteErrorBody {
+  code: ShippingQuoteErrorCode;
+  message?: string;
+  httpStatus?: number;
+  providerMessage?: string;
+  requestId: string;
+}
+
+export interface ShippingQuoteDebug {
+  environment: "staging" | "production" | "unset";
+  endpoint: string;
+  requestSummary: {
+    originZip: string;
+    destinationZip: string | null;
+    city: string | null;
+    state: string | null;
+    pallets: number;
+    weightLbs: number;
+    boxes: number;
+    rolls: number;
+    pieces: Array<{
+      length: number;
+      width: number;
+      height: number;
+      weightLbs: number;
+      quantity: number;
+      packaging: string;
+    }>;
+  };
+  missingFields: string[];
+}

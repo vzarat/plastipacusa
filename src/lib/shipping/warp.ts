@@ -1,4 +1,5 @@
 import { SHIPPING_MARKUP_PERCENT, getWarpConfig } from "@/lib/shipping/config";
+import { redactSecrets } from "@/lib/shipping/diagnostics";
 import type { ShipmentFreight, ShippingOption } from "@/lib/shipping/types";
 
 const QUOTE_TIMEOUT_MS = 12000;
@@ -47,18 +48,17 @@ function wholeNumber(value: unknown): number {
   return Number.isFinite(amount) ? amount : 0;
 }
 
-function warpErrorDetail(status: number, raw: string): string {
-  let text = raw.trim().slice(0, 500);
+function warpProviderMessage(status: number, raw: string): string {
+  let text = redactSecrets(raw.trim());
   try {
     const parsed = JSON.parse(raw) as { message?: unknown; error?: unknown; code?: unknown };
     const candidate = parsed.message ?? parsed.error ?? parsed.code;
-    if (typeof candidate === "string" && candidate.trim()) text = candidate.trim();
-    else if (candidate != null) text = JSON.stringify(candidate).slice(0, 300);
+    if (typeof candidate === "string" && candidate.trim()) text = redactSecrets(candidate.trim());
+    else if (candidate != null) text = redactSecrets(JSON.stringify(candidate));
   } catch {
-    text = raw.trim().slice(0, 300);
+    text = redactSecrets(raw.trim());
   }
-  text = text.replace(/apikey["']?\s*[:=]\s*\S+/gi, "apikey=[redacted]");
-  return `Warp ${status}: ${text || "request rejected"}`;
+  return text.slice(0, 500) || "request rejected";
 }
 
 function nextPickupDate(): string {
@@ -132,10 +132,16 @@ async function quoteVehicle(input: {
       }),
     });
 
-    if (response.status === 429) throw new WarpQuoteError("rate_limit", 429, "Warp 429: rate limit");
+    if (response.status === 401 || response.status === 403) {
+      const raw = await response.text();
+      throw new WarpQuoteError("provider", response.status, warpProviderMessage(response.status, raw));
+    }
+    if (response.status === 429) {
+      throw new WarpQuoteError("rate_limit", 429, "rate limit");
+    }
     if (!response.ok) {
       const raw = await response.text();
-      throw new WarpQuoteError("provider", response.status, warpErrorDetail(response.status, raw));
+      throw new WarpQuoteError("provider", response.status, warpProviderMessage(response.status, raw));
     }
 
     const body = (await response.json()) as {
@@ -146,7 +152,7 @@ async function quoteVehicle(input: {
       status?: string;
     };
     if (body.status && body.status !== "ACCEPT") {
-      throw new WarpQuoteError("provider", response.status, `Warp ${response.status}: ${body.status}`);
+      throw new WarpQuoteError("provider", response.status, body.status);
     }
     const amount = Number(body.price?.amount);
     const quoteId = String(body.quote_id || "");
@@ -171,10 +177,10 @@ async function quoteVehicle(input: {
   } catch (error) {
     if (error instanceof WarpQuoteError) throw error;
     if (error instanceof Error && error.name === "AbortError") {
-      throw new WarpQuoteError("timeout", undefined, "Warp timeout");
+      throw new WarpQuoteError("timeout", undefined, "timeout");
     }
-    const detail = error instanceof Error ? error.message : "request failed";
-    throw new WarpQuoteError("unavailable", undefined, `Warp request failed: ${detail}`);
+    const detail = error instanceof Error ? redactSecrets(error.message) : "request failed";
+    throw new WarpQuoteError("unavailable", undefined, detail);
   } finally {
     clearTimeout(timer);
   }
@@ -211,9 +217,21 @@ export async function quoteWarpFreight(input: {
     .map((attempt) => attempt.option)
     .filter((option): option is ShippingOption => option != null);
   if (options.length > 0) return options;
-  const failure =
-    attempts.find((attempt) => attempt.error?.detail)?.error ||
-    attempts.find((attempt) => attempt.error)?.error;
-  if (failure) throw failure;
+  const failures = attempts
+    .map((attempt, index) => {
+      if (!attempt.error) return null;
+      const status = attempt.error.status ? `HTTP ${attempt.error.status}` : attempt.error.code;
+      const detail = attempt.error.detail || attempt.error.message;
+      return `${VEHICLES[index].code} ${status}: ${detail}`;
+    })
+    .filter((line): line is string => Boolean(line));
+  const failure = attempts.find((attempt) => attempt.error)?.error;
+  if (failure) {
+    throw new WarpQuoteError(
+      failure.code,
+      failure.status,
+      redactSecrets(failures.join(" | ") || failure.detail || failure.message)
+    );
+  }
   return [];
 }

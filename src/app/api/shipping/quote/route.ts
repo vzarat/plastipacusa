@@ -1,33 +1,23 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { FREE_LOCAL_DELIVERY_MIN_ROLLS } from "@/lib/shipping/config";
+import { buildQuoteFailure, shippingRequestId } from "@/lib/shipping/diagnostics";
 import { isRioGrandeValley } from "@/lib/shipping-method";
 import { getCachedWarpOptions } from "@/lib/shipping/quote-cache";
 import { ShipmentDataError, buildShipmentFreight } from "@/lib/shipping/shipment";
 import { WarpQuoteError } from "@/lib/shipping/warp";
-import type { ShippingOption, ShippingQuoteLine } from "@/lib/shipping/types";
+import type {
+  ShipmentFreight,
+  ShippingOption,
+  ShippingQuoteErrorCode,
+  ShippingQuoteLine,
+} from "@/lib/shipping/types";
 
 export const runtime = "nodejs";
 
 function zipCode(value: unknown): string | null {
   const match = String(value || "").match(/\d{5}/);
   return match ? match[0] : null;
-}
-
-function publicMessage(code: string): string {
-  if (code === "invalid_zip") return "Enter a valid 5-digit ZIP code to see shipping options.";
-  if (code === "missing_weight") {
-    return "We couldn't calculate shipping automatically because product weight is missing.";
-  }
-  if (code === "missing_dims") {
-    return "We couldn't calculate shipping automatically because pallet dimensions are missing.";
-  }
-  if (code === "timeout") return "The shipping quote took too long. Please try again.";
-  if (code === "rate_limit") return "Shipping quotes are busy right now. Please try again in a moment.";
-  if (code === "origin_missing") {
-    return "We couldn't calculate shipping automatically.";
-  }
-  return "We couldn't calculate shipping automatically.";
 }
 
 function freeLocalOption(zip: string): ShippingOption {
@@ -42,6 +32,79 @@ function freeLocalOption(zip: string): ShippingOption {
     expiresAt: null,
     destinationZip: zip,
   };
+}
+
+function classifyFailure(error: unknown): {
+  code: ShippingQuoteErrorCode;
+  httpStatus?: number;
+  providerMessage?: string;
+} {
+  if (error instanceof WarpQuoteError) {
+    if (error.code === "timeout") {
+      return { code: "WARP_TIMEOUT", providerMessage: error.detail };
+    }
+    if (error.status === 401 || error.status === 403) {
+      return { code: "WARP_AUTH", httpStatus: error.status, providerMessage: error.detail };
+    }
+    return {
+      code: "WARP_HTTP_ERROR",
+      httpStatus: error.status,
+      providerMessage: error.detail,
+    };
+  }
+  if (error instanceof ShipmentDataError) {
+    return {
+      code: error.code === "missing_dims" ? "MISSING_DIMS" : "VALIDATION",
+      providerMessage: error.message,
+    };
+  }
+  if (error instanceof Error && /WARP_ENV|WARP_API_KEY/.test(error.message)) {
+    return { code: "CONFIG", providerMessage: error.message };
+  }
+  if (error instanceof Error) {
+    return { code: "UNKNOWN", providerMessage: error.message };
+  }
+  return { code: "UNKNOWN" };
+}
+
+function failureJson(input: {
+  error: unknown;
+  code?: ShippingQuoteErrorCode;
+  freight: ShipmentFreight | null;
+  zip: string | null;
+  city?: string | null;
+  state?: string | null;
+  freeLocal?: ShippingOption | null;
+  status?: number;
+}) {
+  const classified = input.code
+    ? { code: input.code, providerMessage: undefined, httpStatus: undefined }
+    : classifyFailure(input.error);
+  const requestId = shippingRequestId();
+  const failure = buildQuoteFailure({
+    code: classified.code,
+    requestId,
+    httpStatus: classified.httpStatus,
+    providerMessage: classified.providerMessage,
+    freight: input.freight,
+    destination: { zip: input.zip, city: input.city, state: input.state },
+  });
+  return NextResponse.json(
+    {
+      ok: false,
+      fallback: "manual_quote",
+      error: failure.error,
+      ...(failure.debug ? { debug: failure.debug } : {}),
+      message: failure.publicMessage,
+      weightLbs: input.freight?.weightLbs ?? null,
+      palletCount: input.freight?.palletCount ?? null,
+      dimensions: input.freight?.pieces.map((piece) => piece.dimensionLabel) ?? [],
+      weightDetail: input.freight?.pieces.map((piece) => piece.weightLabel) ?? [],
+      freeLocal: input.freeLocal ?? null,
+      options: [],
+    },
+    input.status ? { status: input.status } : undefined
+  );
 }
 
 export async function POST(request: Request) {
@@ -68,10 +131,15 @@ export async function POST(request: Request) {
     body = (await request.json()) as typeof body;
     zip = zipCode(body.postalCode);
     if (!zip) {
-      return NextResponse.json(
-        { ok: false, code: "invalid_zip", message: publicMessage("invalid_zip") },
-        { status: 400 }
-      );
+      return failureJson({
+        error: null,
+        code: "INVALID_ZIP",
+        freight: null,
+        zip: null,
+        city: body.city,
+        state: body.state,
+        status: 400,
+      });
     }
 
     const freight = await buildShipmentFreight(body.lines || []);
@@ -86,6 +154,17 @@ export async function POST(request: Request) {
 
     try {
       const options = await getCachedWarpOptions(zip, freight);
+      if (options.length === 0) {
+        return failureJson({
+          error: null,
+          code: "NO_OPTIONS",
+          freight,
+          zip,
+          city: body.city,
+          state: body.state,
+          freeLocal,
+        });
+      }
       return NextResponse.json({
         ok: true,
         weightLbs: freight.weightLbs,
@@ -94,88 +173,51 @@ export async function POST(request: Request) {
         weightDetail: freight.pieces.map((piece) => piece.weightLabel),
         freeLocal,
         options,
-        code: options.length === 0 && !freeLocal ? "empty" : null,
-        message:
-          options.length === 0 && !freeLocal
-            ? "Warp returned no rates for this shipment."
-            : null,
+        message: null,
       });
     } catch (error) {
-      const warp = error instanceof WarpQuoteError ? error : null;
-      const code = warp
-        ? warp.status
-          ? String(warp.status)
-          : warp.code
-        : error instanceof Error && error.message === "origin_missing"
-          ? "origin_missing"
-          : "unavailable";
-      const message = warp?.detail || publicMessage(warp?.code || code);
-      console.error("shipping quote failed", code, message);
-      if (freeLocal) {
-        return NextResponse.json({
-          ok: true,
-          weightLbs: freight.weightLbs,
-          palletCount: freight.palletCount,
-          dimensions: freight.pieces.map((piece) => piece.dimensionLabel),
-          weightDetail: freight.pieces.map((piece) => piece.weightLabel),
-          freeLocal,
-          options: [],
-          code,
-          message,
-        });
-      }
-      return NextResponse.json({
-        ok: false,
-        code,
-        message,
-        weightLbs: freight.weightLbs,
-        dimensions: freight.pieces.map((piece) => piece.dimensionLabel),
-        weightDetail: freight.pieces.map((piece) => piece.weightLabel),
-        options: [],
+      return failureJson({
+        error,
+        freight,
+        zip,
+        city: body.city,
+        state: body.state,
+        freeLocal,
       });
     }
   } catch (error) {
-    if (error instanceof ShipmentDataError && error.code === "missing_dims" && zip) {
-      const freeLocal =
-        isRioGrandeValley({
-          postalCode: zip,
-          city: body.city,
-          state: body.state,
-        }) && error.rolls >= FREE_LOCAL_DELIVERY_MIN_ROLLS
-          ? freeLocalOption(zip)
-          : null;
-      if (freeLocal) {
-        return NextResponse.json({
-          ok: true,
-          weightLbs: error.weightLbs,
-          palletCount: 1,
-          freeLocal,
-          options: [],
-          message: publicMessage("missing_dims"),
-        });
-      }
-      return NextResponse.json(
-        {
-          ok: false,
-          code: error.code,
-          message: publicMessage(error.code),
-          weightLbs: error.weightLbs,
-        },
-        { status: 422 }
-      );
-    }
-    if (error instanceof ShipmentDataError) {
-      return NextResponse.json(
-        { ok: false, code: error.code, message: publicMessage(error.code) },
-        { status: 422 }
-      );
-    }
-    console.error("shipping quote failed", error instanceof Error ? error.message : error);
-    const detail = error instanceof Error ? error.message : "unavailable";
-    return NextResponse.json({
-      ok: false,
-      code: "unavailable",
-      message: detail,
+    const freeLocal =
+      zip &&
+      error instanceof ShipmentDataError &&
+      isRioGrandeValley({
+        postalCode: zip,
+        city: body.city,
+        state: body.state,
+      }) &&
+      error.rolls >= FREE_LOCAL_DELIVERY_MIN_ROLLS
+        ? freeLocalOption(zip)
+        : null;
+    const freight =
+      error instanceof ShipmentDataError
+        ? ({
+            weightLbs: error.weightLbs,
+            palletCount: 0,
+            lengthIn: 0,
+            widthIn: 0,
+            heightIn: 0,
+            rolls: error.rolls,
+            boxes: error.boxes,
+            pieces: [],
+          } satisfies ShipmentFreight)
+        : null;
+    return failureJson({
+      error,
+      freight,
+      zip,
+      city: body.city,
+      state: body.state,
+      freeLocal,
+      status: error instanceof ShipmentDataError ? 422 : undefined,
     });
   }
 }

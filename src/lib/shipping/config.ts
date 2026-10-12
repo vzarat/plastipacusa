@@ -74,7 +74,16 @@ export function getWarpConfig(): { env: WarpEnv; baseUrl: string; apiKey: string
   };
 }
 
-/** Dev-only label. Hidden whenever Node is running in production. */
+/** Flip to true to show full Warp diagnostics in production checkout. */
+export const SHOW_SHIPPING_DEBUG = false;
+
+/** Full diagnostics in local development, staging, or when the flag above is on. */
+export function shippingDebugVisible(): boolean {
+  if (SHOW_SHIPPING_DEBUG) return true;
+  if (process.env.NODE_ENV === "development") return true;
+  if (process.env.WARP_ENV === "staging") return true;
+  return false;
+}
 export function stagingQuotesNote(): string | null {
   if (process.env.NODE_ENV === "production") return null;
   if (process.env.WARP_ENV !== "staging") return null;
