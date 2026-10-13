@@ -133,9 +133,14 @@ function matchesLength(
   return slug.includes(`x-${targetLength}ft`) || slug.endsWith(`-${targetLength}ft`);
 }
 
+function gaugeNumber(value: unknown): number | null {
+  const amount = typeof value === "number" ? value : parseFloat(String(value ?? ""));
+  return Number.isFinite(amount) ? Math.round(amount) : null;
+}
+
 function matchesGauge(product: ProductWithVariants, targetGauge: number): boolean {
-  if (product.gauge === targetGauge) return true;
-  return (product.variants || []).some((v) => v?.gauge === targetGauge);
+  if (gaugeNumber(product.gauge) === targetGauge) return true;
+  return (product.variants || []).some((variant) => gaugeNumber(variant?.gauge) === targetGauge);
 }
 
 function excludeFiftyGauge(product: ProductWithVariants): boolean {

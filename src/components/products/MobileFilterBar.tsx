@@ -13,7 +13,7 @@ const SORT_OPTIONS = [
   { value: "best-selling" as const, label: "Best Selling" },
 ];
 
-const GAUGE_OPTIONS = ["60", "70", "80"] as const;
+const GAUGE_OPTIONS = ["40", "60", "70", "80"] as const;
 const LENGTH_OPTIONS = ["1000", "1500", "5000", "6000"] as const;
 const WIDTH_OPTIONS = ["15", "18", "20", "30"] as const;
 const TYPE_OPTIONS = [
