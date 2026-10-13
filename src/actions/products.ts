@@ -30,6 +30,7 @@ import {
   SERIES_FORCE_ELITE,
   SERIES_FORCE_STANDARD,
   buildMachinePackageOptions,
+  formatBoxRollLabel,
   ensureGenesisMachineProducts,
   getGenesisMachineFallbackBySlug,
   isMachineFilm as detectMachineFilm,
@@ -86,6 +87,29 @@ async function writeProductRow(
   }
   const result = await supabase.from("products").update(next).eq("id", id as string).select("*");
   return { data: firstRow(result.data), error: result.error };
+}
+
+const HAND_BOX_PRICE_TIERS = [
+  { boxes: 1, rolls: 4, fields: ["price_1_box", "price1Box"] },
+  { boxes: 16, rolls: 64, fields: ["price_16_boxes", "price16Boxes"] },
+  { boxes: 32, rolls: 128, fields: ["price_32_boxes", "price32Boxes"] },
+  { boxes: 64, rolls: 256, fields: ["price_64_boxes", "price64Boxes"] },
+] as const;
+
+/** Box ladder prices stored on the product row when product_variants has no priced rows. */
+function handBoxTierOptions(raw: any, baseSku: string): PackageOption[] {
+  return HAND_BOX_PRICE_TIERS.flatMap((tier) => {
+    const price = parsePositivePrice(...tier.fields.map((field) => raw?.[field]));
+    if (price === null) return [];
+    return [
+      {
+        rolls: tier.rolls,
+        label: formatBoxRollLabel(tier.boxes, tier.rolls),
+        sku: `${baseSku}-${tier.boxes}BX`,
+        price,
+      },
+    ];
+  });
 }
 
 function parsePositivePrice(...candidates: unknown[]): number | null {
@@ -567,15 +591,20 @@ function formatProduct(raw: any): ProductWithVariants {
         price: parseFloat(v.priceUsd),
       };
     });
-  } else if (productBasePrice !== null) {
-    packageOptions = [
-      {
-        rolls: 1,
-        label: "BASE UNIT",
-        sku: `${baseSku}-BASE`,
-        price: productBasePrice,
-      },
-    ];
+  } else {
+    const boxTiers = handBoxTierOptions(raw, baseSku);
+    if (boxTiers.length > 0) {
+      packageOptions = boxTiers;
+    } else if (productBasePrice !== null) {
+      packageOptions = [
+        {
+          rolls: 1,
+          label: "BASE UNIT",
+          sku: `${baseSku}-BASE`,
+          price: productBasePrice,
+        },
+      ];
+    }
   }
 
   const candidatePrices = [

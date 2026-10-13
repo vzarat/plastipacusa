@@ -1,10 +1,14 @@
 import React from "react";
-import dynamic from "next/dynamic";
+import nextDynamic from "next/dynamic";
 import { getProducts } from "@/actions/products";
 import { HeroBanner } from "@/components/home/HeroBanner";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
+
 /** Below-the-fold / heavy interactive sections — code-split off the LCP path. */
-const ClientLogosBanner = dynamic(
+const ClientLogosBanner = nextDynamic(
   () =>
     import("@/components/home/ClientLogosBanner").then(
       (m) => m.ClientLogosBanner
@@ -19,7 +23,7 @@ const ClientLogosBanner = dynamic(
   }
 );
 
-const USACoverageSection = dynamic(
+const USACoverageSection = nextDynamic(
   () =>
     import("@/components/home/USACoverageSection").then(
       (m) => m.USACoverageSection
@@ -34,7 +38,7 @@ const USACoverageSection = dynamic(
   }
 );
 
-const CategoryShowcase = dynamic(
+const CategoryShowcase = nextDynamic(
   () =>
     import("@/components/home/CategoryShowcase").then(
       (m) => m.CategoryShowcase
@@ -49,7 +53,7 @@ const CategoryShowcase = dynamic(
   }
 );
 
-const FeaturedProductSection = dynamic(
+const FeaturedProductSection = nextDynamic(
   () =>
     import("@/components/home/FeaturedProductSection").then(
       (m) => m.FeaturedProductSection
@@ -61,7 +65,7 @@ const FeaturedProductSection = dynamic(
   }
 );
 
-const TrustBadges = dynamic(
+const TrustBadges = nextDynamic(
   () =>
     import("@/components/home/TrustBadges").then((m) => m.TrustBadges),
   {
@@ -69,7 +73,7 @@ const TrustBadges = dynamic(
   }
 );
 
-const FreeSampleBanner = dynamic(
+const FreeSampleBanner = nextDynamic(
   () =>
     import("@/components/home/FreeSampleBanner").then(
       (m) => m.FreeSampleBanner
@@ -79,7 +83,7 @@ const FreeSampleBanner = dynamic(
   }
 );
 
-const InquiryForm = dynamic(
+const InquiryForm = nextDynamic(
   () =>
     import("@/components/home/InquiryForm").then((m) => m.InquiryForm),
   {

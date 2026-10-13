@@ -2,6 +2,7 @@ import React from "react";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { LiveCatalogSync } from "@/components/products/LiveCatalogSync";
 
 export default function ShopLayout({
   children,
@@ -12,6 +13,7 @@ export default function ShopLayout({
     <div className="flex min-h-screen flex-col bg-white">
       <AnnouncementBar />
       <Navbar />
+      <LiveCatalogSync />
       <main className="flex-1 bg-white">{children}</main>
       <Footer />
     </div>

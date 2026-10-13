@@ -4,6 +4,10 @@ import { ProductCatalog } from "@/components/products/ProductCatalog";
 import { CatalogPageHeader } from "@/components/products/CatalogPageHeader";
 import type { CatalogAppFilter } from "@/components/products/ProductCatalog";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
+
 interface ProductsPageProps {
   searchParams: Promise<{
     app?: string;

@@ -41,7 +41,7 @@ export function createClient() {
         }
         return fetch(url, {
           ...options,
-          next: { revalidate: 3600 },
+          cache: "no-store",
         });
       },
     },

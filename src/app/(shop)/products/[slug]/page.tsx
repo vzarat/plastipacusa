@@ -17,7 +17,9 @@ import { createClient } from "@supabase/supabase-js";
 import { PRODUCT_CATEGORIES } from "@/data/categories";
 import { resolvePalletizingSpecs } from "@/lib/palletizing";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 export const dynamicParams = true;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";

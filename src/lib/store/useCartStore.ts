@@ -38,6 +38,12 @@ interface CartState {
   closeDrawer: () => void;
   toggleDrawer: () => void;
   setAppliedCoupon: (coupon: AppliedCoupon | null) => void;
+  applyCatalogPrices: (
+    products: Array<{
+      packageOptions?: Array<{ sku?: string; price?: number }>;
+      variants?: Array<{ sku?: string; priceUsd?: string }>;
+    }>
+  ) => void;
   clearCoupon: () => void;
   getTotalItems: () => number;
   getSubtotal: () => number;
@@ -140,6 +146,37 @@ export const useCartStore = create<CartState>()(
       toggleDrawer: () => set((state) => ({ isDrawerOpen: !state.isDrawerOpen })),
 
       setAppliedCoupon: (coupon) => set({ appliedCoupon: coupon }),
+      applyCatalogPrices: (products) => {
+        const priceBySku = new Map<string, number>();
+        for (const product of products) {
+          for (const option of product.packageOptions || []) {
+            const sku = String(option.sku || "");
+            const price = Number(option.price);
+            if (sku && Number.isFinite(price) && price > 0) priceBySku.set(sku, price);
+          }
+          for (const variant of product.variants || []) {
+            const sku = String(variant.sku || "");
+            const price = Number(variant.priceUsd);
+            if (sku && Number.isFinite(price) && price > 0 && !priceBySku.has(sku)) {
+              priceBySku.set(sku, price);
+            }
+          }
+        }
+        set((state) => {
+          let changed = false;
+          const items = state.items.map((item) => {
+            const nextPrice = priceBySku.get(item.sku);
+            if (nextPrice == null || nextPrice === item.unitPrice) return item;
+            changed = true;
+            return {
+              ...item,
+              unitPrice: nextPrice,
+              totalPrice: Number((nextPrice * item.quantity).toFixed(2)),
+            };
+          });
+          return changed ? { items } : state;
+        });
+      },
       clearCoupon: () => set({ appliedCoupon: null }),
 
       getTotalItems: () => {

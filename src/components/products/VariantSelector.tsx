@@ -23,6 +23,7 @@ import {
   unitLabelForProduct,
 } from "@/lib/products";
 import { BOX_QTY_NOTE, HALF_PALLET_QTY_NOTE } from "@/lib/cart-quantity";
+import { getProductBySlug } from "@/actions/products";
 
 type PackageTierKind =
   | "single_unit"
@@ -272,7 +273,6 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
   const baseSku = String(single?.sku || product?.partNumber || product?.slug || "SKU");
 
   return STANDARD_HAND_PACKAGE_TIERS.map((tier) => {
-    const total = roundMoney(baseBoxPrice * tier.boxes * (1 - tier.discountRate));
     const matched = sourceOptions.find((option) => {
       const boxes = Number(option?.boxes_count ?? option?.boxesCount ?? 0);
       const rolls = Number(
@@ -280,6 +280,11 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
       );
       return boxes === tier.boxes || rolls === tier.rolls;
     });
+    const stored = matched ? getVariantPrice(matched) : 0;
+    const total =
+      stored > 0
+        ? roundMoney(stored)
+        : roundMoney(baseBoxPrice * tier.boxes * (1 - tier.discountRate));
     const sku = String(matched?.sku || `${baseSku}-${tier.boxes}B`);
     return {
       id: matched?.id || sku,
@@ -362,11 +367,26 @@ interface VariantSelectorProps {
 }
 
 export function VariantSelector({
-  product,
+  product: initialProduct,
   selectedVariantId: propSelectedVariantId,
   selectedVariant: propSelectedVariant,
   onVariantChange,
 }: VariantSelectorProps) {
+  const [product, setProduct] = useState(initialProduct);
+  useEffect(() => {
+    setProduct(initialProduct);
+  }, [initialProduct]);
+  useEffect(() => {
+    const slug = String(initialProduct?.slug || "");
+    if (!slug) return;
+    let cancelled = false;
+    getProductBySlug(slug).then((fresh) => {
+      if (!cancelled && fresh) setProduct(fresh);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialProduct?.slug]);
   const { t } = useLanguage();
   const isMachineFilm = detectMachineFilm(product);
   const unitLabel = unitLabelForProduct(isMachineFilm);
