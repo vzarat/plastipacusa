@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/utils";
+import { getDisplayPrice } from "@/lib/pricing";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   Search,
@@ -587,7 +588,10 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
 
                   <div className="mt-2 flex items-center justify-between">
                     <span className="font-bold text-slate-900">
-                      {item.priceUsd !== null ? `${formatCurrency(item.priceUsd)} USD` : "—"}
+                      {(() => {
+                        const displayPrice = getDisplayPrice(item) ?? (item.priceUsd && item.priceUsd > 0 ? item.priceUsd : null);
+                        return displayPrice != null ? `${formatCurrency(displayPrice)} USD` : "—";
+                      })()}
                     </span>
                     <span
                       className={`text-xs font-bold ${

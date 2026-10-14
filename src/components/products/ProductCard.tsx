@@ -14,7 +14,7 @@ import {
   SERIES_GENESIS_STANDARD,
   STRETCH_FILM_PLACEHOLDER,
 } from "@/lib/products";
-import { catalogCardStartingPrice, catalogPackageQuote, readBoxTierPrices } from "@/lib/pricing";
+import { catalogCardStartingPrice, catalogPackageQuote, getDisplayPrice, readBoxTierPrices } from "@/lib/pricing";
 interface ProductCardProps {
   product: ProductWithVariants;
   priority?: boolean;
@@ -163,8 +163,10 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
     ...(Number.isFinite(basePrice) && basePrice > 0 ? [basePrice] : []),
   ];
 
+  const resolvedPrice = getDisplayPrice(product);
   const primaryPrice =
     packageQuote?.total ??
+    resolvedPrice ??
     columnQuote.amount ??
     (priceCandidates.length > 0 ? Math.min(...priceCandidates) : null);
   const primaryVariant = product?.variants?.[0];
@@ -266,7 +268,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         )}
         <div className="mt-2 flex items-baseline gap-2">
           <span className="text-lg font-bold text-red-600">
-            {primaryPrice !== null ? formatCurrency(primaryPrice) : "—"}
+            {primaryPrice != null && primaryPrice > 0 ? formatCurrency(primaryPrice) : "—"}
             {priceFromPackage ? (
               <span className="ml-1 text-[11px] font-semibold text-slate-500">
                 {formatCurrency(packageQuote.unitBoxPrice)} USD / box
@@ -400,7 +402,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             </span>
             <div className="flex items-baseline gap-1.5">
               <span className="text-base font-black tracking-tight text-slate-900 md:text-2xl">
-                {primaryPrice !== null ? formatCurrency(primaryPrice) : "—"}
+                {primaryPrice != null && primaryPrice > 0 ? formatCurrency(primaryPrice) : "—"}
               </span>
               {primaryPrice !== null && (
                 <span className="hidden text-xs font-bold text-slate-500 md:inline">

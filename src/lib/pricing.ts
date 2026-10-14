@@ -108,6 +108,72 @@ export type CatalogCardPriceSource = "variant" | "price_64_boxes" | "price_1_box
  */
 const CARD_BOX_COUNTS = [1, 16, 32, 64] as const;
 
+function variantRecords(product: Record<string, unknown>): Record<string, unknown>[] {
+  const groups = [product.product_variants, product.variants, product.packageTiers];
+  return groups.flatMap((group) =>
+    Array.isArray(group)
+      ? group.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+      : []
+  );
+}
+
+function variantBoxCount(record: Record<string, unknown>): number | null {
+  const boxes = Math.floor(Number(record.boxes_count ?? record.boxesCount ?? record.boxes) || 0);
+  if ((CARD_BOX_COUNTS as readonly number[]).includes(boxes)) return boxes;
+
+  const rolls = Math.floor(Number(record.rolls_count ?? record.rollsCount ?? record.rolls) || 0);
+  if (rolls === 4) return 1;
+  if (rolls === 64) return 16;
+  if (rolls === 128) return 32;
+  if (rolls === 256) return 64;
+
+  const label = String(record.title || record.package_size || record.packageSize || record.label || "");
+  const boxMatch = label.match(/(\d+)\s*BOX/i);
+  const labeledBoxes = Math.floor(Number(boxMatch?.[1]) || 0);
+  if ((CARD_BOX_COUNTS as readonly number[]).includes(labeledBoxes)) return labeledBoxes;
+
+  return null;
+}
+
+function variantUnitPrice(record: Record<string, unknown>): number | null {
+  return firstPositive(record.price, record.price_usd, record.priceUsd, record.boxUnitPrice);
+}
+
+/**
+ * Price shown on catalog cards and the admin product form.
+ * A 1-box variant wins, then a 64-box variant, then the product columns.
+ * Zero is treated as missing.
+ */
+export function getDisplayPrice(product: unknown): number | null {
+  const row = product && typeof product === "object" ? (product as Record<string, unknown>) : {};
+  const variants = variantRecords(row);
+
+  const variant1 = variants.find((variant) => variantBoxCount(variant) === 1);
+  const fromOneBox = variant1 ? variantUnitPrice(variant1) : null;
+  if (fromOneBox != null) return fromOneBox;
+
+  const variant64 = variants.find((variant) => variantBoxCount(variant) === 64);
+  const fromPallet = variant64 ? variantUnitPrice(variant64) : null;
+  if (fromPallet != null) return fromPallet;
+
+  const prices = readBoxTierPrices(product);
+  if (prices.price1Box != null) return prices.price1Box;
+  if (prices.price64Boxes != null) return prices.price64Boxes;
+
+  const variant16 = variants.find((variant) => variantBoxCount(variant) === 16);
+  const fromLayer = variant16 ? variantUnitPrice(variant16) : null;
+  if (fromLayer != null) return fromLayer;
+
+  const variant32 = variants.find((variant) => variantBoxCount(variant) === 32);
+  const fromHalf = variant32 ? variantUnitPrice(variant32) : null;
+  if (fromHalf != null) return fromHalf;
+
+  if (prices.price16Boxes != null) return prices.price16Boxes;
+  if (prices.price32Boxes != null) return prices.price32Boxes;
+
+  return null;
+}
+
 /**
  * Starting catalog package: the smallest priced box tier.
  * Variant `price` is the per-box rate. Total = that rate × boxes.
@@ -119,21 +185,11 @@ export function catalogPackageQuote(product: unknown): {
 } | null {
   const row =
     product && typeof product === "object" ? (product as Record<string, unknown>) : {};
-  const variants = Array.isArray(row.variants)
-    ? row.variants
-    : Array.isArray(row.product_variants)
-      ? row.product_variants
-      : [];
+  const variants = variantRecords(row);
 
   const fromVariants = CARD_BOX_COUNTS.flatMap((boxes) => {
-    const match = variants.find((variant) => {
-      if (!variant || typeof variant !== "object") return false;
-      const record = variant as Record<string, unknown>;
-      return Math.floor(Number(record.boxes_count ?? record.boxesCount) || 0) === boxes;
-    }) as Record<string, unknown> | undefined;
-    const unit = match
-      ? firstPositive(match.priceUsd, match.price_usd, match.price, match.boxUnitPrice)
-      : null;
+    const match = variants.find((variant) => variantBoxCount(variant) === boxes);
+    const unit = match ? variantUnitPrice(match) : null;
     if (unit == null) return [];
     return [{ boxes, unitBoxPrice: unit, total: totalForBoxes(unit, boxes) }];
   });

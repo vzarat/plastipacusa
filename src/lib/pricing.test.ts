@@ -4,6 +4,7 @@ import {
   bracketForBoxCount,
   catalogCardStartingPrice,
   catalogPackageQuote,
+  getDisplayPrice,
   formatBoxPriceEquation,
   repriceHandCartLine,
   totalForBoxes,
@@ -81,6 +82,26 @@ describe("box price × box quantity", () => {
       }),
       { boxes: 1, unitBoxPrice: 30, total: 30 }
     );
+  });
+
+  it("shows a 1-box variant price, then price_1_box, then price_64_boxes", () => {
+    assert.equal(
+      getDisplayPrice({
+        product_variants: [{ boxes_count: 1, price: 25.65 }],
+        price_1_box: 10,
+      }),
+      25.65
+    );
+    assert.equal(
+      getDisplayPrice({
+        product_variants: [{ boxes_count: 1, price: 0 }, { boxes_count: 64, price_usd: "21.20" }],
+        price_1_box: 33.14,
+      }),
+      21.2
+    );
+    assert.equal(getDisplayPrice({ price_1_box: "33.14" }), 33.14);
+    assert.equal(getDisplayPrice({ price_64_boxes: 21.2 }), 21.2);
+    assert.equal(getDisplayPrice({ product_variants: [{ boxes_count: 1, price: 0 }] }), null);
   });
 
   it("uses a variant price, then price_64_boxes, then price_1_box on catalog cards", () => {

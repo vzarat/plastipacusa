@@ -40,6 +40,10 @@ export interface AdminProduct {
   palletWeightLbs: number | null;
   palletDimensions: string;
   priceUsd: number | null;
+  price1Box?: number | null;
+  price16Boxes?: number | null;
+  price32Boxes?: number | null;
+  price64Boxes?: number | null;
   priceCase: number | null;
   priceHalfPallet: number | null;
   pricePallet: number | null;

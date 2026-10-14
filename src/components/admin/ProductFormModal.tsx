@@ -28,6 +28,7 @@ import {
   ProductFormValues,
 } from "@/types/product";
 import { PRODUCT_CATEGORIES, categorySlugFromRecord, getApplicationForCategory } from "@/data/categories";
+import { readBoxTierPrices } from "@/lib/pricing";
 import { useLanguage } from "@/context/LanguageContext";
 
 interface ProductFormModalProps {
@@ -80,10 +81,20 @@ function defaultPackageTiers(baseSku: string): AdminPackageTier[] {
   }));
 }
 
+function columnPriceForBoxes(source: unknown, boxes: number): number | null {
+  const prices = readBoxTierPrices(source);
+  if (boxes === 1) return prices.price1Box;
+  if (boxes === 16) return prices.price16Boxes;
+  if (boxes === 32) return prices.price32Boxes;
+  if (boxes === 64) return prices.price64Boxes;
+  return null;
+}
+
 function withDefaultPackageTiers(
   tiers: AdminPackageTier[] | undefined,
   baseSku: string,
-  application: "hand" | "machine" = "hand"
+  application: "hand" | "machine" = "hand",
+  columnSource?: unknown
 ): AdminPackageTier[] {
   const saved = Array.isArray(tiers) ? tiers : [];
   if (application === "machine") {
@@ -93,11 +104,13 @@ function withDefaultPackageTiers(
     const match =
       saved.find((tier) => Number(tier.boxesCount) === option.boxesCount) ||
       saved.find((tier) => Number(tier.rollsCount) === option.rollsCount);
+    const savedPrice = Number(match?.price);
+    const columnPrice = columnPriceForBoxes(columnSource, option.boxesCount);
     return {
       id: match?.id,
       label: option.label,
       sku: match?.sku?.trim() || packageSku(baseSku, option.suffix),
-      price: match?.price ?? 0,
+      price: savedPrice > 0 ? savedPrice : columnPrice ?? 0,
       boxesCount: option.boxesCount,
       rollsCount: option.rollsCount,
       rollWeightLbs: match?.rollWeightLbs ?? null,
@@ -154,7 +167,8 @@ function productToForm(product: AdminProduct): ProductFormValues {
           }))
         : [],
       textValue(raw.partNumber, raw.part_number, raw.sku),
-      application
+      application,
+      raw
     ),
     stockQuantity: numberOrNull(raw.stockQuantity, raw.stock_quantity, raw.stock_qty) ?? 0,
     isSoldOut: Boolean(raw.isSoldOut ?? raw.is_sold_out ?? false),
@@ -238,7 +252,7 @@ export function ProductFormModal({
         if (cancelled || tiersEdited.current) return;
         setForm((prev) => ({
           ...prev,
-          packageTiers: withDefaultPackageTiers(tiers, prev.partNumber, prev.application),
+          packageTiers: withDefaultPackageTiers(tiers, prev.partNumber, prev.application, product),
         }));
       })
       .catch((err: unknown) => {

@@ -23,6 +23,7 @@ import {
 import { packageTotalWeightLbs } from "@/lib/package-weight";
 import {
   BOX_PRICE_PRESETS,
+  getDisplayPrice,
   readBoxTierPrices,
   totalForBoxes,
   unitBoxPriceForCount,
@@ -1236,15 +1237,18 @@ function formatAdminProduct(raw: any): AdminProduct {
   const lengthFeet =
     readPositiveNumber(raw.length_feet, raw.lengthFeet, raw.length) ??
     extractLengthFeetFromText(specSource);
-  const priceUsd = parsePositivePrice(
-    raw.base_unit_price,
-    raw.price_usd,
-    raw.priceUsd,
-    raw.price,
-    baseVariant?.price,
-    baseVariant?.price_usd,
-    baseVariant?.priceUsd
-  );
+  const boxPrices = readBoxTierPrices(raw);
+  const priceUsd =
+    getDisplayPrice(raw) ??
+    parsePositivePrice(
+      raw.base_unit_price,
+      raw.price_usd,
+      raw.priceUsd,
+      raw.price,
+      baseVariant?.price,
+      baseVariant?.price_usd,
+      baseVariant?.priceUsd
+    );
 
   return {
     id: String(raw.id),
@@ -1261,6 +1265,10 @@ function formatAdminProduct(raw: any): AdminProduct {
     palletWeightLbs: readNullableNumber(raw.pallet_weight_lbs, raw.palletWeightLbs),
     palletDimensions: firstText(raw.pallet_dimensions, raw.palletDimensions),
     priceUsd,
+    price1Box: boxPrices.price1Box,
+    price16Boxes: boxPrices.price16Boxes,
+    price32Boxes: boxPrices.price32Boxes,
+    price64Boxes: boxPrices.price64Boxes,
     priceCase: raw.price_case === null || raw.price_case === undefined ? null : Number(raw.price_case),
     priceHalfPallet:
       raw.price_half_pallet === null || raw.price_half_pallet === undefined ? null : Number(raw.price_half_pallet),
@@ -1353,28 +1361,50 @@ export async function getAdminProducts(): Promise<AdminProduct[]> {
 
   try {
     const supabase = await createServerClient();
-    const { data, error } = await supabase
+    const writer = await getProductWriteClient();
+    const adminWithVariants =
+      "*, price_1_box, price_16_boxes, price_32_boxes, price_64_boxes, product_variants(*)" as const;
+    const joined = await writer
       .from("products")
-      .select("*")
+      .select(adminWithVariants)
       .order("created_at", { ascending: false })
       .limit(1000);
 
-    if (error) {
-      console.error("getAdminProducts query error:", error);
-      return [];
+    let rows = joined.data || [];
+    let variantsEmbedded = !joined.error && rows.some((row) => Array.isArray(row.product_variants));
+    if (joined.error || rows.length === 0) {
+      if (joined.error) console.error("getAdminProducts joined query error:", joined.error);
+      const fallback = await writer
+        .from("products")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      if (fallback.error) {
+        console.error("getAdminProducts query error:", fallback.error);
+        return [];
+      }
+      rows = fallback.data || [];
+      variantsEmbedded = false;
     }
 
-    const rows = data || [];
     const productIds = rows.map((row) => row.id).filter(Boolean);
-    const writer = await getProductWriteClient();
-    const [variantResult, categoryResult] = await Promise.all([
-      productIds.length
+    const [variantResult, categoryResult, priceResult] = await Promise.all([
+      !variantsEmbedded && productIds.length
         ? writer.from("product_variants").select("*").in("product_id", productIds)
         : Promise.resolve({ data: [] as any[], error: null }),
       supabase.from("categories").select("id, slug, name"),
+      productIds.length
+        ? writer
+            .from("products")
+            .select("id, price_1_box, price_16_boxes, price_32_boxes, price_64_boxes")
+            .in("id", productIds)
+        : Promise.resolve({ data: [] as any[], error: null }),
     ]);
     if (variantResult.error) {
       console.error("getAdminProducts variants error:", variantResult.error);
+    }
+    if (priceResult.error) {
+      console.error("getAdminProducts price columns error:", priceResult.error);
     }
     const variantRows = variantResult.data || [];
     const categoryRows = categoryResult.data || [];
@@ -1385,6 +1415,9 @@ export async function getAdminProducts(): Promise<AdminProduct[]> {
       list.push(variant);
       variantsByProduct.set(key, list);
     }
+    const pricesById = new Map(
+      (priceResult.error ? [] : priceResult.data || []).map((priceRow) => [String(priceRow.id), priceRow])
+    );
     const categoriesById = new Map(
       (categoryRows || []).map((category) => [String(category.id), category])
     );
@@ -1392,8 +1425,11 @@ export async function getAdminProducts(): Promise<AdminProduct[]> {
     return rows.map((row) =>
       formatAdminProduct({
         ...row,
+        ...(pricesById.get(String(row.id)) || {}),
         categories: categoriesById.get(String(row.category_id)) || null,
-        product_variants: variantsByProduct.get(String(row.id)) || [],
+        product_variants: variantsEmbedded
+          ? row.product_variants || []
+          : variantsByProduct.get(String(row.id)) || row.product_variants || [],
       })
     );
   } catch (err: any) {
