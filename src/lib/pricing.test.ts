@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   bracketForBoxCount,
   catalogCardStartingPrice,
+  catalogPackageQuote,
   formatBoxPriceEquation,
   repriceHandCartLine,
   totalForBoxes,
@@ -62,6 +63,24 @@ describe("box price × box quantity", () => {
     const twoPallets = repriceHandCartLine({ ...onePallet, quantity: 2 }, prices);
     assert.equal(twoPallets.boxUnitPrice, 21.2);
     assert.equal(twoPallets.totalPrice, 2713.6);
+  });
+
+  it("multiplies the variant per-box price by the box count for catalog cards", () => {
+    assert.deepEqual(
+      catalogPackageQuote({
+        variants: [{ boxes_count: 16, price: 25.65 }],
+      }),
+      { boxes: 16, unitBoxPrice: 25.65, total: 410.4 }
+    );
+    assert.deepEqual(
+      catalogPackageQuote({
+        variants: [
+          { boxes_count: 64, priceUsd: "21.20" },
+          { boxes_count: 1, price: "30.00" },
+        ],
+      }),
+      { boxes: 1, unitBoxPrice: 30, total: 30 }
+    );
   });
 
   it("uses a variant price, then price_64_boxes, then price_1_box on catalog cards", () => {

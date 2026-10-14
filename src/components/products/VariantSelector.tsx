@@ -25,7 +25,6 @@ import {
 import { BOX_QTY_NOTE, HALF_PALLET_QTY_NOTE } from "@/lib/cart-quantity";
 import { getProductBySlug } from "@/actions/products";
 import {
-  formatBoxPriceEquation,
   readBoxTierPrices,
   totalForBoxes,
   unitBoxPriceForCount,
@@ -257,8 +256,6 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
   const baseSku = String(single?.sku || product?.partNumber || product?.slug || "SKU");
 
   return STANDARD_HAND_PACKAGE_TIERS.flatMap((tier) => {
-    const unit = unitBoxPriceForCount(prices, tier.boxes);
-    if (unit == null) return [];
     const matched = sourceOptions.find((option) => {
       const boxes = Number(option?.boxes_count ?? option?.boxesCount ?? option?.boxes ?? 0);
       const rolls = Number(
@@ -266,6 +263,15 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
       );
       return boxes === tier.boxes || rolls === tier.rolls;
     });
+    const matchedUnit = Number(matched?.boxUnitPrice);
+    const variantUnit =
+      Number(matched?.boxes_count ?? matched?.boxesCount ?? matched?.boxes) === tier.boxes
+        ? getVariantPrice(matched)
+        : 0;
+    const columnUnit = unitBoxPriceForCount(prices, tier.boxes);
+    const unit =
+      matchedUnit > 0 ? matchedUnit : variantUnit > 0 ? variantUnit : columnUnit;
+    if (unit == null || !(unit > 0)) return [];
     const total = totalForBoxes(unit, tier.boxes);
     const savings =
       baseBoxPrice && tier.boxes > 1 && unit < baseBoxPrice
@@ -410,6 +416,8 @@ export function VariantSelector({
               title: label,
               priceUsd: String(price),
               price,
+              boxUnitPrice: Number(opt?.boxUnitPrice) > 0 ? Number(opt.boxUnitPrice) : undefined,
+              boxes: Number(opt?.boxes) > 0 ? Number(opt.boxes) : undefined,
               rollsPerBox: rolls,
               rollsPerPallet: product?.fullPalletRolls || (isMachineFilm ? 40 : 192),
               widthInches:
@@ -841,9 +849,9 @@ export function VariantSelector({
               </>
             ) : (
               <>
-                {hasActiveDiscount && listBoxUnit !== discountedBoxUnit && (
+                {hasActiveDiscount && listPackageUnit !== unitPrice && (
                   <span className="text-lg sm:text-xl font-bold text-slate-400 line-through tracking-tight">
-                    {formatCurrency(listBoxUnit)}
+                    {formatCurrency(listPackageUnit)}
                   </span>
                 )}
                 <span
@@ -851,14 +859,14 @@ export function VariantSelector({
                     hasActiveDiscount ? "text-emerald-700" : "text-slate-900"
                   }`}
                 >
-                  {discountedBoxUnit > 0 ? formatCurrency(discountedBoxUnit) : "—"}
+                  {unitPrice > 0 ? formatCurrency(unitPrice) : "—"}
                 </span>
-                {discountedBoxUnit > 0 && (
-                  <span className="text-sm font-bold text-slate-500">/ box</span>
+                {unitPrice > 0 && (
+                  <span className="text-sm font-bold text-slate-500">USD</span>
                 )}
-                {discountedBoxUnit > 0 && lineBoxes > 0 && (
-                  <span className="basis-full text-sm font-semibold text-slate-600">
-                    {formatBoxPriceEquation(lineBoxes, discountedBoxUnit)}
+                {discountedBoxUnit > 0 && (
+                  <span className="basis-full text-sm font-semibold text-slate-500">
+                    {formatCurrency(discountedBoxUnit)} USD / box
                   </span>
                 )}
               </>
@@ -1021,7 +1029,7 @@ export function VariantSelector({
                       <>
                         {optionBoxUnit !== optionBoxUnitDiscounted && (
                           <span className="block text-xs font-semibold text-slate-400 line-through">
-                            {formatCurrency(optionBoxUnit)}/box
+                            {formatCurrency(totalForBoxes(optionBoxUnit, boxesCount))} USD
                           </span>
                         )}
                         <p
@@ -1031,10 +1039,10 @@ export function VariantSelector({
                               : "text-slate-900"
                           }`}
                         >
-                          {formatCurrency(optionBoxUnitDiscounted)}/box
+                          {formatCurrency(totalForBoxes(optionBoxUnitDiscounted, boxesCount))} USD
                         </p>
-                        <p className="mt-0.5 max-w-[16rem] text-[11px] font-semibold leading-snug text-slate-600">
-                          {formatBoxPriceEquation(boxesCount, optionBoxUnitDiscounted)}
+                        <p className="mt-0.5 whitespace-nowrap text-[11px] font-semibold text-slate-500">
+                          {formatCurrency(optionBoxUnitDiscounted)} USD / box
                         </p>
                       </>
                     ) : (
@@ -1192,8 +1200,8 @@ export function VariantSelector({
               {t("products.subtotal")}
             </span>
             {!isMachineFilm && discountedBoxUnit > 0 && lineBoxes > 0 && (
-              <span className="mb-1 block max-w-[16rem] text-[11px] font-semibold leading-snug text-slate-500">
-                {formatBoxPriceEquation(lineBoxes, discountedBoxUnit)}
+              <span className="mb-1 block text-[11px] font-semibold text-slate-500">
+                {formatCurrency(discountedBoxUnit)} USD / box
               </span>
             )}
             {hasActiveDiscount && (

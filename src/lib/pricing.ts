@@ -106,6 +106,67 @@ export type CatalogCardPriceSource = "variant" | "price_64_boxes" | "price_1_box
  * A positive product_variants price wins. Otherwise use the product row:
  * price_64_boxes, then price_1_box.
  */
+const CARD_BOX_COUNTS = [1, 16, 32, 64] as const;
+
+/**
+ * Starting catalog package: the smallest priced box tier.
+ * Variant `price` is the per-box rate. Total = that rate × boxes.
+ */
+export function catalogPackageQuote(product: unknown): {
+  total: number;
+  unitBoxPrice: number;
+  boxes: number;
+} | null {
+  const row =
+    product && typeof product === "object" ? (product as Record<string, unknown>) : {};
+  const variants = Array.isArray(row.variants)
+    ? row.variants
+    : Array.isArray(row.product_variants)
+      ? row.product_variants
+      : [];
+
+  const fromVariants = CARD_BOX_COUNTS.flatMap((boxes) => {
+    const match = variants.find((variant) => {
+      if (!variant || typeof variant !== "object") return false;
+      const record = variant as Record<string, unknown>;
+      return Math.floor(Number(record.boxes_count ?? record.boxesCount) || 0) === boxes;
+    }) as Record<string, unknown> | undefined;
+    const unit = match
+      ? firstPositive(match.priceUsd, match.price_usd, match.price, match.boxUnitPrice)
+      : null;
+    if (unit == null) return [];
+    return [{ boxes, unitBoxPrice: unit, total: totalForBoxes(unit, boxes) }];
+  });
+  if (fromVariants.length > 0) return fromVariants[0];
+
+  const prices = readBoxTierPrices(product);
+  if (prices.price1Box != null) {
+    return { boxes: 1, unitBoxPrice: prices.price1Box, total: prices.price1Box };
+  }
+  if (prices.price16Boxes != null) {
+    return {
+      boxes: 16,
+      unitBoxPrice: prices.price16Boxes,
+      total: totalForBoxes(prices.price16Boxes, 16),
+    };
+  }
+  if (prices.price32Boxes != null) {
+    return {
+      boxes: 32,
+      unitBoxPrice: prices.price32Boxes,
+      total: totalForBoxes(prices.price32Boxes, 32),
+    };
+  }
+  if (prices.price64Boxes != null) {
+    return {
+      boxes: 64,
+      unitBoxPrice: prices.price64Boxes,
+      total: totalForBoxes(prices.price64Boxes, 64),
+    };
+  }
+  return null;
+}
+
 export function catalogCardStartingPrice(product: unknown): {
   amount: number | null;
   source: CatalogCardPriceSource | null;

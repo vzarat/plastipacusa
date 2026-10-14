@@ -80,10 +80,29 @@ function defaultPackageTiers(baseSku: string): AdminPackageTier[] {
 
 function withDefaultPackageTiers(
   tiers: AdminPackageTier[] | undefined,
-  baseSku: string
+  baseSku: string,
+  application: "hand" | "machine" = "hand"
 ): AdminPackageTier[] {
-  if (Array.isArray(tiers) && tiers.length > 0) return tiers;
-  return defaultPackageTiers(baseSku);
+  const saved = Array.isArray(tiers) ? tiers : [];
+  if (application === "machine") {
+    return saved.length > 0 ? saved : defaultPackageTiers(baseSku);
+  }
+  return DEFAULT_PACKAGE_OPTIONS.map((option) => {
+    const match =
+      saved.find((tier) => Number(tier.boxesCount) === option.boxesCount) ||
+      saved.find((tier) => Number(tier.rollsCount) === option.rollsCount);
+    return {
+      id: match?.id,
+      label: option.label,
+      sku: match?.sku?.trim() || packageSku(baseSku, option.suffix),
+      price: match?.price ?? 0,
+      boxesCount: option.boxesCount,
+      rollsCount: option.rollsCount,
+      rollWeightLbs: match?.rollWeightLbs ?? null,
+      boxWeightLbs: match?.boxWeightLbs ?? null,
+      palletWeightLbs: match?.palletWeightLbs ?? null,
+    };
+  });
 }
 
 function productToForm(product: AdminProduct): ProductFormValues {
@@ -132,7 +151,8 @@ function productToForm(product: AdminProduct): ProductFormValues {
             palletWeightLbs: numberOrNull(tier.palletWeightLbs),
           }))
         : [],
-      textValue(raw.partNumber, raw.part_number, raw.sku)
+      textValue(raw.partNumber, raw.part_number, raw.sku),
+      application
     ),
     stockQuantity: numberOrNull(raw.stockQuantity, raw.stock_quantity, raw.stock_qty) ?? 0,
     isSoldOut: Boolean(raw.isSoldOut ?? raw.is_sold_out ?? false),
@@ -634,7 +654,7 @@ export function ProductFormModal({
             <div>
               <h3 className="text-sm font-black text-slate-900">{t("admin.packageOptionsTitle")}</h3>
               <p className="text-[10px] text-slate-400 mt-0.5">
-                Prices for each package option. Saving writes these amounts to the product variants.
+                Price per box for 1, 16, 32, and 64 boxes. Saving writes each rate to product variants. The storefront multiplies it by the box count.
               </p>
             </div>
 
@@ -653,7 +673,7 @@ export function ProductFormModal({
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 mb-1">
-                          {t("admin.priceUsd")}
+                          Price per box (USD)
                         </label>
                         <Input
                           type="number"

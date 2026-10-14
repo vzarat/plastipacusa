@@ -14,7 +14,7 @@ import {
   SERIES_GENESIS_STANDARD,
   STRETCH_FILM_PLACEHOLDER,
 } from "@/lib/products";
-import { catalogCardStartingPrice, readBoxTierPrices } from "@/lib/pricing";
+import { catalogCardStartingPrice, catalogPackageQuote, readBoxTierPrices } from "@/lib/pricing";
 interface ProductCardProps {
   product: ProductWithVariants;
   priority?: boolean;
@@ -145,9 +145,9 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
     CATEGORY_STYLES[resolvedCategorySlug] || CATEGORY_STYLES["force-standard"];
 
   const boxPrices = readBoxTierPrices(product);
+  const packageQuote = isGenesis ? null : catalogPackageQuote(product);
   const columnQuote = catalogCardStartingPrice(product);
-  const priceFromBoxColumn =
-    columnQuote.source === "price_64_boxes" || columnQuote.source === "price_1_box";
+  const priceFromPackage = packageQuote != null;
 
   // Variant price first. If none is valid, use price_64_boxes, then price_1_box.
   const packagePrices = (product?.packageOptions || [])
@@ -164,6 +164,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   ];
 
   const primaryPrice =
+    packageQuote?.total ??
     columnQuote.amount ??
     (priceCandidates.length > 0 ? Math.min(...priceCandidates) : null);
   const primaryVariant = product?.variants?.[0];
@@ -217,7 +218,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   const comparePrice =
     priceCandidates.length > 1 ? Math.max(...priceCandidates) : null;
   const showCompare =
-    !priceFromBoxColumn &&
+    !priceFromPackage &&
     primaryPrice !== null &&
     comparePrice !== null &&
     comparePrice > primaryPrice;
@@ -266,8 +267,10 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         <div className="mt-2 flex items-baseline gap-2">
           <span className="text-lg font-bold text-red-600">
             {primaryPrice !== null ? formatCurrency(primaryPrice) : "—"}
-            {priceFromBoxColumn ? (
-              <span className="ml-1 text-xs font-semibold text-slate-500">/ box</span>
+            {priceFromPackage ? (
+              <span className="ml-1 text-[11px] font-semibold text-slate-500">
+                {formatCurrency(packageQuote.unitBoxPrice)} USD / box
+              </span>
             ) : null}
           </span>
           {showCompare && (
@@ -401,7 +404,9 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               </span>
               {primaryPrice !== null && (
                 <span className="hidden text-xs font-bold text-slate-500 md:inline">
-                  {priceFromBoxColumn ? "/ box" : "USD"}
+                  {priceFromPackage
+                    ? `${formatCurrency(packageQuote.unitBoxPrice)} USD / box`
+                    : "USD"}
                 </span>
               )}
             </div>

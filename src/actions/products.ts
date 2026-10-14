@@ -103,19 +103,17 @@ async function writeProductRow(
   return { data: firstRow(result.data), error: result.error };
 }
 
-/** Preset totals from live per-box columns. Variant flat prices are not used. */
+/** Per-box rate from the matching variant, then the product-row column. */
 function handBoxTierOptions(raw: any, baseSku: string, variants: any[] = []): PackageOption[] {
   const prices = readBoxTierPrices(raw);
   return BOX_PRICE_PRESETS.flatMap((tier) => {
-    const unit = unitBoxPriceForCount(prices, tier.boxes);
+    const match = variants.find(
+      (variant) => Number(variant?.boxes_count ?? variant?.boxesCount ?? 0) === tier.boxes
+    );
+    const unit =
+      parsePositivePrice(match?.priceUsd, match?.price_usd, match?.price) ??
+      unitBoxPriceForCount(prices, tier.boxes);
     if (unit === null) return [];
-    const match = variants.find((variant) => {
-      const boxes = Number(variant?.boxes_count ?? variant?.boxesCount ?? 0);
-      const rolls = Number(
-        variant?.rollsPerBox ?? variant?.rolls_count ?? variant?.rollsCount ?? variant?.rolls ?? 0
-      );
-      return boxes === tier.boxes || rolls === tier.rolls;
-    });
     return [
       {
         rolls: tier.rolls,
@@ -989,6 +987,52 @@ async function insertPackageVariant(
   throw new Error("Failed to create package option.");
 }
 
+const BOX_TIER_COUNTS = [1, 16, 32, 64] as const;
+
+function boxPriceColumnPatch(tiers: ProductFormValues["packageTiers"] | undefined) {
+  const patch: Record<string, number> = {};
+  for (const tier of tiers || []) {
+    const boxes = Number(tier.boxesCount);
+    const price = Number(tier.price);
+    if (!Number.isFinite(price) || price <= 0) continue;
+    const amount = Number(price.toFixed(2));
+    if (boxes === 1) patch.price_1_box = amount;
+    if (boxes === 16) patch.price_16_boxes = amount;
+    if (boxes === 32) patch.price_32_boxes = amount;
+    if (boxes === 64) patch.price_64_boxes = amount;
+  }
+  return patch;
+}
+
+async function updatePackageVariant(
+  supabase: Awaited<ReturnType<typeof getProductWriteClient>>,
+  id: string,
+  productId: string,
+  payload: Record<string, unknown>
+) {
+  let next = { ...payload };
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const result = await supabase
+      .from("product_variants")
+      .update(next)
+      .eq("id", id)
+      .eq("product_id", productId)
+      .select("*");
+    if (!result.error) return firstRow(result.data);
+    const message = result.error.message || "";
+    const missing =
+      message.match(/Could not find the ['"]([a-z0-9_]+)['"] column/i) ||
+      message.match(/column ["']?([a-z0-9_]+)["']?/i);
+    const unknownColumn = /does not exist/i.test(message) || /schema cache/i.test(message);
+    if (!missing || !unknownColumn || !(missing[1] in next)) {
+      throw new Error(message || "Failed to update package option.");
+    }
+    delete next[missing[1]];
+    next = { ...next };
+  }
+  throw new Error("Failed to update package option.");
+}
+
 async function syncBaseVariant(
   supabase: Awaited<ReturnType<typeof getProductWriteClient>>,
   productId: string,
@@ -1002,33 +1046,71 @@ async function syncBaseVariant(
   const pricedTierIds = new Set<string>();
 
   for (const tier of values.packageTiers || []) {
+    const boxes = Number(tier.boxesCount);
+    const isBoxTier = BOX_TIER_COUNTS.includes(boxes as (typeof BOX_TIER_COUNTS)[number]);
+    if (!isBoxTier) {
+      if (tier.price === null || tier.price === undefined || !Number.isFinite(Number(tier.price))) continue;
+      if (Number(tier.price) < 0) continue;
+      const legacyPrice = Number(Number(tier.price).toFixed(2));
+      if (tier.id) {
+        await supabase
+          .from("product_variants")
+          .update({ price: legacyPrice })
+          .eq("id", tier.id)
+          .eq("product_id", productId);
+        pricedTierIds.add(String(tier.id));
+        const match = variants.find((variant) => String(variant.id) === String(tier.id));
+        if (match) match.price = legacyPrice;
+        continue;
+      }
+      const sku =
+        tier.sku?.trim() ||
+        `${String(productId).replace(/-/g, "").slice(0, 8)}-${boxes || 1}B`;
+      const inserted = await insertPackageVariant(supabase, {
+        product_id: productId,
+        sku,
+        title: tier.label,
+        rolls_count: tier.rollsCount ?? null,
+        boxes_count: tier.boxesCount ?? null,
+        price: legacyPrice,
+        stock_quantity: 0,
+      });
+      if (inserted) {
+        variants.push(inserted);
+        pricedTierIds.add(String(inserted.id));
+      }
+      continue;
+    }
     if (tier.price === null || tier.price === undefined || !Number.isFinite(Number(tier.price))) continue;
-    if (Number(tier.price) < 0) continue;
+    if (Number(tier.price) <= 0) continue;
     const price = Number(Number(tier.price).toFixed(2));
+    const existing =
+      variants.find((variant) => Number(variant.boxes_count) === boxes) ||
+      (tier.id ? variants.find((variant) => String(variant.id) === String(tier.id)) : undefined);
+    const sku =
+      tier.sku?.trim() ||
+      existing?.sku ||
+      `${String(productId).replace(/-/g, "").slice(0, 8)}-${boxes}B`;
+    const payload = {
+      price,
+      price_usd: price,
+      boxes_count: boxes,
+      rolls_count: tier.rollsCount ?? null,
+      title: tier.label,
+      sku,
+    };
 
-    if (tier.id) {
-      await supabase
-        .from("product_variants")
-        .update({ price })
-        .eq("id", tier.id)
-        .eq("product_id", productId);
-      pricedTierIds.add(String(tier.id));
-      const match = variants.find((variant) => String(variant.id) === String(tier.id));
-      if (match) match.price = price;
+    if (existing?.id) {
+      const updated = await updatePackageVariant(supabase, String(existing.id), productId, payload);
+      pricedTierIds.add(String(existing.id));
+      if (updated) Object.assign(existing, updated);
+      else Object.assign(existing, payload);
       continue;
     }
 
-    const boxes = Number(tier.boxesCount) || 1;
-    const sku =
-      tier.sku?.trim() ||
-      `${String(productId).replace(/-/g, "").slice(0, 8)}-${boxes}B`;
     const inserted = await insertPackageVariant(supabase, {
       product_id: productId,
-      sku,
-      title: tier.label,
-      rolls_count: tier.rollsCount ?? null,
-      boxes_count: tier.boxesCount ?? null,
-      price,
+      ...payload,
       stock_quantity: 0,
     });
     if (inserted) {
@@ -1264,6 +1346,7 @@ export async function createProduct(values: ProductFormValues) {
       price_12_rolls: values.price12Rolls ?? PACKAGE_TIER_DEFAULTS.price12Rolls,
       price_20_rolls: values.price20Rolls ?? PACKAGE_TIER_DEFAULTS.price20Rolls,
       price_40_rolls: values.price40Rolls ?? PACKAGE_TIER_DEFAULTS.price40Rolls,
+      ...boxPriceColumnPatch(values.packageTiers),
       stock_quantity: values.stockQuantity ?? 0,
       is_sold_out: values.isSoldOut ?? false,
       is_active: values.isActive ?? true,
@@ -1357,6 +1440,7 @@ export async function updateProduct(id: string, values: Partial<ProductFormValue
     if (values.price12Rolls !== undefined) updatePayload.price_12_rolls = values.price12Rolls;
     if (values.price20Rolls !== undefined) updatePayload.price_20_rolls = values.price20Rolls;
     if (values.price40Rolls !== undefined) updatePayload.price_40_rolls = values.price40Rolls;
+    Object.assign(updatePayload, boxPriceColumnPatch(values.packageTiers));
     if (values.stockQuantity !== undefined && values.stockQuantity !== null) {
       updatePayload.stock_quantity = values.stockQuantity;
       updatePayload.stock_qty = values.stockQuantity;

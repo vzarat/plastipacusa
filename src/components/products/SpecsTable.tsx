@@ -88,7 +88,12 @@ function handMatrixRows(
   return BOX_PRICE_PRESETS.map((tier) => {
     const match =
       variants.find((variant) => variantRollCount(variant) === tier.rolls) || null;
-    const unit = unitBoxPriceForCount(prices, tier.boxes);
+    const storedUnit = Number(match?.priceUsd ?? (match as { price?: number } | null)?.price);
+    const variantUnit =
+      Number(match?.boxes_count ?? match?.boxesCount) === tier.boxes && storedUnit > 0
+        ? storedUnit
+        : null;
+    const unit = variantUnit ?? unitBoxPriceForCount(prices, tier.boxes);
     const price = unit != null ? totalForBoxes(unit, tier.boxes) : 0;
     return {
       ...(match || boxVariant || sample),
@@ -263,13 +268,15 @@ export function SpecsTable({ variants, product }: SpecsTableProps) {
                         )
                       ) : Number((v as { boxUnitPrice?: number }).boxUnitPrice) > 0 && boxes > 0 ? (
                         <span className="block whitespace-normal text-right">
-                          <span className="block text-xs font-bold text-slate-500">
-                            {formatCurrency((v as { boxUnitPrice?: number }).boxUnitPrice)}/box
+                          <span className="block">
+                            {formatCurrency(
+                              Number((v as { boxUnitPrice?: number }).boxUnitPrice) * boxes
+                            )}{" "}
+                            USD
                           </span>
-                          {boxes} × {formatCurrency((v as { boxUnitPrice?: number }).boxUnitPrice)} ={" "}
-                          {formatCurrency(
-                            Number((v as { boxUnitPrice?: number }).boxUnitPrice) * boxes
-                          )}
+                          <span className="block text-xs font-semibold text-slate-500">
+                            {formatCurrency((v as { boxUnitPrice?: number }).boxUnitPrice)} USD / box
+                          </span>
                         </span>
                       ) : (
                         "—"
