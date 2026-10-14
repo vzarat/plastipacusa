@@ -1312,6 +1312,37 @@ export async function getAdminProductVariants(productId: string): Promise<AdminP
 }
 
 /**
+ * Ping products and product_variants so the admin catalog can confirm Supabase is reachable.
+ */
+export async function testAdminDatabaseConnection(): Promise<
+  | { ok: true; products: number; variants: number }
+  | { ok: false; error: string }
+> {
+  const { isAdmin } = await verifyAdmin();
+  if (!isAdmin) {
+    return { ok: false, error: "Unauthorized." };
+  }
+
+  try {
+    const supabase = await getProductWriteClient();
+    const { error, count } = await supabase
+      .from("products")
+      .select("id", { count: "exact", head: true });
+    if (error) throw error;
+
+    const { error: variantsError, count: variantsCount } = await supabase
+      .from("product_variants")
+      .select("id", { count: "exact", head: true });
+    if (variantsError) throw variantsError;
+
+    return { ok: true, products: count ?? 0, variants: variantsCount ?? 0 };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Sin conexión";
+    return { ok: false, error: message };
+  }
+}
+
+/**
  * Fetch the full flat product list (no variant joins) for the Admin Product Management UI.
  */
 export async function getAdminProducts(): Promise<AdminProduct[]> {

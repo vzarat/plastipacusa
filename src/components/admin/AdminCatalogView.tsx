@@ -20,7 +20,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { AdminProduct } from "@/types/product";
 import { STRETCH_FILM_PLACEHOLDER } from "@/lib/products";
-import { deleteProduct, toggleProductActive } from "@/actions/products";
+import { deleteProduct, testAdminDatabaseConnection, toggleProductActive } from "@/actions/products";
+import { toast } from "sonner";
 import { ProductFormModal } from "./ProductFormModal";
 
 interface AdminCatalogViewProps {
@@ -118,6 +119,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [localToast, setLocalToast] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = PAGE_SIZE;
@@ -203,6 +205,23 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
     setIsModalOpen(true);
   };
 
+  const testConnection = async () => {
+    if (isTestingConnection) return;
+    setIsTestingConnection(true);
+    try {
+      const result = await testAdminDatabaseConnection();
+      if (!result.ok) throw new Error(result.error);
+      toast.success(
+        `Conectado a Supabase: ${result.products} productos y ${result.variants} variantes en la BD.`
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Sin conexión";
+      toast.error(`Error de conexión a Supabase: ${message}`);
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
   const handleEdit = (product: AdminProduct) => {
     setEditingProduct(product);
     setIsModalOpen(true);
@@ -284,6 +303,17 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
         </div>
 
         <div className="flex items-center gap-2.5">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={testConnection}
+            disabled={isTestingConnection}
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl cursor-pointer"
+          >
+            {isTestingConnection ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+            <span>{isTestingConnection ? "Verificando…" : "Test DB Connection"}</span>
+          </Button>
           <Button
             size="sm"
             onClick={handleAdd}
