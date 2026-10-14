@@ -46,13 +46,9 @@ import {
   sortProductsByDimensions,
 } from "@/lib/products";
 
-/** Named so PostgREST returns the box-rate columns even when `*` is cached without them. */
-const CATALOG_WITH_RELATIONS =
-  "*, price_1_box, price_16_boxes, price_32_boxes, price_64_boxes, categories (*), product_variants (*)" as const;
-const CATALOG_WITH_VARIANTS =
-  "*, price_1_box, price_16_boxes, price_32_boxes, price_64_boxes, product_variants (*)" as const;
-const CATALOG_PRODUCT_COLUMNS =
-  "*, price_1_box, price_16_boxes, price_32_boxes, price_64_boxes" as const;
+/** Optional box rates. A missing column must not discard the product list. */
+const BOX_PRICE_COLUMN_SELECT =
+  "id, price_1_box, price_16_boxes, price_32_boxes, price_64_boxes" as const;
 
 async function getProductWriteClient() {
   if (isServiceRoleConfigured()) return createServiceRoleClient();
@@ -698,6 +694,77 @@ export async function getProductSlugs(): Promise<{ slug: string }[]> {
   return GENESIS_MACHINE_FALLBACK_PRODUCTS.map((p) => ({ slug: p.slug }));
 }
 
+type CatalogClient = Awaited<ReturnType<typeof createServerClient>>;
+
+/**
+ * Keep every product row. Variants and box-rate columns are attached only when
+ * those queries succeed, so a product with no variant is still returned.
+ */
+async function attachCatalogRelations(supabase: CatalogClient, products: any[]) {
+  if (!products.length) return products;
+
+  try {
+  const ids = products.map((product) => product.id).filter((id) => id != null && id !== "");
+  const [embedded, variantRows, priceRows, categories] = await Promise.all([
+    supabase.from("products").select("*, product_variants(*)").in("id", ids),
+    supabase.from("product_variants").select("*").in("product_id", ids),
+    supabase.from("products").select(BOX_PRICE_COLUMN_SELECT).in("id", ids),
+    supabase.from("categories").select("id, slug, name"),
+  ]);
+
+  const variantsByProduct = new Map<string, any[]>();
+  const embedKeepsEveryProduct =
+    !embedded.error &&
+    Array.isArray(embedded.data) &&
+    embedded.data.length >= products.length;
+
+  if (embedKeepsEveryProduct) {
+    for (const row of embedded.data || []) {
+      variantsByProduct.set(
+        String(row.id),
+        Array.isArray(row.product_variants) ? row.product_variants : []
+      );
+    }
+  } else if (!variantRows.error) {
+    for (const variant of variantRows.data || []) {
+      const key = String(variant.product_id ?? variant.productId ?? "");
+      if (!key) continue;
+      const list = variantsByProduct.get(key) || [];
+      list.push(variant);
+      variantsByProduct.set(key, list);
+    }
+  } else {
+    console.error("Catalog variant attach failed:", embedded.error || variantRows.error);
+  }
+
+  const pricesById = new Map(
+    (!priceRows.error ? priceRows.data || [] : []).map((row) => [String(row.id), row])
+  );
+  if (priceRows.error) {
+    console.error("Catalog box-price columns unavailable:", priceRows.error.message);
+  }
+  const categoriesById = new Map(
+    (!categories.error ? categories.data || [] : []).map((category) => [String(category.id), category])
+  );
+
+  return products.map((product) => ({
+    ...product,
+    ...(pricesById.get(String(product.id)) || {}),
+    categories:
+      categoriesById.get(String(product.category_id ?? product.categoryId)) ||
+      product.categories ||
+      null,
+    product_variants: variantsByProduct.get(String(product.id)) || [],
+  }));
+  } catch (err) {
+    console.error("Catalog relation attach failed:", err);
+    return products.map((product) => ({
+      ...product,
+      product_variants: Array.isArray(product.product_variants) ? product.product_variants : [],
+    }));
+  }
+}
+
 /**
  * Fetch all products joined with categories and product_variants across all categories
  * Supports optional applicationFilter and categoryFilter
@@ -743,53 +810,25 @@ export async function getProducts(
 
   try {
     if (isSupabaseConfigured) {
-      // 1. Try relational query with categories and product_variants
       try {
-        // Fetch broadly, then filter by formatted application so `type = Machine`
-        // rows without an `application` column still appear in machine catalogs.
-        const query = supabase
+        const { data, error } = await supabase
           .from("products")
-          .select(CATALOG_WITH_RELATIONS)
+          .select("*")
           .order("created_at", { ascending: false });
 
-        const { data, error } = await query;
-
-        if (!error && data && data.length > 0) {
-          return finalizeCatalog(data.map(formatProduct));
-        }
-
-        // 2. If categories table is not related, fallback to product_variants
         if (error) {
-          const flatQuery = supabase
-            .from("products")
-            .select(CATALOG_WITH_VARIANTS)
-            .order("created_at", { ascending: false });
-
-          const { data: flatData, error: flatError } = await flatQuery;
-          if (!flatError && flatData && flatData.length > 0) {
-            return finalizeCatalog(flatData.map(formatProduct));
-          }
-
-          // 3. Flat query without joins (handles schema cache without FKs)
-          const { data: rawProds, error: rawError } = await supabase
-            .from("products")
-            .select(CATALOG_PRODUCT_COLUMNS)
-            .order("created_at", { ascending: false });
-
-          if (!rawError && rawProds && rawProds.length > 0) {
-            const { data: rawVariants } = await supabase
-              .from("product_variants")
-              .select("*");
-
-            const combined = rawProds.map((p) => ({
-              ...p,
-              product_variants: (rawVariants || []).filter(
-                (v: any) => v.product_id === p.id || v.productId === p.id
-              ),
-            }));
-
-            return finalizeCatalog(combined.map(formatProduct));
-          }
+          console.error("getProducts query error:", error);
+        } else if (data) {
+          const rows = await attachCatalogRelations(supabase, data);
+          const formatted = rows.flatMap((row) => {
+            try {
+              return [formatProduct(row)];
+            } catch (formatError) {
+              console.error("formatProduct failed:", row?.slug || row?.id, formatError);
+              return [];
+            }
+          });
+          return finalizeCatalog(formatted);
         }
       } catch (sbErr: any) {
         console.error("Supabase getProducts query exception:", sbErr?.message || sbErr);
@@ -816,50 +855,18 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
 
     if (isSupabaseConfigured) {
       try {
-        // 1. Relational query with categories and product_variants
         const { data, error } = await supabase
           .from("products")
-          .select(CATALOG_WITH_RELATIONS)
+          .select("*")
           .eq("slug", slug)
           .maybeSingle();
 
-        if (!error && data) {
-          const product = formatProduct(data);
-          return isFiftyGaugeStorefrontProduct(product) ? null : product;
-        }
-
-        // 2. Fallback to product_variants query if categories relation is omitted
         if (error) {
-          const { data: flatData, error: flatError } = await supabase
-            .from("products")
-            .select(CATALOG_WITH_VARIANTS)
-            .eq("slug", slug)
-            .maybeSingle();
-
-          if (!flatError && flatData) {
-            const product = formatProduct(flatData);
-            return isFiftyGaugeStorefrontProduct(product) ? null : product;
-          }
-
-          // 3. Flat query without joins
-          const { data: rawProd, error: rawProdError } = await supabase
-            .from("products")
-            .select(CATALOG_PRODUCT_COLUMNS)
-            .eq("slug", slug)
-            .maybeSingle();
-
-          if (!rawProdError && rawProd) {
-            const { data: rawVariants } = await supabase
-              .from("product_variants")
-              .select("*")
-              .eq("product_id", rawProd.id);
-
-            const product = formatProduct({
-              ...rawProd,
-              product_variants: rawVariants || [],
-            });
-            return isFiftyGaugeStorefrontProduct(product) ? null : product;
-          }
+          console.error("getProductBySlug query error:", error);
+        } else if (data) {
+          const [row] = await attachCatalogRelations(supabase, [data]);
+          const product = formatProduct(row);
+          return isFiftyGaugeStorefrontProduct(product) ? null : product;
         }
       } catch (sbErr: any) {
         console.error("Supabase getProductBySlug exception:", sbErr?.message || sbErr);
