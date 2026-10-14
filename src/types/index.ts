@@ -96,6 +96,10 @@ export interface ProductWithVariants
   packageOptions?: PackageOption[];
   /** Live per-box prices from price_1_box / price_16_boxes / price_32_boxes / price_64_boxes. */
   boxPrices?: BoxTierPrices;
+  price_1_box?: number | null;
+  price_16_boxes?: number | null;
+  price_32_boxes?: number | null;
+  price_64_boxes?: number | null;
   /** Exact featured-series label used for tab filtering (no partial matches). */
   series?: string;
 }

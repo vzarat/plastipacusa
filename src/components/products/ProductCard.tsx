@@ -14,7 +14,7 @@ import {
   SERIES_GENESIS_STANDARD,
   STRETCH_FILM_PLACEHOLDER,
 } from "@/lib/products";
-import { readBoxTierPrices, startingBoxUnitPrice } from "@/lib/pricing";
+import { catalogCardStartingPrice, readBoxTierPrices } from "@/lib/pricing";
 interface ProductCardProps {
   product: ProductWithVariants;
   priority?: boolean;
@@ -144,15 +144,12 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   const catStyles =
     CATEGORY_STYLES[resolvedCategorySlug] || CATEGORY_STYLES["force-standard"];
 
-  const handBoxUnit = isGenesis
-    ? null
-    : startingBoxUnitPrice(readBoxTierPrices(product));
+  const boxPrices = readBoxTierPrices(product);
+  const columnQuote = catalogCardStartingPrice(product);
+  const priceFromBoxColumn =
+    columnQuote.source === "price_64_boxes" || columnQuote.source === "price_1_box";
 
-  // Find minimum starting price among variants / package options / product base
-  const variantPrices = (product?.variants || [])
-    .map((v) => parseFloat(String(v.priceUsd)))
-    .filter((p) => Number.isFinite(p) && p > 0);
-
+  // Variant price first. If none is valid, use price_64_boxes, then price_1_box.
   const packagePrices = (product?.packageOptions || [])
     .map((opt) => Number(opt.price))
     .filter((p) => Number.isFinite(p) && p > 0);
@@ -161,17 +158,14 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   const basePrice = Number((product as any)?.priceUsd);
 
   const priceCandidates = [
-    ...variantPrices,
     ...packagePrices,
     ...(Number.isFinite(startingPrice) && startingPrice > 0 ? [startingPrice] : []),
     ...(Number.isFinite(basePrice) && basePrice > 0 ? [basePrice] : []),
   ];
 
-  const primaryPrice = handBoxUnit
-    ? handBoxUnit
-    : priceCandidates.length > 0
-      ? Math.min(...priceCandidates)
-      : null;
+  const primaryPrice =
+    columnQuote.amount ??
+    (priceCandidates.length > 0 ? Math.min(...priceCandidates) : null);
   const primaryVariant = product?.variants?.[0];
   const cheapestPackage = [...(product?.packageOptions || [])].sort(
     (a, b) => a.price - b.price
@@ -223,14 +217,15 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   const comparePrice =
     priceCandidates.length > 1 ? Math.max(...priceCandidates) : null;
   const showCompare =
-    handBoxUnit == null &&
+    !priceFromBoxColumn &&
     primaryPrice !== null &&
     comparePrice !== null &&
     comparePrice > primaryPrice;
   const productHref = `/products/${product?.slug || "stretch-film-18-x-60-ga-x-1000ft"}`;
   const statusBadge = isSoldOut ? "SOLD OUT" : showCompare ? "HOT DEAL" : "FREE SHIPPING";
 
-  const volumeTierLabel = handBoxUnit
+  const volumeTierLabel =
+    !isGenesis && (boxPrices.price1Box != null || boxPrices.price64Boxes != null)
     ? "Volume tiers: 1, 16, 32 & 64 boxes"
     : availableTiers.length > 0
       ? `Volume tiers: ${availableTiers.join(" & ")}`
@@ -271,7 +266,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         <div className="mt-2 flex items-baseline gap-2">
           <span className="text-lg font-bold text-red-600">
             {primaryPrice !== null ? formatCurrency(primaryPrice) : "—"}
-            {handBoxUnit ? (
+            {priceFromBoxColumn ? (
               <span className="ml-1 text-xs font-semibold text-slate-500">/ box</span>
             ) : null}
           </span>
@@ -406,7 +401,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               </span>
               {primaryPrice !== null && (
                 <span className="hidden text-xs font-bold text-slate-500 md:inline">
-                  {handBoxUnit ? "/ box" : "USD"}
+                  {priceFromBoxColumn ? "/ box" : "USD"}
                 </span>
               )}
             </div>

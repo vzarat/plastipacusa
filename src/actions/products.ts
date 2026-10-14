@@ -24,7 +24,6 @@ import { packageTotalWeightLbs } from "@/lib/package-weight";
 import {
   BOX_PRICE_PRESETS,
   readBoxTierPrices,
-  startingBoxUnitPrice,
   totalForBoxes,
   unitBoxPriceForCount,
 } from "@/lib/pricing";
@@ -45,6 +44,14 @@ import {
   seriesLabelFromCategorySlug,
   sortProductsByDimensions,
 } from "@/lib/products";
+
+/** Named so PostgREST returns the box-rate columns even when `*` is cached without them. */
+const CATALOG_WITH_RELATIONS =
+  "*, price_1_box, price_16_boxes, price_32_boxes, price_64_boxes, categories (*), product_variants (*)" as const;
+const CATALOG_WITH_VARIANTS =
+  "*, price_1_box, price_16_boxes, price_32_boxes, price_64_boxes, product_variants (*)" as const;
+const CATALOG_PRODUCT_COLUMNS =
+  "*, price_1_box, price_16_boxes, price_32_boxes, price_64_boxes" as const;
 
 async function getProductWriteClient() {
   if (isServiceRoleConfigured()) return createServiceRoleClient();
@@ -548,17 +555,19 @@ function formatProduct(raw: any): ProductWithVariants {
   }
 
   const boxPrices = readBoxTierPrices(raw);
-  const handStartingUnit = isMachineProduct ? null : startingBoxUnitPrice(boxPrices);
+  const variantAmounts = warehouseVariants
+    .map((variant) => parsePositivePrice(variant.priceUsd))
+    .filter((price): price is number => price !== null);
+  const variantStart = variantAmounts.length > 0 ? Math.min(...variantAmounts) : null;
+  const columnStart = boxPrices.price64Boxes ?? boxPrices.price1Box ?? null;
   const candidatePrices = [
-    ...(isMachineProduct
-      ? warehouseVariants.map((v) => parsePositivePrice(v.priceUsd))
-      : packageOptions.map((opt) => parsePositivePrice(opt.boxUnitPrice))),
     ...(isMachineProduct ? packageOptions.map((opt) => parsePositivePrice(opt.price)) : []),
     ...(isMachineProduct ? [productBasePrice] : []),
   ].filter((p): p is number => p !== null);
 
   const minPrice =
-    handStartingUnit ??
+    variantStart ??
+    columnStart ??
     (candidatePrices.length > 0 ? Math.min(...candidatePrices) : undefined);
 
   const categorySlug = earlyCategorySlug;
@@ -647,6 +656,10 @@ function formatProduct(raw: any): ProductWithVariants {
     price40Rolls: price40Rolls ?? undefined,
     packageOptions,
     boxPrices,
+    price_1_box: boxPrices.price1Box,
+    price_16_boxes: boxPrices.price16Boxes,
+    price_32_boxes: boxPrices.price32Boxes,
+    price_64_boxes: boxPrices.price64Boxes,
   };
 }
 
@@ -737,11 +750,7 @@ export async function getProducts(
         // rows without an `application` column still appear in machine catalogs.
         const query = supabase
           .from("products")
-          .select(`
-            *,
-            categories (*),
-            product_variants (*)
-          `)
+          .select(CATALOG_WITH_RELATIONS)
           .order("created_at", { ascending: false });
 
         const { data, error } = await query;
@@ -754,10 +763,7 @@ export async function getProducts(
         if (error) {
           const flatQuery = supabase
             .from("products")
-            .select(`
-              *,
-              product_variants (*)
-            `)
+            .select(CATALOG_WITH_VARIANTS)
             .order("created_at", { ascending: false });
 
           const { data: flatData, error: flatError } = await flatQuery;
@@ -768,7 +774,7 @@ export async function getProducts(
           // 3. Flat query without joins (handles schema cache without FKs)
           const { data: rawProds, error: rawError } = await supabase
             .from("products")
-            .select("*")
+            .select(CATALOG_PRODUCT_COLUMNS)
             .order("created_at", { ascending: false });
 
           if (!rawError && rawProds && rawProds.length > 0) {
@@ -814,11 +820,7 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
         // 1. Relational query with categories and product_variants
         const { data, error } = await supabase
           .from("products")
-          .select(`
-            *,
-            categories (*),
-            product_variants (*)
-          `)
+          .select(CATALOG_WITH_RELATIONS)
           .eq("slug", slug)
           .maybeSingle();
 
@@ -831,10 +833,7 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
         if (error) {
           const { data: flatData, error: flatError } = await supabase
             .from("products")
-            .select(`
-              *,
-              product_variants (*)
-            `)
+            .select(CATALOG_WITH_VARIANTS)
             .eq("slug", slug)
             .maybeSingle();
 
@@ -846,7 +845,7 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
           // 3. Flat query without joins
           const { data: rawProd, error: rawProdError } = await supabase
             .from("products")
-            .select("*")
+            .select(CATALOG_PRODUCT_COLUMNS)
             .eq("slug", slug)
             .maybeSingle();
 

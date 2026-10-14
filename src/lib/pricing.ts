@@ -99,6 +99,46 @@ export function startingBoxUnitPrice(
   );
 }
 
+export type CatalogCardPriceSource = "variant" | "price_64_boxes" | "price_1_box";
+
+/**
+ * Catalog "Starting at" price.
+ * A positive product_variants price wins. Otherwise use the product row:
+ * price_64_boxes, then price_1_box.
+ */
+export function catalogCardStartingPrice(product: unknown): {
+  amount: number | null;
+  source: CatalogCardPriceSource | null;
+} {
+  const row =
+    product && typeof product === "object" ? (product as Record<string, unknown>) : {};
+  const variants = Array.isArray(row.variants)
+    ? row.variants
+    : Array.isArray(row.product_variants)
+      ? row.product_variants
+      : [];
+  const variantPrices = variants
+    .map((variant) => {
+      if (!variant || typeof variant !== "object") return null;
+      const record = variant as Record<string, unknown>;
+      return firstPositive(record.priceUsd, record.price_usd, record.price);
+    })
+    .filter((price): price is number => price != null);
+
+  if (variantPrices.length > 0) {
+    return { amount: Math.min(...variantPrices), source: "variant" };
+  }
+
+  const prices = readBoxTierPrices(product);
+  if (prices.price64Boxes != null) {
+    return { amount: prices.price64Boxes, source: "price_64_boxes" };
+  }
+  if (prices.price1Box != null) {
+    return { amount: prices.price1Box, source: "price_1_box" };
+  }
+  return { amount: null, source: null };
+}
+
 export function bracketForBoxCount(boxes: number): BoxPricePreset | null {
   const count = Math.floor(Number(boxes));
   if (!Number.isFinite(count) || count < 1) return null;

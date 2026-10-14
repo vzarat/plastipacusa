@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   bracketForBoxCount,
+  catalogCardStartingPrice,
   formatBoxPriceEquation,
   repriceHandCartLine,
   totalForBoxes,
@@ -61,6 +62,32 @@ describe("box price × box quantity", () => {
     const twoPallets = repriceHandCartLine({ ...onePallet, quantity: 2 }, prices);
     assert.equal(twoPallets.boxUnitPrice, 21.2);
     assert.equal(twoPallets.totalPrice, 2713.6);
+  });
+
+  it("uses a variant price, then price_64_boxes, then price_1_box on catalog cards", () => {
+    assert.deepEqual(
+      catalogCardStartingPrice({
+        variants: [{ priceUsd: "0" }, { price: "" }],
+        price_64_boxes: "21.20",
+        price_1_box: "33.14",
+      }),
+      { amount: 21.2, source: "price_64_boxes" }
+    );
+    assert.deepEqual(
+      catalogCardStartingPrice({
+        variants: [],
+        boxPrices: { price1Box: 33.14, price16Boxes: null, price32Boxes: null, price64Boxes: null },
+      }),
+      { amount: 33.14, source: "price_1_box" }
+    );
+    assert.deepEqual(
+      catalogCardStartingPrice({
+        variants: [{ priceUsd: "18.50" }],
+        price_64_boxes: 21.2,
+        price_1_box: 33.14,
+      }),
+      { amount: 18.5, source: "variant" }
+    );
   });
 
   it("does not invent a discount when the bracket column is empty", () => {
