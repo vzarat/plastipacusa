@@ -118,7 +118,7 @@ function handBoxTierOptions(raw: any, baseSku: string, variants: any[] = []): Pa
         label: formatBoxRollLabel(tier.boxes, tier.rolls),
         sku: String(match?.sku || `${baseSku}-${tier.boxes}BX`),
         boxUnitPrice: unit,
-        price: totalForBoxes(unit, tier.boxes),
+        price: unit,
       },
     ];
   });
@@ -638,7 +638,7 @@ function formatProduct(raw: any): ProductWithVariants {
     palletizingFamily: palletizing.familyLabel,
     partNumber: raw.part_number || raw.partNumber || null,
     stockQuantity: Number(raw.stock_quantity ?? raw.stockQuantity ?? 0),
-    isSoldOut: Boolean(raw.is_sold_out ?? raw.isSoldOut ?? false),
+    isSoldOut: raw.is_sold_out === true || raw.isSoldOut === true,
     isActive: raw.is_active === undefined && raw.isActive === undefined ? true : Boolean(raw.is_active ?? raw.isActive),
     storefrontTitle: raw.storefront_title || raw.storefrontTitle || null,
     priceCase: raw.price_case === null || raw.price_case === undefined ? null : Number(raw.price_case),

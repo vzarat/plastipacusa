@@ -267,7 +267,6 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
     const columnUnit = unitBoxPriceForCount(prices, tier.boxes);
     const unit = perBoxPriceFromVariant(matched, tier.boxes) ?? columnUnit;
     if (unit == null || !(unit > 0)) return [];
-    const total = totalForBoxes(unit, tier.boxes);
     const savings =
       baseBoxPrice && tier.boxes > 1 && unit < baseBoxPrice
         ? Math.round(((baseBoxPrice - unit) / baseBoxPrice) * 100)
@@ -284,8 +283,8 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
         tierBadges: savings > 0 ? [`Save ${savings}% OFF`] : [],
         tierTag: tier.boxes >= 64 && savings > 0 ? "BEST VALUE" : "",
         boxUnitPrice: unit,
-        priceUsd: total.toFixed(2),
-        price: total,
+        priceUsd: unit.toFixed(2),
+        price: unit,
         rollsPerBox: tier.rolls,
         rolls_count: tier.rolls,
         rollsCount: tier.rolls,
@@ -390,7 +389,9 @@ export function VariantSelector({
       if (product?.packageOptions?.length) {
         return product.packageOptions
           .map((opt: any) => {
-            const price = Number(opt?.price);
+            const perBox = Number(opt?.boxUnitPrice);
+            const stored = Number(opt?.price);
+            const price = perBox > 0 ? perBox : stored;
             if (!Number.isFinite(price) || price <= 0) return null;
             const rolls = Number(opt?.rolls) || 1;
             const keepStoredLabel = usesCompact1880Pallets({
@@ -411,7 +412,7 @@ export function VariantSelector({
               title: label,
               priceUsd: String(price),
               price,
-              boxUnitPrice: Number(opt?.boxUnitPrice) > 0 ? Number(opt.boxUnitPrice) : undefined,
+              boxUnitPrice: price,
               boxes: Number(opt?.boxes) > 0 ? Number(opt.boxes) : undefined,
               rollsPerBox: rolls,
               rollsPerPallet: product?.fullPalletRolls || (isMachineFilm ? 40 : 192),
@@ -626,7 +627,9 @@ export function VariantSelector({
   const parsedPackagePrice = parseFloat(
     String(selectedVariant?.priceUsd ?? (selectedVariant as any)?.price ?? "")
   );
-  const listBoxUnit = !isMachineFilm ? Number((selectedVariant as any)?.boxUnitPrice) || 0 : 0;
+  const listBoxUnit = !isMachineFilm
+    ? perBoxPriceFromVariant(selectedVariant, packageBoxes) || 0
+    : 0;
   const listPackageUnit = isMachineFilm
     ? Number.isFinite(parsedPackagePrice) && parsedPackagePrice > 0
       ? parsedPackagePrice
@@ -739,7 +742,7 @@ export function VariantSelector({
     setTierHint(null);
   };
 
-  const isSoldOut = Boolean(product?.isSoldOut);
+  const isSoldOut = product?.isSoldOut === true;
 
   const handleAddToCart = () => {
     if (isSoldOut) return;
@@ -875,8 +878,11 @@ export function VariantSelector({
         </div>
 
         <div className="flex items-center gap-2">
-          <Badge variant="success" className="text-xs font-semibold px-3 py-1">
-            ● {t("products.inStock")}
+          <Badge
+            variant={isSoldOut ? "secondary" : "success"}
+            className="text-xs font-semibold px-3 py-1"
+          >
+            ● {isSoldOut ? t("products.soldOut") : t("products.inStock")}
           </Badge>
         </div>
       </div>
@@ -911,14 +917,16 @@ export function VariantSelector({
 
             const originalPrice = getVariantPrice(variant);
             const price = applyDiscountToPrice(originalPrice, appliedDiscount);
-            const optionBoxUnit = !isMachineFilm ? Number(variant?.boxUnitPrice) || 0 : 0;
+            const boxesCount = getBoxesCount(variant, isMachineFilm);
+            const optionBoxUnit = !isMachineFilm
+              ? perBoxPriceFromVariant(variant, boxesCount) || 0
+              : 0;
             const optionBoxUnitDiscounted =
               optionBoxUnit > 0 ? applyDiscountToPrice(optionBoxUnit, appliedDiscount) : 0;
             const variantTitle = variant?.tierKey
               ? String(variant.title)
               : displayPackageTitle(variant, isMachineFilm);
             const rollsCount = getRollsCount(variant);
-            const boxesCount = getBoxesCount(variant, isMachineFilm);
             const tierBadges: string[] = Array.isArray(variant?.tierBadges)
               ? variant.tierBadges
               : [];
@@ -1264,11 +1272,11 @@ export function VariantSelector({
             }`}
           >
             <ShoppingCart className="w-4 h-4" />
-            <span>{isSoldOut ? "Sold Out" : t("products.addToCart")}</span>
+            <span>{isSoldOut ? t("products.soldOut") : t("products.addToCart")}</span>
           </Button>
 
           <DirectCheckoutButton
-            label={isSoldOut ? "Sold Out" : t("products.directCheckout")}
+            label={isSoldOut ? t("products.soldOut") : t("products.directCheckout")}
             disabled={isSoldOut}
             className={
               isSoldOut
