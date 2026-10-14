@@ -10,12 +10,12 @@ export const CATALOG_GAUGES = [51, 60, 70, 80] as const;
 export const MIN_LENGTH_FEET = 500;
 export const MAX_LENGTH_FEET = 12000;
 
-/** Storefront hand-film ladder. Price = box price × boxes × (1 − discount). */
+/** Storefront hand-film ladder. Price = tier unit box price × number of boxes. */
 export const HAND_PACKAGE_LADDER = {
-  box: { boxes: 1, rolls: 4, discountRate: 0, maxQuantity: HAND_BOX_MAX_QUANTITY },
-  layer: { boxes: 16, rolls: 64, discountRate: 0.05, maxQuantity: 1 },
-  half_pallet: { boxes: 32, rolls: 128, discountRate: 0.0625, maxQuantity: 1 },
-  full_pallet: { boxes: 64, rolls: 256, discountRate: 0.10625, maxQuantity: null },
+  box: { boxes: 1, rolls: 4, maxQuantity: HAND_BOX_MAX_QUANTITY },
+  layer: { boxes: 16, rolls: 64, maxQuantity: 1 },
+  half_pallet: { boxes: 32, rolls: 128, maxQuantity: 1 },
+  full_pallet: { boxes: 64, rolls: 256, maxQuantity: null },
 } as const;
 
 export const MACHINE_PACKAGE_LADDER = {

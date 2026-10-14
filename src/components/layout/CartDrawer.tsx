@@ -23,6 +23,7 @@ import { CheckoutAuthRequiredModal } from "@/components/checkout/CheckoutAuthReq
 import { PromoCodeInput } from "@/components/cart/PromoCodeInput";
 import { ShippingEligibilityAlert } from "@/components/checkout/ShippingEligibilityAlert";
 import { presentPackageLabel } from "@/lib/products";
+import { formatBoxPriceEquation, handCartQuote } from "@/lib/pricing";
 import {
   readCheckoutShipping,
   type CheckoutShippingAddress,
@@ -303,7 +304,12 @@ export function CartDrawer() {
                   </div>
                   <div className="text-right">
                     <div className="text-xs text-slate-400 font-medium">
-                      {formatCurrency(item.unitPrice)} each
+                      {(() => {
+                        const quote = handCartQuote(item);
+                        return quote
+                          ? formatBoxPriceEquation(quote.boxes, quote.unitBoxPrice)
+                          : `${formatCurrency(item.unitPrice)} each`;
+                      })()}
                     </div>
                     <div className="text-base font-extrabold text-slate-900">
                       {formatCurrency(item.totalPrice)}

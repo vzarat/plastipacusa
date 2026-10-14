@@ -9,6 +9,7 @@ import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency } from "@/lib/utils";
 import type { CartItem } from "@/types";
 import { presentPackageLabel } from "@/lib/products";
+import { formatBoxPriceEquation, handCartQuote } from "@/lib/pricing";
 import {
   canIncreaseCartQuantity,
   cartQuantityMax,
@@ -105,7 +106,12 @@ export function CheckoutCartStep({
                         })}
                       </p>
                       <p className="mt-0.5 text-xs text-slate-500">
-                        {formatCurrency(item.unitPrice)} each
+                        {(() => {
+                          const quote = handCartQuote(item);
+                          return quote
+                            ? formatBoxPriceEquation(quote.boxes, quote.unitBoxPrice)
+                            : `${formatCurrency(item.unitPrice)} each`;
+                        })()}
                       </p>
                     </div>
                     <button

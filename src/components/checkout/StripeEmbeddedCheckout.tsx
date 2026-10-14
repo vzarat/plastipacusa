@@ -334,6 +334,7 @@ export function StripeEmbeddedCheckout({
           totalBoxes: item.totalBoxes,
           application: item.application,
           tierType: item.tierType,
+          productSlug: item.productSlug,
         })),
         quoteLines: items.map((item) => ({
           sku: item.sku,

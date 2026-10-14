@@ -154,15 +154,31 @@ describe("palletCalculator", () => {
     }
   });
 
-  it("quotes one hand-film layer and rejects a second", () => {
-    const one = palletCalculator({ film: "hand", widthInches: 18, tier: "layer", quantity: 1 }, boxCatalog);
+  it("quotes one hand-film layer from price_16_boxes and rejects a second", () => {
+    const one = palletCalculator(
+      { film: "hand", widthInches: 18, tier: "layer", quantity: 1 },
+      { ...boxCatalog, price16Boxes: 38 }
+    );
     const two = palletCalculator({ film: "hand", widthInches: 18, tier: "layer", quantity: 2 });
     assert.equal(one.ok, true);
     if (one.ok) {
       assert.equal(one.boxes, 16);
+      assert.equal(one.unitPrice, 608);
       assert.equal(one.totalPrice, 608);
     }
     assert.equal(two.ok, false);
+  });
+
+  it("does not apply a cached percent discount when the 16-box rate is missing", () => {
+    const result = palletCalculator(
+      { film: "hand", widthInches: 18, tier: "layer", quantity: 1 },
+      boxCatalog
+    );
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.price, "price_unavailable");
+      assert.equal(result.totalPrice, null);
+    }
   });
 
   it("quotes one hand half pallet and rejects a second", () => {

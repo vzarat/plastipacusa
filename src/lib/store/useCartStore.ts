@@ -4,6 +4,7 @@ import { CartItem } from "@/types";
 import type { AppliedCoupon } from "@/types/coupon";
 import { getCartDiscountAmount } from "@/lib/coupons";
 import { clampCartQuantity, type CartPackageInput } from "@/lib/cart-quantity";
+import { repriceHandCartLine, totalForBoxes, type BoxTierPrices } from "@/lib/pricing";
 import { toast } from "sonner";
 
 function machinePackageRolls(item: { application?: string; rollsPerBox?: number }): number {
@@ -25,6 +26,25 @@ function notifyQuantityLimit(notice: string | null) {
   toast.error(notice);
 }
 
+function lineMoney<T extends CartPackageInput & { unitPrice: number; boxUnitPrice?: number | null }>(
+  item: T,
+  quantity: number
+): { unitPrice: number; boxUnitPrice?: number; totalPrice: number } {
+  const perPackage = Math.floor(Number(item.totalBoxes) || 0);
+  const boxUnit = Number(item.boxUnitPrice);
+  if (item.application !== "machine" && perPackage > 0 && boxUnit > 0) {
+    return {
+      unitPrice: totalForBoxes(boxUnit, perPackage),
+      boxUnitPrice: boxUnit,
+      totalPrice: totalForBoxes(boxUnit, perPackage * quantity),
+    };
+  }
+  return {
+    unitPrice: item.unitPrice,
+    totalPrice: Number((quantity * item.unitPrice).toFixed(2)),
+  };
+}
+
 interface CartState {
   items: CartItem[];
   isDrawerOpen: boolean;
@@ -40,8 +60,10 @@ interface CartState {
   setAppliedCoupon: (coupon: AppliedCoupon | null) => void;
   applyCatalogPrices: (
     products: Array<{
+      slug?: string;
       packageOptions?: Array<{ sku?: string; price?: number }>;
       variants?: Array<{ sku?: string; priceUsd?: string }>;
+      boxPrices?: BoxTierPrices;
     }>
   ) => void;
   clearCoupon: () => void;
@@ -75,12 +97,24 @@ export const useCartStore = create<CartState>()(
           notifyQuantityLimit(clamped.notice);
           const newQty = clamped.quantity;
           const packageRolls = machinePackageRolls(existingItem);
+          const priced = lineMoney(
+            {
+              ...existingItem,
+              boxUnitPrice: itemData.boxUnitPrice ?? existingItem.boxUnitPrice,
+              totalBoxes: itemData.totalBoxes ?? existingItem.totalBoxes,
+              application: itemData.application || existingItem.application,
+              unitPrice: itemData.unitPrice,
+            },
+            newQty
+          );
           updatedItems[existingIndex] = {
             ...existingItem,
             tierType: itemData.tierType || existingItem.tierType,
+            boxUnitPrice: priced.boxUnitPrice ?? itemData.boxUnitPrice ?? existingItem.boxUnitPrice,
             quantity: newQty,
             totalRolls: packageRolls > 0 ? packageRolls * newQty : existingItem.totalRolls,
-            totalPrice: Number((newQty * existingItem.unitPrice).toFixed(2)),
+            unitPrice: priced.unitPrice,
+            totalPrice: priced.totalPrice,
           };
           set({ items: updatedItems, isDrawerOpen: true });
         } else {
@@ -88,12 +122,15 @@ export const useCartStore = create<CartState>()(
           notifyQuantityLimit(clamped.notice);
           const quantity = clamped.quantity;
           const packageRolls = machinePackageRolls(itemData);
+          const priced = lineMoney(itemData, quantity);
           const newItem: CartItem = {
             ...itemData,
             quantity,
             totalRolls: packageRolls > 0 ? packageRolls * quantity : itemData.totalRolls,
             id,
-            totalPrice: Number((quantity * itemData.unitPrice).toFixed(2)),
+            unitPrice: priced.unitPrice,
+            boxUnitPrice: priced.boxUnitPrice ?? itemData.boxUnitPrice,
+            totalPrice: priced.totalPrice,
           };
           set({ items: [...currentItems, newItem], isDrawerOpen: true });
         }
@@ -117,6 +154,7 @@ export const useCartStore = create<CartState>()(
         notifyQuantityLimit(clamped.notice);
         const nextQty = clamped.quantity;
         const packageRolls = machinePackageRolls(current);
+        const priced = lineMoney(current, nextQty);
 
         set((state) => ({
           items: state.items.map((item) => {
@@ -125,7 +163,9 @@ export const useCartStore = create<CartState>()(
               ...item,
               quantity: nextQty,
               totalRolls: packageRolls > 0 ? packageRolls * nextQty : item.totalRolls,
-              totalPrice: Number((nextQty * item.unitPrice).toFixed(2)),
+              unitPrice: priced.unitPrice,
+              boxUnitPrice: priced.boxUnitPrice ?? item.boxUnitPrice,
+              totalPrice: priced.totalPrice,
             };
           }),
         }));
@@ -148,7 +188,9 @@ export const useCartStore = create<CartState>()(
       setAppliedCoupon: (coupon) => set({ appliedCoupon: coupon }),
       applyCatalogPrices: (products) => {
         const priceBySku = new Map<string, number>();
+        const boxPricesBySlug = new Map<string, BoxTierPrices | undefined>();
         for (const product of products) {
+          if (product.slug) boxPricesBySlug.set(product.slug, product.boxPrices);
           for (const option of product.packageOptions || []) {
             const sku = String(option.sku || "");
             const price = Number(option.price);
@@ -165,6 +207,11 @@ export const useCartStore = create<CartState>()(
         set((state) => {
           let changed = false;
           const items = state.items.map((item) => {
+            if (item.application !== "machine") {
+              const next = repriceHandCartLine(item, boxPricesBySlug.get(item.productSlug));
+              if (next !== item) changed = true;
+              return next;
+            }
             const nextPrice = priceBySku.get(item.sku);
             if (nextPrice == null || nextPrice === item.unitPrice) return item;
             changed = true;
@@ -234,12 +281,15 @@ export const useCartStore = create<CartState>()(
           const clamped = applyPackageQuantity(item, item.quantity);
           if (clamped.quantity === item.quantity) return item;
           const packageRolls = machinePackageRolls(item);
+          const priced = lineMoney(item, clamped.quantity);
           return {
             ...item,
             quantity: clamped.quantity,
             totalRolls:
               packageRolls > 0 ? packageRolls * clamped.quantity : item.totalRolls,
-            totalPrice: Number((clamped.quantity * item.unitPrice).toFixed(2)),
+            unitPrice: priced.unitPrice,
+            boxUnitPrice: priced.boxUnitPrice ?? item.boxUnitPrice,
+            totalPrice: priced.totalPrice,
           };
         });
         if (items.some((item, index) => item !== state.items[index])) {

@@ -5,6 +5,7 @@ import {
   validateCatalogSpec,
   validatePackageQuantity,
 } from "@/lib/assistant/packaging-rules";
+import { totalForBoxes, unitBoxPriceForCount, type BoxTierPrices } from "@/lib/pricing";
 import type { AssistantResult, FilmKind, PackageTier } from "@/lib/assistant/types";
 
 export interface PalletCalculatorInput {
@@ -19,7 +20,11 @@ export interface PalletCalculatorInput {
 
 /** Prices loaded on the server from the catalog. Never accepted from the model. */
 export interface CatalogPrice {
+  /** price_1_box. Used only for the 1–15 box bracket. */
   boxPrice: number | null;
+  price16Boxes?: number | null;
+  price32Boxes?: number | null;
+  price64Boxes?: number | null;
   halfPalletPrice: number | null;
   fullPalletPrice: number | null;
   rollWeightLbs: number | null;
@@ -91,11 +96,15 @@ export function palletCalculator(
   }
 
   const ladder = HAND_PACKAGE_LADDER[validated.tier];
-  const boxPrice = catalog?.boxPrice;
-  const unitPrice =
-    boxPrice != null && boxPrice > 0
-      ? roundMoney(boxPrice * ladder.boxes * (1 - ladder.discountRate))
-      : null;
+  const lineBoxes = ladder.boxes * validated.quantity;
+  const tierPrices: BoxTierPrices = {
+    price1Box: catalog?.boxPrice ?? null,
+    price16Boxes: catalog?.price16Boxes ?? null,
+    price32Boxes: catalog?.price32Boxes ?? null,
+    price64Boxes: catalog?.price64Boxes ?? null,
+  };
+  const boxUnit = unitBoxPriceForCount(tierPrices, lineBoxes);
+  const unitPrice = boxUnit != null ? totalForBoxes(boxUnit, ladder.boxes) : null;
   const price = listedUnitPrice(unitPrice);
   const weightEach = packageTotalWeightLbs({
     rolls: ladder.rolls,
@@ -118,7 +127,7 @@ export function palletCalculator(
     freightBoxCount: validated.freightBoxCount,
     price,
     unitPrice,
-    totalPrice: unitPrice != null ? roundMoney(unitPrice * validated.quantity) : null,
+    totalPrice: boxUnit != null ? totalForBoxes(boxUnit, lineBoxes) : null,
     weightLbs: weightEach != null ? roundMoney(weightEach * validated.quantity) : null,
     sku: catalog?.sku ?? null,
   };

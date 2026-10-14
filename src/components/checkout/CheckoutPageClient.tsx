@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { presentPackageLabel } from "@/lib/products";
+import { formatBoxPriceEquation, handCartQuote } from "@/lib/pricing";
 import { CheckoutCartStep } from "@/components/checkout/CheckoutCartStep";
 import { CheckoutPaymentStep } from "@/components/checkout/CheckoutPaymentStep";
 import { ShipmentOriginSummary } from "@/components/checkout/ShipmentOriginSummary";
@@ -412,7 +413,12 @@ function CheckoutPageInner() {
                       application: item.application,
                     })}
                     {" · "}
-                    {item.quantity} × {formatCurrency(item.unitPrice)}
+                    {(() => {
+                      const quote = handCartQuote(item);
+                      return quote
+                        ? formatBoxPriceEquation(quote.boxes, quote.unitBoxPrice)
+                        : `${item.quantity} × ${formatCurrency(item.unitPrice)}`;
+                    })()}
                   </p>
                 </div>
                 <p className="text-sm font-bold text-slate-900">

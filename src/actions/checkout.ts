@@ -4,6 +4,7 @@ import Stripe from "stripe";
 import { createServerClient } from "@/lib/supabase/server";
 import { calculateOrderTotal } from "@/lib/sales-tax";
 import { clampCartQuantity } from "@/lib/cart-quantity";
+import { readBoxTierPrices, repriceHandCartLine } from "@/lib/pricing";
 import { resolveShippingCharge } from "@/lib/shipping/quote-cache";
 import type { ShippingQuoteLine } from "@/lib/shipping/types";
 
@@ -25,12 +26,14 @@ export interface CreatePaymentIntentOptions {
     productName?: string;
     quantity?: number;
     unitPrice?: number;
+    totalPrice?: number;
     packageSize?: string;
     pricingTier?: string;
     rollsPerBox?: number;
     totalBoxes?: number;
     application?: string;
     tierType?: string;
+    productSlug?: string;
   }>;
   quoteLines?: ShippingQuoteLine[];
   shipping?: {
@@ -43,6 +46,56 @@ export interface CreatePaymentIntentOptions {
     phone?: string;
     country?: string;
   };
+}
+
+async function refreshHandLinePrices<
+  T extends {
+    application?: string;
+    productSlug?: string;
+    totalBoxes?: number;
+    quantity: number;
+    unitPrice?: number;
+    totalPrice?: number;
+  },
+>(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  lines: T[]
+): Promise<T[]> {
+  const slugs = [...new Set(lines.map((line) => line.productSlug).filter(Boolean))] as string[];
+  if (slugs.length === 0) return lines;
+
+  const { data, error } = await supabase
+    .from("products")
+    .select("slug, price_1_box, price_16_boxes, price_32_boxes, price_64_boxes")
+    .in("slug", slugs);
+  if (error || !data) return lines;
+
+  const pricesBySlug = new Map(
+    data.map((row) => [String(row.slug || ""), readBoxTierPrices(row)])
+  );
+
+  return lines.map((line) => {
+    if (String(line.application || "").toLowerCase() === "machine" || !line.productSlug) {
+      return line;
+    }
+    const repriced = repriceHandCartLine(
+      {
+        application: line.application,
+        totalBoxes: line.totalBoxes,
+        quantity: line.quantity,
+        unitPrice: Number(line.unitPrice || 0),
+        totalPrice: Number(line.unitPrice || 0) * line.quantity,
+      },
+      pricesBySlug.get(line.productSlug)
+    );
+    if (
+      repriced.unitPrice === Number(line.unitPrice || 0) &&
+      repriced.totalPrice === Number(line.totalPrice || 0)
+    ) {
+      return line;
+    }
+    return { ...line, unitPrice: repriced.unitPrice, totalPrice: repriced.totalPrice };
+  });
 }
 
 export async function createPaymentIntent(
@@ -80,10 +133,40 @@ export async function createPaymentIntent(
       ).quantity;
       return { ...item, quantity };
     });
-    const lineSubtotal = normalizedLines.reduce(
-      (sum, item) => sum + Number(item.unitPrice || 0) * item.quantity,
-      0
-    );
+
+    let userId = "";
+    let sessionEmail = "";
+    let supabase;
+    try {
+      supabase = await createServerClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      userId = user?.id || "";
+      sessionEmail = (user?.email || "").trim().toLowerCase();
+    } catch {
+      return {
+        success: false,
+        error: "You must sign in to complete checkout.",
+      };
+    }
+
+    if (!userId) {
+      return {
+        success: false,
+        error: "You must sign in or create a B2B account to complete your order.",
+      };
+    }
+
+    const pricedLines = await refreshHandLinePrices(supabase, normalizedLines);
+    const lineSubtotal = pricedLines.reduce((sum, item) => {
+      const boxes = Math.floor(Number(item.totalBoxes) || 0);
+      const formulaTotal = Number(item.totalPrice || 0);
+      if (String(item.application || "").toLowerCase() !== "machine" && boxes > 0 && formulaTotal > 0) {
+        return sum + formulaTotal;
+      }
+      return sum + Number(item.unitPrice || 0) * item.quantity;
+    }, 0);
     if (!options.shippingQuoteId) {
       return { success: false, error: "Choose a shipping option before payment." };
     }
@@ -134,30 +217,6 @@ export async function createPaymentIntent(
       };
     }
 
-    let userId = "";
-    let sessionEmail = "";
-    let supabase;
-    try {
-      supabase = await createServerClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      userId = user?.id || "";
-      sessionEmail = (user?.email || "").trim().toLowerCase();
-    } catch {
-      return {
-        success: false,
-        error: "You must sign in to complete checkout.",
-      };
-    }
-
-    if (!userId) {
-      return {
-        success: false,
-        error: "You must sign in or create a B2B account to complete your order.",
-      };
-    }
-
     const customerEmail =
       (options.customerEmail || sessionEmail || "").trim().toLowerCase() ||
       undefined;
@@ -195,7 +254,7 @@ export async function createPaymentIntent(
         }).slice(0, 500)
       : "";
 
-    const lineItems = normalizedLines
+    const lineItems = pricedLines
       .map((item) => ({
         n: String(item.productName || "Product").slice(0, 40),
         q: Math.max(1, Number(item.quantity || 1)),

@@ -22,6 +22,13 @@ import {
 } from "@/lib/palletizing";
 import { packageTotalWeightLbs } from "@/lib/package-weight";
 import {
+  BOX_PRICE_PRESETS,
+  readBoxTierPrices,
+  startingBoxUnitPrice,
+  totalForBoxes,
+  unitBoxPriceForCount,
+} from "@/lib/pricing";
+import {
   HAND_FULL_PALLET,
   MACHINE_FILM_IMAGE_URL,
   GENESIS_HP_SLUGS,
@@ -89,24 +96,27 @@ async function writeProductRow(
   return { data: firstRow(result.data), error: result.error };
 }
 
-const HAND_BOX_PRICE_TIERS = [
-  { boxes: 1, rolls: 4, fields: ["price_1_box", "price1Box"] },
-  { boxes: 16, rolls: 64, fields: ["price_16_boxes", "price16Boxes"] },
-  { boxes: 32, rolls: 128, fields: ["price_32_boxes", "price32Boxes"] },
-  { boxes: 64, rolls: 256, fields: ["price_64_boxes", "price64Boxes"] },
-] as const;
-
-/** Box ladder prices stored on the product row when product_variants has no priced rows. */
-function handBoxTierOptions(raw: any, baseSku: string): PackageOption[] {
-  return HAND_BOX_PRICE_TIERS.flatMap((tier) => {
-    const price = parsePositivePrice(...tier.fields.map((field) => raw?.[field]));
-    if (price === null) return [];
+/** Preset totals from live per-box columns. Variant flat prices are not used. */
+function handBoxTierOptions(raw: any, baseSku: string, variants: any[] = []): PackageOption[] {
+  const prices = readBoxTierPrices(raw);
+  return BOX_PRICE_PRESETS.flatMap((tier) => {
+    const unit = unitBoxPriceForCount(prices, tier.boxes);
+    if (unit === null) return [];
+    const match = variants.find((variant) => {
+      const boxes = Number(variant?.boxes_count ?? variant?.boxesCount ?? 0);
+      const rolls = Number(
+        variant?.rollsPerBox ?? variant?.rolls_count ?? variant?.rollsCount ?? variant?.rolls ?? 0
+      );
+      return boxes === tier.boxes || rolls === tier.rolls;
+    });
     return [
       {
         rolls: tier.rolls,
+        boxes: tier.boxes,
         label: formatBoxRollLabel(tier.boxes, tier.rolls),
-        sku: `${baseSku}-${tier.boxes}BX`,
-        price,
+        sku: String(match?.sku || `${baseSku}-${tier.boxes}BX`),
+        boxUnitPrice: unit,
+        price: totalForBoxes(unit, tier.boxes),
       },
     ];
   });
@@ -533,88 +543,23 @@ function formatProduct(raw: any): ProductWithVariants {
         price40: null,
       });
     }
-  } else if (useCustomPackageTiers) {
-    const tiers: Array<{ rolls: number; label: string; suffix: string; price: number | null }> = [
-      { rolls: 6, label: "6 ROLLS", suffix: "6R", price: price6Rolls },
-      { rolls: 12, label: "12 ROLLS", suffix: "12R", price: price12Rolls },
-      { rolls: 20, label: "Half Pallet (20 Rolls)", suffix: "20R", price: price20Rolls },
-      { rolls: 40, label: "Full Pallet (40 Rolls)", suffix: "40R", price: price40Rolls },
-    ];
-    packageOptions = tiers
-      .filter((tier) => tier.price !== null)
-      .map((tier) => ({
-        rolls: tier.rolls,
-        label: tier.label,
-        sku: `${baseSku}-${tier.suffix}`,
-        price: tier.price as number,
-      }));
-  } else if (warehouseVariants.length > 0) {
-    // Prefer unique per-SKU variant prices from product_variants
-    packageOptions = warehouseVariants
-      .filter((v) => {
-        const keepCompactLadder = usesCompact1880Pallets({
-          widthInches: resolvedWidth,
-          gauge: gaugeNum,
-          lengthFeet: lengthNum,
-          slug: slugStr,
-          name: nameStr,
-        });
-        if (!keepCompactLadder) return true;
-        const boxes = Number((v as any).boxes_count || (v as any).boxesCount || 0);
-        return boxes === 1 || boxes === 12 || boxes === 24;
-      })
-      .map((v) => {
-      const rolls = Number(v.rollsPerBox || (v as any).rollsCount || 4);
-      const boxes = Number((v as any).boxes_count || (v as any).boxesCount || 0);
-      const label = String((v as any).title || v.packageSize || v.sku);
-      const keepStoredPackageLabel = usesCompact1880Pallets({
-        widthInches: resolvedWidth,
-        gauge: gaugeNum,
-        lengthFeet: lengthNum,
-        slug: slugStr,
-        name: nameStr,
-      });
-      const isStandard256Pallet = rolls === 256 || boxes === 64;
-      const normalizedLabel =
-        !keepStoredPackageLabel &&
-        !isStandard256Pallet &&
-        (label.toUpperCase().includes("FULL PALLET") || rolls === 192)
-          ? HAND_FULL_PALLET.label
-          : label;
-      return {
-        rolls:
-          normalizedLabel === HAND_FULL_PALLET.label
-            ? HAND_FULL_PALLET.rolls
-            : rolls,
-        label: normalizedLabel,
-        sku: v.sku,
-        price: parseFloat(v.priceUsd),
-      };
-    });
   } else {
-    const boxTiers = handBoxTierOptions(raw, baseSku);
-    if (boxTiers.length > 0) {
-      packageOptions = boxTiers;
-    } else if (productBasePrice !== null) {
-      packageOptions = [
-        {
-          rolls: 1,
-          label: "BASE UNIT",
-          sku: `${baseSku}-BASE`,
-          price: productBasePrice,
-        },
-      ];
-    }
+    packageOptions = handBoxTierOptions(raw, baseSku, warehouseVariants);
   }
 
+  const boxPrices = readBoxTierPrices(raw);
+  const handStartingUnit = isMachineProduct ? null : startingBoxUnitPrice(boxPrices);
   const candidatePrices = [
-    ...warehouseVariants.map((v) => parsePositivePrice(v.priceUsd)),
-    ...packageOptions.map((opt) => parsePositivePrice(opt.price)),
-    productBasePrice,
+    ...(isMachineProduct
+      ? warehouseVariants.map((v) => parsePositivePrice(v.priceUsd))
+      : packageOptions.map((opt) => parsePositivePrice(opt.boxUnitPrice))),
+    ...(isMachineProduct ? packageOptions.map((opt) => parsePositivePrice(opt.price)) : []),
+    ...(isMachineProduct ? [productBasePrice] : []),
   ].filter((p): p is number => p !== null);
 
   const minPrice =
-    candidatePrices.length > 0 ? Math.min(...candidatePrices) : undefined;
+    handStartingUnit ??
+    (candidatePrices.length > 0 ? Math.min(...candidatePrices) : undefined);
 
   const categorySlug = earlyCategorySlug;
 
@@ -701,6 +646,7 @@ function formatProduct(raw: any): ProductWithVariants {
     price20Rolls: price20Rolls ?? undefined,
     price40Rolls: price40Rolls ?? undefined,
     packageOptions,
+    boxPrices,
   };
 }
 

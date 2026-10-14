@@ -1,4 +1,5 @@
 import { Product as DbProduct, ProductVariant as DbProductVariant, Inquiry as DbInquiry, NewInquiry as DbNewInquiry } from "@/db/schema";
+import type { BoxTierPrices } from "@/lib/pricing";
 
 export type ApplicationType = "hand" | "machine";
 
@@ -25,7 +26,11 @@ export interface PackageOption {
   rolls: number;
   label: string;
   sku: string;
+  /** One preset at quantity 1: unit box price × boxes in the preset. */
   price: number;
+  boxes?: number;
+  /** Supabase per-box price for this preset's volume bracket. */
+  boxUnitPrice?: number;
 }
 
 export interface ProductWithVariants
@@ -45,6 +50,10 @@ export interface ProductWithVariants
     | "price12Rolls"
     | "price20Rolls"
     | "price40Rolls"
+    | "price1Box"
+    | "price16Boxes"
+    | "price32Boxes"
+    | "price64Boxes"
     | "widthInches"
     | "lengthFeet"
     | "rollsPerBox"
@@ -85,6 +94,8 @@ export interface ProductWithVariants
   price20Rolls?: number;
   price40Rolls?: number;
   packageOptions?: PackageOption[];
+  /** Live per-box prices from price_1_box / price_16_boxes / price_32_boxes / price_64_boxes. */
+  boxPrices?: BoxTierPrices;
   /** Exact featured-series label used for tab filtering (no partial matches). */
   series?: string;
 }
@@ -113,7 +124,10 @@ export interface CartItem {
   pricingTier: string;
   /** half_pallet | layer | box | full_pallet */
   tierType?: string;
+  /** Price of one selected preset (unit box price × boxes in that preset). */
   unitPrice: number;
+  /** Applicable unit box price from the volume bracket. Hand film only. */
+  boxUnitPrice?: number;
   quantity: number; // number of packages ordered
   totalPrice: number;
 }

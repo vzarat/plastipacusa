@@ -14,6 +14,7 @@ import {
   SERIES_GENESIS_STANDARD,
   STRETCH_FILM_PLACEHOLDER,
 } from "@/lib/products";
+import { readBoxTierPrices, startingBoxUnitPrice } from "@/lib/pricing";
 interface ProductCardProps {
   product: ProductWithVariants;
   priority?: boolean;
@@ -143,6 +144,10 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   const catStyles =
     CATEGORY_STYLES[resolvedCategorySlug] || CATEGORY_STYLES["force-standard"];
 
+  const handBoxUnit = isGenesis
+    ? null
+    : startingBoxUnitPrice(readBoxTierPrices(product));
+
   // Find minimum starting price among variants / package options / product base
   const variantPrices = (product?.variants || [])
     .map((v) => parseFloat(String(v.priceUsd)))
@@ -162,7 +167,11 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
     ...(Number.isFinite(basePrice) && basePrice > 0 ? [basePrice] : []),
   ];
 
-  const primaryPrice = priceCandidates.length > 0 ? Math.min(...priceCandidates) : null;
+  const primaryPrice = handBoxUnit
+    ? handBoxUnit
+    : priceCandidates.length > 0
+      ? Math.min(...priceCandidates)
+      : null;
   const primaryVariant = product?.variants?.[0];
   const cheapestPackage = [...(product?.packageOptions || [])].sort(
     (a, b) => a.price - b.price
@@ -214,16 +223,20 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   const comparePrice =
     priceCandidates.length > 1 ? Math.max(...priceCandidates) : null;
   const showCompare =
-    primaryPrice !== null && comparePrice !== null && comparePrice > primaryPrice;
+    handBoxUnit == null &&
+    primaryPrice !== null &&
+    comparePrice !== null &&
+    comparePrice > primaryPrice;
   const productHref = `/products/${product?.slug || "stretch-film-18-x-60-ga-x-1000ft"}`;
   const statusBadge = isSoldOut ? "SOLD OUT" : showCompare ? "HOT DEAL" : "FREE SHIPPING";
 
-  const volumeTierLabel =
-    availableTiers.length > 0
+  const volumeTierLabel = handBoxUnit
+    ? "Volume tiers: 1, 16, 32 & 64 boxes"
+    : availableTiers.length > 0
       ? `Volume tiers: ${availableTiers.join(" & ")}`
       : isGenesis
-      ? "Volume tiers: Rolls & Pallets"
-      : "Volume tiers: Boxes & Pallets";
+        ? "Volume tiers: Rolls & Pallets"
+        : "Volume tiers: Boxes & Pallets";
 
   return (
     <>
@@ -258,6 +271,9 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         <div className="mt-2 flex items-baseline gap-2">
           <span className="text-lg font-bold text-red-600">
             {primaryPrice !== null ? formatCurrency(primaryPrice) : "—"}
+            {handBoxUnit ? (
+              <span className="ml-1 text-xs font-semibold text-slate-500">/ box</span>
+            ) : null}
           </span>
           {showCompare && (
             <span className="text-xs text-slate-400 line-through">
@@ -389,7 +405,9 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
                 {primaryPrice !== null ? formatCurrency(primaryPrice) : "—"}
               </span>
               {primaryPrice !== null && (
-                <span className="hidden text-xs font-bold text-slate-500 md:inline">USD</span>
+                <span className="hidden text-xs font-bold text-slate-500 md:inline">
+                  {handBoxUnit ? "/ box" : "USD"}
+                </span>
               )}
             </div>
           </div>

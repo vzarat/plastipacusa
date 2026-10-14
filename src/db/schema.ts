@@ -32,6 +32,11 @@ export const products = pgTable("products", {
   price12Rolls: numeric("price_12_rolls", { precision: 10, scale: 2 }).notNull().default("366.55"),
   price20Rolls: numeric("price_20_rolls", { precision: 10, scale: 2 }).notNull().default("580.36"),
   price40Rolls: numeric("price_40_rolls", { precision: 10, scale: 2 }).notNull().default("1099.64"),
+  /** Per-box prices by volume bracket. Line total = applicable rate × box count. */
+  price1Box: numeric("price_1_box", { precision: 10, scale: 2 }),
+  price16Boxes: numeric("price_16_boxes", { precision: 10, scale: 2 }),
+  price32Boxes: numeric("price_32_boxes", { precision: 10, scale: 2 }),
+  price64Boxes: numeric("price_64_boxes", { precision: 10, scale: 2 }),
   stockQuantity: integer("stock_quantity").notNull().default(0),
   isSoldOut: boolean("is_sold_out").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),

@@ -24,6 +24,12 @@ import {
 } from "@/lib/products";
 import { BOX_QTY_NOTE, HALF_PALLET_QTY_NOTE } from "@/lib/cart-quantity";
 import { getProductBySlug } from "@/actions/products";
+import {
+  formatBoxPriceEquation,
+  readBoxTierPrices,
+  totalForBoxes,
+  unitBoxPriceForCount,
+} from "@/lib/pricing";
 
 type PackageTierKind =
   | "single_unit"
@@ -195,51 +201,35 @@ function getPackageSavings(variant: any, baseUnitPrice: number, isMachine: boole
   return { unitCount, savingsPercent, perUnitPrice };
 }
 
-function roundMoney(amount: number): number {
-  return Math.round(amount * 100) / 100;
-}
-
-/** Official hand-film ladder. Prices are the box price times boxes, less the tier rate. */
+/** Official hand-film presets. Totals come from the live per-box bracket, not a stored pallet rate. */
 const STANDARD_HAND_PACKAGE_TIERS = [
   {
     key: "box",
     title: "1 Box (4 Rolls)",
     rolls: 4,
     boxes: 1,
-    discountRate: 0,
     subtext: "4 Rolls included · Standard package",
-    badges: [] as string[],
-    tag: "",
   },
   {
     key: "layer",
     title: "16 Boxes (64 Rolls)",
     rolls: 64,
     boxes: 16,
-    discountRate: 0.05,
     subtext: "64 Rolls included · Free RGV Freight Eligible",
-    badges: ["Save 5% OFF"],
-    tag: "",
   },
   {
     key: "half",
     title: "32 Boxes (128 Rolls)",
     rolls: 128,
     boxes: 32,
-    discountRate: 0.0625,
     subtext: "128 Rolls included",
-    badges: ["Save 5% OFF"],
-    tag: "",
   },
   {
     key: "full",
     title: "64 Boxes (256 Rolls)",
     rolls: 256,
     boxes: 64,
-    discountRate: 0.10625,
     subtext: "256 Rolls included · Houston Friday Freight Eligible",
-    badges: [] as string[],
-    tag: "BEST VALUE - MAX SAVINGS (~9% OFF)",
   },
 ] as const;
 
@@ -253,15 +243,9 @@ function isSingleBoxSource(option: any): boolean {
 }
 
 function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
-  const single = sourceOptions.find(
-    (option) => isSingleBoxSource(option) && getVariantPrice(option) > 0
-  );
-  const baseBoxPrice = single
-    ? getVariantPrice(single)
-    : Number(product?.startingPrice) > 0
-      ? Number(product.startingPrice)
-      : 0;
-  if (!(baseBoxPrice > 0)) return [];
+  const prices = readBoxTierPrices(product);
+  const single = sourceOptions.find((option) => isSingleBoxSource(option));
+  const baseBoxPrice = unitBoxPriceForCount(prices, 1);
 
   const widthInches = String(
     product?.width_inches || product?.widthInches || single?.widthInches || "18.00"
@@ -272,44 +256,49 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
   );
   const baseSku = String(single?.sku || product?.partNumber || product?.slug || "SKU");
 
-  return STANDARD_HAND_PACKAGE_TIERS.map((tier) => {
+  return STANDARD_HAND_PACKAGE_TIERS.flatMap((tier) => {
+    const unit = unitBoxPriceForCount(prices, tier.boxes);
+    if (unit == null) return [];
     const matched = sourceOptions.find((option) => {
-      const boxes = Number(option?.boxes_count ?? option?.boxesCount ?? 0);
+      const boxes = Number(option?.boxes_count ?? option?.boxesCount ?? option?.boxes ?? 0);
       const rolls = Number(
         option?.rolls ?? option?.rolls_count ?? option?.rollsCount ?? option?.rollsPerBox ?? 0
       );
       return boxes === tier.boxes || rolls === tier.rolls;
     });
-    const stored = matched ? getVariantPrice(matched) : 0;
-    const total =
-      stored > 0
-        ? roundMoney(stored)
-        : roundMoney(baseBoxPrice * tier.boxes * (1 - tier.discountRate));
-    const sku = String(matched?.sku || `${baseSku}-${tier.boxes}B`);
-    return {
-      id: matched?.id || sku,
-      sku,
-      tierKey: tier.key,
-      packageSize: tier.title,
-      title: tier.title,
-      tierSubtext: tier.subtext,
-      tierBadges: [...tier.badges],
-      tierTag: tier.tag,
-      priceUsd: total.toFixed(2),
-      price: total,
-      rollsPerBox: tier.rolls,
-      rolls_count: tier.rolls,
-      rollsCount: tier.rolls,
-      boxes_count: tier.boxes,
-      boxesCount: tier.boxes,
-      rollsPerPallet: 256,
-      widthInches,
-      gauge,
-      lengthFeet,
-      weightLbs: String(matched?.weightLbs ?? single?.weightLbs ?? "0.00"),
-      stockStatus: "in_stock",
-      createdAt: new Date().toISOString(),
-    };
+    const total = totalForBoxes(unit, tier.boxes);
+    const savings =
+      baseBoxPrice && tier.boxes > 1 && unit < baseBoxPrice
+        ? Math.round(((baseBoxPrice - unit) / baseBoxPrice) * 100)
+        : 0;
+    const sku = String(matched?.sku || `${baseSku}-${tier.boxes}BX`);
+    return [
+      {
+        id: matched?.id || sku,
+        sku,
+        tierKey: tier.key,
+        packageSize: tier.title,
+        title: tier.title,
+        tierSubtext: tier.subtext,
+        tierBadges: savings > 0 ? [`Save ${savings}% OFF`] : [],
+        tierTag: tier.boxes >= 64 && savings > 0 ? "BEST VALUE" : "",
+        boxUnitPrice: unit,
+        priceUsd: total.toFixed(2),
+        price: total,
+        rollsPerBox: tier.rolls,
+        rolls_count: tier.rolls,
+        rollsCount: tier.rolls,
+        boxes_count: tier.boxes,
+        boxesCount: tier.boxes,
+        rollsPerPallet: 256,
+        widthInches,
+        gauge,
+        lengthFeet,
+        weightLbs: String(matched?.weightLbs ?? single?.weightLbs ?? "0.00"),
+        stockStatus: "in_stock",
+        createdAt: new Date().toISOString(),
+      },
+    ];
   });
 }
 
@@ -471,8 +460,7 @@ export function VariantSelector({
         .filter(Boolean);
     })();
 
-    const standardTiers = buildStandardHandTiers(product, mapped);
-    return standardTiers.length > 0 ? standardTiers : mapped;
+    return buildStandardHandTiers(product, mapped);
   }, [product, isMachineFilm]);
 
   const addItem = useCartStore((state) => state.addItem);
@@ -632,16 +620,26 @@ export function VariantSelector({
     setTierHint(`Switched to 16 ${unitLabelPlural} package for better bulk pricing.`);
   };
 
-  const parsedUnitPrice = parseFloat(
+  const parsedPackagePrice = parseFloat(
     String(selectedVariant?.priceUsd ?? (selectedVariant as any)?.price ?? "")
   );
-  const baseUnitPriceRaw =
-    Number.isFinite(parsedUnitPrice) && parsedUnitPrice > 0
-      ? parsedUnitPrice
+  const listBoxUnit = !isMachineFilm ? Number((selectedVariant as any)?.boxUnitPrice) || 0 : 0;
+  const listPackageUnit = isMachineFilm
+    ? Number.isFinite(parsedPackagePrice) && parsedPackagePrice > 0
+      ? parsedPackagePrice
       : Number(product?.startingPrice) > 0
         ? Number(product.startingPrice)
-        : 0;
-  const unitPrice = applyDiscountToPrice(baseUnitPriceRaw, appliedDiscount);
+        : 0
+    : listBoxUnit > 0 && packageBoxes > 0
+      ? totalForBoxes(listBoxUnit, packageBoxes)
+      : 0;
+  const discountedBoxUnit = listBoxUnit > 0 ? applyDiscountToPrice(listBoxUnit, appliedDiscount) : 0;
+  const unitPrice = isMachineFilm
+    ? applyDiscountToPrice(listPackageUnit, appliedDiscount)
+    : listBoxUnit > 0
+      ? totalForBoxes(discountedBoxUnit, packageBoxes)
+      : 0;
+  const baseUnitPriceRaw = listPackageUnit;
   const quantityLocked = isHalfPalletTier || isLayerTier;
   const isBoxTier = isSingleUnitTier && !isMachineFilm;
   const quantityMax = quantityLocked ? 1 : isBoxTier ? 15 : undefined;
@@ -650,7 +648,10 @@ export function VariantSelector({
     : isBoxTier
       ? Math.min(15, Math.max(1, Math.floor(quantity) || 1))
       : Math.max(1, Math.floor(quantity) || 1);
-  const totalPrice = Number((unitPrice * effectiveQuantity).toFixed(2));
+  const lineBoxes = isMachineFilm ? 0 : packageBoxes * effectiveQuantity;
+  const totalPrice = isMachineFilm
+    ? Number((unitPrice * effectiveQuantity).toFixed(2))
+    : totalForBoxes(discountedBoxUnit, lineBoxes);
   const hasActiveDiscount = Boolean(appliedDiscount && baseUnitPriceRaw > 0);
   const quantityNoun = isLayerTier
     ? "Layers"
@@ -748,6 +749,8 @@ export function VariantSelector({
       appliedDiscount?.discountType === "fixed"
         ? unitPrice
         : baseUnitPriceRaw;
+    const cartBoxUnit =
+      appliedDiscount?.discountType === "fixed" ? discountedBoxUnit : listBoxUnit;
 
     const widthInches = String(
       selectedVariant?.widthInches ??
@@ -793,6 +796,7 @@ export function VariantSelector({
               ? "full_pallet"
               : undefined,
       unitPrice: cartUnitPrice,
+      boxUnitPrice: isMachineFilm ? undefined : cartBoxUnit,
       quantity: effectiveQuantity,
     });
 
@@ -817,30 +821,51 @@ export function VariantSelector({
             {t("products.officialFactoryDirectPrice")}
           </span>
           <div className="flex items-baseline gap-2 flex-wrap">
-            {hasActiveDiscount && baseUnitPriceRaw !== unitPrice && (
-              <span className="text-lg sm:text-xl font-bold text-slate-400 line-through tracking-tight">
-                {formatCurrency(baseUnitPriceRaw)}
-              </span>
-            )}
-            <span
-              className={`text-3xl sm:text-4xl font-black tracking-tight ${
-                hasActiveDiscount ? "text-emerald-700" : "text-slate-900"
-              }`}
-            >
-              {unitPrice > 0 ? formatCurrency(unitPrice) : "—"}
-            </span>
-            {unitPrice > 0 && (
-              <span className="text-sm font-bold text-slate-500">USD</span>
+            {isMachineFilm ? (
+              <>
+                {hasActiveDiscount && baseUnitPriceRaw !== unitPrice && (
+                  <span className="text-lg sm:text-xl font-bold text-slate-400 line-through tracking-tight">
+                    {formatCurrency(baseUnitPriceRaw)}
+                  </span>
+                )}
+                <span
+                  className={`text-3xl sm:text-4xl font-black tracking-tight ${
+                    hasActiveDiscount ? "text-emerald-700" : "text-slate-900"
+                  }`}
+                >
+                  {unitPrice > 0 ? formatCurrency(unitPrice) : "—"}
+                </span>
+                {unitPrice > 0 && (
+                  <span className="text-sm font-bold text-slate-500">USD</span>
+                )}
+              </>
+            ) : (
+              <>
+                {hasActiveDiscount && listBoxUnit !== discountedBoxUnit && (
+                  <span className="text-lg sm:text-xl font-bold text-slate-400 line-through tracking-tight">
+                    {formatCurrency(listBoxUnit)}
+                  </span>
+                )}
+                <span
+                  className={`text-3xl sm:text-4xl font-black tracking-tight ${
+                    hasActiveDiscount ? "text-emerald-700" : "text-slate-900"
+                  }`}
+                >
+                  {discountedBoxUnit > 0 ? formatCurrency(discountedBoxUnit) : "—"}
+                </span>
+                {discountedBoxUnit > 0 && (
+                  <span className="text-sm font-bold text-slate-500">/ box</span>
+                )}
+                {discountedBoxUnit > 0 && lineBoxes > 0 && (
+                  <span className="basis-full text-sm font-semibold text-slate-600">
+                    {formatBoxPriceEquation(lineBoxes, discountedBoxUnit)}
+                  </span>
+                )}
+              </>
             )}
             {appliedDiscount && (
               <span className="inline-flex items-center rounded-full bg-emerald-100 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
                 {formatDiscountAppliedBadge(appliedDiscount)}
-              </span>
-            )}
-            {unitPrice > 0 && !isMachineFilm && getBoxesCount(selectedVariant, false) > 0 && (
-              <span className="basis-full text-sm font-semibold text-slate-500">
-                {formatCurrency(unitPrice / Math.max(1, getBoxesCount(selectedVariant, false)))}{" "}
-                USD / box
               </span>
             )}
           </div>
@@ -883,6 +908,9 @@ export function VariantSelector({
 
             const originalPrice = getVariantPrice(variant);
             const price = applyDiscountToPrice(originalPrice, appliedDiscount);
+            const optionBoxUnit = !isMachineFilm ? Number(variant?.boxUnitPrice) || 0 : 0;
+            const optionBoxUnitDiscounted =
+              optionBoxUnit > 0 ? applyDiscountToPrice(optionBoxUnit, appliedDiscount) : 0;
             const variantTitle = variant?.tierKey
               ? String(variant.title)
               : displayPackageTitle(variant, isMachineFilm);
@@ -968,23 +996,49 @@ export function VariantSelector({
                   </div>
 
                   <div className="ml-auto shrink-0 text-right">
-                    {showDiscountStrike && (
-                      <span className="block text-xs font-semibold text-slate-400 line-through">
-                        {formatCurrency(originalPrice)} USD
-                      </span>
-                    )}
-                    <p
-                      className={`whitespace-nowrap text-sm font-extrabold sm:text-base ${
-                        showDiscountStrike ? "text-emerald-700" : "text-slate-900"
-                      }`}
-                    >
-                      {formatCurrency(price)} USD
-                    </p>
-                    {price > 0 && pricedUnitCount > 0 && (
-                      <p className="mt-0.5 whitespace-nowrap text-xs text-slate-500">
-                        {formatCurrency(price / pricedUnitCount)} USD /{" "}
-                        {unitLabel.toLowerCase()}
-                      </p>
+                    {isMachineFilm ? (
+                      <>
+                        {showDiscountStrike && (
+                          <span className="block text-xs font-semibold text-slate-400 line-through">
+                            {formatCurrency(originalPrice)} USD
+                          </span>
+                        )}
+                        <p
+                          className={`whitespace-nowrap text-sm font-extrabold sm:text-base ${
+                            showDiscountStrike ? "text-emerald-700" : "text-slate-900"
+                          }`}
+                        >
+                          {formatCurrency(price)} USD
+                        </p>
+                        {price > 0 && pricedUnitCount > 0 && (
+                          <p className="mt-0.5 whitespace-nowrap text-xs text-slate-500">
+                            {formatCurrency(price / pricedUnitCount)} USD /{" "}
+                            {unitLabel.toLowerCase()}
+                          </p>
+                        )}
+                      </>
+                    ) : optionBoxUnitDiscounted > 0 && boxesCount > 0 ? (
+                      <>
+                        {optionBoxUnit !== optionBoxUnitDiscounted && (
+                          <span className="block text-xs font-semibold text-slate-400 line-through">
+                            {formatCurrency(optionBoxUnit)}/box
+                          </span>
+                        )}
+                        <p
+                          className={`whitespace-nowrap text-sm font-extrabold sm:text-base ${
+                            optionBoxUnit !== optionBoxUnitDiscounted
+                              ? "text-emerald-700"
+                              : "text-slate-900"
+                          }`}
+                        >
+                          {formatCurrency(optionBoxUnitDiscounted)}/box
+                        </p>
+                        <p className="mt-0.5 max-w-[16rem] text-[11px] font-semibold leading-snug text-slate-600">
+                          {formatBoxPriceEquation(boxesCount, optionBoxUnitDiscounted)}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-sm font-extrabold text-slate-400">—</p>
                     )}
                   </div>
                 </div>
@@ -1137,10 +1191,17 @@ export function VariantSelector({
             <span className="text-[10px] text-slate-400 uppercase block font-semibold">
               {t("products.subtotal")}
             </span>
+            {!isMachineFilm && discountedBoxUnit > 0 && lineBoxes > 0 && (
+              <span className="mb-1 block max-w-[16rem] text-[11px] font-semibold leading-snug text-slate-500">
+                {formatBoxPriceEquation(lineBoxes, discountedBoxUnit)}
+              </span>
+            )}
             {hasActiveDiscount && (
               <span className="text-sm font-semibold text-slate-400 line-through block">
                 {formatCurrency(
-                  Number((baseUnitPriceRaw * effectiveQuantity).toFixed(2))
+                  isMachineFilm
+                    ? Number((baseUnitPriceRaw * effectiveQuantity).toFixed(2))
+                    : totalForBoxes(listBoxUnit, lineBoxes)
                 )}
               </span>
             )}

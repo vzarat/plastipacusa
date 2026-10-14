@@ -18,13 +18,12 @@ import {
   machineHandlingUnit,
 } from "@/lib/shipping/hand-freight";
 import { buildMachineFilmSelectorTiers, formatBoxRollLabel, isMachineFilm } from "@/lib/products";
-
-const HAND_MATRIX_TIERS = [
-  { rolls: 4, boxes: 1, label: "1 Box (4 Rolls)", discountRate: 0 },
-  { rolls: 64, boxes: 16, label: "16 Boxes (64 Rolls)", discountRate: 0.05 },
-  { rolls: 128, boxes: 32, label: "32 Boxes (128 Rolls)", discountRate: 0.0625 },
-  { rolls: 256, boxes: 64, label: "64 Boxes (256 Rolls)", discountRate: 0.10625 },
-] as const;
+import {
+  BOX_PRICE_PRESETS,
+  readBoxTierPrices,
+  totalForBoxes,
+  unitBoxPriceForCount,
+} from "@/lib/pricing";
 
 interface SpecsTableProps {
   variants?: ProductVariant[] | null;
@@ -71,10 +70,6 @@ function firstPositive(values: Array<number | null | undefined>): number {
   return 0;
 }
 
-function roundMoney(amount: number): number {
-  return Math.round(amount * 100) / 100;
-}
-
 function handMatrixRows(
   variants: ProductVariant[],
   product: SpecsTableProps["product"]
@@ -83,32 +78,25 @@ function handMatrixRows(
   const boxWeight = firstPositive(variants.map((variant) => variant.boxWeightLbs));
   const palletWeight = firstPositive(variants.map((variant) => variant.palletWeightLbs));
   const sample = variants[0];
+  const prices = readBoxTierPrices(product);
   const boxVariant =
     variants.find(
       (variant) =>
-        (variantRollCount(variant) === 4 || Number(variant.boxes_count ?? variant.boxesCount) === 1) &&
-        Number(variant.priceUsd) > 0
+        variantRollCount(variant) === 4 || Number(variant.boxes_count ?? variant.boxesCount) === 1
     ) || null;
-  const boxPrice = Number(boxVariant?.priceUsd) > 0 ? Number(boxVariant?.priceUsd) : 0;
 
-  return HAND_MATRIX_TIERS.map((tier) => {
+  return BOX_PRICE_PRESETS.map((tier) => {
     const match =
-      variants.find(
-        (variant) =>
-          variantRollCount(variant) === tier.rolls && Number(variant.priceUsd) > 0
-      ) || null;
-    const price =
-      boxPrice > 0
-        ? roundMoney(boxPrice * tier.boxes * (1 - tier.discountRate))
-        : Number(match?.priceUsd) > 0
-          ? Number(match?.priceUsd)
-          : 0;
+      variants.find((variant) => variantRollCount(variant) === tier.rolls) || null;
+    const unit = unitBoxPriceForCount(prices, tier.boxes);
+    const price = unit != null ? totalForBoxes(unit, tier.boxes) : 0;
     return {
       ...(match || boxVariant || sample),
       id: match?.id || `hand-${tier.rolls}`,
       sku: match?.sku || boxVariant?.sku || "",
-      title: tier.label,
-      packageSize: tier.label,
+      title: formatBoxRollLabel(tier.boxes, tier.rolls),
+      packageSize: formatBoxRollLabel(tier.boxes, tier.rolls),
+      boxUnitPrice: unit,
       rolls_count: tier.rolls,
       rollsCount: tier.rolls,
       rollsPerBox: tier.rolls,
@@ -267,9 +255,25 @@ export function SpecsTable({ variants, product }: SpecsTableProps) {
                         : "—"}
                     </TableCell>
                     <TableCell className="text-right font-sans font-black text-slate-900 text-sm">
-                      {Number(v?.priceUsd ?? (v as { price?: number }).price) > 0
-                        ? formatCurrency(v?.priceUsd ?? (v as { price?: number }).price ?? 0)
-                        : "—"}
+                      {machine ? (
+                        Number(v?.priceUsd ?? (v as { price?: number }).price) > 0 ? (
+                          formatCurrency(v?.priceUsd ?? (v as { price?: number }).price ?? 0)
+                        ) : (
+                          "—"
+                        )
+                      ) : Number((v as { boxUnitPrice?: number }).boxUnitPrice) > 0 && boxes > 0 ? (
+                        <span className="block whitespace-normal text-right">
+                          <span className="block text-xs font-bold text-slate-500">
+                            {formatCurrency((v as { boxUnitPrice?: number }).boxUnitPrice)}/box
+                          </span>
+                          {boxes} × {formatCurrency((v as { boxUnitPrice?: number }).boxUnitPrice)} ={" "}
+                          {formatCurrency(
+                            Number((v as { boxUnitPrice?: number }).boxUnitPrice) * boxes
+                          )}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
                     </TableCell>
                   </TableRow>
                 );
