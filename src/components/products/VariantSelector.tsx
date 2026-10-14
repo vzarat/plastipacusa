@@ -25,6 +25,7 @@ import {
 import { BOX_QTY_NOTE, HALF_PALLET_QTY_NOTE } from "@/lib/cart-quantity";
 import { getProductBySlug } from "@/actions/products";
 import {
+  perBoxPriceFromVariant,
   readBoxTierPrices,
   totalForBoxes,
   unitBoxPriceForCount,
@@ -263,14 +264,8 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
       );
       return boxes === tier.boxes || rolls === tier.rolls;
     });
-    const matchedUnit = Number(matched?.boxUnitPrice);
-    const variantUnit =
-      Number(matched?.boxes_count ?? matched?.boxesCount ?? matched?.boxes) === tier.boxes
-        ? getVariantPrice(matched)
-        : 0;
     const columnUnit = unitBoxPriceForCount(prices, tier.boxes);
-    const unit =
-      matchedUnit > 0 ? matchedUnit : variantUnit > 0 ? variantUnit : columnUnit;
+    const unit = perBoxPriceFromVariant(matched, tier.boxes) ?? columnUnit;
     if (unit == null || !(unit > 0)) return [];
     const total = totalForBoxes(unit, tier.boxes);
     const savings =

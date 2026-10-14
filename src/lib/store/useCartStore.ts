@@ -31,7 +31,15 @@ function lineMoney<T extends CartPackageInput & { unitPrice: number; boxUnitPric
   quantity: number
 ): { unitPrice: number; boxUnitPrice?: number; totalPrice: number } {
   const perPackage = Math.floor(Number(item.totalBoxes) || 0);
-  const boxUnit = Number(item.boxUnitPrice);
+  const storedBoxUnit = Number(item.boxUnitPrice);
+  const packageUnit = Number(item.unitPrice);
+  const boxUnit =
+    perPackage > 1 &&
+    storedBoxUnit > 0 &&
+    packageUnit > 0 &&
+    Math.abs(storedBoxUnit - packageUnit) < 0.02
+      ? Math.round((storedBoxUnit / perPackage) * 100) / 100
+      : storedBoxUnit;
   if (item.application !== "machine" && perPackage > 0 && boxUnit > 0) {
     return {
       unitPrice: totalForBoxes(boxUnit, perPackage),

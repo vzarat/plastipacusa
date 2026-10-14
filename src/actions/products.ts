@@ -24,6 +24,7 @@ import { packageTotalWeightLbs } from "@/lib/package-weight";
 import {
   BOX_PRICE_PRESETS,
   getDisplayPrice,
+  perBoxPriceFromVariant,
   readBoxTierPrices,
   totalForBoxes,
   unitBoxPriceForCount,
@@ -108,8 +109,7 @@ function handBoxTierOptions(raw: any, baseSku: string, variants: any[] = []): Pa
       (variant) => Number(variant?.boxes_count ?? variant?.boxesCount ?? 0) === tier.boxes
     );
     const unit =
-      parsePositivePrice(match?.priceUsd, match?.price_usd, match?.price) ??
-      unitBoxPriceForCount(prices, tier.boxes);
+      perBoxPriceFromVariant(match, tier.boxes) ?? unitBoxPriceForCount(prices, tier.boxes);
     if (unit === null) return [];
     return [
       {
@@ -265,7 +265,7 @@ function formatProduct(raw: any): ProductWithVariants {
           v.packageSize ||
           (boxesCount === 1 ? "1 BOX WITH 4 ROLLS" : `${boxesCount} BOXES = ${rollsCount} ROLLS`)
       );
-      const variantPrice = parsePositivePrice(v.price_usd, v.priceUsd, v.price);
+      const variantPrice = perBoxPriceFromVariant(v, boxesCount);
       const productRollWeight = Number(raw.roll_weight_lbs ?? raw.rollWeightLbs) || 0;
       const productPalletWeight = Number(raw.pallet_weight_lbs ?? raw.palletWeightLbs) || 0;
       const gauge = Number(v.gauge || raw.gauge || 60);

@@ -5,6 +5,7 @@ import {
   catalogCardStartingPrice,
   catalogPackageQuote,
   getDisplayPrice,
+  perBoxPriceFromVariant,
   formatBoxPriceEquation,
   repriceHandCartLine,
   totalForBoxes,
@@ -81,6 +82,24 @@ describe("box price × box quantity", () => {
         ],
       }),
       { boxes: 1, unitBoxPrice: 30, total: 30 }
+    );
+  });
+
+  it("multiplies the per-box variant price once for a 64-box tier", () => {
+    assert.equal(
+      perBoxPriceFromVariant({ boxes_count: 64, price: 21.2, price_usd: 1356.8 }, 64),
+      21.2
+    );
+    assert.equal(
+      perBoxPriceFromVariant({ boxes_count: 64, price: 1356.8, price_usd: 21.2 }, 64),
+      21.2
+    );
+    assert.equal(totalForBoxes(perBoxPriceFromVariant({ price: 21.2 }, 64)!, 64), 1356.8);
+    assert.deepEqual(
+      catalogPackageQuote({
+        variants: [{ boxes_count: 64, price: 21.2, price_usd: 1356.8 }],
+      }),
+      { boxes: 64, unitBoxPrice: 21.2, total: 1356.8 }
     );
   });
 

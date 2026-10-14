@@ -22,6 +22,7 @@ import {
   BOX_PRICE_PRESETS,
   readBoxTierPrices,
   totalForBoxes,
+  perBoxPriceFromVariant,
   unitBoxPriceForCount,
 } from "@/lib/pricing";
 
@@ -88,12 +89,8 @@ function handMatrixRows(
   return BOX_PRICE_PRESETS.map((tier) => {
     const match =
       variants.find((variant) => variantRollCount(variant) === tier.rolls) || null;
-    const storedUnit = Number(match?.priceUsd ?? (match as { price?: number } | null)?.price);
-    const variantUnit =
-      Number(match?.boxes_count ?? match?.boxesCount) === tier.boxes && storedUnit > 0
-        ? storedUnit
-        : null;
-    const unit = variantUnit ?? unitBoxPriceForCount(prices, tier.boxes);
+    const unit =
+      perBoxPriceFromVariant(match, tier.boxes) ?? unitBoxPriceForCount(prices, tier.boxes);
     const price = unit != null ? totalForBoxes(unit, tier.boxes) : 0;
     return {
       ...(match || boxVariant || sample),

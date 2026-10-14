@@ -135,8 +135,40 @@ function variantBoxCount(record: Record<string, unknown>): number | null {
   return null;
 }
 
-function variantUnitPrice(record: Record<string, unknown>): number | null {
-  return firstPositive(record.price, record.price_usd, record.priceUsd, record.boxUnitPrice);
+function moneyAmount(value: unknown): number | null {
+  return parsePositivePrice(value);
+}
+
+/**
+ * Per-box rate stored on a variant.
+ * `price` is the unit rate for that tier. A sibling column that already equals
+ * unit × boxes is a package total and is not used as the rate.
+ */
+export function perBoxPriceFromVariant(variant: unknown, boxes?: number): number | null {
+  if (!variant || typeof variant !== "object") return null;
+  const record = variant as Record<string, unknown>;
+  const count = Math.floor(
+    Number(boxes ?? record.boxes_count ?? record.boxesCount ?? record.boxes) || 0
+  );
+  const explicitUnit = moneyAmount(record.boxUnitPrice);
+  const price = moneyAmount(record.price);
+  const priceUsd = moneyAmount(record.price_usd ?? record.priceUsd);
+  const alreadyTotal = (candidate: number, unit: number) =>
+    count > 1 && Math.abs(candidate - roundMoney(unit * count)) < 0.02;
+
+  if (explicitUnit != null) {
+    if (price != null && alreadyTotal(price, explicitUnit)) return explicitUnit;
+    if (priceUsd != null && alreadyTotal(priceUsd, explicitUnit)) return explicitUnit;
+  }
+  if (price != null && priceUsd != null && count > 1) {
+    if (alreadyTotal(price, priceUsd)) return priceUsd;
+    if (alreadyTotal(priceUsd, price)) return price;
+  }
+  return price ?? explicitUnit ?? priceUsd;
+}
+
+function variantUnitPrice(record: Record<string, unknown>, boxes?: number): number | null {
+  return perBoxPriceFromVariant(record, boxes);
 }
 
 /**
@@ -149,11 +181,11 @@ export function getDisplayPrice(product: unknown): number | null {
   const variants = variantRecords(row);
 
   const variant1 = variants.find((variant) => variantBoxCount(variant) === 1);
-  const fromOneBox = variant1 ? variantUnitPrice(variant1) : null;
+  const fromOneBox = variant1 ? variantUnitPrice(variant1, 1) : null;
   if (fromOneBox != null) return fromOneBox;
 
   const variant64 = variants.find((variant) => variantBoxCount(variant) === 64);
-  const fromPallet = variant64 ? variantUnitPrice(variant64) : null;
+  const fromPallet = variant64 ? variantUnitPrice(variant64, 64) : null;
   if (fromPallet != null) return fromPallet;
 
   const prices = readBoxTierPrices(product);
@@ -161,11 +193,11 @@ export function getDisplayPrice(product: unknown): number | null {
   if (prices.price64Boxes != null) return prices.price64Boxes;
 
   const variant16 = variants.find((variant) => variantBoxCount(variant) === 16);
-  const fromLayer = variant16 ? variantUnitPrice(variant16) : null;
+  const fromLayer = variant16 ? variantUnitPrice(variant16, 16) : null;
   if (fromLayer != null) return fromLayer;
 
   const variant32 = variants.find((variant) => variantBoxCount(variant) === 32);
-  const fromHalf = variant32 ? variantUnitPrice(variant32) : null;
+  const fromHalf = variant32 ? variantUnitPrice(variant32, 32) : null;
   if (fromHalf != null) return fromHalf;
 
   if (prices.price16Boxes != null) return prices.price16Boxes;
@@ -189,7 +221,7 @@ export function catalogPackageQuote(product: unknown): {
 
   const fromVariants = CARD_BOX_COUNTS.flatMap((boxes) => {
     const match = variants.find((variant) => variantBoxCount(variant) === boxes);
-    const unit = match ? variantUnitPrice(match) : null;
+    const unit = match ? variantUnitPrice(match, boxes) : null;
     if (unit == null) return [];
     return [{ boxes, unitBoxPrice: unit, total: totalForBoxes(unit, boxes) }];
   });
@@ -312,9 +344,10 @@ export function handCartQuote(item: {
   const boxes = perPackage * packages;
   const stored = Number(item.boxUnitPrice);
   const packageUnit = Number(item.unitPrice);
-  const derived =
-    packageUnit > 0 ? roundMoney(packageUnit / perPackage) : 0;
-  const unitBoxPrice = stored > 0 ? stored : derived;
+  const derived = packageUnit > 0 ? roundMoney(packageUnit / perPackage) : 0;
+  const storedIsPackageTotal =
+    perPackage > 1 && stored > 0 && packageUnit > 0 && Math.abs(stored - packageUnit) < 0.02;
+  const unitBoxPrice = storedIsPackageTotal ? derived : stored > 0 ? stored : derived;
   if (!(unitBoxPrice > 0)) return null;
 
   return {
