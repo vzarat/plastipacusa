@@ -943,26 +943,76 @@ function applicationFromRecord(raw: any, categorySlug: string): "hand" | "machin
   return getApplicationForCategory(categorySlug);
 }
 
+const BOX_TIER_COUNTS = [1, 16, 32, 64] as const;
+const ROLLS_FOR_BOX_TIER: Record<number, number> = { 4: 1, 64: 16, 128: 32, 256: 64 };
+
+/** Resolve a variant row to one of the sellable box counts. */
+function inferVariantBoxes(variant: any): number | null {
+  const boxes = Math.floor(Number(variant?.boxes_count ?? variant?.boxesCount) || 0);
+  if ((BOX_TIER_COUNTS as readonly number[]).includes(boxes)) return boxes;
+
+  const rolls = Math.floor(Number(variant?.rolls_count ?? variant?.rollsCount) || 0);
+  if (ROLLS_FOR_BOX_TIER[rolls]) return ROLLS_FOR_BOX_TIER[rolls];
+
+  const label = String(
+    variant?.title || variant?.package_size || variant?.packageSize || variant?.label || ""
+  );
+  const boxMatch = label.match(/(\d+)\s*BOX/i);
+  const labeledBoxes = Math.floor(Number(boxMatch?.[1]) || 0);
+  if ((BOX_TIER_COUNTS as readonly number[]).includes(labeledBoxes)) return labeledBoxes;
+
+  const rollMatch = label.match(/(\d+)\s*ROLL/i);
+  const labeledRolls = Math.floor(Number(rollMatch?.[1]) || 0);
+  if (ROLLS_FOR_BOX_TIER[labeledRolls]) return ROLLS_FOR_BOX_TIER[labeledRolls];
+
+  const skuMatch = String(variant?.sku || "").match(/-(1|16|32|64)B(?:X)?$/i);
+  const skuBoxes = Math.floor(Number(skuMatch?.[1]) || 0);
+  if ((BOX_TIER_COUNTS as readonly number[]).includes(skuBoxes)) return skuBoxes;
+
+  return null;
+}
+
 function mapPackageTiers(variants: any[] | null | undefined): AdminPackageTier[] {
   const rows = Array.isArray(variants) ? variants : [];
   return [...rows]
     .sort((a, b) => {
-      const boxesA = Number(a.boxes_count ?? a.boxesCount ?? 0);
-      const boxesB = Number(b.boxes_count ?? b.boxesCount ?? 0);
+      const boxesA = inferVariantBoxes(a) ?? 0;
+      const boxesB = inferVariantBoxes(b) ?? 0;
       if (boxesA !== boxesB) return boxesA - boxesB;
-      return Number(a.price ?? a.price_usd ?? 0) - Number(b.price ?? b.price_usd ?? 0);
+      return (
+        (parsePositivePrice(a.price_usd, a.priceUsd, a.price) ?? 0) -
+        (parsePositivePrice(b.price_usd, b.priceUsd, b.price) ?? 0)
+      );
     })
-    .map((variant) => ({
-      id: variant.id ? String(variant.id) : undefined,
-      label: firstText(variant.title, variant.package_size, variant.packageSize, variant.sku) || "Package",
-      sku: firstText(variant.sku),
-      price: readNullableNumber(variant.price, variant.price_usd, variant.priceUsd) ?? 0,
-      boxesCount: Number(variant.boxes_count ?? variant.boxesCount) || null,
-      rollsCount: Number(variant.rolls_count ?? variant.rollsCount) || null,
-      rollWeightLbs: readNullableNumber(variant.roll_weight_lbs, variant.rollWeightLbs),
-      boxWeightLbs: readNullableNumber(variant.box_weight_lbs, variant.boxWeightLbs),
-      palletWeightLbs: readNullableNumber(variant.pallet_weight_lbs, variant.palletWeightLbs),
-    }));
+    .map((variant) => {
+      const boxes = inferVariantBoxes(variant);
+      const storedRolls = Number(variant.rolls_count ?? variant.rollsCount) || null;
+      return {
+        id: variant.id ? String(variant.id) : undefined,
+        label: firstText(variant.title, variant.package_size, variant.packageSize, variant.sku) || "Package",
+        sku: firstText(variant.sku),
+        price: parsePositivePrice(variant.price_usd, variant.priceUsd, variant.price) ?? 0,
+        boxesCount: boxes,
+        rollsCount: storedRolls || (boxes ? boxes * 4 : null),
+        rollWeightLbs: readNullableNumber(variant.roll_weight_lbs, variant.rollWeightLbs),
+        boxWeightLbs: readNullableNumber(variant.box_weight_lbs, variant.boxWeightLbs),
+        palletWeightLbs: readNullableNumber(variant.pallet_weight_lbs, variant.palletWeightLbs),
+      };
+    });
+}
+
+async function loadProductVariantRows(
+  supabase: Awaited<ReturnType<typeof getProductWriteClient>>,
+  productId: string
+) {
+  const { data, error } = await supabase
+    .from("product_variants")
+    .select("*")
+    .eq("product_id", productId);
+  if (error) {
+    throw new Error(error.message || "Failed to load product variants.");
+  }
+  return data || [];
 }
 
 async function insertPackageVariant(
@@ -986,8 +1036,6 @@ async function insertPackageVariant(
   }
   throw new Error("Failed to create package option.");
 }
-
-const BOX_TIER_COUNTS = [1, 16, 32, 64] as const;
 
 function boxPriceColumnPatch(tiers: ProductFormValues["packageTiers"] | undefined) {
   const patch: Record<string, number> = {};
@@ -1038,11 +1086,7 @@ async function syncBaseVariant(
   productId: string,
   values: Partial<ProductFormValues>
 ) {
-  const { data } = await supabase
-    .from("product_variants")
-    .select("id, product_id, sku, title, price, stock_quantity, boxes_count, rolls_count")
-    .eq("product_id", productId);
-  const variants = data || [];
+  let variants = await loadProductVariantRows(supabase, productId);
   const pricedTierIds = new Set<string>();
 
   for (const tier of values.packageTiers || []) {
@@ -1053,14 +1097,13 @@ async function syncBaseVariant(
       if (Number(tier.price) < 0) continue;
       const legacyPrice = Number(Number(tier.price).toFixed(2));
       if (tier.id) {
-        await supabase
-          .from("product_variants")
-          .update({ price: legacyPrice })
-          .eq("id", tier.id)
-          .eq("product_id", productId);
+        const updated = await updatePackageVariant(supabase, String(tier.id), productId, {
+          price: legacyPrice,
+          price_usd: legacyPrice,
+        });
         pricedTierIds.add(String(tier.id));
         const match = variants.find((variant) => String(variant.id) === String(tier.id));
-        if (match) match.price = legacyPrice;
+        if (match) Object.assign(match, updated || { price: legacyPrice, price_usd: legacyPrice });
         continue;
       }
       const sku =
@@ -1073,6 +1116,7 @@ async function syncBaseVariant(
         rolls_count: tier.rollsCount ?? null,
         boxes_count: tier.boxesCount ?? null,
         price: legacyPrice,
+        price_usd: legacyPrice,
         stock_quantity: 0,
       });
       if (inserted) {
@@ -1081,41 +1125,63 @@ async function syncBaseVariant(
       }
       continue;
     }
-    if (tier.price === null || tier.price === undefined || !Number.isFinite(Number(tier.price))) continue;
-    if (Number(tier.price) <= 0) continue;
+    const matches = variants.filter(
+      (variant) =>
+        inferVariantBoxes(variant) === boxes ||
+        (tier.id && String(variant.id) === String(tier.id)) ||
+        (tier.sku?.trim() && String(variant.sku || "").trim() === tier.sku.trim())
+    );
+    if (tier.price === null || tier.price === undefined || !Number.isFinite(Number(tier.price)) || Number(tier.price) <= 0) {
+      if (!tier.id) continue;
+      for (const row of matches) {
+        if (String(row.id) !== String(tier.id)) continue;
+        await supabase.from("product_variants").delete().eq("id", row.id).eq("product_id", productId);
+        variants = variants.filter((variant) => String(variant.id) !== String(row.id));
+      }
+      continue;
+    }
     const price = Number(Number(tier.price).toFixed(2));
-    const existing =
-      variants.find((variant) => Number(variant.boxes_count) === boxes) ||
-      (tier.id ? variants.find((variant) => String(variant.id) === String(tier.id)) : undefined);
+    const existing = matches[0];
+    const rolls = tier.rollsCount ?? boxes * 4;
     const sku =
       tier.sku?.trim() ||
       existing?.sku ||
       `${String(productId).replace(/-/g, "").slice(0, 8)}-${boxes}B`;
-    const payload = {
+    const payload: Record<string, unknown> = {
       price,
       price_usd: price,
       boxes_count: boxes,
-      rolls_count: tier.rollsCount ?? null,
+      rolls_count: rolls,
       title: tier.label,
+      package_size: tier.label,
       sku,
     };
+    if (values.widthInches != null) payload.width_inches = values.widthInches;
+    if (values.gauge != null) payload.gauge = values.gauge;
+    if (values.lengthFeet != null) payload.length_feet = values.lengthFeet;
 
+    let saved = existing;
     if (existing?.id) {
-      const updated = await updatePackageVariant(supabase, String(existing.id), productId, payload);
+      saved = await updatePackageVariant(supabase, String(existing.id), productId, payload);
       pricedTierIds.add(String(existing.id));
-      if (updated) Object.assign(existing, updated);
-      else Object.assign(existing, payload);
-      continue;
+    } else {
+      const rollWeight = Number(values.rollWeightLbs);
+      saved = await insertPackageVariant(supabase, {
+        product_id: productId,
+        ...payload,
+        stock_quantity: 0,
+        ...(rollWeight > 0 ? { weight_lbs: Number((rollWeight * rolls).toFixed(2)), rolls_per_box: 4 } : {}),
+      });
+      if (saved?.id) pricedTierIds.add(String(saved.id));
     }
-
-    const inserted = await insertPackageVariant(supabase, {
-      product_id: productId,
-      ...payload,
-      stock_quantity: 0,
-    });
-    if (inserted) {
-      variants.push(inserted);
-      pricedTierIds.add(String(inserted.id));
+    if (saved) {
+      if (existing) Object.assign(existing, saved);
+      else variants.push(saved);
+    }
+    for (const extra of matches.slice(1)) {
+      if (inferVariantBoxes(extra) !== boxes) continue;
+      await supabase.from("product_variants").delete().eq("id", extra.id).eq("product_id", productId);
+      variants = variants.filter((variant) => String(variant.id) !== String(extra.id));
     }
   }
 
@@ -1231,6 +1297,21 @@ function formatAdminProduct(raw: any): AdminProduct {
 }
 
 /**
+ * Load every variant for one product so the edit form can fill the 1, 16, 32, and 64 box fields.
+ */
+export async function getAdminProductVariants(productId: string): Promise<AdminPackageTier[]> {
+  const { isAdmin } = await verifyAdmin();
+  if (!isAdmin) {
+    throw new Error("Unauthorized.");
+  }
+  if (!productId) return [];
+
+  const supabase = await getProductWriteClient();
+  const rows = await loadProductVariantRows(supabase, productId);
+  return mapPackageTiers(rows);
+}
+
+/**
  * Fetch the full flat product list (no variant joins) for the Admin Product Management UI.
  */
 export async function getAdminProducts(): Promise<AdminProduct[]> {
@@ -1254,15 +1335,16 @@ export async function getAdminProducts(): Promise<AdminProduct[]> {
 
     const rows = data || [];
     const productIds = rows.map((row) => row.id).filter(Boolean);
+    const writer = await getProductWriteClient();
     const [variantResult, categoryResult] = await Promise.all([
       productIds.length
-        ? supabase
-            .from("product_variants")
-            .select("id, product_id, sku, title, price, stock_quantity, boxes_count, rolls_count, roll_weight_lbs, box_weight_lbs, pallet_weight_lbs")
-            .in("product_id", productIds)
+        ? writer.from("product_variants").select("*").in("product_id", productIds)
         : Promise.resolve({ data: [] as any[], error: null }),
       supabase.from("categories").select("id, slug, name"),
     ]);
+    if (variantResult.error) {
+      console.error("getAdminProducts variants error:", variantResult.error);
+    }
     const variantRows = variantResult.data || [];
     const categoryRows = categoryResult.data || [];
     const variantsByProduct = new Map<string, any[]>();

@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   X,
   UploadCloud,
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   createProduct,
+  getAdminProductVariants,
   updateProduct,
   uploadProductImage,
 } from "@/actions/products";
@@ -207,10 +209,15 @@ export function ProductFormModal({
   showToast,
 }: ProductFormModalProps) {
   const { t } = useLanguage();
+  const router = useRouter();
   const formSource = isOpen ? product?.id ?? "new" : "closed";
   const [form, setForm] = useState<ProductFormValues>(EMPTY_FORM);
   const [loadedSource, setLoadedSource] = useState(formSource);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingVariants, setIsLoadingVariants] = useState(false);
+  const tiersEdited = useRef(false);
+  const showToastRef = useRef(showToast);
+  showToastRef.current = showToast;
   const [isUploading, setIsUploading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -218,8 +225,34 @@ export function ProductFormModal({
 
   if (loadedSource !== formSource) {
     setLoadedSource(formSource);
+    tiersEdited.current = false;
     setForm(isOpen && product ? productToForm(product) : EMPTY_FORM);
   }
+
+  useEffect(() => {
+    if (!isOpen || !product?.id) return;
+    let cancelled = false;
+    setIsLoadingVariants(true);
+    getAdminProductVariants(product.id)
+      .then((tiers) => {
+        if (cancelled || tiersEdited.current) return;
+        setForm((prev) => ({
+          ...prev,
+          packageTiers: withDefaultPackageTiers(tiers, prev.partNumber, prev.application),
+        }));
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const message = err instanceof Error ? err.message : "Could not load package prices.";
+        showToastRef.current(message);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingVariants(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, product?.id]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -293,6 +326,10 @@ export function ProductFormModal({
       showToast("Product name is required.");
       return;
     }
+    if (isLoadingVariants) {
+      showToast("Package prices are still loading.");
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -303,6 +340,7 @@ export function ProductFormModal({
       if (result.success && result.product) {
         showToast(product ? "Product updated successfully." : "Product created successfully.");
         onSaved(result.product, !product);
+        router.refresh();
         onClose();
       } else {
         showToast(result.error || "Failed to save product.");
@@ -658,6 +696,9 @@ export function ProductFormModal({
               </p>
             </div>
 
+            {isLoadingVariants ? (
+              <p className="text-xs text-slate-500">Loading saved box prices…</p>
+            ) : null}
             {form.packageTiers.length === 0 ? (
               <p className="text-xs text-slate-500">
                 This product has no package variants yet.
@@ -682,6 +723,7 @@ export function ProductFormModal({
                           value={tier.price ?? 0}
                           onChange={(e) => {
                             const nextPrice = e.target.value === "" ? 0 : Number(e.target.value);
+                            tiersEdited.current = true;
                             setForm((prev) => ({
                               ...prev,
                               packageTiers: prev.packageTiers.map((item, itemIndex) =>
@@ -697,8 +739,17 @@ export function ProductFormModal({
                         <label className="block text-[10px] font-bold text-slate-500 mb-1">SKU</label>
                         <Input
                           value={tier.sku}
-                          disabled
-                          className="bg-slate-100 text-slate-500 font-mono text-xs cursor-not-allowed"
+                          onChange={(e) => {
+                            const nextSku = e.target.value;
+                            tiersEdited.current = true;
+                            setForm((prev) => ({
+                              ...prev,
+                              packageTiers: prev.packageTiers.map((item, itemIndex) =>
+                                itemIndex === index ? { ...item, sku: nextSku } : item
+                              ),
+                            }));
+                          }}
+                          className="font-mono text-xs"
                         />
                       </div>
                     </div>
@@ -804,7 +855,7 @@ export function ProductFormModal({
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
               {t("common.cancel")}
             </Button>
-            <Button type="submit" size="sm" disabled={isSaving || isUploading} className="gap-1.5">
+            <Button type="submit" size="sm" disabled={isSaving || isUploading || isLoadingVariants} className="gap-1.5">
               {isSaving ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
