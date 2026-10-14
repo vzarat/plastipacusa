@@ -10,6 +10,7 @@ export {
 } from "@/lib/palletizing";
 
 import type { PackageOption, ProductVariant, ProductWithVariants } from "@/types";
+import { CATALOG_SOLD_OUT } from "@/lib/catalog-availability";
 import { MACHINE_FILM_WEIGHT_SPECS, packageTotalWeightLbs } from "@/lib/package-weight";
 
 /** Remote fallback when a product row has no image_url. Never stored in /public. */
@@ -460,7 +461,7 @@ function buildGenesisMachineProduct(input: {
     palletizingFamily: '20" Automatic Machine Film',
     partNumber: input.baseSku,
     stockQuantity: 100,
-    isSoldOut: false,
+    isSoldOut: CATALOG_SOLD_OUT,
     isActive: true,
     packageOptions,
   };

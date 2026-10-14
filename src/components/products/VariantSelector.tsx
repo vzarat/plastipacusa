@@ -1277,14 +1277,14 @@ export function VariantSelector({
 
           <DirectCheckoutButton
             label={isSoldOut ? t("products.soldOut") : t("products.directCheckout")}
-            disabled={isSoldOut}
+            disabled={isSoldOut || baseUnitPriceRaw <= 0}
             className={
-              isSoldOut
+              isSoldOut || baseUnitPriceRaw <= 0
                 ? "!bg-slate-300 !bg-none !text-slate-500 !shadow-none cursor-not-allowed"
                 : undefined
             }
             onBeforeNavigate={() => {
-              if (isSoldOut) return false;
+              if (isSoldOut || baseUnitPriceRaw <= 0) return false;
               handleAddToCart();
             }}
           />

@@ -4,6 +4,7 @@ import Stripe from "stripe";
 import { createServerClient } from "@/lib/supabase/server";
 import { calculateOrderTotal } from "@/lib/sales-tax";
 import { clampCartQuantity } from "@/lib/cart-quantity";
+import { CATALOG_SOLD_OUT } from "@/lib/catalog-availability";
 import { readBoxTierPrices, repriceHandCartLine } from "@/lib/pricing";
 import { resolveShippingCharge } from "@/lib/shipping/quote-cache";
 import type { ShippingQuoteLine } from "@/lib/shipping/types";
@@ -220,6 +221,13 @@ export async function createPaymentIntent(
     const customerEmail =
       (options.customerEmail || sessionEmail || "").trim().toLowerCase() ||
       undefined;
+
+    if (CATALOG_SOLD_OUT) {
+      return {
+        success: false,
+        error: "One or more products in your cart are sold out.",
+      };
+    }
 
     const slugs = (options.productSlugs || []).map((slug) => slug.trim()).filter(Boolean);
     if (slugs.length > 0) {

@@ -21,6 +21,7 @@ import {
   usesCompact1880Pallets,
 } from "@/lib/palletizing";
 import { packageTotalWeightLbs } from "@/lib/package-weight";
+import { CATALOG_SOLD_OUT } from "@/lib/catalog-availability";
 import {
   BOX_PRICE_PRESETS,
   getDisplayPrice,
@@ -638,7 +639,7 @@ function formatProduct(raw: any): ProductWithVariants {
     palletizingFamily: palletizing.familyLabel,
     partNumber: raw.part_number || raw.partNumber || null,
     stockQuantity: Number(raw.stock_quantity ?? raw.stockQuantity ?? 0),
-    isSoldOut: raw.is_sold_out === true || raw.isSoldOut === true,
+    isSoldOut: CATALOG_SOLD_OUT || raw.is_sold_out === true || raw.isSoldOut === true,
     isActive: raw.is_active === undefined && raw.isActive === undefined ? true : Boolean(raw.is_active ?? raw.isActive),
     storefrontTitle: raw.storefront_title || raw.storefrontTitle || null,
     priceCase: raw.price_case === null || raw.price_case === undefined ? null : Number(raw.price_case),
