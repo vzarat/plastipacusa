@@ -14,7 +14,7 @@ import { mapCouponToApplied } from "@/lib/coupons";
 import {
   decidePaymentAttempt,
   paymentIdempotencyKey,
-  PENDING_ORDER_TTL_MS,
+  PENDING_REVIEW_MS,
   planAbandonedCleanup,
   rgvLocalCharge,
   type PreviousIntent,
@@ -337,7 +337,8 @@ export async function createPaymentIntent(
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2026-08-26.dahlia" as any,
     });
-    const cutoff = new Date(Date.now() - PENDING_ORDER_TTL_MS).toISOString();
+    // Hobby cron is daily, so this 15-minute check also runs on each payment attempt.
+    const cutoff = new Date(Date.now() - PENDING_REVIEW_MS).toISOString();
     const { data: staleRows } = await admin
       .from("orders")
       .select("id, created_at, status, payment_intent_id")

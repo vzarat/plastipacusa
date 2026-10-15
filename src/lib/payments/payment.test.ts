@@ -30,6 +30,7 @@ import {
   runSettlement,
   verifyWebhookSignature,
 } from "@/lib/payments/settle-payment";
+import { runIdempotentSideEffect, stripeEventSideEffect } from "@/lib/payments/webhook-events";
 import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
 import { judgeStoredQuote } from "@/lib/shipping/quote-cache";
 
@@ -461,6 +462,54 @@ describe("webhook settlement", () => {
     assert.equal(applied.stock, 1);
     assert.equal(applied.coupon, 1);
     assert.equal(emails, 1);
+  });
+
+  it("keeps a failed or canceled payment pending and flags a refund or dispute once", async () => {
+    assert.deepEqual(stripeEventSideEffect("payment_intent.payment_failed"), {
+      kind: "pending_notice",
+      label: "payment_failed",
+    });
+    assert.deepEqual(stripeEventSideEffect("payment_intent.canceled"), {
+      kind: "pending_notice",
+      label: "canceled",
+    });
+    assert.equal(stripeEventSideEffect("charge.refunded").kind, "review");
+    assert.equal(stripeEventSideEffect("charge.dispute.created").kind, "review");
+
+    let applies = 0;
+    let records = 0;
+    const first = await runIdempotentSideEffect({
+      alreadyProcessed: false,
+      apply: async () => {
+        applies += 1;
+        return "ok";
+      },
+      record: async () => {
+        records += 1;
+      },
+    });
+    const second = await runIdempotentSideEffect({
+      alreadyProcessed: true,
+      apply: async () => {
+        applies += 1;
+        return "ok";
+      },
+      record: async () => {
+        records += 1;
+      },
+    });
+    const failed = await runIdempotentSideEffect({
+      alreadyProcessed: false,
+      apply: async () => "failed",
+      record: async () => {
+        records += 1;
+      },
+    });
+    assert.equal(first, "done");
+    assert.equal(second, "duplicate");
+    assert.equal(failed, "failed");
+    assert.equal(applies, 1);
+    assert.equal(records, 1);
   });
 
   it("rejects an invalid webhook signature on the raw body", () => {

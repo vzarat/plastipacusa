@@ -7,8 +7,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Vercel Cron. An hourly schedule requires Vercel Pro.
+ * Vercel Cron on Hobby runs once per day (vercel.json: 06:00 UTC).
  * Set CRON_SECRET. Vercel sends Authorization: Bearer <CRON_SECRET>.
+ * The 15-minute stale check still runs on this daily call, and createPaymentIntent runs it when someone pays.
  * Pending orders older than 15 minutes with a succeeded or processing PaymentIntent are flagged.
  * Pending orders older than 24 hours with an open PaymentIntent are canceled and deleted.
  */

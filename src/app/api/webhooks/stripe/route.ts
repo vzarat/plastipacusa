@@ -22,6 +22,7 @@ import {
   runSettlement,
   verifyWebhookSignature,
 } from "@/lib/payments/settle-payment";
+import { runIdempotentSideEffect, stripeEventSideEffect } from "@/lib/payments/webhook-events";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -1080,6 +1081,74 @@ async function handlePaymentIntentSucceeded(
   }
 }
 
+async function eventAlreadyProcessed(eventId: string): Promise<boolean> {
+  const supabase = getAdminSupabase();
+  const { data, error } = await supabase
+    .from("stripe_webhook_events")
+    .select("event_id")
+    .eq("event_id", eventId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return Boolean(data);
+}
+
+async function recordWebhookEvent(eventId: string): Promise<void> {
+  const supabase = getAdminSupabase();
+  const { error } = await supabase.from("stripe_webhook_events").upsert(
+    { event_id: eventId },
+    { onConflict: "event_id", ignoreDuplicates: true }
+  );
+  if (error) throw new Error(error.message);
+}
+
+function paymentIntentIdFrom(object: {
+  id?: string;
+  object?: string;
+  payment_intent?: string | { id?: string } | null;
+}): string | null {
+  if (object.object === "payment_intent" && object.id) return object.id;
+  const paymentIntent = object.payment_intent;
+  if (typeof paymentIntent === "string") return paymentIntent;
+  if (paymentIntent && typeof paymentIntent === "object" && paymentIntent.id) return paymentIntent.id;
+  return null;
+}
+
+async function handleStripeSideEffect(event: Stripe.Event): Promise<void> {
+  const effect = stripeEventSideEffect(event.type);
+  if (effect.kind === "other") return;
+  const paymentIntentId = paymentIntentIdFrom(
+    event.data.object as {
+      id?: string;
+      object?: string;
+      payment_intent?: string | { id?: string } | null;
+    }
+  );
+  if (!paymentIntentId) throw new Error("Stripe event has no PaymentIntent.");
+
+  const outcome = await runIdempotentSideEffect({
+    alreadyProcessed: await eventAlreadyProcessed(event.id),
+    apply: async () => {
+      if (effect.kind === "pending_notice") {
+        console.log(`[stripe webhook] ${effect.label} for ${paymentIntentId}; order stays pending.`);
+        return "ok";
+      }
+      const supabase = getAdminSupabase();
+      const updated = await supabase
+        .from("orders")
+        .update({
+          payment_review: true,
+          payment_review_reason: effect.reason,
+        })
+        .eq("payment_intent_id", paymentIntentId)
+        .select("id");
+      if (updated.error || !updated.data || updated.data.length === 0) return "failed";
+      return "ok";
+    },
+    record: () => recordWebhookEvent(event.id),
+  });
+  if (outcome === "failed") throw new Error("Stripe event was not recorded.");
+}
+
 export async function POST(request: NextRequest) {
   if (!stripeSecretKey || !webhookSecret) {
     console.error(
@@ -1100,6 +1169,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Raw body required for Stripe signature verification — do not JSON-parse first.
+  // STRIPE_WEBHOOK_SECRET is the signing secret of the live-mode webhook endpoint.
   const body = await request.text();
   let event: Stripe.Event;
 
@@ -1131,6 +1201,13 @@ export async function POST(request: NextRequest) {
       case "payment_intent.succeeded": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         await handlePaymentIntentSucceeded(paymentIntent, event.id);
+        break;
+      }
+      case "payment_intent.payment_failed":
+      case "payment_intent.canceled":
+      case "charge.refunded":
+      case "charge.dispute.created": {
+        await handleStripeSideEffect(event);
         break;
       }
       default:

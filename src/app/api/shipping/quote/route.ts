@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createServiceRoleClient, isServiceRoleConfigured } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import { WARP_ORIGIN_ZIP, getWarpConfig } from "@/lib/shipping/config";
 import { buildQuoteFailure, shippingRequestId } from "@/lib/shipping/diagnostics";
@@ -13,6 +14,15 @@ import {
 import { getCachedWarpOptions, safeStoreLog, storeQuotedOptions } from "@/lib/shipping/quote-cache";
 import { ShipmentDataError, buildShipmentFreight } from "@/lib/shipping/shipment";
 import { WarpQuoteError } from "@/lib/shipping/warp";
+import {
+  SHIPPING_QUOTE_BURST_LIMIT,
+  SHIPPING_QUOTE_BURST_SECONDS,
+  SHIPPING_QUOTE_DAILY_LIMIT,
+  clientIpFromHeaders,
+  hashClientIp,
+  withQuoteRateLimit,
+  type QuoteLimitStatus,
+} from "@/lib/shipping/quote-rate";
 import type {
   ShipmentFreight,
   ShippingOption,
@@ -21,7 +31,8 @@ import type {
 } from "@/lib/shipping/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+/** Hobby maximum. The checkout page still says rates can take up to 30 seconds. */
+export const maxDuration = 300;
 
 const LTL_LIMIT_MESSAGE =
   "This shipment is too large for LTL. Showing truckload options instead.";
@@ -164,6 +175,19 @@ function failureJson(input: {
   );
 }
 
+async function consumeShippingQuoteLimit(headers: Headers): Promise<QuoteLimitStatus> {
+  if (!isServiceRoleConfigured()) return "unavailable";
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin.rpc("consume_shipping_quote_limit", {
+    p_ip_hash: hashClientIp(clientIpFromHeaders(headers)),
+    p_burst_limit: SHIPPING_QUOTE_BURST_LIMIT,
+    p_day_limit: SHIPPING_QUOTE_DAILY_LIMIT,
+    p_burst_seconds: SHIPPING_QUOTE_BURST_SECONDS,
+  });
+  if (error || typeof data !== "boolean") return "unavailable";
+  return data ? "allowed" : "blocked";
+}
+
 export async function POST(request: Request) {
   let body: {
     postalCode?: string;
@@ -185,6 +209,31 @@ export async function POST(request: Request) {
       );
     }
 
+    const limit = await consumeShippingQuoteLimit(request.headers);
+    return withQuoteRateLimit(limit, async () => quoteForSignedInUser(request));
+  } catch (error) {
+    return failureJson({
+      error,
+      freight: null,
+      zip,
+      city: body.city,
+      state: body.state,
+      freeLocal: null,
+      status: error instanceof ShipmentDataError ? 422 : undefined,
+    });
+  }
+}
+
+async function quoteForSignedInUser(request: Request) {
+  let body: {
+    postalCode?: string;
+    city?: string;
+    state?: string;
+    lines?: ShippingQuoteLine[];
+  } = {};
+  let zip: string | null = null;
+
+  try {
     body = (await request.json()) as typeof body;
     zip = zipCode(body.postalCode);
     if (!zip) {
