@@ -1,6 +1,6 @@
-import { SHIPPING_MARKUP_PERCENT, getWarpConfig } from "@/lib/shipping/config";
+import { SHIPPING_MARKUP_PERCENT, WARP_ORIGIN_ZIP, getWarpConfig } from "@/lib/shipping/config";
 import { redactSecrets } from "@/lib/shipping/diagnostics";
-import type { ShipmentFreight, ShippingOption } from "@/lib/shipping/types";
+import type { FreightPiece, ShipmentFreight, ShippingOption } from "@/lib/shipping/types";
 
 const QUOTE_TIMEOUT_MS = 12000;
 
@@ -234,4 +234,73 @@ export async function quoteWarpFreight(input: {
     );
   }
   return [];
+}
+
+const PROBE_PIECE: FreightPiece = {
+  lengthIn: 48,
+  widthIn: 48,
+  heightIn: 48,
+  weightLbs: 100,
+  quantity: 1,
+  packaging: "pallet",
+  dimensionLabel: "48 x 48 x 48 in",
+  weightLabel: "100 lbs",
+};
+
+const PROBE_FREIGHT: ShipmentFreight = {
+  weightLbs: PROBE_PIECE.weightLbs,
+  palletCount: 1,
+  lengthIn: PROBE_PIECE.lengthIn,
+  widthIn: PROBE_PIECE.widthIn,
+  heightIn: PROBE_PIECE.heightIn,
+  rolls: 0,
+  boxes: 0,
+  pieces: [PROBE_PIECE],
+};
+
+/**
+ * One LTL quote for the admin connection check.
+ * Uses the same endpoint, headers, and item fields as quoteVehicle.
+ */
+export async function probeWarpConnection(
+  timeoutMs: number,
+  config: { baseUrl: string; apiKey: string }
+): Promise<{ httpStatus: number; bodyText: string }> {
+  const vehicle = VEHICLES[0];
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(`${config.baseUrl}/freights/quote`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        apikey: config.apiKey,
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        pickupDate: nextPickupDate(),
+        pickupInfo: { zipcode: WARP_ORIGIN_ZIP },
+        deliveryInfo: { zipcode: "77002" },
+        shipmentType: vehicle.shipmentType,
+        vehicleType: { code: vehicle.code },
+        listItems: [
+          {
+            name: "Stretch film",
+            length: PROBE_PIECE.lengthIn,
+            width: PROBE_PIECE.widthIn,
+            height: PROBE_PIECE.heightIn,
+            sizeUnit: "IN",
+            totalWeight: PROBE_FREIGHT.weightLbs,
+            weightUnit: "lbs",
+            quantity: PROBE_PIECE.quantity,
+            packaging: PROBE_PIECE.packaging,
+            stackable: false,
+          },
+        ],
+      }),
+    });
+    return { httpStatus: response.status, bodyText: await response.text() };
+  } finally {
+    clearTimeout(timer);
+  }
 }

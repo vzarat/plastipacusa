@@ -10,8 +10,10 @@ import {
   CheckCircle2,
   Bell,
   Save,
+  Plug,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { WarpIntegrationCard } from "@/components/admin/WarpIntegrationCard";
 
 export function AdminSettingsView() {
   const { t } = useLanguage();
@@ -128,6 +130,14 @@ export function AdminSettingsView() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-6 space-y-4">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+          <Plug className="w-4 h-4 text-blue-600" />
+          <span>APIs e integraciones</span>
+        </div>
+        <WarpIntegrationCard />
       </div>
     </div>
   );
