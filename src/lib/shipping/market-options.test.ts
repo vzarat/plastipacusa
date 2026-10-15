@@ -68,19 +68,30 @@ describe("market option carriers", () => {
     assert.equal(normalizeCarrier("RL Carriers").label, "RL Carriers");
   });
 
-  it("keeps five cheapest options and the cheapest guaranteed service", () => {
+  it("returns every priced quote, cheapest first, and does not invent a carrier", () => {
     const selected = selectMarketOptions(SAMPLE, NOW);
-    assert.deepEqual(
-      selected.map((option) => `${option.carrierName} ${option.serviceLevel} ${option.price.toFixed(2)}`),
-      [
-        "Forward STANDARD 222.85",
-        "Forward Air STANDARD 237.61",
-        "Vocar Transportation STANDARD 272.98",
-        "FedEx Freight Economy ECONOMY 273.82",
-        "FedEx Freight Priority PRIORITY 273.96",
-        "RL Carriers GUARANTEED 339.07",
-      ]
+    const withQuote = SAMPLE.market_options.filter((row) => row.quote_id);
+    assert.equal(selected.length, withQuote.length);
+    assert.equal(selected[0]?.carrierName, "Forward");
+    assert.ok(selected.every((option, index) => index === 0 || option.price >= selected[index - 1].price));
+    const unnamed = selectMarketOptions(
+      {
+        market_options: [
+          {
+            carrier_name: "",
+            service_level: "STANDARD",
+            price_usd: 100,
+            transit_days: 3,
+            bookable: true,
+            quote_id: "q-service",
+            expires_at: "2026-10-18T00:00:00.000Z",
+          },
+        ],
+      },
+      NOW
     );
+    assert.equal(unnamed[0]?.carrierName, "");
+    assert.equal(unnamed[0]?.serviceLevel, "STANDARD");
   });
 
   it("rounds one piece up into a scalar body and refuses a zero weight", () => {

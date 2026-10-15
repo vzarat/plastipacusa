@@ -8,7 +8,6 @@ export const LTL_MARKET_OPTIONS_URL = "https://www.wearewarp.com/api/v1/ltl/mark
 
 export const QUOTE_OFFER_BUFFER_MS = 30 * 60 * 1000;
 export const QUOTE_PAYABLE_BUFFER_MS = 5 * 60 * 1000;
-const MAX_OPTIONS = 5;
 
 const LEGAL_SUFFIXES = [
   "MOTOR FREIGHT SYSTEM",
@@ -244,10 +243,6 @@ export function exceedsLtlLimits(raw: string): boolean {
   return raw.includes("EXCEEDS_LTL_LIMITS");
 }
 
-function offerable(expiresAt: string, now: number): boolean {
-  return quoteStillOffered(expiresAt, now);
-}
-
 function readRows(body: unknown): RawMarketOption[] {
   if (!body || typeof body !== "object") return [];
   const rows = (body as { market_options?: unknown }).market_options;
@@ -255,43 +250,43 @@ function readRows(body: unknown): RawMarketOption[] {
   return rows.filter((row): row is RawMarketOption => Boolean(row) && typeof row === "object");
 }
 
-export function selectMarketOptions(body: unknown, now = Date.now()): MarketOptionQuote[] {
-  const best = new Map<string, MarketOptionQuote>();
+function logMarketShape(body: unknown): void {
+  if (!body || typeof body !== "object") {
+    console.log("[warp market-options] response keys: (not an object)");
+    return;
+  }
+  const record = body as Record<string, unknown>;
+  const rows = Array.isArray(record.market_options) ? record.market_options : [];
+  const sample = rows.find((row) => row && typeof row === "object") as Record<string, unknown> | undefined;
+  const optionKeys = sample ? Object.keys(sample).sort().join(",") : "(none)";
+  console.log(
+    `[warp market-options] response keys: ${Object.keys(record).sort().join(",")}; option keys: ${optionKeys}; count: ${rows.length}`
+  );
+}
+
+/** Every priced option that has a quote id. A missing carrier name stays blank so the UI uses the service name. */
+export function selectMarketOptions(body: unknown, _now = Date.now()): MarketOptionQuote[] {
+  const options: MarketOptionQuote[] = [];
   for (const row of readRows(body)) {
-    if (row.bookable !== true) continue;
     const quoteId = String(row.quote_id || "").trim();
-    const expiresAt = String(row.expires_at || "").trim();
-    if (!quoteId || !offerable(expiresAt, now)) continue;
-    const carrierName = String(row.carrier_name || "").trim();
-    if (!carrierName) continue;
-    const carrier = normalizeCarrier(carrierName);
-    const serviceLevel = normalizeServiceLevel(String(row.service_level || ""), carrierName);
     const price = markedCents(Number(row.price_usd));
-    if (price == null) continue;
+    if (!quoteId || price == null) continue;
+    const rawName = String(row.carrier_name || "").trim();
+    const carrier = rawName ? normalizeCarrier(rawName) : null;
     const transit = Number(row.transit_days);
-    const option: MarketOptionQuote = {
+    options.push({
       quoteId,
-      carrierName: carrier.label,
-      carrierKey: carrier.key,
-      serviceLevel,
+      carrierName: carrier?.label || "",
+      carrierKey: carrier?.key || "",
+      serviceLevel: normalizeServiceLevel(String(row.service_level || ""), rawName),
       price,
       transitDays: Number.isFinite(transit) ? transit : null,
-      expiresAt,
-    };
-    const key = `${carrier.key}|${serviceLevel}`;
-    const current = best.get(key);
-    if (!current || option.price < current.price || (option.price === current.price && expiresAt > current.expiresAt)) {
-      best.set(key, option);
-    }
+      expiresAt: String(row.expires_at || "").trim(),
+    });
   }
-
-  const ranked = [...best.values()].sort((a, b) => a.price - b.price || a.carrierName.localeCompare(b.carrierName));
-  const selected = ranked.slice(0, MAX_OPTIONS);
-  const guaranteed = ranked.find((option) => option.serviceLevel === "GUARANTEED");
-  if (guaranteed && !selected.some((option) => option.carrierKey === guaranteed.carrierKey && option.serviceLevel === "GUARANTEED")) {
-    selected.push(guaranteed);
-  }
-  return selected;
+  return options.sort(
+    (a, b) => a.price - b.price || a.carrierName.localeCompare(b.carrierName) || a.quoteId.localeCompare(b.quoteId)
+  );
 }
 
 export async function fetchLtlMarketOptions(input: {
@@ -352,6 +347,7 @@ export async function fetchLtlMarketOptions(input: {
     } catch {
       parsed = null;
     }
+    logMarketShape(parsed);
     return {
       httpStatus: response.status,
       options: selectMarketOptions(parsed, input.now),

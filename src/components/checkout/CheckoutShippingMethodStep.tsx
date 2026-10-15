@@ -48,6 +48,12 @@ function fullZip(postalCode: string | undefined): string | null {
   return digits.slice(0, 5);
 }
 
+function carrierInitials(title: string): string {
+  const words = title.split(/\s+/).filter((word) => /[A-Za-z0-9]/.test(word));
+  const letters = words.slice(0, 2).map((word) => word[0]?.toUpperCase() || "");
+  return letters.join("") || "•";
+}
+
 function tagOptions(options: ShippingOption[]) {
   if (options.length === 0) return [];
   const cheapest = [...options].sort((a, b) => a.price - b.price)[0];
@@ -224,9 +230,15 @@ export function CheckoutShippingMethodStep({
           setMessage(PLAIN_FAILURE);
           return;
         }
-        setFreeLocal(payload.freeLocal || null);
-        setOptions(payload.options || []);
+        const local = payload.freeLocal || null;
+        const quoted = payload.options || [];
+        setFreeLocal(local);
+        setOptions(quoted);
         setMessage(payload.message || null);
+        const cheapest = [...quoted].sort((a, b) => a.price - b.price)[0] || null;
+        const selected = local || cheapest;
+        setSelectedShippingOption(selected);
+        setDeliveryMethod(selected?.id === "rgv-local" ? "rgv-express" : selected ? "freight" : "ground");
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") return;
         if (requestId !== requestRef.current) return;
@@ -553,6 +565,12 @@ export function CheckoutShippingMethodStep({
                     }}
                     className="mt-1 h-4 w-4 text-sky-600 focus:ring-sky-500"
                   />
+                  <span
+                    aria-hidden
+                    className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-black text-slate-700"
+                  >
+                    {carrierInitials(title)}
+                  </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-start justify-between gap-3">
                       <span>
@@ -568,7 +586,7 @@ export function CheckoutShippingMethodStep({
                           </span>
                           {"cheapest" in method && method.cheapest && (
                             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
-                              Cheapest
+                              Lowest price
                             </span>
                           )}
                           {"fastest" in method && method.fastest && (

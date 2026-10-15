@@ -215,6 +215,8 @@ export async function createPaymentIntent(
       provider: string;
       mode: string;
       serviceName: string;
+      carrierName?: string;
+      serviceLevel?: string;
       price: number;
       transitDays: number;
       destinationZip: string;
@@ -282,7 +284,17 @@ export async function createPaymentIntent(
         if ("error" in resolved) {
           return { success: false, error: resolved.error, expired: resolved.expired };
         }
-        shippingOption = resolved.option;
+        shippingOption = {
+          id: resolved.option.id,
+          provider: resolved.option.provider,
+          mode: resolved.option.mode,
+          serviceName: resolved.option.serviceName,
+          carrierName: resolved.option.carrierName,
+          serviceLevel: resolved.option.serviceLevel,
+          price: resolved.option.price,
+          transitDays: resolved.option.transitDays,
+          destinationZip: resolved.option.destinationZip,
+        };
       } catch {
         return {
           success: false,
@@ -418,10 +430,10 @@ export async function createPaymentIntent(
       total_amount: priced.total,
       currency: "usd",
       shipping_quote_id: shippingOption?.id || null,
-      shipping_method: shippingOption?.serviceName || null,
+      shipping_method: shippingOption?.carrierName || shippingOption?.serviceName || null,
       shipping_provider: shippingOption?.provider || null,
       shipping_mode: shippingOption?.mode || null,
-      shipping_service: shippingOption?.serviceName || null,
+      shipping_service: shippingOption?.serviceLevel || shippingOption?.serviceName || null,
       shipping_transit_days: shippingOption?.transitDays ?? null,
       destination_zip: shippingOption?.destinationZip || null,
       coupon_id: couponId,

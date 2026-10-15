@@ -8,7 +8,6 @@ import { evalShippingEligibility } from "@/lib/shippingRules";
 import {
   fetchLtlMarketOptions,
   marketItemsFromPieces,
-  quoteStillOffered,
   type MarketOptionQuote,
 } from "@/lib/shipping/market-options";
 import { getCachedWarpOptions, safeStoreLog, storeQuotedOptions } from "@/lib/shipping/quote-cache";
@@ -53,17 +52,18 @@ function serviceDescription(level: string): string {
 }
 
 function carrierOption(option: MarketOptionQuote, zip: string): ShippingOption {
+  const truckload = /FTL|TRUCKLOAD/.test(option.serviceLevel.toUpperCase());
   return {
     id: option.quoteId,
     provider: "warp",
-    mode: "LTL",
-    serviceName: option.carrierName,
+    mode: truckload ? "truckload" : "LTL",
+    serviceName: option.carrierName || option.serviceLevel,
     description: serviceDescription(option.serviceLevel),
     price: option.price,
     transitDays: option.transitDays && option.transitDays > 0 ? option.transitDays : 1,
-    expiresAt: option.expiresAt,
+    expiresAt: option.expiresAt || null,
     destinationZip: zip,
-    carrierName: option.carrierName,
+    carrierName: option.carrierName || undefined,
     carrierKey: option.carrierKey,
     serviceLevel: option.serviceLevel,
   };
@@ -292,9 +292,9 @@ async function quoteForSignedInUser(request: Request) {
 
       let carrierOptions: ShippingOption[] = [];
       if (!limitExceeded && marketResult.status === "fulfilled") {
-        const visible = marketResult.value.options
-          .map((option) => carrierOption(option, destinationZip))
-          .filter((option) => quoteStillOffered(option.expiresAt));
+        const visible = marketResult.value.options.map((option) =>
+          carrierOption(option, destinationZip)
+        );
         if (visible.length > 0) {
           try {
             carrierOptions = await storeQuotedOptions(destinationZip, freight, visible, "market");
