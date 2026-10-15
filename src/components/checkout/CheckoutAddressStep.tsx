@@ -47,15 +47,20 @@ export function CheckoutAddressStep({
   const { selectedAddress, setSelectedAddress } = useCheckoutState();
   const cartItems = useCartStore((state) => state.items);
   const cartBoxes = useMemo(() => countCartBoxes(cartItems), [cartItems]);
+  const cartRolls = useMemo(
+    () => cartItems.reduce((total, item) => total + (Number(item.totalRolls) || 0), 0),
+    [cartItems]
+  );
   const selectedEligibility = useMemo(
     () =>
       evalShippingEligibility(
         selectedAddress?.postalCode || "",
         selectedAddress?.city || "",
         selectedAddress?.state || "",
-        cartBoxes
+        cartBoxes,
+        cartRolls
       ),
-    [selectedAddress, cartBoxes]
+    [selectedAddress, cartBoxes, cartRolls]
   );
   const [addresses, setAddresses] = useState<SavedShippingAddress[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,8 +70,8 @@ export function CheckoutAddressStep({
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const draftEligibility = useMemo(
     () =>
-      evalShippingEligibility(form.postalCode, form.city, form.state, cartBoxes),
-    [form.postalCode, form.city, form.state, cartBoxes]
+      evalShippingEligibility(form.postalCode, form.city, form.state, cartBoxes, cartRolls),
+    [form.postalCode, form.city, form.state, cartBoxes, cartRolls]
   );
 
   const load = async () => {

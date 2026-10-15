@@ -49,6 +49,7 @@ export function parsePalletDimensions(value: unknown): {
 
 interface FreightProduct {
   slug: string | null;
+  application: string | null;
   roll_weight_lbs: number | null;
   pallet_weight_lbs: number | null;
   pallet_dimensions: string | null;
@@ -95,7 +96,7 @@ export async function buildShipmentFreight(
     const { data, error } = await supabase
       .from("product_variants")
       .select(
-        "sku, rolls_count, boxes_count, roll_weight_lbs, box_weight_lbs, pallet_weight_lbs, products(slug, roll_weight_lbs, pallet_weight_lbs, pallet_dimensions, rolls_per_box, width_inches, gauge, length_feet)"
+        "sku, rolls_count, boxes_count, roll_weight_lbs, box_weight_lbs, pallet_weight_lbs, products(slug, application, roll_weight_lbs, pallet_weight_lbs, pallet_dimensions, rolls_per_box, width_inches, gauge, length_feet)"
       )
       .in("sku", skus);
     if (error) {
@@ -113,7 +114,7 @@ export async function buildShipmentFreight(
     const { data, error } = await supabase
       .from("products")
       .select(
-        "slug, roll_weight_lbs, pallet_weight_lbs, pallet_dimensions, rolls_per_box, width_inches, gauge, length_feet"
+        "slug, application, roll_weight_lbs, pallet_weight_lbs, pallet_dimensions, rolls_per_box, width_inches, gauge, length_feet"
       )
       .in("slug", slugs);
     if (error) {
@@ -130,6 +131,23 @@ export async function buildShipmentFreight(
     );
   }
 
+  return shipmentFreightFromCatalog(requested, rows, productsBySlug);
+}
+
+/** Weight, pallets, and rolls come from the catalog row for the sku. Client box, roll, and weight fields are ignored. */
+export function shipmentFreightFromCatalog(
+  lines: ShippingQuoteLine[],
+  rows: FreightVariant[],
+  productsBySlug: Map<string, FreightProduct>
+): ShipmentFreight {
+  const requested = lines.filter((line) => Number(line.quantity) > 0);
+  if (requested.length === 0) {
+    throw new ShipmentDataError(
+      "missing_weight",
+      "Add a product before requesting a shipping quote."
+    );
+  }
+
   let weightLbs = 0;
   let palletCount = 0;
   let rolls = 0;
@@ -141,9 +159,9 @@ export async function buildShipmentFreight(
     const row = rows.find((item) => item.sku && item.sku === line.sku);
     const product =
       productOf(row) || productsBySlug.get(String(line.productSlug || "")) || null;
-    const packageRolls = positive(line.totalRolls) ?? positive(row?.rolls_count) ?? 0;
-    const packageBoxes = positive(line.totalBoxes) ?? positive(row?.boxes_count) ?? 0;
-    const application = String(line.application || "").toLowerCase();
+    const packageRolls = positive(row?.rolls_count) ?? 0;
+    const packageBoxes = positive(row?.boxes_count) ?? 0;
+    const application = String(product?.application || "").toLowerCase();
     const unitWeight = packageTotalWeightLbs({
       rolls: packageRolls,
       boxes: packageBoxes,

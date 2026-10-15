@@ -85,6 +85,7 @@ export async function GET(
       .select("*")
       .eq("id", orderId)
       .eq("user_id", user.id)
+      .neq("status", "pending_payment")
       .maybeSingle();
 
     // Fallback: some UIs pass formatted ORD-* refs — scan recent user orders.
@@ -93,6 +94,7 @@ export async function GET(
         .from("orders")
         .select("*")
         .eq("user_id", user.id)
+        .neq("status", "pending_payment")
         .order("created_at", { ascending: false })
         .limit(100);
 

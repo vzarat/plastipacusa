@@ -1,24 +1,76 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { FREE_LOCAL_DELIVERY_MIN_ROLLS, WARP_ORIGIN_ZIP } from "@/lib/shipping/config";
+import {
+  QUOTE_PAYABLE_BUFFER_MS,
+  freightItemsHash,
+  quoteStillPayable,
+} from "@/lib/shipping/market-options";
 import { isRioGrandeValley } from "@/lib/shipping-method";
 import { buildShipmentFreight, ShipmentDataError } from "@/lib/shipping/shipment";
 import type { ShippingQuoteLine } from "@/lib/shipping/types";
 import { quoteWarpFreight } from "@/lib/shipping/warp";
 import type { ShipmentFreight, ShippingOption } from "@/lib/shipping/types";
+import { createServiceRoleClient } from "@/lib/supabase/admin";
 
 const CACHE_MS = 10 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const FALLBACK_EXPIRY_MS = 10 * 60 * 1000;
+const EXPIRY_ERROR = "This shipping quote expired. Review the updated price before paying.";
+const MISMATCH_ERROR = "We couldn't confirm this shipping quote. Please choose it again.";
+
+export type QuoteCacheSource = "market" | "freights";
 
 interface CachedQuote {
   options: ShippingOption[];
   freight: ShipmentFreight;
+  itemsHash: string;
   destinationZip: string;
   storedAt: number;
 }
 
-const responseCache = new Map<string, CachedQuote>();
-const quotesById = new Map<string, ShippingOption & { freight: ShipmentFreight; storedAt: number }>();
+interface StoredQuote extends ShippingOption {
+  freight: ShipmentFreight;
+  itemsHash: string;
+  storedAt: number;
+}
 
-export function freightCacheKey(zip: string, freight: ShipmentFreight): string {
+interface ShippingQuoteRow {
+  quote_id: string;
+  carrier_name: string | null;
+  carrier_key: string | null;
+  service_level: string | null;
+  service_name: string;
+  description: string;
+  shipping_mode: "LTL" | "truckload" | "local";
+  price_cents: number;
+  destination_zip: string;
+  weight_lbs: number;
+  pallet_count: number;
+  transit_days: number;
+  items_hash: string;
+  expires_at: string;
+}
+
+export type StoredQuoteVerdict =
+  | { status: "ok" }
+  | { status: "missing" }
+  | { status: "expired" }
+  | { status: "mismatch" };
+
+export function shouldDeleteStoredQuote(status: StoredQuoteVerdict["status"]): boolean {
+  return status === "expired";
+}
+
+const responseCache = new Map<string, CachedQuote>();
+const quotesById = new Map<string, StoredQuote>();
+
+export function freightCacheKey(
+  zip: string,
+  freight: ShipmentFreight,
+  source: QuoteCacheSource
+): string {
   return [
+    source,
     zip,
     freight.palletCount,
     freight.weightLbs,
@@ -27,51 +79,261 @@ export function freightCacheKey(zip: string, freight: ShipmentFreight): string {
         [piece.lengthIn, piece.widthIn, piece.heightIn, piece.weightLbs, piece.quantity].join("x")
       )
       .join(","),
-    "none",
+    freightItemsHash(freight.pieces),
   ].join("|");
 }
 
-function remember(zip: string, freight: ShipmentFreight, options: ShippingOption[]) {
-  const key = freightCacheKey(zip, freight);
-  responseCache.set(key, { options, freight, destinationZip: zip, storedAt: Date.now() });
+function remember(
+  source: QuoteCacheSource,
+  zip: string,
+  freight: ShipmentFreight,
+  itemsHash: string,
+  options: ShippingOption[]
+) {
+  const key = freightCacheKey(zip, freight, source);
+  responseCache.set(key, { options, freight, itemsHash, destinationZip: zip, storedAt: Date.now() });
   for (const option of options) {
-    quotesById.set(option.id, { ...option, freight, storedAt: Date.now() });
+    quotesById.set(option.id, { ...option, freight, itemsHash, storedAt: Date.now() });
   }
+}
+
+export function keepPayableOptions(options: ShippingOption[], now = Date.now()): ShippingOption[] {
+  return options.filter((option) => quoteStillPayable(option.expiresAt, now));
+}
+
+function roundedWeight(value: number): number {
+  return Math.round(value);
+}
+
+function withStoredExpiry(option: ShippingOption, now = Date.now()): ShippingOption {
+  if (option.expiresAt && Number.isFinite(Date.parse(option.expiresAt))) return option;
+  return { ...option, expiresAt: new Date(now + FALLBACK_EXPIRY_MS).toISOString() };
+}
+
+export function judgeStoredQuote(input: {
+  found: boolean;
+  expiresAt: string | null;
+  destinationZip: string;
+  weightLbs: number;
+  palletCount: number;
+  itemsHash: string;
+  zip: string;
+  freightWeightLbs: number;
+  freightPalletCount: number;
+  freightItemsHash: string;
+  now?: number;
+}): StoredQuoteVerdict {
+  if (!input.found) return { status: "missing" };
+  if (!quoteStillPayable(input.expiresAt, input.now)) return { status: "expired" };
+  const sameCart =
+    input.destinationZip === input.zip &&
+    roundedWeight(input.weightLbs) === roundedWeight(input.freightWeightLbs) &&
+    input.palletCount === input.freightPalletCount &&
+    input.itemsHash === input.freightItemsHash;
+  if (!sameCart) return { status: "mismatch" };
+  return { status: "ok" };
+}
+
+export function safeStoreLog(error: unknown): void {
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  let text = error instanceof Error ? error.message : "store failed";
+  if (secret) text = text.split(secret).join("***");
+  console.error("SHIPPING_QUOTE_STORE", text);
+}
+
+function isShippingMode(value: unknown): value is ShippingQuoteRow["shipping_mode"] {
+  return value === "LTL" || value === "truckload" || value === "local";
+}
+
+function isQuoteRow(value: unknown): value is ShippingQuoteRow {
+  if (!value || typeof value !== "object") return false;
+  const row = value as Record<string, unknown>;
+  return (
+    typeof row.quote_id === "string" &&
+    typeof row.service_name === "string" &&
+    typeof row.description === "string" &&
+    isShippingMode(row.shipping_mode) &&
+    typeof row.price_cents === "number" &&
+    typeof row.destination_zip === "string" &&
+    typeof row.items_hash === "string" &&
+    typeof row.expires_at === "string"
+  );
+}
+
+function optionFromRow(row: ShippingQuoteRow): ShippingOption {
+  return {
+    id: row.quote_id,
+    provider: "warp",
+    mode: row.shipping_mode,
+    serviceName: row.service_name,
+    description: row.description,
+    price: row.price_cents / 100,
+    transitDays: row.transit_days,
+    expiresAt: row.expires_at,
+    destinationZip: row.destination_zip,
+    carrierName: row.carrier_name || undefined,
+    carrierKey: row.carrier_key || undefined,
+    serviceLevel: row.service_level || undefined,
+  };
+}
+
+async function quoteTable(): Promise<SupabaseClient> {
+  return createServiceRoleClient();
+}
+
+async function deleteStaleQuotes(supabase: SupabaseClient): Promise<void> {
+  const nowIso = new Date().toISOString();
+  const dayAgo = new Date(Date.now() - DAY_MS).toISOString();
+  const payableEdge = new Date(Date.now() + QUOTE_PAYABLE_BUFFER_MS).toISOString();
+  const expired = await supabase.from("shipping_quotes").delete().lt("expires_at", nowIso);
+  if (expired.error) throw expired.error;
+  const aged = await supabase
+    .from("shipping_quotes")
+    .delete()
+    .lt("created_at", dayAgo)
+    .lte("expires_at", payableEdge);
+  if (aged.error) throw aged.error;
+}
+
+async function deleteQuote(quoteId: string): Promise<void> {
+  quotesById.delete(quoteId);
+  try {
+    const supabase = await quoteTable();
+    const { error } = await supabase.from("shipping_quotes").delete().eq("quote_id", quoteId);
+    if (error) safeStoreLog(error);
+  } catch (error) {
+    safeStoreLog(error);
+  }
+}
+
+export async function storeQuotedOptions(
+  zip: string,
+  freight: ShipmentFreight,
+  options: ShippingOption[],
+  source: QuoteCacheSource
+): Promise<ShippingOption[]> {
+  const itemsHash = freightItemsHash(freight.pieces);
+  const storedOptions = options.map((option) => withStoredExpiry(option));
+  const supabase = await quoteTable();
+  await deleteStaleQuotes(supabase);
+  if (storedOptions.length === 0) return [];
+  const { error } = await supabase.from("shipping_quotes").upsert(
+    storedOptions.map((option) => ({
+      quote_id: option.id,
+      carrier_name: option.carrierName ?? null,
+      carrier_key: option.carrierKey ?? null,
+      service_level: option.serviceLevel ?? null,
+      service_name: option.serviceName,
+      description: option.description,
+      shipping_mode: option.mode,
+      price_cents: Math.round(option.price * 100),
+      destination_zip: zip,
+      weight_lbs: freight.weightLbs,
+      pallet_count: freight.palletCount,
+      transit_days: option.transitDays,
+      items_hash: itemsHash,
+      expires_at: option.expiresAt,
+    }))
+  );
+  if (error) throw error;
+  remember(source, zip, freight, itemsHash, storedOptions);
+  return storedOptions;
 }
 
 export async function getCachedWarpOptions(
   zip: string,
   freight: ShipmentFreight
 ): Promise<ShippingOption[]> {
-  const key = freightCacheKey(zip, freight);
+  const key = freightCacheKey(zip, freight, "freights");
   const cached = responseCache.get(key);
   if (cached && Date.now() - cached.storedAt < CACHE_MS) {
-    const live = cached.options.filter(
-      (option) => !option.expiresAt || Date.parse(option.expiresAt) > Date.now()
-    );
-    if (live.length > 0 && live.length === cached.options.length) return live;
+    const live = keepPayableOptions(cached.options);
+    if (live.length > 0) return live;
   }
-  const options = await quoteWarpFreight({
-    originZip: WARP_ORIGIN_ZIP,
-    destinationZip: zip,
-    freight,
-  });
-  remember(zip, freight, options);
-  return options;
+  const options = keepPayableOptions(
+    await quoteWarpFreight({
+      originZip: WARP_ORIGIN_ZIP,
+      destinationZip: zip,
+      freight,
+    })
+  );
+  try {
+    return await storeQuotedOptions(zip, freight, options, "freights");
+  } catch (error) {
+    safeStoreLog(error);
+    return [];
+  }
 }
 
-export function readStoredQuote(
+export async function readStoredQuote(
   quoteId: string,
   zip: string,
   freight: ShipmentFreight
-): ShippingOption | null {
+): Promise<{ option: ShippingOption } | { status: "missing" | "expired" | "mismatch" }> {
+  const itemsHash = freightItemsHash(freight.pieces);
   const stored = quotesById.get(quoteId);
-  if (!stored) return null;
-  if (stored.destinationZip !== zip) return null;
-  if (stored.freight.weightLbs !== freight.weightLbs) return null;
-  if (stored.freight.palletCount !== freight.palletCount) return null;
-  if (stored.expiresAt && Date.parse(stored.expiresAt) <= Date.now()) return null;
-  return stored;
+  const memoryVerdict = judgeStoredQuote({
+    found: Boolean(stored),
+    expiresAt: stored?.expiresAt ?? null,
+    destinationZip: stored?.destinationZip ?? "",
+    weightLbs: stored?.freight.weightLbs ?? 0,
+    palletCount: stored?.freight.palletCount ?? 0,
+    itemsHash: stored?.itemsHash ?? "",
+    zip,
+    freightWeightLbs: freight.weightLbs,
+    freightPalletCount: freight.palletCount,
+    freightItemsHash: itemsHash,
+  });
+  if (shouldDeleteStoredQuote(memoryVerdict.status)) {
+    await deleteQuote(quoteId);
+    return { status: "expired" };
+  }
+  if (memoryVerdict.status === "ok" && stored) return { option: stored };
+  if (memoryVerdict.status === "mismatch") return { status: "mismatch" };
+
+  let row: ShippingQuoteRow | null = null;
+  try {
+    const supabase = await quoteTable();
+    try {
+      await deleteStaleQuotes(supabase);
+    } catch (error) {
+      safeStoreLog(error);
+    }
+    const { data, error } = await supabase
+      .from("shipping_quotes")
+      .select(
+        "quote_id, carrier_name, carrier_key, service_level, service_name, description, shipping_mode, price_cents, destination_zip, weight_lbs, pallet_count, transit_days, items_hash, expires_at"
+      )
+      .eq("quote_id", quoteId)
+      .maybeSingle();
+    if (error) throw error;
+    row = isQuoteRow(data) ? data : null;
+  } catch (error) {
+    safeStoreLog(error);
+    return { status: "missing" };
+  }
+
+  const verdict = judgeStoredQuote({
+    found: Boolean(row),
+    expiresAt: row?.expires_at ?? null,
+    destinationZip: row?.destination_zip ?? "",
+    weightLbs: Number(row?.weight_lbs ?? 0),
+    palletCount: Number(row?.pallet_count ?? 0),
+    itemsHash: row?.items_hash ?? "",
+    zip,
+    freightWeightLbs: freight.weightLbs,
+    freightPalletCount: freight.palletCount,
+    freightItemsHash: itemsHash,
+  });
+  if (shouldDeleteStoredQuote(verdict.status)) {
+    await deleteQuote(quoteId);
+    return { status: "expired" };
+  }
+  if (verdict.status === "mismatch") return { status: "mismatch" };
+  if (verdict.status !== "ok" || !row) return { status: "missing" };
+  const option = optionFromRow(row);
+  quotesById.set(option.id, { ...option, freight, itemsHash, storedAt: Date.now() });
+  return { option };
 }
 
 export async function resolveShippingCharge(input: {
@@ -108,10 +370,7 @@ export async function resolveShippingCharge(input: {
         },
       };
     }
-    return {
-      error: "We couldn't confirm this shipping quote. Please choose it again.",
-      expired: false,
-    };
+    return { error: MISMATCH_ERROR, expired: false };
   }
   if (input.quoteId === "rgv-local") {
     const eligible =
@@ -135,14 +394,8 @@ export async function resolveShippingCharge(input: {
     };
   }
 
-  const stored = readStoredQuote(input.quoteId, zip, freight);
-  if (stored) return { option: stored };
-
-  const fresh = await getCachedWarpOptions(zip, freight);
-  const match = fresh.find((option) => option.id === input.quoteId);
-  if (match) return { option: match };
-  return {
-    error: "This shipping quote expired. Review the updated price before paying.",
-    expired: true,
-  };
+  const stored = await readStoredQuote(input.quoteId, zip, freight);
+  if ("option" in stored) return { option: stored.option };
+  if (stored.status === "mismatch") return { error: MISMATCH_ERROR, expired: false };
+  return { error: EXPIRY_ERROR, expired: true };
 }

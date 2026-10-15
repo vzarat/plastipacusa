@@ -1,0 +1,1 @@
+npx tsx --env-file=.env.local scripts/market-options.ts

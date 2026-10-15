@@ -45,7 +45,7 @@ export function freightRateCheck(
 
   const boxCount = quote.freightBoxCount;
   const weightLbs = quote.weightLbs != null && quote.weightLbs > 0 ? quote.weightLbs : 0;
-  const eligibility = evalShippingEligibility(postalCode, city, state, boxCount);
+  const eligibility = evalShippingEligibility(postalCode, city, state, boxCount, quote.rolls);
   const method = eligibility.options[0];
   const methodId = eligibility.defaultMethodId;
 

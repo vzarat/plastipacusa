@@ -1,0 +1,233 @@
+import { getCartDiscountAmount } from "@/lib/coupons";
+import { boxTierPricesFromVariants, repriceHandCartLine, roundMoney } from "@/lib/pricing";
+import { calculateOrderTotal, type CheckoutTotals } from "@/lib/sales-tax";
+import type { AppliedCoupon } from "@/types/coupon";
+import type { CartItem } from "@/types";
+
+export interface CatalogCheckoutRequest {
+  sku: string;
+  quantity: number;
+}
+
+export interface CatalogCheckoutVariant {
+  sku: string | null;
+  price: number | null;
+  boxes_count: number | null;
+  product_id?: string | null;
+  products?: {
+    slug?: string | null;
+    application?: string | null;
+    name?: string | null;
+    width_inches?: number | string | null;
+    gauge?: number | string | null;
+  } | null;
+}
+
+export interface PricedCheckoutLine {
+  sku: string;
+  quantity: number;
+  productName: string;
+  productSlug: string;
+  application: "hand" | "machine";
+  totalBoxes: number;
+  /** Catalog boxes_count times quantity. Settlement subtracts this from products.stock_quantity. */
+  boxes: number;
+  unitPrice: number;
+  totalPrice: number;
+  boxUnitPrice: number | null;
+  widthInches: string;
+  gauge: number;
+}
+
+function productOf(variant: CatalogCheckoutVariant) {
+  const products = variant.products as CatalogCheckoutVariant["products"] | CatalogCheckoutVariant["products"][] | null;
+  if (Array.isArray(products)) return products[0] || null;
+  return products || null;
+}
+
+/** Prices come from catalog variants. Request fields other than sku and quantity are ignored. */
+export function catalogCheckoutLines(
+  requested: CatalogCheckoutRequest[],
+  variants: CatalogCheckoutVariant[],
+  siblings: CatalogCheckoutVariant[] = variants
+): PricedCheckoutLine[] {
+  const bySku = new Map(
+    variants
+      .filter((row) => String(row.sku || "").trim())
+      .map((row) => [String(row.sku).trim(), row])
+  );
+  const siblingsByProduct = new Map<string, CatalogCheckoutVariant[]>();
+  for (const row of siblings) {
+    const productId = String(row.product_id || "");
+    if (!productId) continue;
+    const group = siblingsByProduct.get(productId) || [];
+    group.push(row);
+    siblingsByProduct.set(productId, group);
+  }
+
+  return requested
+    .filter((line) => Number(line.quantity) > 0 && String(line.sku || "").trim())
+    .map((line) => {
+      const sku = String(line.sku).trim();
+      const variant = bySku.get(sku);
+      if (!variant) {
+        throw new Error(`Catalog price missing for ${sku}.`);
+      }
+      const product = productOf(variant);
+      const application =
+        String(product?.application || "").toLowerCase() === "machine" ? "machine" : "hand";
+      const quantity = Math.max(1, Math.floor(Number(line.quantity) || 1));
+      const presetBoxes = Math.max(0, Math.floor(Number(variant.boxes_count) || 0));
+      const boxes = presetBoxes * quantity;
+      const widthInches = String(product?.width_inches ?? "");
+      const gauge = Math.round(Number(product?.gauge) || 0);
+      const productName = String(product?.name || sku);
+      const productSlug = String(product?.slug || "");
+
+      if (application === "machine") {
+        const unitPrice = roundMoney(Number(variant.price) || 0);
+        if (!(unitPrice > 0)) throw new Error(`Catalog price missing for ${sku}.`);
+        return {
+          sku,
+          quantity,
+          productName,
+          productSlug,
+          application,
+          totalBoxes: presetBoxes,
+          boxes,
+          unitPrice,
+          totalPrice: roundMoney(unitPrice * quantity),
+          boxUnitPrice: null,
+          widthInches,
+          gauge,
+        };
+      }
+
+      const tierPrices = boxTierPricesFromVariants(
+        siblingsByProduct.get(String(variant.product_id || "")) || [variant]
+      );
+      const repriced = repriceHandCartLine(
+        {
+          application: "hand" as const,
+          totalBoxes: presetBoxes,
+          quantity,
+          unitPrice: 0,
+          totalPrice: 0,
+          boxUnitPrice: null,
+        },
+        tierPrices
+      );
+      if (!(repriced.totalPrice > 0)) throw new Error(`Catalog price missing for ${sku}.`);
+      return {
+        sku,
+        quantity,
+        productName,
+        productSlug,
+        application,
+        totalBoxes: presetBoxes,
+        boxes,
+        unitPrice: repriced.unitPrice,
+        totalPrice: repriced.totalPrice,
+        boxUnitPrice: repriced.boxUnitPrice ?? null,
+        widthInches,
+        gauge,
+      };
+    });
+}
+
+function asCartItem(line: PricedCheckoutLine): CartItem {
+  return {
+    id: line.sku,
+    productId: 0,
+    productSlug: line.productSlug,
+    productName: line.productName,
+    productImage: "",
+    totalBoxes: line.totalBoxes,
+    application: line.application,
+    variantId: line.sku,
+    sku: line.sku,
+    widthInches: line.widthInches,
+    gauge: line.gauge,
+    lengthFeet: 0,
+    rollsPerBox: 0,
+    rollsPerPallet: 0,
+    weightLbs: "0",
+    pricingTier: "",
+    unitPrice: line.unitPrice,
+    boxUnitPrice: line.boxUnitPrice ?? undefined,
+    quantity: line.quantity,
+    totalPrice: line.totalPrice,
+  };
+}
+
+/** Shared by the cart display and the payment server. Shipping is added after tax on merchandise. */
+export function priceCheckoutCart(input: {
+  lines: PricedCheckoutLine[];
+  coupon: AppliedCoupon | null;
+  shipping: number;
+}): CheckoutTotals & { lines: PricedCheckoutLine[] } {
+  const subtotal = roundMoney(input.lines.reduce((sum, line) => sum + line.totalPrice, 0));
+  const discount = getCartDiscountAmount(
+    input.lines.map(asCartItem),
+    input.coupon
+  );
+  const totals = calculateOrderTotal({
+    subtotal,
+    discount,
+    shipping: input.shipping,
+  });
+  return { ...totals, lines: input.lines };
+}
+
+export function totalsFromCartLines(
+  lines: PricedCheckoutLine[],
+  coupon: AppliedCoupon | null,
+  shipping: number
+) {
+  return priceCheckoutCart({ lines, coupon, shipping });
+}
+
+export function totalsFromCatalog(
+  requested: CatalogCheckoutRequest[],
+  variants: CatalogCheckoutVariant[],
+  coupon: AppliedCoupon | null,
+  shipping: number,
+  siblings?: CatalogCheckoutVariant[]
+) {
+  return priceCheckoutCart({
+    lines: catalogCheckoutLines(requested, variants, siblings),
+    coupon,
+    shipping,
+  });
+}
+
+export function couponBlockReason(
+  row: {
+    is_active?: boolean | null;
+    expires_at?: string | null;
+    max_uses?: number | null;
+    used_count?: number | null;
+    bound_email?: string | null;
+  },
+  email: string | null,
+  now = Date.now()
+): string | null {
+  if (!row.is_active) return "This promo code is inactive.";
+  if (row.expires_at && new Date(row.expires_at).getTime() < now) {
+    return "This promo code has expired.";
+  }
+  if (
+    row.max_uses !== null &&
+    row.max_uses !== undefined &&
+    Number(row.used_count || 0) >= Number(row.max_uses)
+  ) {
+    return "This promo code has reached its usage limit.";
+  }
+  if (row.bound_email) {
+    const bound = String(row.bound_email).trim().toLowerCase();
+    if (!email || bound !== email.trim().toLowerCase()) {
+      return "This promo code is locked to a specific customer email.";
+    }
+  }
+  return null;
+}

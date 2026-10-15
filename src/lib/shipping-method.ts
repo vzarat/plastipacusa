@@ -1,4 +1,5 @@
 import { roundMoney } from "@/lib/sales-tax";
+import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
 import { evalShippingEligibility } from "@/lib/shippingRules";
 
 export type DeliveryMethodId =
@@ -74,53 +75,6 @@ export interface ShippingOffer {
   defaultMethodId: DeliveryMethodId;
 }
 
-const RGV_CITIES = new Set([
-  "mcallen",
-  "mission",
-  "edinburg",
-  "pharr",
-  "weslaco",
-  "mercedes",
-  "donna",
-  "alamo",
-  "san juan",
-  "hidalgo",
-  "palmview",
-  "penitas",
-  "la joya",
-  "sullivan city",
-  "brownsville",
-  "harlingen",
-  "san benito",
-  "los fresnos",
-  "port isabel",
-  "south padre island",
-  "laguna vista",
-  "la feria",
-  "rio hondo",
-  "combes",
-  "santa rosa",
-  "primera",
-  "palm valley",
-  "raymondville",
-  "lyford",
-  "sebastian",
-  "rio grande city",
-  "roma",
-  "la grulla",
-  "escobares",
-  "olmito",
-  "los indios",
-  "progreso",
-  "progreso lakes",
-  "elsa",
-  "edcouch",
-  "la villa",
-  "monte alto",
-  "granjeno",
-  "alton",
-]);
-
 function normalizePlace(value: string | undefined): string {
   return String(value || "")
     .trim()
@@ -165,10 +119,12 @@ export function isRioGrandeValley(destination: {
   state?: string;
   postalCode?: string;
 }): boolean {
-  if (!isTexas(destination.state)) return false;
-  const zip = zipNumber(destination.postalCode);
-  if (zip !== null && zip >= 78501 && zip <= 78599) return true;
-  return RGV_CITIES.has(normalizePlace(destination.city));
+  return freeRgvDelivery({
+    postalCode: destination.postalCode,
+    city: destination.city,
+    state: destination.state,
+    rolls: 0,
+  }).inValley;
 }
 
 export function isHoustonArea(destination: {

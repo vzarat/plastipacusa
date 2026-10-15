@@ -248,6 +248,7 @@ interface StripeEmbeddedCheckoutProps {
   shippingAmount?: number;
   agreedToPolicies: boolean;
   onRequireAgreement: () => void;
+  onServerTotal?: (total: number) => void;
 }
 
 /**
@@ -259,8 +260,10 @@ export function StripeEmbeddedCheckout({
   shippingAmount = 0,
   agreedToPolicies,
   onRequireAgreement,
+  onServerTotal,
 }: StripeEmbeddedCheckoutProps) {
   const items = useCartStore((s) => s.items);
+  const appliedCoupon = useCartStore((s) => s.appliedCoupon);
   const { selectedAddress, selectedShippingOption, taxExemptRequested } = useCheckoutState();
   const subtotal = useCartStore((s) => s.getSubtotal());
   const discountAmount = useCartStore((s) => s.getDiscountAmount());
@@ -269,10 +272,11 @@ export function StripeEmbeddedCheckout({
     discount: discountAmount,
     shipping: selectedShippingOption?.price ?? shippingAmount,
   });
-  const amount = quote.total;
 
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [serverTotal, setServerTotal] = useState<number | null>(null);
+  const [paymentState, setPaymentState] = useState<"succeeded" | "processing" | "ready" | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
   const [isPreparing, setIsPreparing] = useState(true);
 
@@ -304,15 +308,7 @@ export function StripeEmbeddedCheckout({
         return;
       }
 
-      if (amount <= 0) {
-        if (!cancelled) {
-          setInitError("Your cart total must be greater than zero.");
-          setIsPreparing(false);
-        }
-        return;
-      }
-
-      const result = await createPaymentIntent(amount, {
+      const result = await createPaymentIntent(0, {
         customerEmail,
         customerName: shipping.fullName,
         companyName: selectedAddress?.companyName || shipping.line2,
@@ -320,6 +316,7 @@ export function StripeEmbeddedCheckout({
         productSlugs: items.map((item) => item.productSlug).filter(Boolean),
         subtotal: quote.subtotal,
         discountAmount: quote.discount,
+        couponCode: appliedCoupon?.code,
         shippingQuoteId: selectedShippingOption?.id,
         shippingMethod: selectedShippingOption?.serviceName,
         shippingAddressId: selectedAddress?.id,
@@ -357,6 +354,11 @@ export function StripeEmbeddedCheckout({
 
       setClientSecret(result.clientSecret);
       setPaymentIntentId(result.paymentIntentId || null);
+      if (typeof result.total === "number") {
+        setServerTotal(result.total);
+        onServerTotal?.(result.total);
+      }
+      setPaymentState(result.paymentState || "ready");
       setIsPreparing(false);
     };
 
@@ -367,11 +369,11 @@ export function StripeEmbeddedCheckout({
     // Receipt email is applied at confirmPayment.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    amount,
     items,
     itemsSummary,
     stripePromise,
     selectedShippingOption?.id,
+    appliedCoupon?.code,
     taxExemptRequested,
     selectedAddress?.id,
     shipping.fullName,
@@ -391,7 +393,20 @@ export function StripeEmbeddedCheckout({
     );
   }
 
-  if (initError || !clientSecret || !stripePromise) {
+  if (paymentState === "succeeded" || paymentState === "processing") {
+    return (
+      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-800">
+        <p className="font-semibold">
+          {paymentState === "succeeded" ? "Payment received." : "Payment processing."}
+        </p>
+        {serverTotal != null && (
+          <p className="mt-1">Total {formatCurrency(serverTotal)}</p>
+        )}
+      </div>
+    );
+  }
+
+  if (initError || !clientSecret || !stripePromise || serverTotal == null) {
     return (
       <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
         {initError || "Unable to load Stripe Elements."}
@@ -414,7 +429,7 @@ export function StripeEmbeddedCheckout({
       }}
     >
       <StripeCheckoutFormInner
-        amount={amount}
+        amount={serverTotal}
         customerEmail={customerEmail}
         shipping={shipping}
         paymentIntentId={paymentIntentId}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Calendar, MapPin, Warehouse } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,89 +11,41 @@ import { formatCurrency } from "@/lib/utils";
 import { ShippingEligibilityAlert } from "@/components/checkout/ShippingEligibilityAlert";
 import { WAREHOUSE_ORIGIN } from "@/lib/shipping-method";
 import { scheduleFromTransitDays } from "@/lib/shipping/dates";
-import type { ShippingOption, ShippingQuoteDebug, ShippingQuoteErrorBody } from "@/lib/shipping/types";
+import {
+  blocksCardStep,
+  decideRequote,
+  shouldAutoRequote,
+} from "@/lib/shipping/quote-window";
+import type { ShippingOption } from "@/lib/shipping/types";
 import { evalShippingEligibility } from "@/lib/shippingRules";
 
 interface CheckoutShippingMethodStepProps {
   checkoutEmail: string;
   onBack: () => void;
   onProceed: () => void;
+  active?: boolean;
 }
 
-function quoteDetailsText(
-  error: ShippingQuoteErrorBody,
-  debug?: ShippingQuoteDebug | null
-): string {
-  const lines = [`code: ${error.code}`, `requestId: ${error.requestId}`];
-  if (error.message) lines.push(`message: ${error.message}`);
-  if (error.httpStatus) lines.push(`httpStatus: ${error.httpStatus}`);
-  if (error.providerMessage) lines.push(`providerMessage: ${error.providerMessage}`);
-  if (debug) {
-    lines.push(`environment: ${debug.environment}`);
-    lines.push(`endpoint: ${debug.endpoint}`);
-    lines.push(`requestSummary: ${JSON.stringify(debug.requestSummary)}`);
-    if (debug.missingFields.length > 0) lines.push(`missingFields: ${debug.missingFields.join(", ")}`);
-  }
-  return lines.join("\n");
+const PLAIN_FAILURE = "We couldn't calculate shipping automatically.";
+const PRICE_UPDATED = "Shipping price updated";
+const EXPIRED_QUOTE = "This shipping quote expired. Review the updated price before paying.";
+const REQUOTE_FAILED = "We couldn't refresh this shipping price.";
+
+interface QuotePayload {
+  ok?: boolean;
+  fallback?: string;
+  message?: string | null;
+  freeLocal?: ShippingOption | null;
+  options?: ShippingOption[];
+  weightLbs?: number;
+  dimensions?: string[];
+  weightDetail?: string[];
 }
 
-function ShippingErrorDetails({
-  error,
-  debug,
-  compact = false,
-}: {
-  error: ShippingQuoteErrorBody;
-  debug?: ShippingQuoteDebug | null;
-  compact?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const text = quoteDetailsText(error, debug);
-  const panel = open ? (
-    <div className="mt-3 w-full basis-full rounded-2xl border border-slate-200 bg-white">
-      <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-xs text-slate-800">
-        {text}
-      </pre>
-      <div className="border-t border-slate-200 px-3 py-2">
-        <Button
-          type="button"
-          variant="outline"
-          className="h-9"
-          onClick={() => {
-            void navigator.clipboard.writeText(text).then(
-              () => toast.success("Error details copied."),
-              () => toast.error("Could not copy error details.")
-            );
-          }}
-        >
-          Copy details
-        </Button>
-      </div>
-    </div>
-  ) : null;
-
-  if (compact) {
-    return (
-      <div className="mt-2">
-        <button
-          type="button"
-          className="font-semibold text-sky-700 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-          onClick={() => setOpen((value) => !value)}
-        >
-          {open ? "Hide error details" : "Show error details"}
-        </button>
-        {panel}
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <Button type="button" variant="outline" className="h-10" onClick={() => setOpen((value) => !value)}>
-        {open ? "Hide error details" : "Show error details"}
-      </Button>
-      {panel}
-    </>
-  );
+function fullZip(postalCode: string | undefined): string | null {
+  const digits = String(postalCode || "").replace(/\D/g, "");
+  if (digits.length < 5) return null;
+  return digits.slice(0, 5);
 }
 
 function tagOptions(options: ShippingOption[]) {
@@ -109,10 +61,21 @@ function tagOptions(options: ShippingOption[]) {
     }));
 }
 
+function countdownLabel(expiresAt: string | null, now: number): string | null {
+  if (!expiresAt) return null;
+  const expires = Date.parse(expiresAt);
+  if (!Number.isFinite(expires)) return null;
+  const totalSeconds = Math.max(0, Math.floor((expires - now) / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
 export function CheckoutShippingMethodStep({
   checkoutEmail,
   onBack,
   onProceed,
+  active = true,
 }: CheckoutShippingMethodStepProps) {
   const items = useCartStore((state) => state.items);
   const {
@@ -128,10 +91,20 @@ export function CheckoutShippingMethodStep({
   const [options, setOptions] = useState<ShippingOption[]>([]);
   const [freeLocal, setFreeLocal] = useState<ShippingOption | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [quoteError, setQuoteError] = useState<ShippingQuoteErrorBody | null>(null);
-  const [quoteDebug, setQuoteDebug] = useState<ShippingQuoteDebug | null>(null);
+  const [manualQuote, setManualQuote] = useState(false);
+  const [priceUpdated, setPriceUpdated] = useState(false);
+  const [requoteFailed, setRequoteFailed] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [requesting, setRequesting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  const requestRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
+  const selectedRef = useRef(selectedShippingOption);
+  const autoCountRef = useRef(0);
+  const requoteLockRef = useRef<string | null>(null);
+  const quotedKeyRef = useRef<string | null>(null);
+  selectedRef.current = selectedShippingOption;
 
   const boxCount = useMemo(
     () =>
@@ -141,15 +114,20 @@ export function CheckoutShippingMethodStep({
       }, 0),
     [items]
   );
+  const cartRolls = useMemo(
+    () => items.reduce((total, item) => total + (Number(item.totalRolls) || 0), 0),
+    [items]
+  );
   const shippingEligibility = useMemo(
     () =>
       evalShippingEligibility(
         selectedAddress?.postalCode || "",
         selectedAddress?.city || "",
         selectedAddress?.state || "",
-        boxCount
+        boxCount,
+        cartRolls
       ),
-    [selectedAddress, boxCount]
+    [selectedAddress, boxCount, cartRolls]
   );
 
   const quoteKey = [
@@ -159,89 +137,228 @@ export function CheckoutShippingMethodStep({
     items.map((item) => `${item.sku}:${item.quantity}:${item.totalBoxes}:${item.totalRolls}`).join(","),
   ].join("|");
 
+  const selectionKey = selectedShippingOption
+    ? [
+        selectedShippingOption.carrierKey ?? "",
+        selectedShippingOption.serviceLevel ?? "",
+        selectedShippingOption.transitDays,
+      ].join("|")
+    : null;
+
   useEffect(() => {
-    if (!selectedAddress?.postalCode) return;
-    let cancelled = false;
+    if (!active) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [active]);
+
+  useEffect(() => {
+    if (!active) return;
+    const requestKey = `${quoteKey}#${reloadKey}`;
+    if (quotedKeyRef.current === requestKey) return;
+    const zip = fullZip(selectedAddress?.postalCode);
+    if (!selectedAddress || !zip) {
+      abortRef.current?.abort();
+      requestRef.current += 1;
+      setLoading(false);
+      setOptions([]);
+      setFreeLocal(null);
+      setManualQuote(false);
+      autoCountRef.current = 0;
+      requoteLockRef.current = null;
+      setSelectedShippingOption(null);
+      return;
+    }
+
+    const requestId = ++requestRef.current;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const lines = items.map((item) => ({
+      sku: item.sku,
+      productSlug: item.productSlug,
+      quantity: item.quantity,
+      totalBoxes: item.totalBoxes,
+      totalRolls: item.totalRolls,
+      application: item.application,
+    }));
+    const address = selectedAddress;
+
     const load = async () => {
       setLoading(true);
       setMessage(null);
+      setManualQuote(false);
+      setPriceUpdated(false);
+      setRequoteFailed(false);
+      autoCountRef.current = 0;
+      requoteLockRef.current = null;
+      setSelectedShippingOption(null);
       try {
         const response = await fetch("/api/shipping/quote", {
           method: "POST",
           headers: { "content-type": "application/json" },
+          signal: controller.signal,
           body: JSON.stringify({
-            postalCode: selectedAddress.postalCode,
-            city: selectedAddress.city,
-            state: selectedAddress.state,
-            lines: items.map((item) => ({
-              sku: item.sku,
-              productSlug: item.productSlug,
-              quantity: item.quantity,
-              totalBoxes: item.totalBoxes,
-              totalRolls: item.totalRolls,
-              application: item.application,
-            })),
+            postalCode: zip,
+            city: address.city,
+            state: address.state,
+            lines,
           }),
         });
-        const payload = (await response.json()) as {
-          ok?: boolean;
-          weightLbs?: number;
-          freeLocal?: ShippingOption | null;
-          options?: ShippingOption[];
-          dimensions?: string[];
-          weightDetail?: string[];
-          code?: string | null;
-          message?: string | null;
-          error?: ShippingQuoteErrorBody | null;
-          debug?: ShippingQuoteDebug | null;
-        };
-        if (cancelled) return;
+        const payload = (await response.json()) as QuotePayload;
+        if (requestId !== requestRef.current) return;
+        quotedKeyRef.current = requestKey;
         if (typeof payload.weightLbs === "number") setShipmentWeightLbs(payload.weightLbs);
         setShipmentDimensions(payload.dimensions || []);
         setShipmentWeightDetail(payload.weightDetail || []);
-        const local = payload.freeLocal || null;
-        const warpOptions = payload.options || [];
-        setFreeLocal(local);
-        setOptions(warpOptions);
-        setQuoteError(payload.error || null);
-        setQuoteDebug(payload.debug || null);
-        setMessage(payload.message || payload.error?.message || null);
-        const next = local || warpOptions.slice().sort((a, b) => a.price - b.price)[0] || null;
-        setSelectedShippingOption(next);
-        setDeliveryMethod(next?.id === "rgv-local" ? "rgv-express" : "freight");
-      } catch (error) {
-        if (!cancelled) {
-          const detail = error instanceof Error ? error.message : "Network error";
-          setQuoteError({
-            code: "UNKNOWN",
-            message: detail,
-            requestId: "local",
-          });
-          setQuoteDebug(null);
-          setMessage("We couldn't calculate shipping automatically.");
+        if (payload.ok === false && payload.fallback === "manual_quote") {
+          setFreeLocal(payload.freeLocal || null);
           setOptions([]);
-          setFreeLocal(null);
-          setSelectedShippingOption(null);
+          setManualQuote(true);
+          setMessage(payload.message || PLAIN_FAILURE);
+          return;
         }
+        if (!response.ok || payload.ok === false) {
+          setFreeLocal(null);
+          setOptions([]);
+          setManualQuote(false);
+          setMessage(PLAIN_FAILURE);
+          return;
+        }
+        setFreeLocal(payload.freeLocal || null);
+        setOptions(payload.options || []);
+        setMessage(payload.message || null);
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") return;
+        if (requestId !== requestRef.current) return;
+        quotedKeyRef.current = requestKey;
+        setFreeLocal(null);
+        setOptions([]);
+        setMessage(PLAIN_FAILURE);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (requestId === requestRef.current) setLoading(false);
       }
     };
+
     void load();
     return () => {
-      cancelled = true;
+      controller.abort();
     };
-  }, [
-    quoteKey,
-    reloadKey,
-    items,
-    selectedAddress,
-    setDeliveryMethod,
-    setSelectedShippingOption,
-    setShipmentWeightLbs,
-    setShipmentDimensions,
-    setShipmentWeightDetail,
-  ]);
+  }, [active, quoteKey, reloadKey]);
+
+  const refreshSelectedQuote = async (manual = false) => {
+    const selected = selectedRef.current;
+    const address = selectedAddress;
+    const zip = fullZip(address?.postalCode);
+    if (!selected || !address || !zip || !selected.expiresAt) return;
+    const requestId = ++requestRef.current;
+    const countAtStart = autoCountRef.current;
+    const selectedId = selected.id;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setRefreshing(true);
+    try {
+      const response = await fetch("/api/shipping/quote", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          postalCode: zip,
+          city: address.city,
+          state: address.state,
+          lines: items.map((item) => ({
+            sku: item.sku,
+            productSlug: item.productSlug,
+            quantity: item.quantity,
+            totalBoxes: item.totalBoxes,
+            totalRolls: item.totalRolls,
+            application: item.application,
+          })),
+        }),
+      });
+      const payload = (await response.json()) as QuotePayload;
+      const failed = !response.ok || payload.ok === false;
+      const selectionMoved = selectedRef.current?.id !== selectedId;
+      const decision = decideRequote({
+        requestId: selectionMoved ? requestId + 1 : requestRef.current,
+        responseRequestId: requestId,
+        autoRequotes: countAtStart,
+        manual,
+        failed,
+        selected,
+        options: payload.options || [],
+      });
+      if (decision.type === "stale" || decision.type === "cap") return;
+      if (decision.type === "keep") {
+        setRequoteFailed(true);
+        return;
+      }
+      setRequoteFailed(false);
+      setFreeLocal(payload.freeLocal || null);
+      setOptions(payload.options || []);
+      if (decision.type === "clear") {
+        setSelectedShippingOption(null);
+        setPriceUpdated(false);
+        return;
+      }
+      const next = (payload.options || []).find((option) => option.id === decision.quoteId) || null;
+      if (!next) {
+        setSelectedShippingOption(null);
+        setPriceUpdated(false);
+        return;
+      }
+      autoCountRef.current = manual ? 0 : autoCountRef.current + 1;
+      if (manual) requoteLockRef.current = null;
+      setSelectedShippingOption(next);
+      setDeliveryMethod(next.id === "rgv-local" ? "rgv-express" : "freight");
+      setPriceUpdated(decision.priceUpdated);
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+      if (requestId !== requestRef.current) return;
+      const decision = decideRequote({
+        requestId,
+        responseRequestId: requestId,
+        autoRequotes: countAtStart,
+        manual,
+        failed: true,
+        selected,
+        options: [],
+      });
+      if (decision.type === "keep") setRequoteFailed(true);
+    } finally {
+      if (requestId === requestRef.current) setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!active) return;
+    const selected = selectedShippingOption;
+    if (!selected?.expiresAt) return;
+    if (
+      !shouldAutoRequote({
+        expiresAt: selected.expiresAt,
+        now,
+        autoRequotes: autoCountRef.current,
+        stepVisible: active,
+      })
+    ) {
+      return;
+    }
+    const lock = `${selectionKey}:${selected.expiresAt}`;
+    if (requoteLockRef.current === lock) return;
+    requoteLockRef.current = lock;
+    void refreshSelectedQuote();
+  }, [now, selectedShippingOption, selectionKey, active]);
+
+  const wasActiveRef = useRef(active);
+  useEffect(() => {
+    const returned = active && !wasActiveRef.current;
+    wasActiveRef.current = active;
+    if (!returned || !selectedRef.current) return;
+    if (blocksCardStep(selectedRef.current.expiresAt)) {
+      setReloadKey((value) => value + 1);
+    }
+  }, [active]);
 
   const cards = useMemo(() => {
     const tagged = tagOptions(options);
@@ -251,7 +368,13 @@ export function CheckoutShippingMethodStep({
   const schedule = selectedShippingOption
     ? scheduleFromTransitDays(selectedShippingOption.transitDays)
     : null;
-  const canProceed = Boolean(selectedShippingOption) && !loading;
+  const expired = selectedShippingOption
+    ? blocksCardStep(selectedShippingOption.expiresAt, now)
+    : false;
+  const canProceed = Boolean(selectedShippingOption) && !loading && !expired;
+  const countdown = selectedShippingOption
+    ? countdownLabel(selectedShippingOption.expiresAt, now)
+    : null;
 
   const requestManualQuote = async () => {
     if (!selectedAddress) return;
@@ -272,13 +395,8 @@ export function CheckoutShippingMethodStep({
   };
 
   const proceed = () => {
-    if (!selectedShippingOption) return;
-    if (
-      selectedShippingOption.expiresAt &&
-      Date.parse(selectedShippingOption.expiresAt) <= Date.now()
-    ) {
-      toast.error("This quote expired. Review the updated price before continuing.");
-      setReloadKey((value) => value + 1);
+    if (!selectedShippingOption || expired) {
+      if (expired) toast.error(EXPIRED_QUOTE);
       return;
     }
     onProceed();
@@ -357,20 +475,60 @@ export function CheckoutShippingMethodStep({
 
       <ShippingEligibilityAlert eligibility={shippingEligibility} />
 
+      {priceUpdated && (
+        <p className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-950" role="status">
+          {PRICE_UPDATED}
+        </p>
+      )}
+      {expired && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="alert">
+          <p className="font-semibold">{EXPIRED_QUOTE}</p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3 h-10"
+            disabled={refreshing}
+            onClick={() => void refreshSelectedQuote(true)}
+          >
+            {refreshing ? "Refreshing shipping price…" : "Refresh shipping price"}
+          </Button>
+        </div>
+      )}
+      {requoteFailed && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="status">
+          <p>{REQUOTE_FAILED}</p>
+          {!expired && (
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3 h-10"
+              disabled={refreshing}
+              onClick={() => void refreshSelectedQuote(false)}
+            >
+              {refreshing ? "Refreshing shipping price…" : "Retry"}
+            </Button>
+          )}
+        </div>
+      )}
+
       <section className="space-y-3">
         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
           Delivery method
         </p>
         {loading ? (
-          <div className="space-y-3" aria-hidden>
-            {[0, 1, 2].map((item) => (
-              <div key={item} className="h-24 animate-pulse rounded-2xl border border-slate-200 bg-slate-100" />
-            ))}
+          <div className="space-y-3">
+            <p className="text-sm text-slate-600">Getting carrier rates. This can take up to 30 seconds.</p>
+            <div aria-hidden>
+              {[0, 1, 2].map((item) => (
+                <div key={item} className="mb-3 h-24 animate-pulse rounded-2xl border border-slate-200 bg-slate-100" />
+              ))}
+            </div>
           </div>
         ) : (
           <div role="radiogroup" aria-label="Delivery method" className="space-y-3">
             {cards.map((method) => {
               const selected = selectedShippingOption?.id === method.id;
+              const title = method.carrierName || method.serviceName;
               return (
                 <label
                   key={method.id}
@@ -386,6 +544,10 @@ export function CheckoutShippingMethodStep({
                     value={method.id}
                     checked={selected}
                     onChange={() => {
+                      autoCountRef.current = 0;
+                      requoteLockRef.current = null;
+                      setPriceUpdated(false);
+                      setRequoteFailed(false);
                       setSelectedShippingOption(method);
                       setDeliveryMethod(method.id === "rgv-local" ? "rgv-express" : "freight");
                     }}
@@ -394,10 +556,13 @@ export function CheckoutShippingMethodStep({
                   <span className="min-w-0 flex-1">
                     <span className="flex items-start justify-between gap-3">
                       <span>
-                        <span className="block text-sm font-black text-slate-900">
-                          {method.serviceName}
-                        </span>
+                        <span className="block text-sm font-black text-slate-900">{title}</span>
                         <span className="mt-1 flex flex-wrap gap-1.5">
+                          {method.serviceLevel && (
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+                              {method.serviceLevel}
+                            </span>
+                          )}
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
                             {method.mode === "local" ? "Local" : method.mode}
                           </span>
@@ -429,26 +594,9 @@ export function CheckoutShippingMethodStep({
             })}
           </div>
         )}
-        {!loading && freeLocal && options.length === 0 && (
-          <div className="text-xs text-slate-500">
-            <p>
-              Other carrier options are unavailable right now.{" "}
-              <button
-                type="button"
-                className="font-semibold text-sky-700 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-                onClick={() => setReloadKey((value) => value + 1)}
-              >
-                Retry
-              </button>
-            </p>
-            {quoteError && (
-              <ShippingErrorDetails error={quoteError} debug={quoteDebug} compact />
-            )}
-          </div>
-        )}
-        {!loading && !freeLocal && cards.length === 0 && (message || quoteError) && (
+        {!loading && manualQuote && (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-            <p>{message || "We couldn't calculate shipping automatically."}</p>
+            <p>{message || PLAIN_FAILURE}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button type="button" variant="outline" className="h-10" onClick={() => setReloadKey((value) => value + 1)}>
                 Retry
@@ -462,9 +610,24 @@ export function CheckoutShippingMethodStep({
               >
                 Request a manual shipping quote
               </Button>
-              {quoteError && <ShippingErrorDetails error={quoteError} debug={quoteDebug} />}
             </div>
           </div>
+        )}
+        {!loading && !manualQuote && cards.length === 0 && message && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+            <p>{PLAIN_FAILURE}</p>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3 h-10"
+              onClick={() => setReloadKey((value) => value + 1)}
+            >
+              Retry
+            </Button>
+          </div>
+        )}
+        {!loading && !manualQuote && message && cards.length > 0 && (
+          <p className="text-sm text-slate-600">{message}</p>
         )}
       </section>
 
@@ -473,12 +636,19 @@ export function CheckoutShippingMethodStep({
         aria-live="polite"
       >
         <span className="font-semibold text-slate-600">Estimated shipping</span>
-        <span className="font-black text-slate-900">
-          {selectedShippingOption
-            ? selectedShippingOption.price > 0
-              ? formatCurrency(selectedShippingOption.price)
-              : "$0.00"
-            : "—"}
+        <span className="text-right">
+          <span className="block font-black text-slate-900">
+            {selectedShippingOption
+              ? selectedShippingOption.price > 0
+                ? formatCurrency(selectedShippingOption.price)
+                : "$0.00"
+              : "—"}
+          </span>
+          {countdown && (
+            <span className="mt-1 block text-xs font-semibold text-slate-500">
+              Quote time left {countdown}
+            </span>
+          )}
         </span>
       </div>
 

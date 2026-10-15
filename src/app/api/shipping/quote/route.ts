@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
-import { FREE_LOCAL_DELIVERY_MIN_ROLLS } from "@/lib/shipping/config";
+import { WARP_ORIGIN_ZIP, getWarpConfig } from "@/lib/shipping/config";
 import { buildQuoteFailure, shippingRequestId } from "@/lib/shipping/diagnostics";
-import { isRioGrandeValley } from "@/lib/shipping-method";
-import { getCachedWarpOptions } from "@/lib/shipping/quote-cache";
+import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
+import { evalShippingEligibility } from "@/lib/shippingRules";
+import {
+  fetchLtlMarketOptions,
+  marketItemsFromPieces,
+  quoteStillOffered,
+  type MarketOptionQuote,
+} from "@/lib/shipping/market-options";
+import { getCachedWarpOptions, safeStoreLog, storeQuotedOptions } from "@/lib/shipping/quote-cache";
 import { ShipmentDataError, buildShipmentFreight } from "@/lib/shipping/shipment";
 import { WarpQuoteError } from "@/lib/shipping/warp";
 import type {
@@ -14,10 +21,60 @@ import type {
 } from "@/lib/shipping/types";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
+
+const LTL_LIMIT_MESSAGE =
+  "This shipment is too large for LTL. Showing truckload options instead.";
+
+function nextWeekday(): string {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  while (date.getDay() === 0 || date.getDay() === 6) date.setDate(date.getDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
+function serviceDescription(level: string): string {
+  if (level === "GUARANTEED") return "Guaranteed freight service.";
+  if (level === "ECONOMY") return "Economy freight service.";
+  if (level === "PRIORITY") return "Priority freight service.";
+  if (level === "STANDARD") return "Standard freight service.";
+  return "Freight service.";
+}
+
+function carrierOption(option: MarketOptionQuote, zip: string): ShippingOption {
+  return {
+    id: option.quoteId,
+    provider: "warp",
+    mode: "LTL",
+    serviceName: option.carrierName,
+    description: serviceDescription(option.serviceLevel),
+    price: option.price,
+    transitDays: option.transitDays && option.transitDays > 0 ? option.transitDays : 1,
+    expiresAt: option.expiresAt,
+    destinationZip: zip,
+    carrierName: option.carrierName,
+    carrierKey: option.carrierKey,
+    serviceLevel: option.serviceLevel,
+  };
+}
 
 function zipCode(value: unknown): string | null {
   const match = String(value || "").match(/\d{5}/);
   return match ? match[0] : null;
+}
+
+function houstonFridayOption(zip: string, label: string): ShippingOption {
+  return {
+    id: "houston-friday",
+    provider: "plastipac",
+    mode: "local",
+    serviceName: label,
+    description: "Direct dock delivery on the Houston corridor route.",
+    price: 0,
+    transitDays: 1,
+    expiresAt: null,
+    destinationZip: zip,
+  };
 }
 
 function freeLocalOption(zip: string): ShippingOption {
@@ -143,20 +200,72 @@ export async function POST(request: Request) {
     }
 
     const freight = await buildShipmentFreight(body.lines || []);
-    const freeLocal =
-      isRioGrandeValley({
-        postalCode: zip,
-        city: body.city,
-        state: body.state,
-      }) && freight.rolls >= FREE_LOCAL_DELIVERY_MIN_ROLLS
-        ? freeLocalOption(zip)
-        : null;
+    const freeLocal = freeRgvDelivery({
+      postalCode: zip,
+      city: body.city,
+      state: body.state,
+      rolls: freight.rolls,
+    }).eligible
+      ? freeLocalOption(zip)
+      : null;
+    const fridayRule = evalShippingEligibility(
+      zip,
+      body.city || "",
+      body.state || "",
+      freight.boxes,
+      freight.rolls
+    ).options.find((option) => option.id === "houston-friday");
+    const fridayRoute = fridayRule ? houstonFridayOption(zip, fridayRule.label) : null;
+
+    const destinationZip = zip;
 
     try {
-      const options = await getCachedWarpOptions(zip, freight);
-      if (options.length === 0) {
+      const [marketResult, warpResult] = await Promise.allSettled([
+        (async () => {
+          const config = getWarpConfig();
+          return fetchLtlMarketOptions({
+            apiKey: config.apiKey,
+            originZip: WARP_ORIGIN_ZIP,
+            destinationZip,
+            pickupDate: nextWeekday(),
+            items: marketItemsFromPieces(freight.pieces),
+            timeoutMs: 45_000,
+          });
+        })(),
+        getCachedWarpOptions(destinationZip, freight),
+      ]);
+
+      const warpOptions = warpResult.status === "fulfilled" ? warpResult.value : [];
+      const truckload = warpOptions.filter((option) => option.mode === "truckload");
+      const ltlFallback = warpOptions.filter((option) => option.mode === "LTL");
+      const limitExceeded =
+        marketResult.status === "fulfilled" && marketResult.value.limitExceeded;
+
+      let carrierOptions: ShippingOption[] = [];
+      if (!limitExceeded && marketResult.status === "fulfilled") {
+        const visible = marketResult.value.options
+          .map((option) => carrierOption(option, destinationZip))
+          .filter((option) => quoteStillOffered(option.expiresAt));
+        if (visible.length > 0) {
+          try {
+            carrierOptions = await storeQuotedOptions(destinationZip, freight, visible, "market");
+          } catch (error) {
+            safeStoreLog(error);
+            carrierOptions = [];
+          }
+        }
+      }
+
+      const options = limitExceeded
+        ? truckload
+        : carrierOptions.length > 0
+          ? [...carrierOptions, ...truckload]
+          : [...ltlFallback, ...truckload];
+      const offered = fridayRoute ? [fridayRoute, ...options] : options;
+
+      if (offered.length === 0 && !freeLocal) {
         return failureJson({
-          error: null,
+          error: warpResult.status === "rejected" ? warpResult.reason : null,
           code: "NO_OPTIONS",
           freight,
           zip,
@@ -172,8 +281,8 @@ export async function POST(request: Request) {
         dimensions: freight.pieces.map((piece) => piece.dimensionLabel),
         weightDetail: freight.pieces.map((piece) => piece.weightLabel),
         freeLocal,
-        options,
-        message: null,
+        options: offered,
+        message: limitExceeded ? LTL_LIMIT_MESSAGE : null,
       });
     } catch (error) {
       return failureJson({
@@ -189,12 +298,12 @@ export async function POST(request: Request) {
     const freeLocal =
       zip &&
       error instanceof ShipmentDataError &&
-      isRioGrandeValley({
+      freeRgvDelivery({
         postalCode: zip,
         city: body.city,
         state: body.state,
-      }) &&
-      error.rolls >= FREE_LOCAL_DELIVERY_MIN_ROLLS
+        rolls: error.rolls,
+      }).eligible
         ? freeLocalOption(zip)
         : null;
     const freight =

@@ -15,6 +15,13 @@ import {
   type InvoicePdfItem,
 } from "@/lib/invoice-pdf";
 import { roundMoney } from "@/lib/sales-tax";
+import {
+  judgePaymentMatch,
+  paymentMismatchReason,
+  planPaymentIntentSucceeded,
+  runSettlement,
+  verifyWebhookSignature,
+} from "@/lib/payments/settle-payment";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -126,7 +133,11 @@ type OrderRow = {
   total?: number | null;
   total_usd?: number | null;
   total_amount?: number | null;
+  currency?: string | null;
+  payment_intent_id?: string | null;
+  coupon_id?: string | null;
   items?: Array<{
+    sku?: string | null;
     gauge?: string | number | null;
     quantity?: number;
     productName?: string;
@@ -921,7 +932,8 @@ async function notifyPaidPaymentIntent(
 }
 
 async function handlePaymentIntentSucceeded(
-  paymentIntent: Stripe.PaymentIntent
+  paymentIntent: Stripe.PaymentIntent,
+  eventId: string
 ) {
   const supabase = getAdminSupabase();
   const { data: matched } = await supabase
@@ -931,6 +943,7 @@ async function handlePaymentIntentSucceeded(
     .maybeSingle();
 
   let order = (matched || null) as OrderRow | null;
+  // Lookup is by payment_intent_id only. pending_payment and payment_review both settle when the payment matches.
 
   if (!order) {
     const { data: rows, error } = await supabase
@@ -950,81 +963,121 @@ async function handlePaymentIntentSucceeded(
       ) as OrderRow | undefined) || null;
   }
 
-  if (!order) {
-    order = await ensurePaidOrderForPaymentIntent(paymentIntent);
-    try {
-      await notifyPaidPaymentIntent(order, paymentIntent);
-    } catch (notifyError: unknown) {
-      const message =
-        notifyError instanceof Error ? notifyError.message : String(notifyError);
-      console.error(
-        "[stripe webhook] payment confirmation email/PDF failed:",
-        message
-      );
+  const orderTotalCents = order
+    ? Math.round(Number(order.total_amount ?? order.total ?? 0) * 100)
+    : 0;
+  const amountReceived = paymentIntent.amount_received || 0;
+  const plan = planPaymentIntentSucceeded({
+    order: order
+      ? {
+          status: String(order.status || ""),
+          totalCents: orderTotalCents,
+          currency: String((order as OrderRow & { currency?: string }).currency || "usd"),
+          paymentIntentId: String(order.payment_intent_id || ""),
+        }
+      : null,
+    amountReceived,
+    currency: paymentIntent.currency || "",
+    paymentIntentId: paymentIntent.id,
+  });
+
+  if (plan.action === "insert_unmatched") {
+    const recorded = await supabase.rpc("record_unmatched_payment_intent", {
+      p_payment_intent_id: paymentIntent.id,
+      p_amount_received_cents: amountReceived,
+    });
+    if (recorded.error) {
+      throw new Error(recorded.error.message);
     }
-    console.log(
-      `[stripe webhook] payment_intent.succeeded created order ${order.id}`
-    );
+    throw new Error("No order was stored for this PaymentIntent.");
+  }
+
+  if (order && (plan.action === "settle" || plan.action === "flag_unpaid")) {
+    const matchInput = {
+      amountReceived,
+      currency: paymentIntent.currency || "",
+      paymentIntentId: paymentIntent.id,
+      orderTotalCents,
+      orderCurrency: String((order as OrderRow & { currency?: string }).currency || "usd"),
+      orderPaymentIntentId: String(order.payment_intent_id || ""),
+    };
+    const match = judgePaymentMatch(matchInput);
+    const mismatchReason = paymentMismatchReason(matchInput);
+    const outcome = await runSettlement(match, {
+      isEventProcessed: async () => {
+        const { data } = await supabase
+          .from("stripe_webhook_events")
+          .select("event_id")
+          .eq("event_id", eventId)
+          .maybeSingle();
+        return Boolean(data);
+      },
+      markPaidIfUnpaid: async () => {
+        const result = await supabase
+          .from("orders")
+          .update({
+            status: PAID_STATUS,
+            payment_status: PAID_CLEARED_LABEL,
+            booking_status: "needs_booking",
+            fulfillment_status: "unfulfilled",
+          })
+          .eq("id", order!.id)
+          .neq("payment_status", PAID_CLEARED_LABEL)
+          .select("id");
+        if (result.error) return "failed";
+        if (result.data && result.data.length > 0) return "updated";
+        return "already_paid";
+      },
+      flagReview: async () => {
+        const result = await supabase
+          .from("orders")
+          .update({
+            status: "payment_review",
+            payment_review: true,
+            payment_review_reason: mismatchReason,
+            amount_expected_cents: orderTotalCents,
+            amount_received_cents: amountReceived,
+          })
+          .eq("id", order!.id);
+        return result.error ? "failed" : "ok";
+      },
+      recordEvent: async () => {
+        const { error } = await supabase.from("stripe_webhook_events").upsert(
+          { event_id: eventId },
+          { onConflict: "event_id", ignoreDuplicates: true }
+        );
+        if (error) throw new Error(error.message);
+      },
+      applyPaidEffects: async () => {
+        const rpc = await supabase.rpc("settle_paid_order", { p_order_id: String(order!.id) });
+        if (rpc.error) return "failed";
+        return "done";
+      },
+      sendConfirmation: async () => {
+        const claim = await supabase
+          .from("orders")
+          .update({ confirmation_sent_at: new Date().toISOString() })
+          .eq("id", order!.id)
+          .is("confirmation_sent_at", null)
+          .select("id");
+        if (claim.error) return "failed";
+        if (!claim.data || claim.data.length === 0) return "already_sent";
+        try {
+          await notifyPaidPaymentIntent(order!, paymentIntent);
+          return "sent";
+        } catch (notifyError: unknown) {
+          await supabase.from("orders").update({ confirmation_sent_at: null }).eq("id", order!.id);
+          const message = notifyError instanceof Error ? notifyError.message : String(notifyError);
+          console.error("[stripe webhook] payment confirmation email/PDF failed:", message);
+          return "failed";
+        }
+      },
+    });
+    if (outcome === "incomplete") {
+      throw new Error("Payment settlement did not finish.");
+    }
     return;
   }
-
-  const meta = paymentIntent.metadata || {};
-  const totalAmount = centsToUsd(
-    paymentIntent.amount_received || paymentIntent.amount
-  );
-  const patch: Record<string, unknown> = {
-    payment_intent_id: paymentIntent.id,
-    subtotal: roundMoney(Number(meta.subtotal || 0)),
-    shipping: roundMoney(Number(meta.shipping_amount || meta.shipping_cost || 0)),
-    shipping_cost: roundMoney(
-      Number(meta.shipping_amount || meta.shipping_cost || 0)
-    ),
-    shipping_method: meta.shipping_method || null,
-    tax: roundMoney(Number(meta.tax_amount || 0)),
-    tax_amount: roundMoney(Number(meta.tax_amount || 0)),
-    discount_amount: roundMoney(Number(meta.discount_amount || 0)),
-    tax_exempt_requested: meta.tax_exempt_requested === "true",
-    total: totalAmount,
-    total_amount: totalAmount,
-    shipping_address: {
-      ...(order.shipping_address || {}),
-      stripe_payment_intent_id: paymentIntent.id,
-      shipping_method: meta.shipping_method || null,
-      shipping_address_id: meta.shipping_address_id || null,
-      tax_exempt_requested: meta.tax_exempt_requested === "true",
-      metadata: {
-        taxExemptRequested: meta.tax_exempt_requested === "true",
-      },
-    },
-  };
-  if (meta.shipping_address_id) {
-    patch.shipping_address_id = meta.shipping_address_id;
-  }
-  const userId = String(meta.user_id || meta.userId || "").trim();
-  if (userId) patch.user_id = userId;
-
-  let nextPatch = { ...patch };
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    const result = await supabase.from("orders").update(nextPatch).eq("id", order.id);
-    if (!result.error) break;
-    const message = String(result.error.message || "");
-    const missing =
-      message.match(/Could not find the ['"]([a-z0-9_]+)['"] column/i) ||
-      message.match(/column ["']?([a-z0-9_]+)["']?/i);
-    const column = missing?.[1];
-    const unknownColumn =
-      /does not exist/i.test(message) || /schema cache/i.test(message);
-    if (!column || !unknownColumn || !(column in nextPatch)) break;
-    delete nextPatch[column];
-    nextPatch = { ...nextPatch };
-  }
-
-  await markOrderPaidAndCleared(order, {
-    paymentIntentId: paymentIntent.id,
-    checkoutSessionId: String(
-      order.shipping_address?.stripe_checkout_session_id || ""
-    ),
-  });
 }
 
 export async function POST(request: NextRequest) {
@@ -1052,7 +1105,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const stripe = getStripe();
-    event = stripe.webhooks.constructEvent(
+    event = verifyWebhookSignature(
       body,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!
@@ -1077,7 +1130,7 @@ export async function POST(request: NextRequest) {
       }
       case "payment_intent.succeeded": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        await handlePaymentIntentSucceeded(paymentIntent);
+        await handlePaymentIntentSucceeded(paymentIntent, event.id);
         break;
       }
       default:

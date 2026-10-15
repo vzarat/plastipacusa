@@ -354,13 +354,15 @@ export async function createOrderFromCheckout(
 
     const { data: existingByIntent } = await supabase
       .from("orders")
-      .select("id, shipping_address")
+      .select("id, shipping_address, status")
       .eq("payment_intent_id", paymentIntentId)
+      .neq("status", "pending_payment")
       .maybeSingle();
 
     const { data: existingOrders, error: existingError } = await supabase
       .from("orders")
-      .select("id, shipping_address");
+      .select("id, shipping_address, status")
+      .neq("status", "pending_payment");
 
     if (existingError) {
       console.warn(
@@ -373,8 +375,22 @@ export async function createOrderFromCheckout(
       existingByIntent ||
       existingOrders?.find(
         (order: any) =>
+          order.status !== "pending_payment" &&
           order.shipping_address?.stripe_payment_intent_id === paymentIntentId
       );
+
+    const { data: pendingPayment } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("payment_intent_id", paymentIntentId)
+      .eq("status", "pending_payment")
+      .maybeSingle();
+    if (pendingPayment) {
+      return {
+        success: false,
+        error: "Payment received. We're finishing your order.",
+      };
+    }
 
     if (existingOrder) {
       await supabase

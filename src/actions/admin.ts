@@ -301,6 +301,7 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
     const { data: dbOrders, error } = await supabase
       .from("orders")
       .select("*")
+      .neq("status", "pending_payment")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -342,7 +343,9 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
       }
     }
 
-    return (dbOrders || []).map((row: any) => {
+    return (dbOrders || [])
+      .filter((row: { status?: string | null }) => String(row.status || "") !== "pending_payment")
+      .map((row: any) => {
       const profile = (row.user_id && profilesById[row.user_id]) || {};
       const guestFullName =
         row.shipping_address?.full_name || row.shipping_address?.customer_name;
@@ -419,6 +422,44 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
     });
   } catch (err) {
     console.warn("Notice: public.orders query failed:", err);
+    return [];
+  }
+}
+
+export interface PaymentReviewItem {
+  orderId: string;
+  paymentIntentId: string;
+  amountExpectedCents: number | null;
+  amountReceivedCents: number | null;
+  reason: string;
+  status: string;
+}
+
+export async function getPaymentsToReview(): Promise<PaymentReviewItem[]> {
+  try {
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+      .from("orders")
+      .select(
+        "id, status, payment_intent_id, payment_review_reason, amount_expected_cents, amount_received_cents, total, total_amount"
+      )
+      .eq("payment_review", true) // flag, not status: paid stock shortages and unpaid payment_review rows both appear
+      .order("created_at", { ascending: false });
+    if (error || !data) return [];
+    return data.map((row) => {
+      const expectedFromTotal = Math.round(Number(row.total_amount ?? row.total ?? 0) * 100);
+      return {
+        orderId: String(row.id),
+        paymentIntentId: String(row.payment_intent_id || ""),
+        amountExpectedCents:
+          row.amount_expected_cents == null ? expectedFromTotal : Number(row.amount_expected_cents),
+        amountReceivedCents:
+          row.amount_received_cents == null ? null : Number(row.amount_received_cents),
+        reason: String(row.payment_review_reason || "Payment needs review."),
+        status: String(row.status || ""),
+      };
+    });
+  } catch {
     return [];
   }
 }

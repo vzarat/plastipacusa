@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
-import { AdminOrder, updateOrderStatus } from "@/actions/admin";
+import { AdminOrder, updateOrderStatus, type PaymentReviewItem } from "@/actions/admin";
 import { AdminProduct } from "@/types/product";
 import { UserProfile } from "@/actions/auth";
 import { useLanguage } from "@/context/LanguageContext";
@@ -77,6 +77,7 @@ interface AdminOrdersClientProps {
   customers?: CustomerRecord[];
   initialProducts?: AdminProduct[];
   initialTab?: AdminTabKey;
+  paymentsToReview?: PaymentReviewItem[];
 }
 
 export function AdminOrdersClient({
@@ -85,6 +86,7 @@ export function AdminOrdersClient({
   customers = [],
   initialProducts = [],
   initialTab = "overview",
+  paymentsToReview = [],
 }: AdminOrdersClientProps) {
   const { t } = useLanguage();
   const [orders, setOrders] = useState<AdminOrder[]>(initialOrders);
@@ -229,6 +231,32 @@ export function AdminOrdersClient({
                 setIsCreateModalOpen(true);
               }}
             />
+          )}
+
+          {activeTab === "orders" && paymentsToReview.length > 0 && (
+            <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <h2 className="text-sm font-black text-amber-950">Payments to review</h2>
+              <ul className="mt-3 space-y-3">
+                {paymentsToReview.map((item) => (
+                  <li key={item.orderId} className="text-sm text-amber-950">
+                    <p className="font-semibold">Order {item.orderId}</p>
+                    <p>PaymentIntent {item.paymentIntentId || "—"}</p>
+                    <p>
+                      Expected{" "}
+                      {item.amountExpectedCents == null
+                        ? "—"
+                        : `$${(item.amountExpectedCents / 100).toFixed(2)}`}
+                      {" · "}
+                      Received{" "}
+                      {item.amountReceivedCents == null
+                        ? "—"
+                        : `$${(item.amountReceivedCents / 100).toFixed(2)}`}
+                    </p>
+                    <p>{item.reason}</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
 
           {activeTab === "orders" && (

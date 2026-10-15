@@ -67,15 +67,20 @@ export function CartDrawer() {
   }, [isDrawerOpen, items]);
 
   const cartBoxes = useMemo(() => countCartBoxes(items), [items]);
+  const cartRolls = useMemo(
+    () => items.reduce((total, item) => total + (Number(item.totalRolls) || 0), 0),
+    [items]
+  );
   const drawerEligibility = useMemo(() => {
     if (!savedShipping?.postalCode && !savedShipping?.city) return null;
     return evalShippingEligibility(
       savedShipping.postalCode,
       savedShipping.city,
       savedShipping.state,
-      cartBoxes
+      cartBoxes,
+      cartRolls
     );
-  }, [savedShipping, cartBoxes]);
+  }, [savedShipping, cartBoxes, cartRolls]);
 
   const goToCheckoutIfAuthenticated = async () => {
     if (isOpeningCheckout) return;

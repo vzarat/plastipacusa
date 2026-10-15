@@ -22,6 +22,7 @@ interface CheckoutPaymentStepProps {
   onBack: () => void;
   onEditAddress: () => void;
   onEditMethod: () => void;
+  onServerTotal?: (total: number) => void;
 }
 
 export function CheckoutPaymentStep({
@@ -34,16 +35,19 @@ export function CheckoutPaymentStep({
   onBack,
   onEditAddress,
   onEditMethod,
+  onServerTotal,
 }: CheckoutPaymentStepProps) {
   const items = useCartStore((state) => state.items);
   const { selectedAddress, deliveryMethod } = useCheckoutState();
   const boxCount = countCartBoxes(items);
+  const cartRolls = items.reduce((total, item) => total + (Number(item.totalRolls) || 0), 0);
   const shippingLabel = labelForShippingMethod(
     deliveryMethod,
     selectedAddress?.postalCode || shipping.postalCode,
     selectedAddress?.city || shipping.city,
     selectedAddress?.state || shipping.state,
-    boxCount
+    boxCount,
+    cartRolls
   );
   return (
     <div className="space-y-6">
@@ -163,6 +167,7 @@ export function CheckoutPaymentStep({
             "Please agree to the Terms of Service and Refund Policy to continue."
           );
         }}
+        onServerTotal={onServerTotal}
       />
 
       <Button type="button" variant="outline" className="h-12 md:h-10" onClick={onBack}>

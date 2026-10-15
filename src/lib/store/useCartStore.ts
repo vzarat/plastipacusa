@@ -2,10 +2,27 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { CartItem } from "@/types";
 import type { AppliedCoupon } from "@/types/coupon";
-import { getCartDiscountAmount } from "@/lib/coupons";
+import { totalsFromCartLines, type PricedCheckoutLine } from "@/lib/checkout-pricing";
 import { clampCartQuantity, type CartPackageInput } from "@/lib/cart-quantity";
 import { boxTierPricesFromVariants, repriceHandCartLine, totalForBoxes } from "@/lib/pricing";
 import { toast } from "sonner";
+
+function pricedLineFromCart(item: CartItem): PricedCheckoutLine {
+  return {
+    sku: item.sku,
+    quantity: item.quantity,
+    productName: item.productName,
+    productSlug: item.productSlug,
+    application: item.application === "machine" ? "machine" : "hand",
+    totalBoxes: Math.floor(Number(item.totalBoxes) || 0),
+    boxes: Math.floor(Number(item.totalBoxes) || 0) * Math.max(1, Math.floor(Number(item.quantity) || 1)),
+    unitPrice: item.unitPrice,
+    totalPrice: item.totalPrice,
+    boxUnitPrice: item.boxUnitPrice ?? null,
+    widthInches: item.widthInches,
+    gauge: item.gauge,
+  };
+}
 
 function machinePackageRolls(item: { application?: string; rollsPerBox?: number }): number {
   if (item.application !== "machine") return 0;
@@ -245,15 +262,19 @@ export const useCartStore = create<CartState>()(
       },
 
       getSubtotal: () => {
-        return Number(
-          get()
-            .items.reduce((total, item) => total + item.totalPrice, 0)
-            .toFixed(2)
-        );
+        return totalsFromCartLines(
+          get().items.map(pricedLineFromCart),
+          get().appliedCoupon,
+          0
+        ).subtotal;
       },
 
       getDiscountAmount: () => {
-        return getCartDiscountAmount(get().items, get().appliedCoupon);
+        return totalsFromCartLines(
+          get().items.map(pricedLineFromCart),
+          get().appliedCoupon,
+          0
+        ).discount;
       },
 
       getDiscountedTotal: () => {

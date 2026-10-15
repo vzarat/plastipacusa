@@ -23,6 +23,7 @@ import {
   unitLabelForProduct,
 } from "@/lib/products";
 import { BOX_QTY_NOTE, HALF_PALLET_QTY_NOTE } from "@/lib/cart-quantity";
+import { houstonFridayPresetLabel } from "@/lib/shippingRules";
 import { getProductBySlug } from "@/actions/products";
 import {
   HAND_FULL_PALLET_BOXES,
@@ -231,7 +232,7 @@ const STANDARD_HAND_PACKAGE_TIERS = [
     title: "64 Boxes (256 Rolls)",
     rolls: 256,
     boxes: 64,
-    subtext: "256 Rolls included · Houston Friday Freight Eligible",
+    subtext: "256 Rolls included",
   },
 ] as const;
 
@@ -266,6 +267,10 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
       );
       return boxes === tier.boxes || rolls === tier.rolls;
     });
+    const catalogBoxes = Number(matched?.boxes_count ?? matched?.boxesCount ?? tier.boxes);
+    const catalogRolls = Number(
+      matched?.rolls_count ?? matched?.rollsCount ?? matched?.rolls ?? tier.rolls
+    );
     const columnUnit = unitBoxPriceForCount(prices, tier.boxes);
     const unit = perBoxPriceFromVariant(matched, tier.boxes) ?? columnUnit;
     if (unit == null || !(unit > 0)) return [];
@@ -281,7 +286,7 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
         tierKey: tier.key,
         packageSize: tier.title,
         title: tier.title,
-        tierSubtext: tier.subtext,
+        tierSubtext: houstonFridayPresetLabel(catalogBoxes, catalogRolls) ?? tier.subtext,
         tierBadges: savings > 0 ? [`Save ${savings}% OFF`] : [],
         tierTag: tier.boxes >= 64 && savings > 0 ? "BEST VALUE" : "",
         boxUnitPrice: unit,
@@ -331,11 +336,11 @@ function displayPackageSubtext(variant: any, isMachine: boolean): string {
     return "";
   }
 
-  const boxes = getBoxesCount(variant, false);
+  const boxes = Number(variant?.boxes_count ?? variant?.boxesCount ?? 0);
+  const catalogRolls = Number(variant?.rolls_count ?? variant?.rollsCount ?? variant?.rolls ?? 0);
+  const houston = houstonFridayPresetLabel(boxes, catalogRolls);
   const kind = getPackageTierKind(variant, false);
-  if (rolls === 256 || boxes === 64) {
-    return "256 Rolls included · Houston Friday Freight Eligible";
-  }
+  if (houston) return houston;
   if (rolls === 128 || boxes === 32) return "128 Rolls included";
   if (kind === "fixed_mid" || rolls === 64 || boxes === 16) {
     return "64 Rolls included · Free RGV Freight Eligible";

@@ -37,6 +37,9 @@ import {
   validateCheckoutShipping,
   type CheckoutShippingAddress,
 } from "@/lib/shipping-address";
+import { blocksCardStep } from "@/lib/shipping/quote-window";
+
+const EXPIRED_QUOTE = "This shipping quote expired. Review the updated price before paying.";
 
 export function CheckoutPageClient() {
   return (
@@ -51,6 +54,8 @@ function CheckoutPageInner() {
   const [step, setStep] = useState<CheckoutStepId>(1);
   const [furthestStep, setFurthestStep] = useState<CheckoutStepId>(1);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [quoteNow, setQuoteNow] = useState(() => Date.now());
+  const [shippingSeen, setShippingSeen] = useState(false);
 
   const items = useCartStore((state) => state.items);
   const getSubtotal = useCartStore((state) => state.getSubtotal);
@@ -156,6 +161,16 @@ function CheckoutPageInner() {
     };
   }, [router]);
 
+  useEffect(() => {
+    if (step === 3) setShippingSeen(true);
+  }, [step]);
+
+  useEffect(() => {
+    if (step !== 3) return;
+    const timer = window.setInterval(() => setQuoteNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [step]);
+
   const itemCount = items.reduce((count, item) => count + item.quantity, 0);
   const subtotal = getSubtotal();
   const discountAmount = getDiscountAmount();
@@ -166,10 +181,20 @@ function CheckoutPageInner() {
     discount: discountAmount,
     shipping: shippingEstimate,
   });
-  const total = quote.total;
+  const [serverChargeTotal, setServerChargeTotal] = useState<number | null>(null);
+  const total = step === 4 ? serverChargeTotal : quote.total;
 
   const goToStep = (next: CheckoutStepId) => {
     if (next > furthestStep) return;
+    if (
+      next === 4 &&
+      step !== 4 &&
+      selectedShippingOption &&
+      blocksCardStep(selectedShippingOption.expiresAt)
+    ) {
+      toast.error(EXPIRED_QUOTE);
+      return;
+    }
     if (next >= 3 && !selectedAddress) {
       toast.error("Select or add a shipping address before continuing.");
       setStep(2);
@@ -260,11 +285,8 @@ function CheckoutPageInner() {
       toast.error("Choose a delivery method before payment.");
       return;
     }
-    if (
-      selectedShippingOption.expiresAt &&
-      Date.parse(selectedShippingOption.expiresAt) <= Date.now()
-    ) {
-      toast.error("This quote expired. Review the updated price before continuing.");
+    if (blocksCardStep(selectedShippingOption.expiresAt)) {
+      toast.error(EXPIRED_QUOTE);
       return;
     }
     setFurthestStep((current) => (current < 4 ? 4 : current));
@@ -308,7 +330,8 @@ function CheckoutPageInner() {
   const mobileActionDisabled =
     (step === 1 && items.length === 0) ||
     ((step === 2 || step === 3) && !selectedAddress) ||
-    (step === 3 && !selectedShippingOption) ||
+    (step === 3 &&
+      (!selectedShippingOption || blocksCardStep(selectedShippingOption.expiresAt, quoteNow))) ||
     (step === 4 && !agreedToPolicies);
 
   return (
@@ -350,12 +373,15 @@ function CheckoutPageInner() {
               onProceed={proceedToShippingMethod}
             />
           )}
-          {step === 3 && (
-            <CheckoutShippingMethodStep
-              checkoutEmail={checkoutEmail}
-              onBack={() => setStep(2)}
-              onProceed={proceedToPayment}
-            />
+          {shippingSeen && (
+            <div className={step === 3 ? undefined : "hidden"}>
+              <CheckoutShippingMethodStep
+                checkoutEmail={checkoutEmail}
+                active={step === 3}
+                onBack={() => setStep(2)}
+                onProceed={proceedToPayment}
+              />
+            </div>
           )}
           {step === 4 && (
             <CheckoutPaymentStep
@@ -368,6 +394,7 @@ function CheckoutPageInner() {
               onBack={() => setStep(3)}
               onEditAddress={() => setStep(2)}
               onEditMethod={() => setStep(3)}
+              onServerTotal={setServerChargeTotal}
             />
           )}
         </div>
@@ -380,7 +407,7 @@ function CheckoutPageInner() {
             onClick={() => setSummaryOpen((open) => !open)}
           >
             <span className="text-sm font-bold text-slate-900">
-              {`View Order Summary (${itemCount} items) - ${formatCurrency(total)}`}
+              {`View Order Summary (${itemCount} items) - ${total == null ? "…" : formatCurrency(total)}`}
             </span>
             <ChevronDown
               className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${
@@ -514,7 +541,7 @@ function CheckoutPageInner() {
             </div>
             <div className="flex items-center justify-between text-lg font-black text-slate-900">
               <span>Total</span>
-              <span>{formatCurrency(total)}</span>
+              <span>{total == null ? "Calculating…" : formatCurrency(total)}</span>
             </div>
           </div>
 
@@ -545,7 +572,7 @@ function CheckoutPageInner() {
               Total
             </p>
             <p className="truncate text-lg font-black text-slate-900">
-              {formatCurrency(total)}
+              {total == null ? "…" : formatCurrency(total)}
             </p>
           </div>
           <Button

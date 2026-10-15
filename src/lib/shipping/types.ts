@@ -17,6 +17,9 @@ export interface ShippingOption {
   transitDays: number;
   expiresAt: string | null;
   destinationZip: string;
+  carrierName?: string;
+  carrierKey?: string;
+  serviceLevel?: string;
 }
 
 export interface FreightPiece {

@@ -154,10 +154,10 @@ export function getWarpConfig(): { env: WarpEnv; baseUrl: string; apiKey: string
 }
 
 /**
- * Flip to true to open /api/shipping/config-check and full checkout diagnostics.
- * Set this back to false after checking Vercel, then redeploy.
+ * Off unless set in source. Unset means false, including production.
+ * This is not read from the environment, so a NEXT_PUBLIC_ variable cannot turn it on.
  */
-export const SHOW_SHIPPING_DEBUG = true;
+export const SHOW_SHIPPING_DEBUG = false;
 
 /** Full diagnostics in local development, staging, or when the flag above is on. */
 export function shippingDebugVisible(): boolean {

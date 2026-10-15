@@ -16,6 +16,7 @@ async function getDashboardOrders(currentUser: Awaited<ReturnType<typeof getCurr
       .from("orders")
       .select("*")
       .eq("user_id", currentUser.user.id)
+      .neq("status", "pending_payment")
       .order("created_at", { ascending: false });
 
     if (error || !dbOrders) {

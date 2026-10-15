@@ -1,7 +1,7 @@
 import React from "react";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/actions/auth";
-import { getAdminCustomers, getAdminOrders } from "@/actions/admin";
+import { getAdminCustomers, getAdminOrders, getPaymentsToReview } from "@/actions/admin";
 import { AdminOrdersClient } from "@/components/admin/AdminOrdersClient";
 import type { Metadata } from "next";
 
@@ -24,7 +24,11 @@ export default async function AdminOrdersPage() {
   }
 
   // Fetch all orders and the registered customer directory
-  const [orders, customers] = await Promise.all([getAdminOrders(), getAdminCustomers()]);
+  const [orders, customers, paymentsToReview] = await Promise.all([
+    getAdminOrders(),
+    getAdminCustomers(),
+    getPaymentsToReview(),
+  ]);
 
   return (
     <AdminOrdersClient
@@ -32,6 +36,7 @@ export default async function AdminOrdersPage() {
       profile={currentUser.profile}
       customers={customers}
       initialTab="orders"
+      paymentsToReview={paymentsToReview}
     />
   );
 }

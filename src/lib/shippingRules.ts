@@ -1,3 +1,5 @@
+import { freeRgvDelivery, RGV_FREE_DELIVERY_ROLLS } from "@/lib/shipping/rgv-delivery";
+
 export const RGV_FREE_DELIVERY_BOXES = 16;
 export const HOUSTON_FREE_DELIVERY_BOXES = 64;
 
@@ -36,56 +38,6 @@ export interface ShippingEligibility {
 
 const HOUSTON_ZIP_PREFIXES = new Set(["770", "772", "773", "774", "775"]);
 
-const RGV_PLACES = new Set([
-  "hidalgo",
-  "cameron",
-  "starr",
-  "willacy",
-  "mcallen",
-  "mission",
-  "edinburg",
-  "pharr",
-  "weslaco",
-  "mercedes",
-  "donna",
-  "alamo",
-  "san juan",
-  "palmview",
-  "penitas",
-  "la joya",
-  "sullivan city",
-  "brownsville",
-  "harlingen",
-  "san benito",
-  "los fresnos",
-  "port isabel",
-  "south padre island",
-  "laguna vista",
-  "la feria",
-  "rio hondo",
-  "combes",
-  "santa rosa",
-  "primera",
-  "palm valley",
-  "raymondville",
-  "lyford",
-  "sebastian",
-  "rio grande city",
-  "roma",
-  "la grulla",
-  "escobares",
-  "olmito",
-  "los indios",
-  "progreso",
-  "progreso lakes",
-  "elsa",
-  "edcouch",
-  "la villa",
-  "monte alto",
-  "granjeno",
-  "alton",
-]);
-
 function normalizePlace(value: string): string {
   return value
     .trim()
@@ -104,12 +56,16 @@ function zipDigits(postalCode: string): string | null {
   return match ? match[0] : null;
 }
 
-function isRioGrandeValley(zipCode: string, city: string, state: string): boolean {
-  const zip = zipDigits(zipCode);
-  if (zip?.startsWith("785")) return true;
-  const place = normalizePlace(city);
-  if (!place || !isTexas(state)) return false;
-  return RGV_PLACES.has(place);
+/** Preset box count comes from the catalog. The Houston Friday minimum is 64 of those boxes. */
+export function qualifiesForHoustonFriday(boxes: number): boolean {
+  return Math.floor(Number(boxes) || 0) >= HOUSTON_FREE_DELIVERY_BOXES;
+}
+
+/** Product-page label. Rolls and boxes are the variant's catalog counts. */
+export function houstonFridayPresetLabel(boxes: number, rolls: number): string | null {
+  const rollCount = Math.floor(Number(rolls) || 0);
+  if (!qualifiesForHoustonFriday(boxes) || rollCount < 1) return null;
+  return `${rollCount} Rolls included · Houston Friday Freight Eligible`;
 }
 
 function isGreaterHouston(zipCode: string, city: string, state: string): boolean {
@@ -122,14 +78,15 @@ export function evalShippingEligibility(
   zipCode: string,
   city: string,
   state: string,
-  cartTotalBoxes: number
+  cartTotalBoxes: number,
+  cartTotalRolls = 0
 ): ShippingEligibility {
   const boxes = Math.max(0, Math.floor(Number(cartTotalBoxes) || 0));
+  const rolls = Math.max(0, Math.round(Number(cartTotalRolls) || 0));
+  const rgv = freeRgvDelivery({ postalCode: zipCode, city, state, rolls });
 
-  if (isRioGrandeValley(zipCode, city, state)) {
-    const eligible = boxes >= RGV_FREE_DELIVERY_BOXES;
-    const boxesToUnlock = Math.max(0, RGV_FREE_DELIVERY_BOXES - boxes);
-    if (eligible) {
+  if (rgv.inValley) {
+    if (rgv.eligible) {
       return {
         region: "rgv",
         cartTotalBoxes: boxes,
@@ -144,19 +101,20 @@ export function evalShippingEligibility(
           {
             id: "rgv-express",
             label: "Free Local RGV Delivery (Included)",
-            description: "Included for Rio Grande Valley orders of 16 boxes (1 layer / 64 rolls) or more.",
+            description: "Included for Rio Grande Valley orders of 64 rolls or more.",
             scheduleNote: null,
           },
         ],
       };
     }
 
+    const rollsToUnlock = Math.max(0, RGV_FREE_DELIVERY_ROLLS - rolls);
     return {
       region: "rgv",
       cartTotalBoxes: boxes,
       freeDeliveryEligible: false,
-      boxesToUnlock,
-      banner: `💡 Add ${boxesToUnlock} more box(es) to unlock FREE RGV Local Delivery.`,
+      boxesToUnlock: rollsToUnlock,
+      banner: `Add ${rollsToUnlock} more roll(s) to unlock FREE RGV Local Delivery.`,
       badge: null,
       notice: null,
       showQuoteActions: false,
@@ -173,7 +131,7 @@ export function evalShippingEligibility(
   }
 
   if (isGreaterHouston(zipCode, city, state)) {
-    const eligible = boxes >= HOUSTON_FREE_DELIVERY_BOXES;
+    const eligible = qualifiesForHoustonFriday(boxes);
     const boxesToUnlock = Math.max(0, HOUSTON_FREE_DELIVERY_BOXES - boxes);
     if (eligible) {
       return {
@@ -244,9 +202,10 @@ export function labelForShippingMethod(
   zipCode: string,
   city: string,
   state: string,
-  cartTotalBoxes: number
+  cartTotalBoxes: number,
+  cartTotalRolls = 0
 ): string {
-  const eligibility = evalShippingEligibility(zipCode, city, state, cartTotalBoxes);
+  const eligibility = evalShippingEligibility(zipCode, city, state, cartTotalBoxes, cartTotalRolls);
   return (
     eligibility.options.find((option) => option.id === methodId)?.label ||
     eligibility.options[0]?.label ||
