@@ -21,7 +21,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { AdminProduct } from "@/types/product";
 import { STRETCH_FILM_PLACEHOLDER } from "@/lib/products";
-import { deleteProduct, testAdminDatabaseConnection, toggleProductActive } from "@/actions/products";
+import {
+  deleteProduct,
+  testAdminDatabaseConnection,
+  toggleProductActive,
+  toggleProductSoldOut,
+} from "@/actions/products";
 import { toast } from "sonner";
 import { ProductFormModal } from "./ProductFormModal";
 
@@ -233,6 +238,37 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
       isNew ? [product, ...prev] : prev.map((p) => (p.id === product.id ? product : p))
     );
     router.refresh();
+  };
+
+  const handleToggleSoldOut = async (product: AdminProduct) => {
+    const nextSoldOut = !product.isSoldOut;
+    setBusyId(product.id);
+    setProducts((prev) =>
+      prev.map((item) => (item.id === product.id ? { ...item, isSoldOut: nextSoldOut } : item))
+    );
+
+    try {
+      const result = await toggleProductSoldOut(product.id, nextSoldOut);
+      if (!result.success) {
+        setProducts((prev) =>
+          prev.map((item) =>
+            item.id === product.id ? { ...item, isSoldOut: product.isSoldOut } : item
+          )
+        );
+        notify(result.error || "No se pudo actualizar el inventario.");
+        return;
+      }
+      toast.success(nextSoldOut ? t("admin.soldOut") : t("admin.inStock"));
+      router.refresh();
+    } catch {
+      setProducts((prev) =>
+        prev.map((item) =>
+          item.id === product.id ? { ...item, isSoldOut: product.isSoldOut } : item
+        )
+      );
+    } finally {
+      setBusyId(null);
+    }
   };
 
   const handleToggleActive = async (product: AdminProduct) => {
@@ -593,13 +629,19 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                         return displayPrice != null ? `${formatCurrency(displayPrice)} USD` : "—";
                       })()}
                     </span>
-                    <span
-                      className={`text-xs font-bold ${
-                        item.isSoldOut ? "text-red-600" : "text-emerald-700"
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSoldOut(item)}
+                      disabled={busyId === item.id}
+                      title={item.isSoldOut ? t("admin.inStock") : t("admin.soldOut")}
+                      className={`rounded-full px-2.5 py-1 text-xs font-bold transition-colors disabled:opacity-50 ${
+                        item.isSoldOut
+                          ? "bg-rose-50 text-rose-700 hover:bg-rose-100"
+                          : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                       }`}
                     >
                       {item.isSoldOut ? t("admin.soldOut") : t("admin.inStock")}
-                    </span>
+                    </button>
                   </div>
                 </div>
 

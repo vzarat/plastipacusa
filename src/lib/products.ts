@@ -747,7 +747,7 @@ export function ensureGenesisMachineProducts(
       startingPrice: fallback.startingPrice,
     });
     if (!existingHasPricing) {
-      byKey.set(key, fallback);
+      byKey.set(key, { ...fallback, isSoldOut: existing.isSoldOut === true });
     }
   };
 

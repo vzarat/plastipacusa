@@ -1693,7 +1693,37 @@ export async function toggleProductActive(id: string, isActive: boolean) {
 }
 
 export async function toggleProductSoldOut(id: string, isSoldOut: boolean) {
-  return updateProduct(id, { isSoldOut });
+  const { isAdmin } = await verifyAdmin();
+  if (!isAdmin) {
+    return { success: false, error: "Unauthorized." };
+  }
+
+  try {
+    const supabase = await getProductWriteClient();
+    const { data, error } = await writeProductRow(
+      supabase,
+      "update",
+      { is_sold_out: isSoldOut },
+      id
+    );
+
+    if (error) {
+      console.error("toggleProductSoldOut error:", error);
+      return {
+        success: false,
+        error: "No se pudo actualizar el inventario. Inténtalo de nuevo.",
+      };
+    }
+
+    revalidateProductPaths(data?.slug);
+    return { success: true, isSoldOut };
+  } catch (err: any) {
+    console.error("toggleProductSoldOut error:", err);
+    return {
+      success: false,
+      error: "No se pudo actualizar el inventario. Inténtalo de nuevo.",
+    };
+  }
 }
 
 /**

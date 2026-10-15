@@ -1,5 +1,5 @@
 /**
- * The shop is closed. Every storefront product is sold out until this is turned off.
- * Admin still reads products.is_sold_out from the database.
+ * When true, every storefront product is sold out.
+ * Leave this false so each product follows products.is_sold_out.
  */
-export const CATALOG_SOLD_OUT = true;
+export const CATALOG_SOLD_OUT = false;
