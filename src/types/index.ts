@@ -11,6 +11,8 @@ export interface ProductVariant extends Omit<
   title?: string;
   rolls_count?: number;
   boxes_count?: number;
+  /** Per-box rate from product_variants.price. */
+  price?: number | null;
   rollsCount?: number;
   boxesCount?: number;
   tierKey?: string;

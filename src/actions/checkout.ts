@@ -5,7 +5,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { calculateOrderTotal } from "@/lib/sales-tax";
 import { clampCartQuantity } from "@/lib/cart-quantity";
 import { CATALOG_SOLD_OUT } from "@/lib/catalog-availability";
-import { readBoxTierPrices, repriceHandCartLine } from "@/lib/pricing";
+import { boxTierPricesFromVariants, repriceHandCartLine } from "@/lib/pricing";
 import { resolveShippingCharge } from "@/lib/shipping/quote-cache";
 import type { ShippingQuoteLine } from "@/lib/shipping/types";
 
@@ -67,12 +67,31 @@ async function refreshHandLinePrices<
 
   const { data, error } = await supabase
     .from("products")
-    .select("slug, price_1_box, price_16_boxes, price_32_boxes, price_64_boxes")
+    .select("id, slug")
     .in("slug", slugs);
   if (error || !data) return lines;
 
+  const productIds = data.map((row) => row.id).filter(Boolean);
+  if (productIds.length === 0) return lines;
+
+  const variantsResult = await supabase
+    .from("product_variants")
+    .select("product_id, price, boxes_count")
+    .in("product_id", productIds);
+  if (variantsResult.error || !variantsResult.data) return lines;
+
+  const slugByProductId = new Map(data.map((row) => [String(row.id), String(row.slug || "")]));
+  const variantsBySlug = new Map<string, Array<{ price: number | null; boxes_count: number | null }>>();
+  for (const variant of variantsResult.data) {
+    const slug = slugByProductId.get(String(variant.product_id));
+    if (!slug) continue;
+    const group = variantsBySlug.get(slug) || [];
+    group.push({ price: variant.price, boxes_count: variant.boxes_count });
+    variantsBySlug.set(slug, group);
+  }
+
   const pricesBySlug = new Map(
-    data.map((row) => [String(row.slug || ""), readBoxTierPrices(row)])
+    [...variantsBySlug.entries()].map(([slug, variants]) => [slug, boxTierPricesFromVariants(variants)])
   );
 
   return lines.map((line) => {

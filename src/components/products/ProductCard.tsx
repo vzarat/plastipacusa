@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
 import Image from "next/image";
 import { ProductWithVariants } from "@/types";
@@ -14,7 +15,14 @@ import {
   SERIES_GENESIS_STANDARD,
   STRETCH_FILM_PLACEHOLDER,
 } from "@/lib/products";
-import { catalogCardStartingPrice, catalogPackageQuote, getDisplayPrice, readBoxTierPrices } from "@/lib/pricing";
+import {
+  HAND_CATALOG_PALLET_LABEL,
+  HAND_FULL_PALLET_BOXES,
+  buildHandFullPalletCartItem,
+  getDisplayPrice,
+  handCatalogQuote,
+} from "@/lib/pricing";
+import { useCartStore } from "@/lib/store/useCartStore";
 interface ProductCardProps {
   product: ProductWithVariants;
   priority?: boolean;
@@ -89,6 +97,8 @@ const CATEGORY_STYLES: Record<
 
 export function ProductCard({ product, priority = false }: ProductCardProps) {
   const { t } = useLanguage();
+  const router = useRouter();
+  const addItem = useCartStore((state) => state.addItem);
   const [imageFailed, setImageFailed] = React.useState(false);
   // Resolve category brand logo and machine film detection
   const rawWidth = (product as any)?.width_inches ?? (product as any)?.widthInches ?? 0;
@@ -144,30 +154,23 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   const catStyles =
     CATEGORY_STYLES[resolvedCategorySlug] || CATEGORY_STYLES["force-standard"];
 
-  const boxPrices = readBoxTierPrices(product);
-  const packageQuote = isGenesis ? null : catalogPackageQuote(product);
-  const columnQuote = catalogCardStartingPrice(product);
-  const priceFromPackage = packageQuote != null;
+  const handQuote = isGenesis ? null : handCatalogQuote(product);
 
-  // Variant price first. If none is valid, use price_64_boxes, then price_1_box.
   const packagePrices = (product?.packageOptions || [])
     .map((opt) => Number(opt.price))
     .filter((p) => Number.isFinite(p) && p > 0);
 
   const startingPrice = Number((product as any)?.startingPrice);
-  const basePrice = Number((product as any)?.priceUsd);
 
   const priceCandidates = [
     ...packagePrices,
     ...(Number.isFinite(startingPrice) && startingPrice > 0 ? [startingPrice] : []),
-    ...(Number.isFinite(basePrice) && basePrice > 0 ? [basePrice] : []),
   ];
 
   const resolvedPrice = getDisplayPrice(product);
   const primaryPrice =
-    packageQuote?.total ??
+    handQuote?.pricePerBox ??
     resolvedPrice ??
-    columnQuote.amount ??
     (priceCandidates.length > 0 ? Math.min(...priceCandidates) : null);
   const primaryVariant = product?.variants?.[0];
   const cheapestPackage = [...(product?.packageOptions || [])].sort(
@@ -213,6 +216,16 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
     availableTiers.push("Pallet");
   }
   const isSoldOut = Boolean(product.isSoldOut);
+  const variant64 = (product.variants || []).find(
+    (variant) => Number(variant.boxes_count ?? variant.boxesCount) === HAND_FULL_PALLET_BOXES
+  );
+  const addFullPallet = (goToCheckout: boolean) => {
+    if (isSoldOut || !handQuote?.fullPallet) return;
+    const line = buildHandFullPalletCartItem(product, variant64);
+    if (!line) return;
+    addItem(line);
+    if (goToCheckout) router.push("/checkout");
+  };
   const widthLabel = width > 0 ? `${Math.round(width)} IN` : null;
   const gaugeValue = Number(product.gauge);
   const gaugeLabel = Number.isFinite(gaugeValue) && gaugeValue > 0 ? `${gaugeValue} GA` : null;
@@ -220,7 +233,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   const comparePrice =
     priceCandidates.length > 1 ? Math.max(...priceCandidates) : null;
   const showCompare =
-    !priceFromPackage &&
+    !handQuote &&
     primaryPrice !== null &&
     comparePrice !== null &&
     comparePrice > primaryPrice;
@@ -228,7 +241,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   const statusBadge = isSoldOut ? "SOLD OUT" : showCompare ? "HOT DEAL" : "FREE SHIPPING";
 
   const volumeTierLabel =
-    !isGenesis && (boxPrices.price1Box != null || boxPrices.price64Boxes != null)
+    !isGenesis && handQuote != null
     ? "Volume tiers: 1, 16, 32 & 64 boxes"
     : availableTiers.length > 0
       ? `Volume tiers: ${availableTiers.join(" & ")}`
@@ -269,9 +282,9 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         <div className="mt-2 flex items-baseline gap-2">
           <span className="text-lg font-bold text-red-600">
             {primaryPrice != null && primaryPrice > 0 ? formatCurrency(primaryPrice) : "—"}
-            {priceFromPackage ? (
+            {handQuote ? (
               <span className="ml-1 text-[11px] font-semibold text-slate-500">
-                {formatCurrency(packageQuote.unitBoxPrice)} USD / box
+                USD / box
               </span>
             ) : null}
           </span>
@@ -281,11 +294,24 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             </span>
           )}
         </div>
+        {handQuote?.fullPallet ? (
+          <p className="mt-1 text-[11px] font-semibold text-slate-500">
+            {HAND_CATALOG_PALLET_LABEL}
+          </p>
+        ) : null}
         <div className="mt-auto flex justify-end pt-2">
           {isSoldOut ? (
             <span className="rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-500">
               {t("products.soldOut")}
             </span>
+          ) : handQuote?.fullPallet ? (
+            <button
+              type="button"
+              onClick={() => addFullPallet(false)}
+              className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-bold text-white active:scale-95"
+            >
+              Add
+            </button>
           ) : (
             <Link
               href={productHref}
@@ -404,14 +430,22 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               <span className="text-base font-black tracking-tight text-slate-900 md:text-2xl">
                 {primaryPrice != null && primaryPrice > 0 ? formatCurrency(primaryPrice) : "—"}
               </span>
-              {primaryPrice !== null && (
+              {handQuote && primaryPrice !== null && (
                 <span className="hidden text-xs font-bold text-slate-500 md:inline">
-                  {priceFromPackage
-                    ? `${formatCurrency(packageQuote.unitBoxPrice)} USD / box`
-                    : "USD"}
+                  USD / box
+                </span>
+              )}
+              {!handQuote && primaryPrice !== null && (
+                <span className="hidden text-xs font-bold text-slate-500 md:inline">
+                  USD
                 </span>
               )}
             </div>
+            {handQuote?.fullPallet ? (
+              <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                {HAND_CATALOG_PALLET_LABEL}
+              </p>
+            ) : null}
           </div>
           <span className="hidden rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500 md:inline">
             {isGenesis
@@ -433,6 +467,25 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           >
             {t("products.soldOut")}
           </button>
+        ) : handQuote?.fullPallet ? (
+          <>
+            <button
+              type="button"
+              onClick={() => addFullPallet(false)}
+              className="flex w-full items-center justify-center rounded-xl bg-sky-600 px-3 py-2 text-xs font-bold text-white active:scale-95 md:hidden"
+            >
+              Add
+            </button>
+            <button
+              type="button"
+              onClick={() => addFullPallet(true)}
+              className="group/btn hidden w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 px-4 py-3 text-sm font-extrabold text-white shadow-md shadow-sky-500/20 hover:opacity-95 active:scale-[0.99] md:flex"
+            >
+              <ShoppingCart className="h-4 w-4 text-white" />
+              {t("products.buyNow")}
+              <ArrowRight className="h-4 w-4 text-sky-200" />
+            </button>
+          </>
         ) : (
           <Link
             href={productHref}

@@ -29,8 +29,10 @@ import {
   SERIES_FORCE_STANDARD,
   SERIES_GENESIS_HP,
   SERIES_GENESIS_STANDARD,
+  isMachineFilm,
   sortProductsByDimensions,
 } from "@/lib/products";
+import { handCatalogUnitPrice } from "@/lib/pricing";
 
 export type { CatalogAppFilter };
 
@@ -76,6 +78,10 @@ function isFeaturedProduct(product: ProductWithVariants): boolean {
 }
 
 function listPrice(product: ProductWithVariants): number {
+  if (!isMachineFilm(product)) {
+    const handUnit = handCatalogUnitPrice(product);
+    if (handUnit != null && handUnit > 0) return handUnit;
+  }
   const start = Number(product.startingPrice);
   if (Number.isFinite(start) && start > 0) return start;
   const prices = (product.variants || [])

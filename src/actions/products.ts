@@ -315,6 +315,7 @@ function formatProduct(raw: any): ProductWithVariants {
         rollWeightLbs,
         boxWeightLbs,
         palletWeightLbs,
+        price: variantPrice,
         priceUsd: variantPrice !== null ? String(variantPrice) : "0",
         casePriceUsd: v.case_price_usd ? String(v.case_price_usd) : (v.casePriceUsd ? String(v.casePriceUsd) : null),
         palletPriceUsd: v.pallet_price_usd ? String(v.pallet_price_usd) : (v.palletPriceUsd ? String(v.palletPriceUsd) : null),

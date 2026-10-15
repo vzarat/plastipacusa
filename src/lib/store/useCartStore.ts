@@ -4,7 +4,7 @@ import { CartItem } from "@/types";
 import type { AppliedCoupon } from "@/types/coupon";
 import { getCartDiscountAmount } from "@/lib/coupons";
 import { clampCartQuantity, type CartPackageInput } from "@/lib/cart-quantity";
-import { repriceHandCartLine, totalForBoxes, type BoxTierPrices } from "@/lib/pricing";
+import { boxTierPricesFromVariants, repriceHandCartLine, totalForBoxes } from "@/lib/pricing";
 import { toast } from "sonner";
 
 function machinePackageRolls(item: { application?: string; rollsPerBox?: number }): number {
@@ -70,8 +70,12 @@ interface CartState {
     products: Array<{
       slug?: string;
       packageOptions?: Array<{ sku?: string; price?: number }>;
-      variants?: Array<{ sku?: string; priceUsd?: string }>;
-      boxPrices?: BoxTierPrices;
+      variants?: Array<{
+        sku?: string;
+        price?: number | string | null;
+        boxes_count?: number | null;
+        boxesCount?: number | null;
+      }>;
     }>
   ) => void;
   clearCoupon: () => void;
@@ -196,9 +200,11 @@ export const useCartStore = create<CartState>()(
       setAppliedCoupon: (coupon) => set({ appliedCoupon: coupon }),
       applyCatalogPrices: (products) => {
         const priceBySku = new Map<string, number>();
-        const boxPricesBySlug = new Map<string, BoxTierPrices | undefined>();
+        const boxPricesBySlug = new Map<string, ReturnType<typeof boxTierPricesFromVariants>>();
         for (const product of products) {
-          if (product.slug) boxPricesBySlug.set(product.slug, product.boxPrices);
+          if (product.slug) {
+            boxPricesBySlug.set(product.slug, boxTierPricesFromVariants(product.variants));
+          }
           for (const option of product.packageOptions || []) {
             const sku = String(option.sku || "");
             const price = Number(option.price);
@@ -206,7 +212,7 @@ export const useCartStore = create<CartState>()(
           }
           for (const variant of product.variants || []) {
             const sku = String(variant.sku || "");
-            const price = Number(variant.priceUsd);
+            const price = Number(variant.price);
             if (sku && Number.isFinite(price) && price > 0 && !priceBySku.has(sku)) {
               priceBySku.set(sku, price);
             }

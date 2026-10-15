@@ -1,12 +1,19 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  HAND_CATALOG_PALLET_LABEL,
+  boxTierPricesFromVariants,
   bracketForBoxCount,
+  buildHandFullPalletCartItem,
   catalogCardStartingPrice,
   catalogPackageQuote,
   getDisplayPrice,
+  handCatalogQuote,
+  handCatalogUnitPrice,
   perBoxPriceFromVariant,
+  preferredHandTier,
   formatBoxPriceEquation,
+  quoteTierPrice,
   repriceHandCartLine,
   totalForBoxes,
   unitBoxPriceForCount,
@@ -76,76 +83,204 @@ describe("box price × box quantity", () => {
     );
     assert.deepEqual(
       catalogPackageQuote({
+        application: "hand",
         variants: [
-          { boxes_count: 64, priceUsd: "21.20" },
+          { boxes_count: 64, price: "21.20" },
           { boxes_count: 1, price: "30.00" },
         ],
-      }),
-      { boxes: 1, unitBoxPrice: 30, total: 30 }
-    );
-  });
-
-  it("multiplies the per-box variant price once for a 64-box tier", () => {
-    assert.equal(
-      perBoxPriceFromVariant({ boxes_count: 64, price: 21.2, price_usd: 1356.8 }, 64),
-      21.2
-    );
-    assert.equal(
-      perBoxPriceFromVariant({ boxes_count: 64, price: 1356.8, price_usd: 21.2 }, 64),
-      21.2
-    );
-    assert.equal(totalForBoxes(perBoxPriceFromVariant({ price: 21.2 }, 64)!, 64), 1356.8);
-    assert.deepEqual(
-      catalogPackageQuote({
-        variants: [{ boxes_count: 64, price: 21.2, price_usd: 1356.8 }],
       }),
       { boxes: 64, unitBoxPrice: 21.2, total: 1356.8 }
     );
   });
 
-  it("shows a 1-box variant price, then price_1_box, then price_64_boxes", () => {
+  it("reads product_variants.price as the per-box rate", () => {
+    assert.equal(perBoxPriceFromVariant({ boxes_count: 64, price: 21.2 }, 64), 21.2);
+    assert.equal(perBoxPriceFromVariant({ boxes_count: 64, price: 21.2, price_usd: 1356.8 }, 64), 21.2);
+    assert.equal(totalForBoxes(perBoxPriceFromVariant({ price: 21.2 }, 64)!, 64), 1356.8);
+    assert.deepEqual(
+      catalogPackageQuote({
+        application: "hand",
+        variants: [{ boxes_count: 64, price: 21.2 }],
+      }),
+      { boxes: 64, unitBoxPrice: 21.2, total: 1356.8 }
+    );
+  });
+
+  it("prices the hand catalog from the 64-box variant", () => {
+    const film15 = {
+      application: "hand",
+      product_variants: [
+        { boxes_count: 1, price: 28.21 },
+        { boxes_count: 16, price: 25.65 },
+        { boxes_count: 32, price: 23.32 },
+        { boxes_count: 64, price: 21.2 },
+      ],
+    };
+    assert.equal(handCatalogUnitPrice(film15), 21.2);
+    assert.equal(getDisplayPrice(film15), 21.2);
+    assert.equal(
+      handCatalogUnitPrice({
+        application: "hand",
+        variants: [
+          { boxes_count: 1, price: 40 },
+          { boxes_count: 64, price: 32.71 },
+        ],
+      }),
+      32.71
+    );
+    assert.equal(
+      handCatalogQuote({
+        application: "hand",
+        variants: [{ boxes_count: 64, price: 30.79 }, { boxes_count: 1, price: 36 }],
+      })?.pricePerBox,
+      30.79
+    );
+    assert.equal(HAND_CATALOG_PALLET_LABEL, "Full pallet · 64 boxes · 256 rolls");
+    const pallet = quoteTierPrice(21.2, 64, 1);
+    assert.equal(pallet.pricePerBox, 21.2);
+    assert.equal(pallet.total, 1356.8);
+    const pricesFromVariants = boxTierPricesFromVariants(film15.product_variants);
+    const line = repriceHandCartLine(
+      {
+        application: "hand",
+        totalBoxes: 64,
+        quantity: 1,
+        unitPrice: 1,
+        totalPrice: 1,
+        boxUnitPrice: 0,
+      },
+      pricesFromVariants
+    );
+    assert.equal(line.boxUnitPrice, 21.2);
+    assert.equal(line.unitPrice, 1356.8);
+    assert.equal(line.totalPrice, 1356.8);
+    assert.equal(
+      preferredHandTier([
+        { tierKey: "box", boxes: 1 },
+        { tierKey: "layer", boxes: 16 },
+        { tierKey: "half", boxes: 32 },
+        { tierKey: "full", boxes: 64 },
+      ])?.tierKey,
+      "full"
+    );
+    const product = {
+      id: 15,
+      slug: "15-x-60-x-1000",
+      title: "15 x 60 x 1000",
+      application: "hand",
+      width_inches: 15,
+      gauge: 60,
+      length_feet: 1000,
+      imageUrl: "https://example.com/film.png",
+    };
+    const variant64 = {
+      id: "v64",
+      sku: "F1560-64",
+      boxes_count: 64,
+      price: 21.2,
+      pallet_weight_lbs: 420,
+    };
+    const cartLine = buildHandFullPalletCartItem(product, variant64);
+    assert.equal(cartLine?.rollsPerBox, 4);
+    assert.equal(cartLine?.totalBoxes, 64);
+    assert.equal(cartLine?.totalRolls, 256);
+    assert.equal(cartLine?.quantity, 1);
+    assert.equal(cartLine?.boxUnitPrice, 21.2);
+    assert.equal(cartLine?.unitPrice, 1356.8);
+    assert.equal(cartLine?.weightLbs, "420.00");
+    assert.equal(buildHandFullPalletCartItem({ ...product, width_inches: null }, variant64), null);
+    assert.equal(buildHandFullPalletCartItem(product, null), null);
+    assert.equal(
+      handCatalogUnitPrice({
+        application: "hand",
+        variants: [
+          { boxes_count: 1, price: 28.21 },
+          { boxes_count: 16, price: 25.65 },
+        ],
+      }),
+      25.65
+    );
+  });
+
+  it("shows a 1-box variant price when that is the only hand tier", () => {
     assert.equal(
       getDisplayPrice({
+        application: "hand",
         product_variants: [{ boxes_count: 1, price: 25.65 }],
-        price_1_box: 10,
       }),
       25.65
     );
     assert.equal(
       getDisplayPrice({
-        product_variants: [{ boxes_count: 1, price: 0 }, { boxes_count: 64, price_usd: "21.20" }],
-        price_1_box: 33.14,
+        application: "hand",
+        product_variants: [{ boxes_count: 1, price: 0 }, { boxes_count: 64, price: 21.2 }],
       }),
       21.2
     );
-    assert.equal(getDisplayPrice({ price_1_box: "33.14" }), 33.14);
-    assert.equal(getDisplayPrice({ price_64_boxes: 21.2 }), 21.2);
-    assert.equal(getDisplayPrice({ product_variants: [{ boxes_count: 1, price: 0 }] }), null);
+    assert.equal(getDisplayPrice({ application: "hand", price_1_box: "33.14" }), null);
+    assert.equal(getDisplayPrice({ application: "hand", product_variants: [{ boxes_count: 1, price: 0 }] }), null);
   });
 
-  it("uses a variant price, then price_64_boxes, then price_1_box on catalog cards", () => {
+  it("uses the 64-box variant price on hand catalog cards", () => {
     assert.deepEqual(
       catalogCardStartingPrice({
-        variants: [{ priceUsd: "0" }, { price: "" }],
-        price_64_boxes: "21.20",
-        price_1_box: "33.14",
+        application: "hand",
+        variants: [{ price: 0 }, { boxes_count: 64, price: 21.2 }],
       }),
       { amount: 21.2, source: "price_64_boxes" }
     );
     assert.deepEqual(
       catalogCardStartingPrice({
+        application: "hand",
         variants: [],
         boxPrices: { price1Box: 33.14, price16Boxes: null, price32Boxes: null, price64Boxes: null },
       }),
-      { amount: 33.14, source: "price_1_box" }
+      { amount: null, source: null }
     );
     assert.deepEqual(
       catalogCardStartingPrice({
-        variants: [{ priceUsd: "18.50" }],
-        price_64_boxes: 21.2,
-        price_1_box: 33.14,
+        application: "hand",
+        variants: [{ boxes_count: 1, price: 18.5 }, { boxes_count: 64, price: 21.2 }],
       }),
-      { amount: 18.5, source: "variant" }
+      { amount: 21.2, source: "price_64_boxes" }
+    );
+  });
+
+  it("leaves machine film catalog pricing on the previous order", () => {
+    assert.equal(handCatalogQuote({ application: "machine", widthInches: 20 }), null);
+    assert.equal(
+      getDisplayPrice({
+        application: "machine",
+        widthInches: 20,
+        product_variants: [
+          { boxes_count: 1, price: 10 },
+          { boxes_count: 64, price: 21.2 },
+        ],
+      }),
+      10
+    );
+    assert.equal(
+      getDisplayPrice({
+        application: "machine",
+        width_inches: 20,
+        variants: [{ rolls_count: 20, price: 696.44 }],
+      }),
+      null
+    );
+    assert.equal(
+      buildHandFullPalletCartItem(
+        {
+          id: 20,
+          slug: "genesis",
+          title: "GENESIS",
+          application: "machine",
+          width_inches: 20,
+          gauge: 60,
+          length_feet: 6000,
+        },
+        { id: "m", boxes_count: 64, price: 21.2 }
+      ),
+      null
     );
   });
 

@@ -13,6 +13,15 @@ export const BOX_PRICE_PRESETS = [
 
 export type BoxPricePreset = (typeof BOX_PRICE_PRESETS)[number];
 
+const handBoxPreset = BOX_PRICE_PRESETS.find((tier) => tier.key === "box");
+const handFullPreset = BOX_PRICE_PRESETS.find((tier) => tier.key === "full");
+
+/** Hand film: 4 rolls in a box, 64 boxes / 256 rolls on a full pallet. */
+export const HAND_ROLLS_PER_BOX = handBoxPreset?.rolls ?? 4;
+export const HAND_FULL_PALLET_BOXES = handFullPreset?.boxes ?? 64;
+export const HAND_FULL_PALLET_ROLLS = handFullPreset?.rolls ?? 256;
+export const HAND_CATALOG_PALLET_LABEL = "Full pallet · 64 boxes · 256 rolls";
+
 export interface BoxTierPrices {
   price1Box: number | null;
   price16Boxes: number | null;
@@ -42,36 +51,22 @@ function firstPositive(...candidates: unknown[]): number | null {
 export function readBoxTierPrices(raw: unknown): BoxTierPrices {
   const row =
     raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const fromVariants = boxTierPricesFromVariants(variantRecords(row));
+  if (hasBoxTierPrices(fromVariants)) return fromVariants;
+
   const nested =
     row.boxPrices && typeof row.boxPrices === "object"
       ? (row.boxPrices as Record<string, unknown>)
       : null;
+  if (!nested) {
+    return { price1Box: null, price16Boxes: null, price32Boxes: null, price64Boxes: null };
+  }
 
   return {
-    price1Box: firstPositive(
-      row.price_1_box,
-      row.price1Box,
-      nested?.price1Box,
-      nested?.price_1_box
-    ),
-    price16Boxes: firstPositive(
-      row.price_16_boxes,
-      row.price16Boxes,
-      nested?.price16Boxes,
-      nested?.price_16_boxes
-    ),
-    price32Boxes: firstPositive(
-      row.price_32_boxes,
-      row.price32Boxes,
-      nested?.price32Boxes,
-      nested?.price_32_boxes
-    ),
-    price64Boxes: firstPositive(
-      row.price_64_boxes,
-      row.price64Boxes,
-      nested?.price64Boxes,
-      nested?.price_64_boxes
-    ),
+    price1Box: firstPositive(nested.price1Box),
+    price16Boxes: firstPositive(nested.price16Boxes),
+    price32Boxes: firstPositive(nested.price32Boxes),
+    price64Boxes: firstPositive(nested.price64Boxes),
   };
 }
 
@@ -140,57 +135,259 @@ function moneyAmount(value: unknown): number | null {
 }
 
 /**
- * Per-box rate stored on a variant.
- * `price` is the unit rate for that tier. A sibling column that already equals
- * unit × boxes is a package total and is not used as the rate.
+ * Per-box rate stored on product_variants.price.
+ * The column is the unit rate for that tier and is not multiplied here.
  */
-export function perBoxPriceFromVariant(variant: unknown, boxes?: number): number | null {
+export function perBoxPriceFromVariant(variant: unknown, _boxes?: number): number | null {
   if (!variant || typeof variant !== "object") return null;
   const record = variant as Record<string, unknown>;
-  const count = Math.floor(
-    Number(boxes ?? record.boxes_count ?? record.boxesCount ?? record.boxes) || 0
-  );
-  const explicitUnit = moneyAmount(record.boxUnitPrice);
-  const price = moneyAmount(record.price);
-  const priceUsd = moneyAmount(record.price_usd ?? record.priceUsd);
-  const alreadyTotal = (candidate: number, unit: number) =>
-    count > 1 && Math.abs(candidate - roundMoney(unit * count)) < 0.02;
+  return moneyAmount(record.price);
+}
 
-  if (explicitUnit != null) {
-    if (price != null && alreadyTotal(price, explicitUnit)) return explicitUnit;
-    if (priceUsd != null && alreadyTotal(priceUsd, explicitUnit)) return explicitUnit;
-  }
-  if (price != null && priceUsd != null && count > 1) {
-    if (alreadyTotal(price, priceUsd)) return priceUsd;
-    if (alreadyTotal(priceUsd, price)) return price;
-  }
-  return price ?? explicitUnit ?? priceUsd;
+/** pricePerBox is unchanged. total = pricePerBox × boxes × palletCount. */
+export function quoteTierPrice(
+  pricePerBox: number,
+  boxes: number,
+  palletCount = 1
+): { pricePerBox: number; total: number } {
+  const unit = roundMoney(Number(pricePerBox));
+  const boxCount = Math.floor(Number(boxes));
+  const pallets = Math.max(1, Math.floor(Number(palletCount)) || 1);
+  if (!(unit > 0) || boxCount < 1) return { pricePerBox: 0, total: 0 };
+  return { pricePerBox: unit, total: roundMoney(unit * boxCount * pallets) };
+}
+
+export function boxTierPricesFromVariants(variants: unknown): BoxTierPrices {
+  const records = Array.isArray(variants)
+    ? variants.filter(
+        (item): item is Record<string, unknown> => Boolean(item) && typeof item === "object"
+      )
+    : [];
+  const priceFor = (boxes: number) => {
+    const match = records.find((variant) => variantBoxCount(variant) === boxes);
+    return match ? perBoxPriceFromVariant(match) : null;
+  };
+  return {
+    price1Box: priceFor(1),
+    price16Boxes: priceFor(16),
+    price32Boxes: priceFor(32),
+    price64Boxes: priceFor(64),
+  };
 }
 
 function variantUnitPrice(record: Record<string, unknown>, boxes?: number): number | null {
   return perBoxPriceFromVariant(record, boxes);
 }
 
+function isMachineCatalogRecord(row: Record<string, unknown>): boolean {
+  const application = String(row.application || "").toLowerCase();
+  if (application === "machine") return true;
+  if (application === "hand") return false;
+  const width = Math.round(Number(row.widthInches ?? row.width_inches) || 0);
+  if (width === 20) return true;
+  const text = `${row.slug || ""} ${row.name || ""} ${row.title || ""}`.toLowerCase();
+  return text.includes("genesis") || text.includes("machine");
+}
+
+export interface HandCatalogQuote {
+  pricePerBox: number;
+  boxes: number;
+  rolls: number;
+  total: number;
+  fullPallet: boolean;
+}
+
+function lowestVariantUnit(variants: Record<string, unknown>[]): number | null {
+  const units = variants
+    .map((variant) => variantUnitPrice(variant))
+    .filter((price): price is number => price != null && price > 0);
+  return units.length > 0 ? Math.min(...units) : null;
+}
+
+/** Hand-film catalog unit: the 64-box variant price, else the lowest positive variant price. */
+export function handCatalogUnitPrice(product: unknown): number | null {
+  const row = product && typeof product === "object" ? (product as Record<string, unknown>) : {};
+  if (isMachineCatalogRecord(row)) return null;
+  const variants = variantRecords(row);
+  const variant64 = variants.find((variant) => variantBoxCount(variant) === HAND_FULL_PALLET_BOXES);
+  const fromPallet = variant64 ? variantUnitPrice(variant64) : null;
+  if (fromPallet != null) return fromPallet;
+  return lowestVariantUnit(variants);
+}
+
+export function handCatalogQuote(product: unknown): HandCatalogQuote | null {
+  const row = product && typeof product === "object" ? (product as Record<string, unknown>) : {};
+  if (isMachineCatalogRecord(row)) return null;
+  const variants = variantRecords(row);
+  const variant64 = variants.find((variant) => variantBoxCount(variant) === HAND_FULL_PALLET_BOXES);
+  const palletUnit = variant64 ? variantUnitPrice(variant64) : null;
+  if (palletUnit != null) {
+    const quote = quoteTierPrice(palletUnit, HAND_FULL_PALLET_BOXES, 1);
+    return {
+      pricePerBox: quote.pricePerBox,
+      boxes: HAND_FULL_PALLET_BOXES,
+      rolls: HAND_FULL_PALLET_ROLLS,
+      total: quote.total,
+      fullPallet: true,
+    };
+  }
+
+  const priced = CARD_BOX_COUNTS.flatMap((boxes) => {
+    const match = variants.find((variant) => variantBoxCount(variant) === boxes);
+    const unit = match ? variantUnitPrice(match) : null;
+    if (unit == null) return [];
+    return [{ boxes, unit }];
+  });
+  if (priced.length === 0) return null;
+  const lowest = priced.reduce((best, tier) => (tier.unit < best.unit ? tier : best));
+  const preset = BOX_PRICE_PRESETS.find((tier) => tier.boxes === lowest.boxes);
+  const quote = quoteTierPrice(lowest.unit, lowest.boxes, 1);
+  return {
+    pricePerBox: quote.pricePerBox,
+    boxes: lowest.boxes,
+    rolls: preset?.rolls ?? lowest.boxes * HAND_ROLLS_PER_BOX,
+    total: quote.total,
+    fullPallet: false,
+  };
+}
+
+export function preferredHandTier<
+  T extends { tierKey?: string; boxes_count?: number; boxesCount?: number; boxes?: number },
+>(variants: T[]): T | undefined {
+  return (
+    variants.find((variant) => variant.tierKey === "full") ||
+    variants.find(
+      (variant) => Number(variant.boxes_count ?? variant.boxesCount ?? variant.boxes) === HAND_FULL_PALLET_BOXES
+    ) ||
+    variants[0]
+  );
+}
+
+export interface HandFullPalletCartLine {
+  productId: number;
+  productSlug: string;
+  productName: string;
+  productImage: string;
+  packageSize: string;
+  totalRolls: number;
+  totalBoxes: number;
+  application: "hand";
+  variantId: string | number;
+  sku: string;
+  widthInches: string;
+  gauge: number;
+  lengthFeet: number;
+  rollsPerBox: number;
+  rollsPerPallet: number;
+  weightLbs: string;
+  pricingTier: string;
+  tierType: "full_pallet";
+  unitPrice: number;
+  boxUnitPrice: number;
+  quantity: 1;
+}
+
+function positiveNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const amount = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+function variantWeightLbs(variant: Record<string, unknown>): string {
+  const pallet = positiveNumber(variant.palletWeightLbs ?? variant.pallet_weight_lbs);
+  if (pallet != null) return pallet.toFixed(2);
+  const stored = variant.weightLbs ?? variant.weight_lbs;
+  if (stored === null || stored === undefined || stored === "") return "";
+  const amount = positiveNumber(stored);
+  return amount != null ? String(stored) : "";
+}
+
 /**
- * Price shown on catalog cards and the admin product form.
- * A 1-box variant wins, then a 64-box variant, then the product columns.
- * Zero is treated as missing.
+ * One full pallet for a hand-film cart.
+ * Returns null when width, gauge, length, or the 64-box variant is missing.
+ */
+export function buildHandFullPalletCartItem(
+  product: unknown,
+  variant64: unknown
+): HandFullPalletCartLine | null {
+  if (!product || typeof product !== "object" || !variant64 || typeof variant64 !== "object") {
+    return null;
+  }
+  const row = product as Record<string, unknown>;
+  const variant = variant64 as Record<string, unknown>;
+  if (isMachineCatalogRecord(row)) return null;
+  if (variantBoxCount(variant) !== HAND_FULL_PALLET_BOXES) return null;
+
+  const width = positiveNumber(row.width_inches ?? row.widthInches);
+  const gauge = positiveNumber(row.gauge);
+  const lengthFeet = positiveNumber(row.length_feet ?? row.lengthFeet);
+  const pricePerBox = perBoxPriceFromVariant(variant);
+  const productId = positiveNumber(row.id);
+  const productSlug = String(row.slug || "").trim();
+  const productName = String(row.title || row.name || "").trim();
+  const variantId = variant.id ?? variant.sku;
+  if (
+    width == null ||
+    gauge == null ||
+    lengthFeet == null ||
+    pricePerBox == null ||
+    productId == null ||
+    !productSlug ||
+    !productName ||
+    variantId == null ||
+    variantId === ""
+  ) {
+    return null;
+  }
+
+  const quote = quoteTierPrice(pricePerBox, HAND_FULL_PALLET_BOXES, 1);
+  const images = Array.isArray(row.images) ? row.images : [];
+  const productImage = String(row.imageUrl || images[0] || "");
+  const packageSize = `${HAND_FULL_PALLET_BOXES} Boxes (${HAND_FULL_PALLET_ROLLS} Rolls)`;
+
+  return {
+    productId,
+    productSlug,
+    productName,
+    productImage,
+    packageSize,
+    totalRolls: HAND_FULL_PALLET_ROLLS,
+    totalBoxes: HAND_FULL_PALLET_BOXES,
+    application: "hand",
+    variantId: typeof variantId === "number" ? variantId : String(variantId),
+    sku: String(variant.sku || ""),
+    widthInches: String(row.width_inches ?? row.widthInches),
+    gauge,
+    lengthFeet,
+    rollsPerBox: HAND_ROLLS_PER_BOX,
+    rollsPerPallet: HAND_FULL_PALLET_ROLLS,
+    weightLbs: variantWeightLbs(variant),
+    pricingTier: packageSize,
+    tierType: "full_pallet",
+    unitPrice: quote.total,
+    boxUnitPrice: quote.pricePerBox,
+    quantity: 1,
+  };
+}
+
+/**
+ * Catalog price. Hand film uses the 64-box per-box rate from product_variants.price.
+ * Machine film keeps the previous 1-box, then 64-box variant order.
  */
 export function getDisplayPrice(product: unknown): number | null {
   const row = product && typeof product === "object" ? (product as Record<string, unknown>) : {};
+  if (!isMachineCatalogRecord(row)) {
+    return handCatalogUnitPrice(product);
+  }
   const variants = variantRecords(row);
 
   const variant1 = variants.find((variant) => variantBoxCount(variant) === 1);
   const fromOneBox = variant1 ? variantUnitPrice(variant1, 1) : null;
   if (fromOneBox != null) return fromOneBox;
 
-  const variant64 = variants.find((variant) => variantBoxCount(variant) === 64);
-  const fromPallet = variant64 ? variantUnitPrice(variant64, 64) : null;
+  const variant64 = variants.find((variant) => variantBoxCount(variant) === HAND_FULL_PALLET_BOXES);
+  const fromPallet = variant64 ? variantUnitPrice(variant64, HAND_FULL_PALLET_BOXES) : null;
   if (fromPallet != null) return fromPallet;
-
-  const prices = readBoxTierPrices(product);
-  if (prices.price1Box != null) return prices.price1Box;
-  if (prices.price64Boxes != null) return prices.price64Boxes;
 
   const variant16 = variants.find((variant) => variantBoxCount(variant) === 16);
   const fromLayer = variant16 ? variantUnitPrice(variant16, 16) : null;
@@ -200,92 +397,33 @@ export function getDisplayPrice(product: unknown): number | null {
   const fromHalf = variant32 ? variantUnitPrice(variant32, 32) : null;
   if (fromHalf != null) return fromHalf;
 
-  if (prices.price16Boxes != null) return prices.price16Boxes;
-  if (prices.price32Boxes != null) return prices.price32Boxes;
-
   return null;
 }
 
 /**
- * Starting catalog package: the smallest priced box tier.
- * Variant `price` is the per-box rate. Total = that rate × boxes.
+ * Hand-film catalog package. The 64-box per-box rate is the price shown.
+ * Total = that rate × 64. Machine products return null.
  */
 export function catalogPackageQuote(product: unknown): {
   total: number;
   unitBoxPrice: number;
   boxes: number;
 } | null {
-  const row =
-    product && typeof product === "object" ? (product as Record<string, unknown>) : {};
-  const variants = variantRecords(row);
-
-  const fromVariants = CARD_BOX_COUNTS.flatMap((boxes) => {
-    const match = variants.find((variant) => variantBoxCount(variant) === boxes);
-    const unit = match ? variantUnitPrice(match, boxes) : null;
-    if (unit == null) return [];
-    return [{ boxes, unitBoxPrice: unit, total: totalForBoxes(unit, boxes) }];
-  });
-  if (fromVariants.length > 0) return fromVariants[0];
-
-  const prices = readBoxTierPrices(product);
-  if (prices.price1Box != null) {
-    return { boxes: 1, unitBoxPrice: prices.price1Box, total: prices.price1Box };
-  }
-  if (prices.price16Boxes != null) {
-    return {
-      boxes: 16,
-      unitBoxPrice: prices.price16Boxes,
-      total: totalForBoxes(prices.price16Boxes, 16),
-    };
-  }
-  if (prices.price32Boxes != null) {
-    return {
-      boxes: 32,
-      unitBoxPrice: prices.price32Boxes,
-      total: totalForBoxes(prices.price32Boxes, 32),
-    };
-  }
-  if (prices.price64Boxes != null) {
-    return {
-      boxes: 64,
-      unitBoxPrice: prices.price64Boxes,
-      total: totalForBoxes(prices.price64Boxes, 64),
-    };
-  }
-  return null;
+  const quote = handCatalogQuote(product);
+  if (!quote) return null;
+  return { total: quote.total, unitBoxPrice: quote.pricePerBox, boxes: quote.boxes };
 }
 
 export function catalogCardStartingPrice(product: unknown): {
   amount: number | null;
   source: CatalogCardPriceSource | null;
 } {
-  const row =
-    product && typeof product === "object" ? (product as Record<string, unknown>) : {};
-  const variants = Array.isArray(row.variants)
-    ? row.variants
-    : Array.isArray(row.product_variants)
-      ? row.product_variants
-      : [];
-  const variantPrices = variants
-    .map((variant) => {
-      if (!variant || typeof variant !== "object") return null;
-      const record = variant as Record<string, unknown>;
-      return firstPositive(record.priceUsd, record.price_usd, record.price);
-    })
-    .filter((price): price is number => price != null);
-
-  if (variantPrices.length > 0) {
-    return { amount: Math.min(...variantPrices), source: "variant" };
-  }
-
-  const prices = readBoxTierPrices(product);
-  if (prices.price64Boxes != null) {
-    return { amount: prices.price64Boxes, source: "price_64_boxes" };
-  }
-  if (prices.price1Box != null) {
-    return { amount: prices.price1Box, source: "price_1_box" };
-  }
-  return { amount: null, source: null };
+  const amount = handCatalogUnitPrice(product);
+  if (amount == null) return { amount: null, source: null };
+  const row = product && typeof product === "object" ? (product as Record<string, unknown>) : {};
+  const variants = variantRecords(row);
+  const hasPallet = variants.some((variant) => variantBoxCount(variant) === HAND_FULL_PALLET_BOXES);
+  return { amount, source: hasPallet ? "price_64_boxes" : "variant" };
 }
 
 export function bracketForBoxCount(boxes: number): BoxPricePreset | null {

@@ -4,6 +4,11 @@ import React, { useMemo, useState, useEffect } from "react";
 import { ProductWithVariants, ProductVariant } from "@/types";
 import { VariantSelector } from "@/components/products/VariantSelector";
 import { buildMachineFilmSelectorTiers, isMachineFilm } from "@/lib/products";
+import {
+  HAND_FULL_PALLET_BOXES,
+  HAND_FULL_PALLET_ROLLS,
+  HAND_ROLLS_PER_BOX,
+} from "@/lib/pricing";
 import { PhoneCall } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -11,50 +16,60 @@ interface ProductDetailProps {
   product: ProductWithVariants;
 }
 
-function resolveVariantPrice(variant: ProductVariant | any): number | null {
-  const raw = variant?.price ?? variant?.priceUsd;
-  if (raw === null || raw === undefined || raw === "") return null;
-  const value = typeof raw === "number" ? raw : parseFloat(String(raw));
-  return Number.isFinite(value) && value > 0 ? value : null;
-}
-
 function buildInitialVariant(product: ProductWithVariants): ProductVariant | any {
-  const widthInches = String(
-    product?.width_inches ?? product?.widthInches ?? "18.00"
-  );
-  const gauge = Number(product?.gauge ?? 60) || 60;
-  const lengthFeet = Number(product?.length_feet ?? 1000) || 1000;
+  const widthSource = product?.width_inches ?? product?.widthInches;
+  const widthInches =
+    widthSource != null && String(widthSource).trim() !== "" ? String(widthSource) : undefined;
+  const gaugeValue = Number(product?.gauge);
+  const gauge = Number.isFinite(gaugeValue) && gaugeValue > 0 ? gaugeValue : undefined;
+  const lengthValue = Number(product?.length_feet);
+  const lengthFeet = Number.isFinite(lengthValue) && lengthValue > 0 ? lengthValue : undefined;
 
   if (isMachineFilm(product)) {
     return buildMachineFilmSelectorTiers(product)[0];
   }
 
   const packageOptions = product.packageOptions || [];
-  if (packageOptions.length > 0) {
-    const cheapest = [...packageOptions].sort(
-      (a, b) => (Number(a?.price) || Infinity) - (Number(b?.price) || Infinity)
-    )[0];
-    if (!cheapest) return undefined;
+  const fullPackage =
+    packageOptions.find((option) => Number(option.boxes) === HAND_FULL_PALLET_BOXES) ||
+    packageOptions.find((option) => Number(option.rolls) === HAND_FULL_PALLET_ROLLS);
+  if (fullPackage) {
+    const unit =
+      Number(fullPackage.boxUnitPrice) > 0
+        ? Number(fullPackage.boxUnitPrice)
+        : Number(fullPackage.price) || 0;
     return {
-      id: cheapest.sku,
-      sku: cheapest.sku,
-      packageSize: cheapest.label,
-      title: cheapest.label,
-      priceUsd: String(cheapest.price ?? 0),
-      price: Number(cheapest.price) || 0,
-      rollsPerBox: Number(cheapest.rolls) || 1,
+      id: fullPackage.sku,
+      sku: fullPackage.sku,
+      tierKey: "full",
+      packageSize: fullPackage.label,
+      title: fullPackage.label,
+      price: unit,
+      boxUnitPrice: unit,
+      boxes: HAND_FULL_PALLET_BOXES,
+      boxes_count: HAND_FULL_PALLET_BOXES,
+      boxesCount: HAND_FULL_PALLET_BOXES,
+      rollsPerBox: HAND_ROLLS_PER_BOX,
+      rolls_count: HAND_FULL_PALLET_ROLLS,
+      rollsCount: HAND_FULL_PALLET_ROLLS,
       widthInches,
       gauge,
       lengthFeet,
-      rollsPerPallet: product?.fullPalletRolls || 192,
+      rollsPerPallet: HAND_FULL_PALLET_ROLLS,
       weightLbs: "0.00",
     };
   }
 
   if (product.variants?.length) {
-    return [...product.variants].sort(
-      (a, b) => (resolveVariantPrice(a) || Infinity) - (resolveVariantPrice(b) || Infinity)
-    )[0];
+    return (
+      product.variants.find(
+        (variant) => Number(variant.boxes_count ?? variant.boxesCount) === HAND_FULL_PALLET_BOXES
+      ) ||
+      product.variants.find(
+        (variant) => Number(variant.rolls_count ?? variant.rollsCount) === HAND_FULL_PALLET_ROLLS
+      ) ||
+      product.variants[0]
+    );
   }
 
   if (product.startingPrice && product.startingPrice > 0) {
@@ -63,13 +78,12 @@ function buildInitialVariant(product: ProductWithVariants): ProductVariant | any
       sku: product.partNumber || product.slug,
       packageSize: "BASE UNIT",
       title: "BASE UNIT",
-      priceUsd: String(product.startingPrice),
       price: product.startingPrice,
-      rollsPerBox: 1,
+      rollsPerBox: HAND_ROLLS_PER_BOX,
       widthInches,
       gauge,
       lengthFeet,
-      rollsPerPallet: product?.fullPalletRolls || 192,
+      rollsPerPallet: HAND_FULL_PALLET_ROLLS,
       weightLbs: "0.00",
     };
   }

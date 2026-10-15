@@ -5,7 +5,13 @@ import {
   validateCatalogSpec,
   validatePackageQuantity,
 } from "@/lib/assistant/packaging-rules";
-import { totalForBoxes, unitBoxPriceForCount, type BoxTierPrices } from "@/lib/pricing";
+import {
+  boxTierPricesFromVariants,
+  hasBoxTierPrices,
+  totalForBoxes,
+  unitBoxPriceForCount,
+  type BoxTierPrices,
+} from "@/lib/pricing";
 import type { AssistantResult, FilmKind, PackageTier } from "@/lib/assistant/types";
 
 export interface PalletCalculatorInput {
@@ -20,7 +26,9 @@ export interface PalletCalculatorInput {
 
 /** Prices loaded on the server from the catalog. Never accepted from the model. */
 export interface CatalogPrice {
-  /** price_1_box. Used only for the 1–15 box bracket. */
+  /** product_variants rows. Hand tiers use `price` at boxes_count 1, 16, 32, and 64. */
+  variants?: Array<{ price?: number | string | null; boxes_count?: number | string | null }>;
+  /** Per-box rate for the 1–15 box bracket, from product_variants.price. */
   boxPrice: number | null;
   price16Boxes?: number | null;
   price32Boxes?: number | null;
@@ -97,12 +105,15 @@ export function palletCalculator(
 
   const ladder = HAND_PACKAGE_LADDER[validated.tier];
   const lineBoxes = ladder.boxes * validated.quantity;
-  const tierPrices: BoxTierPrices = {
-    price1Box: catalog?.boxPrice ?? null,
-    price16Boxes: catalog?.price16Boxes ?? null,
-    price32Boxes: catalog?.price32Boxes ?? null,
-    price64Boxes: catalog?.price64Boxes ?? null,
-  };
+  const fromVariants = boxTierPricesFromVariants(catalog?.variants);
+  const tierPrices: BoxTierPrices = hasBoxTierPrices(fromVariants)
+    ? fromVariants
+    : {
+        price1Box: catalog?.boxPrice ?? null,
+        price16Boxes: catalog?.price16Boxes ?? null,
+        price32Boxes: catalog?.price32Boxes ?? null,
+        price64Boxes: catalog?.price64Boxes ?? null,
+      };
   const boxUnit = unitBoxPriceForCount(tierPrices, lineBoxes);
   const unitPrice = boxUnit != null ? totalForBoxes(boxUnit, ladder.boxes) : null;
   const price = listedUnitPrice(unitPrice);

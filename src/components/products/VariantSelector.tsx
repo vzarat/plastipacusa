@@ -25,6 +25,8 @@ import {
 import { BOX_QTY_NOTE, HALF_PALLET_QTY_NOTE } from "@/lib/cart-quantity";
 import { getProductBySlug } from "@/actions/products";
 import {
+  HAND_FULL_PALLET_BOXES,
+  buildHandFullPalletCartItem,
   perBoxPriceFromVariant,
   readBoxTierPrices,
   totalForBoxes,
@@ -471,9 +473,16 @@ export function VariantSelector({
   const setAppliedCoupon = useCartStore((state) => state.setAppliedCoupon);
   const clearCoupon = useCartStore((state) => state.clearCoupon);
 
-  const [internalSelectedVariantId, setInternalSelectedVariantId] = useState<string>(
-    String(variants[0]?.id || variants[0]?.sku || "0")
-  );
+  const [internalSelectedVariantId, setInternalSelectedVariantId] = useState<string>(() => {
+    if (!isMachineFilm) {
+      const full = variants.find(
+        (variant: any) =>
+          variant?.tierKey === "full" || getBoxesCount(variant, false) === HAND_FULL_PALLET_BOXES
+      );
+      if (full) return String(full.id || full.sku || full.tierKey);
+    }
+    return String(variants[0]?.id || variants[0]?.sku || "0");
+  });
   const [quantity, setQuantity] = useState<number>(1);
   const [addedNotice, setAddedNotice] = useState(false);
   const [tierHint, setTierHint] = useState<string | null>(null);
@@ -748,6 +757,31 @@ export function VariantSelector({
     if (isSoldOut) return;
     if (!product || !selectedVariant || baseUnitPriceRaw <= 0) return;
     const rolls = getRollsCount(selectedVariant);
+    const packageBoxes = isMachineFilm ? 0 : getBoxesCount(selectedVariant, false);
+    if (!isMachineFilm && packageBoxes === HAND_FULL_PALLET_BOXES) {
+      const variant64 =
+        (product.variants || []).find(
+          (variant: any) =>
+            Number(variant?.boxes_count ?? variant?.boxesCount) === HAND_FULL_PALLET_BOXES
+        ) || selectedVariant;
+      const line = buildHandFullPalletCartItem(product, {
+        ...variant64,
+        price: listBoxUnit,
+        boxes_count: HAND_FULL_PALLET_BOXES,
+      });
+      if (!line) return;
+      addItem({
+        ...line,
+        unitPrice:
+          appliedDiscount?.discountType === "fixed" ? unitPrice : line.unitPrice,
+        boxUnitPrice:
+          appliedDiscount?.discountType === "fixed" ? discountedBoxUnit : line.boxUnitPrice,
+        quantity: effectiveQuantity,
+      });
+      setAddedNotice(true);
+      setTimeout(() => setAddedNotice(false), 2500);
+      return;
+    }
 
     // Percent codes sync to cart coupon — store list price to avoid double discount.
     // Fixed codes are applied at line level only (cart coupon is percent-based).

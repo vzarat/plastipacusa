@@ -2,8 +2,6 @@ import { createServerClient } from "@/lib/supabase/server";
 import type { CatalogPrice, PalletCalculatorInput } from "@/lib/assistant/pallet-calculator";
 
 const PRODUCT_COLUMNS = "id, slug, gauge, width_inches, length_feet, roll_weight_lbs";
-const BOX_PRICE_COLUMNS =
-  "price_1_box, price_16_boxes, price_32_boxes, price_64_boxes";
 const VARIANT_COLUMNS = "price, rolls_count, boxes_count, sku, roll_weight_lbs";
 
 type ProductRow = {
@@ -13,10 +11,6 @@ type ProductRow = {
   width_inches: number | string | null;
   length_feet: number | string | null;
   roll_weight_lbs: number | string | null;
-  price_1_box?: number | string | null;
-  price_16_boxes?: number | string | null;
-  price_32_boxes?: number | string | null;
-  price_64_boxes?: number | string | null;
 };
 
 type VariantRow = {
@@ -34,6 +28,11 @@ function money(value: unknown): number | null {
 
 function sameNumber(left: unknown, right: number) {
   return Math.round(Number(left)) === right;
+}
+
+function variantBoxPrice(variants: VariantRow[], boxes: number) {
+  const match = variants.find((variant) => sameNumber(variant.boxes_count, boxes));
+  return money(match?.price);
 }
 
 function variantPrice(variants: VariantRow[], rolls: number, boxes?: number) {
@@ -89,20 +88,12 @@ export async function lookupCatalogPrice(
       money(matched.roll_weight_lbs) ??
       money(variants.find((variant) => money(variant.roll_weight_lbs))?.roll_weight_lbs);
 
-    const priceResult = await supabase
-      .from("products")
-      .select(BOX_PRICE_COLUMNS)
-      .eq("id", matched.id)
-      .limit(1);
-    const priceRow = (
-      priceResult.error ? null : (priceResult.data?.[0] as unknown)
-    ) as ProductRow | null;
-
     return {
-      boxPrice: money(priceRow?.price_1_box),
-      price16Boxes: money(priceRow?.price_16_boxes),
-      price32Boxes: money(priceRow?.price_32_boxes),
-      price64Boxes: money(priceRow?.price_64_boxes),
+      variants,
+      boxPrice: variantBoxPrice(variants, 1),
+      price16Boxes: variantBoxPrice(variants, 16),
+      price32Boxes: variantBoxPrice(variants, 32),
+      price64Boxes: variantBoxPrice(variants, 64),
       halfPalletPrice: variantPrice(variants, 20),
       fullPalletPrice: variantPrice(variants, 40),
       rollWeightLbs: rollWeight,
