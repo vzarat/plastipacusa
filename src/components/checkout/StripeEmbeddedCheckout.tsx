@@ -279,6 +279,8 @@ export function StripeEmbeddedCheckout({
   const [serverTotal, setServerTotal] = useState<number | null>(null);
   const [paymentState, setPaymentState] = useState<"succeeded" | "processing" | "ready" | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
+  const [initErrorDetail, setInitErrorDetail] = useState<string | null>(null);
+  const [showInitError, setShowInitError] = useState(false);
   const [isPreparing, setIsPreparing] = useState(true);
 
   const stripePromise = useMemo(() => getStripe(), []);
@@ -297,6 +299,8 @@ export function StripeEmbeddedCheckout({
     const prepare = async () => {
       setIsPreparing(true);
       setInitError(null);
+      setInitErrorDetail(null);
+      setShowInitError(false);
       setClientSecret(null);
 
       if (!stripePromise) {
@@ -359,6 +363,8 @@ export function StripeEmbeddedCheckout({
 
       if (!result.success || !result.clientSecret) {
         setInitError(result.error || "Unable to initialize Stripe payment.");
+        setInitErrorDetail(result.errorDetail || result.error || "Unable to initialize Stripe payment.");
+        setShowInitError(false);
         setIsPreparing(false);
         return;
       }
@@ -420,7 +426,19 @@ export function StripeEmbeddedCheckout({
   if (initError || !clientSecret || !stripePromise || serverTotal == null) {
     return (
       <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
-        {initError || "Unable to load Stripe Elements."}
+        <p>{initError || "Unable to load Stripe Elements."}</p>
+        {initErrorDetail ? (
+          <button
+            type="button"
+            className="mt-3 text-xs font-bold text-red-800 underline-offset-2 hover:underline"
+            onClick={() => setShowInitError((value) => !value)}
+          >
+            {showInitError ? "Hide error" : "Show error"}
+          </button>
+        ) : null}
+        {showInitError && initErrorDetail ? (
+          <p className="mt-2 whitespace-pre-wrap font-mono text-xs leading-relaxed">{initErrorDetail}</p>
+        ) : null}
       </div>
     );
   }

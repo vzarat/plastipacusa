@@ -110,6 +110,20 @@ async function loadCatalogLines(
   return catalogCheckoutLines(requested, variants, siblings);
 }
 
+function publicOrderError(message: string): string {
+  let text = message.slice(0, 800);
+  for (const secret of [process.env.SUPABASE_SERVICE_ROLE_KEY, process.env.STRIPE_SECRET_KEY]) {
+    if (secret) text = text.split(secret).join("***");
+  }
+  return text;
+}
+
+function orderSaveError(detail: string): Error {
+  const error = new Error("Could not save the pending order.");
+  (error as Error & { detail?: string }).detail = publicOrderError(detail);
+  return error;
+}
+
 async function writeOrderRow(
   admin: ReturnType<typeof createServiceRoleClient>,
   mode: "insert" | "update",
@@ -117,26 +131,28 @@ async function writeOrderRow(
   payload: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
   let next = { ...payload };
-  for (let attempt = 0; attempt < 8; attempt += 1) {
+  let lastMessage = "";
+  for (let attempt = 0; attempt < 40; attempt += 1) {
     const query =
       mode === "insert"
         ? admin.from("orders").insert(next).select("*").maybeSingle()
         : admin.from("orders").update(next).eq("id", id).select("*").maybeSingle();
     const result = await query;
     if (!result.error && result.data) return result.data as Record<string, unknown>;
-    const message = String(result.error?.message || "");
+    const message = String(result.error?.message || result.error?.code || "");
+    lastMessage = message || lastMessage;
     const missing =
       message.match(/Could not find the ['"]([a-z0-9_]+)['"] column/i) ||
       message.match(/column ["']?([a-z0-9_]+)["']?/i);
     const column = missing?.[1];
     const unknownColumn = /does not exist/i.test(message) || /schema cache/i.test(message);
     if (!column || !unknownColumn || !(column in next)) {
-      throw new Error(message || "Could not save the pending order.");
+      throw orderSaveError(lastMessage || "The orders table rejected the pending row.");
     }
     delete next[column];
     next = { ...next };
   }
-  throw new Error("Could not save the pending order.");
+  throw orderSaveError(lastMessage || "The orders table rejected the pending row.");
 }
 
 export async function createPaymentIntent(
@@ -149,6 +165,7 @@ export async function createPaymentIntent(
   paymentState?: "succeeded" | "processing" | "ready";
   total?: number;
   error?: string;
+  errorDetail?: string;
   expired?: boolean;
 }> {
   try {
@@ -751,10 +768,15 @@ export async function createPaymentIntent(
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[createPaymentIntent] failed:", message);
+    const detail =
+      err instanceof Error && "detail" in err
+        ? publicOrderError(String((err as { detail?: string }).detail || message))
+        : publicOrderError(message);
+    console.error("[createPaymentIntent] failed:", detail);
     return {
       success: false,
       error: message || "Stripe secret key is missing or payment intent failed",
+      errorDetail: detail,
     };
   }
 }
