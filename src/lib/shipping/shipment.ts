@@ -95,13 +95,32 @@ export async function buildShipmentFreight(
       )
       .in("sku", skus);
     if (error) {
-      console.error("MISSING_WEIGHT");
-      throw new ShipmentDataError(
-        "missing_weight",
-        "We couldn't read product weights for this order."
+      console.error(
+        JSON.stringify({
+          source: "shipping-quote",
+          stage: "catalog-weights",
+          message: error.message,
+        })
       );
+      const fallback = await supabase
+        .from("product_variants")
+        .select(
+          "sku, rolls_count, boxes_count, roll_weight_lbs, pallet_weight_lbs, products(slug, application, roll_weight_lbs, pallet_weight_lbs, pallet_dimensions, rolls_per_box, width_inches, gauge, length_feet)"
+        )
+        .in("sku", skus);
+      if (fallback.error) {
+        console.error(
+          JSON.stringify({
+            source: "shipping-quote",
+            stage: "catalog-weights",
+            message: fallback.error.message,
+          })
+        );
+      }
+      rows = (fallback.data || []) as FreightVariant[];
+    } else {
+      rows = (data || []) as FreightVariant[];
     }
-    rows = (data || []) as FreightVariant[];
   }
 
   if (slugs.length > 0) {
@@ -129,10 +148,12 @@ export async function buildShipmentFreight(
       )
       .in("slug", slugs);
     if (error) {
-      console.error("MISSING_WEIGHT");
-      throw new ShipmentDataError(
-        "missing_weight",
-        "We couldn't read product weights for this order."
+      console.error(
+        JSON.stringify({
+          source: "shipping-quote",
+          stage: "catalog-weights",
+          message: error.message,
+        })
       );
     }
     productsBySlug = new Map(
@@ -145,7 +166,7 @@ export async function buildShipmentFreight(
   return shipmentFreightFromCatalog(requested, rows, productsBySlug);
 }
 
-/** Weight, pallets, and rolls come from the catalog row for the sku. Client box, roll, and weight fields are ignored. */
+/** Catalog weights win. A positive line.weightLbs is the spec-matrix gross for one package when the catalog row has none. */
 export function shipmentFreightFromCatalog(
   lines: ShippingQuoteLine[],
   rows: FreightVariant[],
@@ -170,9 +191,10 @@ export function shipmentFreightFromCatalog(
     const row = rows.find((item) => item.sku && item.sku === line.sku);
     const product =
       productOf(row) || productsBySlug.get(String(line.productSlug || "")) || null;
-    const packageRolls = positive(row?.rolls_count) ?? 0;
-    const packageBoxes = positive(row?.boxes_count) ?? 0;
-    const application = String(product?.application || "").toLowerCase();
+    const packageRolls = positive(row?.rolls_count) ?? positive(line.totalRolls) ?? 0;
+    const packageBoxes = positive(row?.boxes_count) ?? positive(line.totalBoxes) ?? 0;
+    const application = String(product?.application || line.application || "").toLowerCase();
+    const clientWeight = positive(line.weightLbs);
     const slug = String(product?.slug || line.productSlug || "");
     const siblings = rows.filter((item) => {
       const itemSlug = productOf(item)?.slug;
@@ -192,17 +214,19 @@ export function shipmentFreightFromCatalog(
       positive(row?.pallet_weight_lbs) ??
       siblingWeight("pallet_weight_lbs") ??
       positive(product?.pallet_weight_lbs);
-    const unitWeight = packageTotalWeightLbs({
-      rolls: packageRolls,
-      boxes: packageBoxes,
-      rollWeightLbs,
-      boxWeightLbs,
-      palletWeightLbs,
-      machine: application === "machine",
-      widthInches: product?.width_inches,
-      gauge: product?.gauge,
-      lengthFeet: product?.length_feet,
-    });
+    const unitWeight =
+      packageTotalWeightLbs({
+        rolls: packageRolls,
+        boxes: packageBoxes,
+        rollWeightLbs,
+        boxWeightLbs,
+        palletWeightLbs,
+        weightLbs: clientWeight,
+        machine: application === "machine",
+        widthInches: product?.width_inches ?? undefined,
+        gauge: product?.gauge,
+        lengthFeet: product?.length_feet,
+      }) ?? clientWeight;
 
     if (unitWeight == null) {
       console.error("MISSING_WEIGHT");
@@ -221,7 +245,23 @@ export function shipmentFreightFromCatalog(
             boxes: lineBoxes,
             boxWeightLbs,
             palletWeightLbs,
-          });
+          }) ??
+          (unitWeight != null && packageBoxes > 0
+            ? [
+                {
+                  boxes: packageBoxes,
+                  quantity,
+                  weightLbs: Math.round(unitWeight * quantity * 100) / 100,
+                  tier: (packageBoxes >= 64
+                    ? "full"
+                    : packageBoxes >= 32
+                      ? "half"
+                      : packageBoxes >= 16
+                        ? "layer"
+                        : "loose") as "full" | "half" | "layer" | "loose",
+                },
+              ]
+            : null);
     const productLabel = product?.slug || row?.sku || "product";
     const fullHeight = resolveFullPalletHeight({
       palletDimensions: product?.pallet_dimensions,

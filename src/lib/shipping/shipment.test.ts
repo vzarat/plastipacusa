@@ -171,6 +171,26 @@ describe("catalog shipment freight", () => {
     }
   });
 
+  it("uses the cart line gross weight when the catalog row has no weights", () => {
+    const freight = shipmentFreightFromCatalog(
+      [
+        {
+          sku: "FST-154015-64B",
+          productSlug: "stretch-film-15-x-40-ga-x-1500ft",
+          quantity: 1,
+          totalBoxes: 64,
+          totalRolls: 256,
+          application: "hand",
+          weightLbs: 1173.5,
+        },
+      ],
+      [],
+      new Map()
+    );
+    assert.equal(freight.pieces[0]?.weightLbs, 1173.5);
+    assert.ok(freight.weightLbs > 0);
+  });
+
   it("sends the spec-matrix gross weight, including a tier that only has a sibling box weight", () => {
     const matrix = (boxes: number, rolls: number) =>
       packageTotalWeightLbs({

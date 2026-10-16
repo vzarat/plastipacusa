@@ -168,6 +168,36 @@ export function packHandShippingUnits(input: {
   return units;
 }
 
+/** Gross weight of one cart package. Same function the spec matrix uses. */
+export function quotePackageWeightLbs(input: {
+  application?: string | null;
+  boxes?: number | null;
+  rolls?: number | null;
+  weightLbs?: number | string | null;
+  rollWeightLbs?: number | null;
+  boxWeightLbs?: number | null;
+  palletWeightLbs?: number | null;
+  widthInches?: number | string | null;
+  gauge?: number | string | null;
+  lengthFeet?: number | string | null;
+}): number | null {
+  const computed = packageTotalWeightLbs({
+    boxes: input.boxes,
+    rolls: input.rolls,
+    weightLbs: input.weightLbs,
+    rollWeightLbs: input.rollWeightLbs,
+    boxWeightLbs: input.boxWeightLbs,
+    palletWeightLbs: input.palletWeightLbs,
+    machine: String(input.application || "").toLowerCase() === "machine",
+    widthInches: input.widthInches,
+    gauge: input.gauge,
+    lengthFeet: input.lengthFeet,
+  });
+  if (computed != null && computed > 0) return computed;
+  const stored = positive(input.weightLbs);
+  return stored != null && stored !== 12 ? stored : null;
+}
+
 export function formatPackageWeightLbs(weight: number | null): string {
   if (weight == null || !Number.isFinite(weight) || weight <= 0) return "—";
   const digits = weight >= 100 ? 1 : 2;

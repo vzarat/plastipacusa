@@ -5,6 +5,7 @@ import { Calendar, MapPin, Warehouse } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
+import { quotePackageWeightLbs } from "@/lib/package-weight";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { submitInquiry } from "@/actions/inquiries";
 import { formatCurrency } from "@/lib/utils";
@@ -20,6 +21,44 @@ import {
 } from "@/lib/shipping/quote-window";
 import type { ShippingOption } from "@/lib/shipping/types";
 import { evalShippingEligibility } from "@/lib/shippingRules";
+
+function shippingQuoteLines(
+  items: Array<{
+    sku: string;
+    productSlug: string;
+    quantity: number;
+    totalBoxes?: number;
+    totalRolls?: number;
+    application: string;
+    weightLbs: string;
+    widthInches: string;
+    gauge: number;
+    lengthFeet: number;
+  }>
+) {
+  const lines = items.map((item) => {
+    const weightLbs = quotePackageWeightLbs({
+      application: item.application,
+      boxes: item.totalBoxes,
+      rolls: item.totalRolls,
+      weightLbs: item.weightLbs,
+      widthInches: item.widthInches,
+      gauge: item.gauge,
+      lengthFeet: item.lengthFeet,
+    });
+    return {
+      sku: item.sku,
+      productSlug: item.productSlug,
+      quantity: item.quantity,
+      totalBoxes: item.totalBoxes,
+      totalRolls: item.totalRolls,
+      application: item.application,
+      weightLbs: weightLbs ?? 0,
+    };
+  });
+  console.info("[shipping-quote] request", lines);
+  return lines;
+}
 
 interface CheckoutShippingMethodStepProps {
   checkoutEmail: string;
@@ -208,14 +247,7 @@ export function CheckoutShippingMethodStep({
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-    const lines = items.map((item) => ({
-      sku: item.sku,
-      productSlug: item.productSlug,
-      quantity: item.quantity,
-      totalBoxes: item.totalBoxes,
-      totalRolls: item.totalRolls,
-      application: item.application,
-    }));
+    const lines = shippingQuoteLines(items);
     const address = selectedAddress;
 
     const load = async () => {
@@ -337,14 +369,7 @@ export function CheckoutShippingMethodStep({
           postalCode: zip,
           city: address.city,
           state: address.state,
-          lines: items.map((item) => ({
-            sku: item.sku,
-            productSlug: item.productSlug,
-            quantity: item.quantity,
-            totalBoxes: item.totalBoxes,
-            totalRolls: item.totalRolls,
-            application: item.application,
-          })),
+          lines: shippingQuoteLines(items),
         }),
       });
       const payload = (await response.json()) as QuotePayload;

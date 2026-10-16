@@ -5,6 +5,8 @@ export interface ShippingQuoteLine {
   totalBoxes?: number;
   totalRolls?: number;
   application?: string;
+  /** Gross package weight from packageTotalWeightLbs. One selected package, not multiplied by quantity. */
+  weightLbs?: number;
 }
 
 export interface ShippingOption {

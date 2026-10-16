@@ -309,7 +309,45 @@ async function quoteForSignedInUser(request: Request) {
       });
     }
 
-    const freight = await buildShipmentFreight(body.lines || []);
+    const requestLines = body.lines || [];
+    console.info(
+      JSON.stringify({
+        source: "shipping-quote",
+        stage: "request",
+        lines: requestLines.map((line) => ({
+          sku: line.sku || null,
+          quantity: line.quantity,
+          boxes: line.totalBoxes ?? null,
+          weightLbs: line.weightLbs ?? null,
+        })),
+      })
+    );
+    const freight = await buildShipmentFreight(requestLines);
+    console.info(
+      JSON.stringify({
+        source: "shipping-quote",
+        stage: "warp-payload",
+        weightLbs: freight.weightLbs,
+        pieces: freight.pieces.map((piece) => ({
+          quantity: piece.quantity,
+          weightLbs: piece.weightLbs,
+          lengthIn: piece.lengthIn,
+          widthIn: piece.widthIn,
+          heightIn: piece.heightIn,
+        })),
+      })
+    );
+    if (!(freight.weightLbs > 0)) {
+      return failureJson({
+        error: new ShipmentDataError("missing_weight", "Product weight is missing, so shipping can't be calculated yet."),
+        freight,
+        zip,
+        city: body.city,
+        state: body.state,
+        freeLocal: null,
+        status: 422,
+      });
+    }
     const freeLocal = freeRgvDelivery({
       postalCode: zip,
       city: body.city,
