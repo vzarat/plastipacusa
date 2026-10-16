@@ -112,6 +112,12 @@ function fullZip(postalCode: string | undefined): string | null {
   return digits.slice(0, 5);
 }
 
+function deliveryMethodForOption(id: string) {
+  if (id === "rgv-local") return "rgv-express" as const;
+  if (id === "houston-friday") return "houston-friday" as const;
+  return "freight" as const;
+}
+
 function tagOptions(options: ShippingOption[]) {
   if (options.length === 0) return [];
   const cheapest = [...options].sort((a, b) => a.price - b.price)[0];
@@ -319,7 +325,7 @@ export function CheckoutShippingMethodStep({
         const cheapest = [...quoted].sort((a, b) => a.price - b.price)[0] || null;
         const selected = local || cheapest;
         setSelectedShippingOption(selected);
-        setDeliveryMethod(selected?.id === "rgv-local" ? "rgv-express" : selected ? "freight" : "ground");
+        setDeliveryMethod(selected ? deliveryMethodForOption(selected.id) : "ground");
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") return;
         if (requestId !== requestRef.current) return;
@@ -401,7 +407,7 @@ export function CheckoutShippingMethodStep({
       autoCountRef.current = manual ? 0 : autoCountRef.current + 1;
       if (manual) requoteLockRef.current = null;
       setSelectedShippingOption(next);
-      setDeliveryMethod(next.id === "rgv-local" ? "rgv-express" : "freight");
+      setDeliveryMethod(deliveryMethodForOption(next.id));
       setPriceUpdated(decision.priceUpdated ? next.price : null);
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
@@ -454,8 +460,11 @@ export function CheckoutShippingMethodStep({
     const tagged = tagOptions(options);
     const featured = featuredCarrierOptions(tagged);
     const shown = showAllOptions ? [...featured.shown, ...featured.hidden] : featured.shown;
+    const combined = freeLocal ? [{ ...freeLocal, cheapest: false, fastest: false }, ...shown] : shown;
+    const free = combined.filter((option) => option.price === 0);
+    const carriers = combined.filter((option) => option.price !== 0);
     return {
-      visible: freeLocal ? [{ ...freeLocal, cheapest: false, fastest: false }, ...shown] : shown,
+      visible: [...free, ...carriers],
       hiddenCount: featured.hidden.length,
     };
   }, [freeLocal, options, showAllOptions]);
@@ -642,7 +651,7 @@ export function CheckoutShippingMethodStep({
                       setPriceUpdated(null);
                       setRequoteFailed(false);
                       setSelectedShippingOption(method);
-                      setDeliveryMethod(method.id === "rgv-local" ? "rgv-express" : "freight");
+                      setDeliveryMethod(deliveryMethodForOption(method.id));
                     }}
                     className="mt-1 h-4 w-4 text-sky-600 focus:ring-sky-500"
                   />

@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { freeRgvDelivery } from "./rgv-delivery";
-import { evalShippingEligibility } from "../shippingRules";
+import {
+  evalShippingEligibility,
+  HOUSTON_FRIDAY_LABEL,
+  HOUSTON_FRIDAY_NOTE,
+  RGV_FREE_DELIVERY_LABEL,
+} from "../shippingRules";
 
 describe("free RGV delivery", () => {
   it("does not treat 16 machine-film boxes under 64 rolls as free", () => {
@@ -64,5 +69,17 @@ describe("free RGV delivery", () => {
     const banner = evalShippingEligibility("78572", "Mission", "TX", 16, 64);
     assert.equal(quote.eligible, true);
     assert.equal(banner.freeDeliveryEligible, true);
+    assert.equal(banner.options[0]?.label, RGV_FREE_DELIVERY_LABEL);
+  });
+
+  it("offers free Friday delivery for Houston city and 770-772, not 773", () => {
+    const houston = evalShippingEligibility("77002", "Houston", "TX", 64, 256);
+    const prefix = evalShippingEligibility("77201", "Houston", "TX", 64, 256);
+    const outside = evalShippingEligibility("77301", "Spring", "TX", 64, 256);
+    assert.equal(houston.options[0]?.id, "houston-friday");
+    assert.equal(houston.options[0]?.label, HOUSTON_FRIDAY_LABEL);
+    assert.equal(houston.options[0]?.scheduleNote, HOUSTON_FRIDAY_NOTE);
+    assert.equal(prefix.options[0]?.id, "houston-friday");
+    assert.equal(outside.region, "out-of-region");
   });
 });

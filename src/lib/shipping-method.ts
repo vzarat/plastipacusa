@@ -37,15 +37,15 @@ export const DELIVERY_METHODS: DeliveryMethod[] = [
   },
   {
     id: "rgv-express",
-    label: "RGV Local Express - FREE",
-    description: "Local delivery from Mission, TX for Rio Grande Valley orders of 1 box or more.",
+    label: "Free Local Delivery (Plastipac Fleet)",
+    description: "Plastipac fleet delivery for Rio Grande Valley orders of 16 boxes (64 rolls) or more.",
     scheduleNote: "Free local express delivery across the Rio Grande Valley.",
   },
   {
     id: "houston-friday",
-    label: "Houston Scheduled Friday Route - FREE",
-    description: "Weekly Friday route for Houston orders of a half pallet or more.",
-    scheduleNote: "Free delivery on Fridays for Houston area.",
+    label: "Free Houston Delivery (Fridays Only)",
+    description: "Free Houston Delivery — Friday Route Only",
+    scheduleNote: "Free Houston Delivery — Friday Route Only",
   },
   {
     id: "san-antonio-tuesday",
@@ -136,7 +136,7 @@ export function isHoustonArea(destination: {
   const city = normalizePlace(destination.city);
   if (city === "houston" || city.startsWith("houston ")) return true;
   const zip = zipNumber(destination.postalCode);
-  return zip !== null && zip >= 77001 && zip <= 77598;
+  return zip !== null && zip >= 77001 && zip <= 77299;
 }
 
 export function isSanAntonioArea(destination: {

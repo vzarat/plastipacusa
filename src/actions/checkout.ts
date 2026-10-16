@@ -22,7 +22,7 @@ import {
 import { createServiceRoleClient, isServiceRoleConfigured } from "@/lib/supabase/admin";
 import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
 import { resolveShippingCharge } from "@/lib/shipping/quote-cache";
-import { evalShippingEligibility } from "@/lib/shippingRules";
+import { evalShippingEligibility, RGV_FREE_DELIVERY_LABEL } from "@/lib/shippingRules";
 import { buildShipmentFreight } from "@/lib/shipping/shipment";
 import type { ShippingQuoteLine } from "@/lib/shipping/types";
 
@@ -255,7 +255,7 @@ export async function createPaymentIntent(
           id: "rgv-local",
           provider: "plastipac",
           mode: "local",
-          serviceName: "Free Local RGV Delivery (Included)",
+          serviceName: RGV_FREE_DELIVERY_LABEL,
           price: local.price,
           transitDays: 1,
           destinationZip: zip,

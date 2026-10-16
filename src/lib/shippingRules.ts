@@ -2,6 +2,9 @@ import { freeRgvDelivery, RGV_FREE_DELIVERY_ROLLS } from "@/lib/shipping/rgv-del
 
 export const RGV_FREE_DELIVERY_BOXES = 16;
 export const HOUSTON_FREE_DELIVERY_BOXES = 64;
+export const RGV_FREE_DELIVERY_LABEL = "Free Local Delivery (Plastipac Fleet)";
+export const HOUSTON_FRIDAY_LABEL = "Free Houston Delivery (Fridays Only)";
+export const HOUSTON_FRIDAY_NOTE = "Free Houston Delivery — Friday Route Only";
 
 export const LOGISTICS_EMAIL = "sales@plastipacusa.com";
 export const LOGISTICS_PHONE_DISPLAY = "+1 (956) 400-3683";
@@ -36,7 +39,7 @@ export interface ShippingEligibility {
   defaultMethodId: ShippingRuleMethodId;
 }
 
-const HOUSTON_ZIP_PREFIXES = new Set(["770", "772", "773", "774", "775"]);
+const HOUSTON_ZIP_PREFIXES = new Set(["770", "771", "772"]);
 
 function normalizePlace(value: string): string {
   return value
@@ -100,8 +103,8 @@ export function evalShippingEligibility(
         options: [
           {
             id: "rgv-express",
-            label: "Free Local RGV Delivery (Included)",
-            description: "Included for Rio Grande Valley orders of 64 rolls or more.",
+            label: RGV_FREE_DELIVERY_LABEL,
+            description: "Plastipac fleet delivery for Rio Grande Valley orders of 64 rolls or more.",
             scheduleNote: null,
           },
         ],
@@ -147,9 +150,9 @@ export function evalShippingEligibility(
         options: [
           {
             id: "houston-friday",
-            label: "Free Friday Houston Corridor Freight (Direct Dock Delivery)",
-            description: "Direct dock delivery on the Houston corridor route.",
-            scheduleNote: "Scheduled delivery every Friday.",
+            label: HOUSTON_FRIDAY_LABEL,
+            description: HOUSTON_FRIDAY_NOTE,
+            scheduleNote: HOUSTON_FRIDAY_NOTE,
           },
         ],
       };

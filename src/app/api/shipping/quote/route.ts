@@ -4,7 +4,12 @@ import { createServerClient } from "@/lib/supabase/server";
 import { WARP_ORIGIN_ZIP, getWarpConfig, shippingDebugVisible } from "@/lib/shipping/config";
 import { buildQuoteFailure, shippingRequestId } from "@/lib/shipping/diagnostics";
 import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
-import { evalShippingEligibility } from "@/lib/shippingRules";
+import {
+  evalShippingEligibility,
+  HOUSTON_FRIDAY_LABEL,
+  HOUSTON_FRIDAY_NOTE,
+  RGV_FREE_DELIVERY_LABEL,
+} from "@/lib/shippingRules";
 import {
   fetchLtlMarketOptions,
   hideTruckloadForSmallShipment,
@@ -75,8 +80,8 @@ function houstonFridayOption(zip: string, label: string): ShippingOption {
     id: "houston-friday",
     provider: "plastipac",
     mode: "local",
-    serviceName: label,
-    description: "Direct dock delivery on the Houston corridor route.",
+    serviceName: label || HOUSTON_FRIDAY_LABEL,
+    description: HOUSTON_FRIDAY_NOTE,
     price: 0,
     transitDays: 1,
     expiresAt: null,
@@ -89,8 +94,8 @@ function freeLocalOption(zip: string): ShippingOption {
     id: "rgv-local",
     provider: "plastipac",
     mode: "local",
-    serviceName: "Free Local RGV Delivery (Included)",
-    description: "Included for Rio Grande Valley orders of 16 boxes (64 rolls) or more.",
+    serviceName: RGV_FREE_DELIVERY_LABEL,
+    description: "Plastipac fleet delivery for Rio Grande Valley orders of 16 boxes (64 rolls) or more.",
     price: 0,
     transitDays: 1,
     expiresAt: null,
