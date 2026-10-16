@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { packageTotalWeightLbs } from "../package-weight";
 import { marketItemsFromPieces } from "./market-options";
 import { freeRgvDelivery } from "./rgv-delivery";
 import { ShipmentDataError, shipmentFreightFromCatalog, type FreightVariant } from "./shipment";
@@ -102,7 +103,7 @@ describe("catalog shipment freight", () => {
       quantity,
     });
     const cases = [
-      { name: "1 box", lines: [line("b1")], rows: [variant("b1", 1)], weight: 56.85 },
+      { name: "1 box", lines: [line("b1")], rows: [variant("b1", 1)], weight: 34.65 },
       { name: "16 boxes", lines: [line("b16")], rows: [variant("b16", 16)], weight: 576.6 },
       { name: "32 boxes", lines: [line("b32")], rows: [variant("b32", 32)], weight: 1131.1 },
       { name: "64 boxes", lines: [line("b64")], rows: [variant("b64", 64)], weight: 2240.2 },
@@ -123,14 +124,14 @@ describe("catalog shipment freight", () => {
         name: "loose plus a layer",
         lines: [line("b16"), line("b1", 3)],
         rows: [variant("b16", 16), variant("b1", 1)],
-        weight: 702.75,
+        weight: 680.55,
       },
     ];
     const loose = [
-      { boxes: 1, weight: 56.85 },
-      { boxes: 2, weight: 91.5 },
-      { boxes: 5, weight: 195.45 },
-      { boxes: 15, weight: 541.95 },
+      { boxes: 1, weight: 34.65 },
+      { boxes: 2, weight: 69.3 },
+      { boxes: 5, weight: 173.25 },
+      { boxes: 15, weight: 519.75 },
     ];
     for (const item of loose) {
       const freight = shipmentFreightFromCatalog(
@@ -154,8 +155,8 @@ describe("catalog shipment freight", () => {
     assert.equal(mixed.pieces[0]?.heightIn, 78);
     assert.equal(mixed.pieces[0]?.weightLbs, 2240.2);
     assert.equal(mixed.pieces[1]?.heightIn, 19.5);
-    assert.equal(mixed.pieces[1]?.weightLbs, 195.45);
-    assert.equal(mixed.weightLbs, 2435.65);
+    assert.equal(mixed.pieces[1]?.weightLbs, 173.25);
+    assert.equal(mixed.weightLbs, 2413.45);
 
     for (const item of cases) {
       const freight = shipmentFreightFromCatalog(item.lines, item.rows, new Map());
@@ -168,6 +169,66 @@ describe("catalog shipment freight", () => {
       assert.ok(sent >= freight.weightLbs, item.name);
       assert.ok(sent - freight.weightLbs < units, item.name);
     }
+  });
+
+  it("sends the spec-matrix gross weight, including a tier that only has a sibling box weight", () => {
+    const matrix = (boxes: number, rolls: number) =>
+      packageTotalWeightLbs({
+        boxes,
+        rolls,
+        boxWeightLbs: 18,
+        palletWeightLbs: 1173.5,
+      });
+    assert.equal(matrix(1, 4), 18);
+    assert.equal(matrix(16, 64), 309.9);
+    assert.equal(matrix(32, 128), 597.8);
+
+    const freight = shipmentFreightFromCatalog(
+      [{ sku: "FST-1B", productSlug: "stretch-film-15-x-40-ga-x-1500ft", quantity: 1 }],
+      [
+        {
+          sku: "FST-1B",
+          rolls_count: 4,
+          boxes_count: 1,
+          roll_weight_lbs: null,
+          box_weight_lbs: null,
+          pallet_weight_lbs: null,
+          products: {
+            slug: "stretch-film-15-x-40-ga-x-1500ft",
+            application: "hand",
+            roll_weight_lbs: null,
+            pallet_weight_lbs: null,
+            pallet_dimensions: null,
+            rolls_per_box: 4,
+            width_inches: 15,
+            gauge: 40,
+            length_feet: 1500,
+          },
+        },
+        {
+          sku: "FST-64B",
+          rolls_count: 256,
+          boxes_count: 64,
+          roll_weight_lbs: null,
+          box_weight_lbs: 18,
+          pallet_weight_lbs: 1173.5,
+          products: {
+            slug: "stretch-film-15-x-40-ga-x-1500ft",
+            application: "hand",
+            roll_weight_lbs: null,
+            pallet_weight_lbs: 1173.5,
+            pallet_dimensions: null,
+            rolls_per_box: 4,
+            width_inches: 15,
+            gauge: 40,
+            length_feet: 1500,
+          },
+        },
+      ],
+      new Map()
+    );
+    assert.equal(freight.pieces[0]?.weightLbs, 18);
+    assert.ok(freight.weightLbs > 0);
   });
 
   it("builds every catalog tier from production-shaped rows, including empty pallet dimensions", () => {

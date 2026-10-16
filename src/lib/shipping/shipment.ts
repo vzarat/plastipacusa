@@ -1,8 +1,8 @@
 import { createServerClient } from "@/lib/supabase/server";
-import { formatPackageWeightLbs, packagePalletTareLbs, packageTotalWeightLbs, packHandShippingUnits } from "@/lib/package-weight";
+import { packageTotalWeightLbs, packHandShippingUnits } from "@/lib/package-weight";
 import { groupLinesBySku, handTierName } from "@/lib/shipping/catalog-freight";
 import { LOOSE_BOX_MODE, resolveFullPalletHeight, tierInchesFromFullHeight } from "@/lib/shipping/tier-height";
-import { formatFreightDimensions, formatFreightWeightLabel } from "@/lib/shipping/hand-freight";
+import { formatFreightDimensions, formatFreightWeightLabel, handHandlingUnit } from "@/lib/shipping/hand-freight";
 import { ShipmentDataError } from "@/lib/shipping/shipment-error";
 import type { FreightPiece, ShipmentFreight, ShippingQuoteLine } from "@/lib/shipping/types";
 
@@ -104,6 +104,22 @@ export async function buildShipmentFreight(
     rows = (data || []) as FreightVariant[];
   }
 
+  if (slugs.length > 0) {
+    const { data } = await supabase
+      .from("product_variants")
+      .select(
+        "sku, rolls_count, boxes_count, roll_weight_lbs, box_weight_lbs, pallet_weight_lbs, products!inner(slug, application, roll_weight_lbs, pallet_weight_lbs, pallet_dimensions, rolls_per_box, width_inches, gauge, length_feet)"
+      )
+      .in("products.slug", slugs);
+    const known = new Set(rows.map((row) => String(row.sku || "")));
+    for (const row of (data || []) as FreightVariant[]) {
+      const sku = String(row.sku || "");
+      if (!sku || known.has(sku)) continue;
+      known.add(sku);
+      rows.push(row);
+    }
+  }
+
   let productsBySlug = new Map<string, FreightProduct>();
   if (slugs.length > 0) {
     const { data, error } = await supabase
@@ -157,12 +173,31 @@ export function shipmentFreightFromCatalog(
     const packageRolls = positive(row?.rolls_count) ?? 0;
     const packageBoxes = positive(row?.boxes_count) ?? 0;
     const application = String(product?.application || "").toLowerCase();
+    const slug = String(product?.slug || line.productSlug || "");
+    const siblings = rows.filter((item) => {
+      const itemSlug = productOf(item)?.slug;
+      return slug && itemSlug === slug;
+    });
+    const siblingWeight = (field: "roll_weight_lbs" | "box_weight_lbs" | "pallet_weight_lbs") => {
+      for (const item of siblings) {
+        const amount = positive(item[field]);
+        if (amount != null) return amount;
+      }
+      return null;
+    };
+    const rollWeightLbs =
+      positive(row?.roll_weight_lbs) ?? siblingWeight("roll_weight_lbs") ?? positive(product?.roll_weight_lbs);
+    const boxWeightLbs = positive(row?.box_weight_lbs) ?? siblingWeight("box_weight_lbs");
+    const palletWeightLbs =
+      positive(row?.pallet_weight_lbs) ??
+      siblingWeight("pallet_weight_lbs") ??
+      positive(product?.pallet_weight_lbs);
     const unitWeight = packageTotalWeightLbs({
       rolls: packageRolls,
       boxes: packageBoxes,
-      rollWeightLbs: row?.roll_weight_lbs ?? product?.roll_weight_lbs,
-      boxWeightLbs: row?.box_weight_lbs,
-      palletWeightLbs: row?.pallet_weight_lbs ?? product?.pallet_weight_lbs,
+      rollWeightLbs,
+      boxWeightLbs,
+      palletWeightLbs,
       machine: application === "machine",
       widthInches: product?.width_inches,
       gauge: product?.gauge,
@@ -184,8 +219,8 @@ export function shipmentFreightFromCatalog(
         ? null
         : packHandShippingUnits({
             boxes: lineBoxes,
-            boxWeightLbs: row?.box_weight_lbs ?? null,
-            palletWeightLbs: row?.pallet_weight_lbs ?? product?.pallet_weight_lbs ?? null,
+            boxWeightLbs,
+            palletWeightLbs,
           });
     const productLabel = product?.slug || row?.sku || "product";
     const fullHeight = resolveFullPalletHeight({
@@ -218,29 +253,23 @@ export function shipmentFreightFromCatalog(
           );
         }
         const loosePallet = part.tier === "loose" && LOOSE_BOX_MODE === "pallet";
-        const boxWeight = part.tier === "loose" && part.boxes > 0 ? part.weightLbs / part.boxes : null;
-        const layerWeight =
-          boxWeight == null
-            ? null
-            : packageTotalWeightLbs({
-                boxes: 16,
-                rolls: 64,
-                boxWeightLbs: boxWeight,
-                palletWeightLbs: row?.pallet_weight_lbs ?? product?.pallet_weight_lbs ?? null,
-              });
-        const tare = boxWeight != null && layerWeight != null ? packagePalletTareLbs(boxWeight, layerWeight) : null;
-        if (loosePallet && tare == null) {
+        const pieceWeight = part.weightLbs;
+        if (!(pieceWeight > 0)) {
           throw new ShipmentDataError(
             "missing_weight",
-            `MISSING_WEIGHT: ${productLabel} loose boxes need the 16-box tier weight and box weight so the pallet can be added.`
+            `MISSING_WEIGHT: ${productLabel} ${tier} has no package weight.`
           );
         }
-        const pieceWeight =
-          part.tier === "loose" && loosePallet && boxWeight != null && tare != null
-            ? Math.round((boxWeight * part.boxes + tare) * 100) / 100
-            : part.weightLbs;
         const pieceQuantity = loosePallet ? 1 : part.tier === "loose" || part.tier === "full" ? part.quantity : 1;
         const packaging = part.tier === "full" || part.tier === "half" || loosePallet ? "pallet" : "box";
+        const shownBoxes =
+          part.tier === "loose"
+            ? part.boxes
+            : part.tier === "full"
+              ? 64 * part.quantity
+              : part.tier === "half"
+                ? 32
+                : 16;
         pieces.push({
           lengthIn: inches.lengthIn,
           widthIn: inches.widthIn,
@@ -249,7 +278,7 @@ export function shipmentFreightFromCatalog(
           quantity: pieceQuantity,
           packaging,
           dimensionLabel: formatFreightDimensions(inches),
-          weightLabel: formatPackageWeightLbs(pieceWeight),
+          weightLabel: formatFreightWeightLabel(pieceWeight, handHandlingUnit(shownBoxes)),
         });
         weightLbs += pieceWeight;
         palletCount += packaging === "pallet" ? pieceQuantity : 0;
@@ -283,6 +312,12 @@ export function shipmentFreightFromCatalog(
         packaging: "pallet" as const,
       };
       const lineWeight = Math.round(unitWeight * quantity * 100) / 100;
+      if (!(lineWeight > 0)) {
+        throw new ShipmentDataError(
+          "missing_weight",
+          `MISSING_WEIGHT: ${productLabel} has no package weight.`
+        );
+      }
       pieces.push({
         lengthIn: unit.lengthIn,
         widthIn: unit.widthIn,

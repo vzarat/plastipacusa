@@ -36,6 +36,18 @@ function storedPackageWeight(value: unknown): number | null {
   return amount;
 }
 
+/** Same roll weight the spec matrix uses when the variant row has no roll_weight_lbs. */
+function machineSpecRollWeight(input: PackageWeightInput): number | null {
+  const width = Math.round(positive(input.widthInches) ?? 0);
+  const gauge = Math.round(positive(input.gauge) ?? 0);
+  const length = Math.round(positive(input.lengthFeet) ?? 0);
+  return (
+    MACHINE_FILM_WEIGHT_SPECS.find(
+      (spec) => spec.width === width && spec.gauge === gauge && spec.length === length
+    )?.roll ?? null
+  );
+}
+
 function roundLbs(amount: number, digits: number): number {
   const factor = 10 ** digits;
   return Math.round((amount + Number.EPSILON) * factor) / factor;
@@ -44,7 +56,7 @@ function roundLbs(amount: number, digits: number): number {
 export function packageTotalWeightLbs(input: PackageWeightInput): number | null {
   const rolls = positive(input.rolls) ?? 0;
   const boxes = positive(input.boxes) ?? 0;
-  const rollWeight = positive(input.rollWeightLbs);
+  const rollWeight = positive(input.rollWeightLbs) ?? (input.machine ? machineSpecRollWeight(input) : null);
   const boxWeight = positive(input.boxWeightLbs);
   const palletWeight = positive(input.palletWeightLbs);
   const perRoll = rollWeight ?? (boxWeight != null && !input.machine ? boxWeight / 4 : boxWeight);

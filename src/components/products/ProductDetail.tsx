@@ -56,7 +56,7 @@ function buildInitialVariant(product: ProductWithVariants): ProductVariant | any
       gauge,
       lengthFeet,
       rollsPerPallet: HAND_FULL_PALLET_ROLLS,
-      weightLbs: "0.00",
+      weightLbs: "",
     };
   }
 
@@ -84,7 +84,7 @@ function buildInitialVariant(product: ProductWithVariants): ProductVariant | any
       gauge,
       lengthFeet,
       rollsPerPallet: HAND_FULL_PALLET_ROLLS,
-      weightLbs: "0.00",
+      weightLbs: "",
     };
   }
 

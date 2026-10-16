@@ -22,6 +22,7 @@ import {
   formatBoxRollLabel,
   unitLabelForProduct,
 } from "@/lib/products";
+import { packageTotalWeightLbs } from "@/lib/package-weight";
 import { BOX_QTY_NOTE, HALF_PALLET_QTY_NOTE } from "@/lib/cart-quantity";
 import { houstonFridayPresetLabel } from "@/lib/shippingRules";
 import { getProductBySlug } from "@/actions/products";
@@ -258,6 +259,20 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
     product?.length_feet || product?.lengthFeet || single?.lengthFeet || 1000
   );
   const baseSku = String(single?.sku || product?.partNumber || product?.slug || "SKU");
+  const weightSources = [product, ...(product?.variants || []), ...sourceOptions];
+  const storedWeight = (keys: string[]) => {
+    for (const source of weightSources) {
+      if (!source) continue;
+      for (const key of keys) {
+        const amount = Number(source[key]);
+        if (Number.isFinite(amount) && amount > 0) return amount;
+      }
+    }
+    return null;
+  };
+  const sharedRollWeight = storedWeight(["rollWeightLbs", "roll_weight_lbs"]);
+  const sharedBoxWeight = storedWeight(["boxWeightLbs", "box_weight_lbs"]);
+  const sharedPalletWeight = storedWeight(["palletWeightLbs", "pallet_weight_lbs"]);
 
   return STANDARD_HAND_PACKAGE_TIERS.flatMap((tier) => {
     const matched = sourceOptions.find((option) => {
@@ -279,6 +294,16 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
         ? Math.round(((baseBoxPrice - unit) / baseBoxPrice) * 100)
         : 0;
     const sku = String(matched?.sku || `${baseSku}-${tier.boxes}BX`);
+    const gross = packageTotalWeightLbs({
+      rolls: tier.rolls,
+      boxes: tier.boxes,
+      rollWeightLbs: Number(matched?.rollWeightLbs) || sharedRollWeight,
+      boxWeightLbs: Number(matched?.boxWeightLbs) || sharedBoxWeight,
+      palletWeightLbs: Number(matched?.palletWeightLbs) || sharedPalletWeight,
+      widthInches,
+      gauge,
+      lengthFeet,
+    });
     return [
       {
         id: matched?.id || sku,
@@ -301,7 +326,7 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
         widthInches,
         gauge,
         lengthFeet,
-        weightLbs: String(matched?.weightLbs ?? single?.weightLbs ?? "0.00"),
+        weightLbs: gross != null && gross > 0 ? String(gross) : "",
         stockStatus: "in_stock",
         createdAt: new Date().toISOString(),
       },
@@ -429,7 +454,7 @@ export function VariantSelector({
                 (isMachineFilm ? "20.00" : "18.00"),
               gauge: product?.gauge || 60,
               lengthFeet: product?.length_feet || product?.lengthFeet || 1000,
-              weightLbs: "0.00",
+              weightLbs: "",
               stockStatus: "in_stock",
               createdAt: new Date().toISOString(),
               rolls_count: rolls,
@@ -829,7 +854,7 @@ export function VariantSelector({
         Number(selectedVariant?.rollsPerPallet) ||
         Number(product?.fullPalletRolls) ||
         (isMachineFilm ? 40 : 192),
-      weightLbs: String(selectedVariant?.weightLbs ?? "0.00"),
+      weightLbs: Number(selectedVariant?.weightLbs) > 0 ? String(selectedVariant.weightLbs) : "",
       pricingTier: displayPackageTitle(selectedVariant, isMachineFilm),
       tierType: isHalfPalletTier
         ? "half_pallet"
