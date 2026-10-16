@@ -11,7 +11,9 @@ import { formatCurrency } from "@/lib/utils";
 import { ShippingEligibilityAlert } from "@/components/checkout/ShippingEligibilityAlert";
 import { WAREHOUSE_ORIGIN } from "@/lib/shipping-method";
 import { scheduleFromTransitDays } from "@/lib/shipping/dates";
+import { featuredCarrierOptions } from "@/lib/shipping/market-options";
 import {
+  AUTO_REQUOTE_CAP,
   blocksCardStep,
   decideRequote,
   shouldAutoRequote,
@@ -27,7 +29,26 @@ interface CheckoutShippingMethodStepProps {
 }
 
 const PLAIN_FAILURE = "We couldn't calculate shipping automatically.";
-const PRICE_UPDATED = "Shipping price updated";
+function serviceCopy(level: string | undefined): { title: string; detail: string } | null {
+  if (!level) return null;
+  const key = level.toUpperCase();
+  if (key === "STANDARD" || key === "STD" || key === "STND") {
+    return { title: "Standard", detail: "Standard service from this carrier." };
+  }
+  if (key === "ECONOMY") {
+    return { title: "Economy", detail: "Economy service from this carrier." };
+  }
+  if (key === "PRIORITY") {
+    return { title: "Priority", detail: "Priority service from this carrier." };
+  }
+  if (key === "GUARANTEED") {
+    return { title: "Guaranteed", detail: "Guaranteed service from this carrier." };
+  }
+  return {
+    title: level,
+    detail: "Warp returns this service level without a published description.",
+  };
+}
 const EXPIRED_QUOTE = "This shipping quote expired. Review the updated price before paying.";
 const REQUOTE_FAILED = "We couldn't refresh this shipping price.";
 
@@ -40,6 +61,7 @@ interface QuotePayload {
   weightLbs?: number;
   dimensions?: string[];
   weightDetail?: string[];
+  note?: string | null;
 }
 
 function fullZip(postalCode: string | undefined): string | null {
@@ -97,8 +119,10 @@ export function CheckoutShippingMethodStep({
   const [options, setOptions] = useState<ShippingOption[]>([]);
   const [freeLocal, setFreeLocal] = useState<ShippingOption | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [quoteNote, setQuoteNote] = useState<string | null>(null);
   const [manualQuote, setManualQuote] = useState(false);
-  const [priceUpdated, setPriceUpdated] = useState(false);
+  const [priceUpdated, setPriceUpdated] = useState<number | null>(null);
+  const [showAllOptions, setShowAllOptions] = useState(false);
   const [requoteFailed, setRequoteFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [requesting, setRequesting] = useState(false);
@@ -193,7 +217,7 @@ export function CheckoutShippingMethodStep({
       setLoading(true);
       setMessage(null);
       setManualQuote(false);
-      setPriceUpdated(false);
+      setPriceUpdated(null);
       setRequoteFailed(false);
       autoCountRef.current = 0;
       requoteLockRef.current = null;
@@ -221,19 +245,31 @@ export function CheckoutShippingMethodStep({
           setOptions([]);
           setManualQuote(true);
           setMessage(payload.message || PLAIN_FAILURE);
+          setQuoteNote(payload.note || null);
           return;
         }
         if (!response.ok || payload.ok === false) {
-          setFreeLocal(null);
+          setFreeLocal(payload.freeLocal || null);
           setOptions([]);
-          setManualQuote(false);
-          setMessage(PLAIN_FAILURE);
+          setManualQuote(true);
+          setMessage(payload.message || PLAIN_FAILURE);
+          setQuoteNote(payload.note || null);
           return;
         }
         const local = payload.freeLocal || null;
         const quoted = payload.options || [];
+        if (!local && quoted.length === 0) {
+          setFreeLocal(null);
+          setOptions([]);
+          setManualQuote(true);
+          setMessage(PLAIN_FAILURE);
+          setSelectedShippingOption(null);
+          return;
+        }
         setFreeLocal(local);
         setOptions(quoted);
+        setShowAllOptions(false);
+        setQuoteNote(null);
         setMessage(payload.message || null);
         const cheapest = [...quoted].sort((a, b) => a.price - b.price)[0] || null;
         const selected = local || cheapest;
@@ -245,6 +281,7 @@ export function CheckoutShippingMethodStep({
         quotedKeyRef.current = requestKey;
         setFreeLocal(null);
         setOptions([]);
+        setManualQuote(true);
         setMessage(PLAIN_FAILURE);
       } finally {
         if (requestId === requestRef.current) setLoading(false);
@@ -310,20 +347,20 @@ export function CheckoutShippingMethodStep({
       setOptions(payload.options || []);
       if (decision.type === "clear") {
         setSelectedShippingOption(null);
-        setPriceUpdated(false);
+        setPriceUpdated(null);
         return;
       }
       const next = (payload.options || []).find((option) => option.id === decision.quoteId) || null;
       if (!next) {
         setSelectedShippingOption(null);
-        setPriceUpdated(false);
+        setPriceUpdated(null);
         return;
       }
       autoCountRef.current = manual ? 0 : autoCountRef.current + 1;
       if (manual) requoteLockRef.current = null;
       setSelectedShippingOption(next);
       setDeliveryMethod(next.id === "rgv-local" ? "rgv-express" : "freight");
-      setPriceUpdated(decision.priceUpdated);
+      setPriceUpdated(decision.priceUpdated ? next.price : null);
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
       if (requestId !== requestRef.current) return;
@@ -346,16 +383,15 @@ export function CheckoutShippingMethodStep({
     if (!active) return;
     const selected = selectedShippingOption;
     if (!selected?.expiresAt) return;
-    if (
-      !shouldAutoRequote({
-        expiresAt: selected.expiresAt,
-        now,
-        autoRequotes: autoCountRef.current,
-        stepVisible: active,
-      })
-    ) {
-      return;
-    }
+    const windowDue = shouldAutoRequote({
+      expiresAt: selected.expiresAt,
+      now,
+      autoRequotes: autoCountRef.current,
+      stepVisible: active,
+    });
+    const expiredDue =
+      blocksCardStep(selected.expiresAt, now) && autoCountRef.current < AUTO_REQUOTE_CAP;
+    if (!windowDue && !expiredDue) return;
     const lock = `${selectionKey}:${selected.expiresAt}`;
     if (requoteLockRef.current === lock) return;
     requoteLockRef.current = lock;
@@ -374,8 +410,13 @@ export function CheckoutShippingMethodStep({
 
   const cards = useMemo(() => {
     const tagged = tagOptions(options);
-    return freeLocal ? [{ ...freeLocal, cheapest: false, fastest: false }, ...tagged] : tagged;
-  }, [freeLocal, options]);
+    const featured = featuredCarrierOptions(tagged);
+    const shown = showAllOptions ? [...featured.shown, ...featured.hidden] : featured.shown;
+    return {
+      visible: freeLocal ? [{ ...freeLocal, cheapest: false, fastest: false }, ...shown] : shown,
+      hiddenCount: featured.hidden.length,
+    };
+  }, [freeLocal, options, showAllOptions]);
 
   const schedule = selectedShippingOption
     ? scheduleFromTransitDays(selectedShippingOption.transitDays)
@@ -487,9 +528,9 @@ export function CheckoutShippingMethodStep({
 
       <ShippingEligibilityAlert eligibility={shippingEligibility} />
 
-      {priceUpdated && (
+      {priceUpdated != null && (
         <p className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-950" role="status">
-          {PRICE_UPDATED}
+          Shipping price updated to {formatCurrency(priceUpdated)}. Review it before you continue.
         </p>
       )}
       {expired && (
@@ -529,7 +570,7 @@ export function CheckoutShippingMethodStep({
         </p>
         {loading ? (
           <div className="space-y-3">
-            <p className="text-sm text-slate-600">Getting carrier rates. This can take up to 30 seconds.</p>
+            <p className="text-sm text-slate-600">Getting live carrier rates...</p>
             <div aria-hidden>
               {[0, 1, 2].map((item) => (
                 <div key={item} className="mb-3 h-24 animate-pulse rounded-2xl border border-slate-200 bg-slate-100" />
@@ -538,7 +579,7 @@ export function CheckoutShippingMethodStep({
           </div>
         ) : (
           <div role="radiogroup" aria-label="Delivery method" className="space-y-3">
-            {cards.map((method) => {
+            {cards.visible.map((method) => {
               const selected = selectedShippingOption?.id === method.id;
               const title = method.carrierName || method.serviceName;
               return (
@@ -558,7 +599,7 @@ export function CheckoutShippingMethodStep({
                     onChange={() => {
                       autoCountRef.current = 0;
                       requoteLockRef.current = null;
-                      setPriceUpdated(false);
+                      setPriceUpdated(null);
                       setRequoteFailed(false);
                       setSelectedShippingOption(method);
                       setDeliveryMethod(method.id === "rgv-local" ? "rgv-express" : "freight");
@@ -576,9 +617,18 @@ export function CheckoutShippingMethodStep({
                       <span>
                         <span className="block text-sm font-black text-slate-900">{title}</span>
                         <span className="mt-1 flex flex-wrap gap-1.5">
-                          {method.serviceLevel && (
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
-                              {method.serviceLevel}
+                          {serviceCopy(method.serviceLevel) && (
+                            <span className="group relative">
+                              <span
+                                tabIndex={0}
+                                title={serviceCopy(method.serviceLevel)?.detail}
+                                className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600 outline-none focus:ring-2 focus:ring-sky-500"
+                              >
+                                {serviceCopy(method.serviceLevel)?.title}
+                              </span>
+                              <span className="absolute left-0 top-full z-10 mt-1 hidden w-52 rounded-lg bg-slate-900 px-2 py-1.5 text-[11px] font-medium normal-case tracking-normal text-white group-hover:block group-focus-within:block">
+                                {serviceCopy(method.serviceLevel)?.detail}
+                              </span>
                             </span>
                           )}
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
@@ -610,11 +660,29 @@ export function CheckoutShippingMethodStep({
                 </label>
               );
             })}
+            <p className="text-xs leading-relaxed text-slate-500">
+              Rates assume a commercial address with a loading dock. Liftgate, residential delivery or appointment may add charges.
+            </p>
+            {cards.hiddenCount > 0 && (
+              <button
+                type="button"
+                className="text-sm font-bold text-sky-700 underline-offset-2 hover:underline"
+                onClick={() => setShowAllOptions((value) => !value)}
+              >
+                {showAllOptions ? "Show fewer options" : `Show all options (${cards.hiddenCount} more)`}
+              </button>
+            )}
           </div>
         )}
         {!loading && manualQuote && (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
             <p>{message || PLAIN_FAILURE}</p>
+            {quoteNote && (
+              <details className="mt-3">
+                <summary className="cursor-pointer text-xs font-bold">Show error details</summary>
+                <p className="mt-2 text-xs leading-relaxed">{quoteNote}</p>
+              </details>
+            )}
             <div className="mt-3 flex flex-wrap gap-2">
               <Button type="button" variant="outline" className="h-10" onClick={() => setReloadKey((value) => value + 1)}>
                 Retry
@@ -631,7 +699,7 @@ export function CheckoutShippingMethodStep({
             </div>
           </div>
         )}
-        {!loading && !manualQuote && cards.length === 0 && message && (
+        {!loading && !manualQuote && cards.visible.length === 0 && message && (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
             <p>{PLAIN_FAILURE}</p>
             <Button
@@ -644,7 +712,7 @@ export function CheckoutShippingMethodStep({
             </Button>
           </div>
         )}
-        {!loading && !manualQuote && message && cards.length > 0 && (
+        {!loading && !manualQuote && message && cards.visible.length > 0 && (
           <p className="text-sm text-slate-600">{message}</p>
         )}
       </section>

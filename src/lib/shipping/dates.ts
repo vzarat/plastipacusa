@@ -21,6 +21,17 @@ export function formatScheduleDate(date: Date): string {
   });
 }
 
+/**
+ * Pickup date sent to Warp. The next business day after `now`, in the local calendar, as YYYY-MM-DD.
+ * Saturday and Sunday are skipped. Checkout, the quote API, and the parity tool all call this.
+ */
+export function nextBusinessPickupDate(now = new Date()): string {
+  const ship = addBusinessDays(now, 1);
+  const month = String(ship.getMonth() + 1).padStart(2, "0");
+  const day = String(ship.getDate()).padStart(2, "0");
+  return `${ship.getFullYear()}-${month}-${day}`;
+}
+
 export function scheduleFromTransitDays(transitDays: number, now = new Date()) {
   const ship = addBusinessDays(now, 1);
   const delivery = addBusinessDays(ship, Math.max(1, transitDays));

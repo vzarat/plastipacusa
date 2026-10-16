@@ -654,6 +654,11 @@ export function AdminOrdersTable({
                             Refunded
                           </span>
                         )}
+                        {order.paymentStatus === "paid" && order.bookingStatus === "needs_booking" && (
+                          <span className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-[10px] font-bold">
+                            Needs booking
+                          </span>
+                        )}
                       </td>
 
                       {/* Fulfillment Status Badge */}
@@ -815,6 +820,39 @@ export function AdminOrdersTable({
                         {inspectOrder.shippingAddress?.phone ||
                           inspectOrder.customerPhone ||
                           "—"}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                          Warp booking
+                        </p>
+                        {inspectOrder.paymentStatus === "paid" && inspectOrder.bookingStatus === "needs_booking" && (
+                          <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                            Needs booking
+                          </span>
+                        )}
+                      </div>
+                      <p>Quote ID: {inspectOrder.shippingQuoteId || "—"}</p>
+                      <p>Carrier: {inspectOrder.shippingCarrierName || "—"}</p>
+                      <p>Service: {inspectOrder.shippingService || "—"}</p>
+                      <p>
+                        Carrier cost:{" "}
+                        {inspectOrder.shippingCarrierCost == null
+                          ? "—"
+                          : formatCurrency(inspectOrder.shippingCarrierCost)}
+                      </p>
+                      <p>
+                        Customer price:{" "}
+                        {inspectOrder.shippingCustomerPrice == null
+                          ? "—"
+                          : formatCurrency(inspectOrder.shippingCustomerPrice)}
+                      </p>
+                      <p>
+                        Expires:{" "}
+                        {inspectOrder.shippingQuoteExpiresAt
+                          ? new Date(inspectOrder.shippingQuoteExpiresAt).toLocaleString()
+                          : "—"}
                       </p>
                     </div>
                   </div>

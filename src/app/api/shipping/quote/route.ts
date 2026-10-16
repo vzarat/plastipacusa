@@ -7,10 +7,12 @@ import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
 import { evalShippingEligibility } from "@/lib/shippingRules";
 import {
   fetchLtlMarketOptions,
+  hideTruckloadForSmallShipment,
   marketItemsFromPieces,
   type MarketOptionQuote,
 } from "@/lib/shipping/market-options";
 import { getCachedWarpOptions, safeStoreLog, storeQuotedOptions } from "@/lib/shipping/quote-cache";
+import { nextBusinessPickupDate } from "@/lib/shipping/dates";
 import { ShipmentDataError, buildShipmentFreight } from "@/lib/shipping/shipment";
 import { WarpQuoteError } from "@/lib/shipping/warp";
 import {
@@ -30,18 +32,11 @@ import type {
 } from "@/lib/shipping/types";
 
 export const runtime = "nodejs";
-/** Hobby maximum. The checkout page still says rates can take up to 30 seconds. */
+/** Hobby maximum. Each Warp call allows 45s, and a cached spread may be retried 3 times (2s, 4s, 8s). */
 export const maxDuration = 300;
 
 const LTL_LIMIT_MESSAGE =
   "This shipment is too large for LTL. Showing truckload options instead.";
-
-function nextWeekday(): string {
-  const date = new Date();
-  date.setDate(date.getDate() + 1);
-  while (date.getDay() === 0 || date.getDay() === 6) date.setDate(date.getDate() + 1);
-  return date.toISOString().slice(0, 10);
-}
 
 function serviceDescription(level: string): string {
   if (level === "GUARANTEED") return "Guaranteed freight service.";
@@ -66,6 +61,7 @@ function carrierOption(option: MarketOptionQuote, zip: string): ShippingOption {
     carrierName: option.carrierName || undefined,
     carrierKey: option.carrierKey,
     serviceLevel: option.serviceLevel,
+    carrierPrice: option.carrierPrice,
   };
 }
 
@@ -122,7 +118,7 @@ function classifyFailure(error: unknown): {
   }
   if (error instanceof ShipmentDataError) {
     return {
-      code: error.code === "missing_dims" ? "MISSING_DIMS" : "VALIDATION",
+      code: error.code === "missing_dims" ? "MISSING_DIMS" : "MISSING_WEIGHT",
       providerMessage: error.message,
     };
   }
@@ -144,6 +140,7 @@ function failureJson(input: {
   state?: string | null;
   freeLocal?: ShippingOption | null;
   status?: number;
+  note?: string | null;
 }) {
   const classified = input.code
     ? { code: input.code, providerMessage: undefined, httpStatus: undefined }
@@ -170,6 +167,9 @@ function failureJson(input: {
       weightDetail: input.freight?.pieces.map((piece) => piece.weightLabel) ?? [],
       freeLocal: input.freeLocal ?? null,
       options: [],
+      note:
+        input.note ||
+        (input.error instanceof ShipmentDataError ? input.error.message : null),
     },
     input.status ? { status: input.status } : undefined
   );
@@ -276,7 +276,7 @@ async function quoteForSignedInUser(request: Request) {
             apiKey: config.apiKey,
             originZip: WARP_ORIGIN_ZIP,
             destinationZip,
-            pickupDate: nextWeekday(),
+            pickupDate: nextBusinessPickupDate(),
             items: marketItemsFromPieces(freight.pieces),
             timeoutMs: 45_000,
           });
@@ -284,6 +284,7 @@ async function quoteForSignedInUser(request: Request) {
         getCachedWarpOptions(destinationZip, freight),
       ]);
 
+      const marketNote = marketResult.status === "fulfilled" ? marketResult.value.note : null;
       const warpOptions = warpResult.status === "fulfilled" ? warpResult.value : [];
       const truckload = warpOptions.filter((option) => option.mode === "truckload");
       const ltlFallback = warpOptions.filter((option) => option.mode === "LTL");
@@ -292,9 +293,10 @@ async function quoteForSignedInUser(request: Request) {
 
       let carrierOptions: ShippingOption[] = [];
       if (!limitExceeded && marketResult.status === "fulfilled") {
-        const visible = marketResult.value.options.map((option) =>
-          carrierOption(option, destinationZip)
-        );
+        const visible = hideTruckloadForSmallShipment(
+          marketResult.value.options,
+          freight.palletCount
+        ).map((option) => carrierOption(option, destinationZip));
         if (visible.length > 0) {
           try {
             carrierOptions = await storeQuotedOptions(destinationZip, freight, visible, "market");
@@ -305,11 +307,14 @@ async function quoteForSignedInUser(request: Request) {
         }
       }
 
-      const options = limitExceeded
-        ? truckload
-        : carrierOptions.length > 0
-          ? [...carrierOptions, ...truckload]
-          : [...ltlFallback, ...truckload];
+      const options = hideTruckloadForSmallShipment(
+        limitExceeded
+          ? truckload
+          : carrierOptions.length > 0
+            ? [...carrierOptions, ...truckload]
+            : [...ltlFallback, ...truckload],
+        freight.palletCount
+      );
       const offered = fridayRoute ? [fridayRoute, ...options] : options;
 
       if (offered.length === 0 && !freeLocal) {
@@ -321,6 +326,7 @@ async function quoteForSignedInUser(request: Request) {
           city: body.city,
           state: body.state,
           freeLocal,
+          note: marketNote,
         });
       }
       return NextResponse.json({

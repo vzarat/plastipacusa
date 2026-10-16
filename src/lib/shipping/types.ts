@@ -20,6 +20,8 @@ export interface ShippingOption {
   carrierName?: string;
   carrierKey?: string;
   serviceLevel?: string;
+  /** Warp amount before SHIPPING_MARKUP_PERCENT. Customer price stays on `price`. */
+  carrierPrice?: number;
 }
 
 export interface FreightPiece {
@@ -46,6 +48,7 @@ export interface ShipmentFreight {
 
 export type ShippingQuoteErrorCode =
   | "MISSING_DIMS"
+  | "MISSING_WEIGHT"
   | "WARP_AUTH"
   | "WARP_HTTP_ERROR"
   | "WARP_TIMEOUT"

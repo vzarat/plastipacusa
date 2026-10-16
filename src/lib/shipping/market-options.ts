@@ -1,10 +1,19 @@
 import { createHash } from "node:crypto";
 import { SHIPPING_MARKUP_PERCENT } from "@/lib/shipping/config";
+import { nextBusinessPickupDate } from "@/lib/shipping/dates";
+import { redactSecrets } from "@/lib/shipping/diagnostics";
 import { ShipmentDataError } from "@/lib/shipping/shipment";
 import type { FreightPiece } from "@/lib/shipping/types";
 
 /** Agent API host. The project quote client keeps using stg/gw for /freights/quote. */
 export const LTL_MARKET_OPTIONS_URL = "https://www.wearewarp.com/api/v1/ltl/market-options";
+
+/** Same request again. The OpenAPI spec has no parameter that forces a fresh spread. */
+export const MARKET_RETRY_DELAYS_MS = [2_000, 4_000, 8_000] as const;
+
+export function marketSpreadNeedsRetry(input: { retryable: boolean; bookableQuotes: number }): boolean {
+  return input.retryable && input.bookableQuotes === 0;
+}
 
 export const QUOTE_OFFER_BUFFER_MS = 30 * 60 * 1000;
 export const QUOTE_PAYABLE_BUFFER_MS = 5 * 60 * 1000;
@@ -25,9 +34,13 @@ export interface MarketOptionQuote {
   carrierName: string;
   carrierKey: string;
   serviceLevel: string;
+  /** Customer price after markup. */
   price: number;
+  /** Warp price before markup. */
+  carrierPrice: number;
   transitDays: number | null;
   expiresAt: string;
+  isWarp: boolean;
 }
 
 interface RawMarketOption {
@@ -36,7 +49,9 @@ interface RawMarketOption {
   price_usd?: unknown;
   transit_days?: unknown;
   bookable?: unknown;
+  is_warp?: unknown;
   expires_at?: unknown;
+  expires_in_seconds?: unknown;
   quote_id?: unknown;
 }
 
@@ -138,14 +153,20 @@ export interface MarketFreightItem {
   heightIn: number;
 }
 
+/** Whole pounds Warp accepts. Checkout, the quote API, and the parity tool all use this. */
+export function ceilWarpWeightLbs(weightLbs: number): number {
+  if (!Number.isFinite(weightLbs) || weightLbs <= 0) {
+    throw new ShipmentDataError(
+      "missing_weight",
+      "Product weight is missing, so shipping can't be calculated yet."
+    );
+  }
+  return Math.ceil(weightLbs);
+}
+
 function ceilPositive(value: number, kind: "weight" | "dimensions"): number {
+  if (kind === "weight") return ceilWarpWeightLbs(value);
   if (!Number.isFinite(value) || value <= 0) {
-    if (kind === "weight") {
-      throw new ShipmentDataError(
-        "missing_weight",
-        "Product weight is missing, so shipping can't be calculated yet."
-      );
-    }
     throw new ShipmentDataError(
       "missing_dims",
       "Pallet dimensions are missing, so shipping can't be calculated yet."
@@ -167,12 +188,21 @@ export function marketItemsFromPieces(pieces: FreightPiece[]): MarketFreightItem
   });
 }
 
-export function freightItemsHash(pieces: FreightPiece[]): string {
-  const canonical = marketItemsFromPieces(pieces)
-    .map((item) =>
-      [item.qty, item.weightLbsPerPallet, item.lengthIn, item.widthIn, item.heightIn].join("x")
-    )
-    .join("|");
+export function freightItemsHash(
+  pieces: FreightPiece[],
+  identity: { pickupDate?: string; accessorials?: string[] } = {}
+): string {
+  const pickupDate = identity.pickupDate || nextBusinessPickupDate();
+  const accessorials = [...(identity.accessorials ?? [])].map((item) => item.trim()).filter(Boolean).sort();
+  const canonical = [
+    pickupDate,
+    accessorials.join(","),
+    marketItemsFromPieces(pieces)
+      .map((item) =>
+        [item.qty, item.weightLbsPerPallet, item.lengthIn, item.widthIn, item.heightIn].join("x")
+      )
+      .join("|"),
+  ].join("||");
   return createHash("sha256").update(canonical).digest("hex");
 }
 
@@ -250,6 +280,37 @@ function readRows(body: unknown): RawMarketOption[] {
   return rows.filter((row): row is RawMarketOption => Boolean(row) && typeof row === "object");
 }
 
+export interface MarketSpreadMeta {
+  cached: boolean;
+  retryable: boolean;
+  note: string | null;
+  pickupDate: string | null;
+  rowCount: number;
+  bookableQuotes: number;
+}
+
+function marketSpreadMeta(body: unknown): MarketSpreadMeta {
+  const record = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  const rows = readRows(body);
+  const bookableQuotes = rows.filter((row) => String(row.quote_id || "").trim()).length;
+  const note = typeof record.note === "string" ? redactSecrets(record.note).slice(0, 500) : null;
+  return {
+    cached: record.cached === true,
+    retryable: record.retryable === true,
+    note,
+    pickupDate: typeof record.pickup_date === "string" ? record.pickup_date : null,
+    rowCount: rows.length,
+    bookableQuotes,
+  };
+}
+
+function logUnbookableSpread(meta: MarketSpreadMeta): void {
+  if (meta.bookableQuotes > 0) return;
+  console.log(
+    `[warp market-options] no quote_id cached=${meta.cached} retryable=${meta.retryable} pickup_date=${meta.pickupDate ?? ""} rows=${meta.rowCount} note=${meta.note ?? ""}`
+  );
+}
+
 function logMarketShape(body: unknown): void {
   if (!body || typeof body !== "object") {
     console.log("[warp market-options] response keys: (not an object)");
@@ -259,34 +320,98 @@ function logMarketShape(body: unknown): void {
   const rows = Array.isArray(record.market_options) ? record.market_options : [];
   const sample = rows.find((row) => row && typeof row === "object") as Record<string, unknown> | undefined;
   const optionKeys = sample ? Object.keys(sample).sort().join(",") : "(none)";
+  const seconds = rows
+    .map((row) =>
+      row && typeof row === "object" ? Number((row as { expires_in_seconds?: unknown }).expires_in_seconds) : NaN
+    )
+    .filter((value) => Number.isFinite(value))
+    .sort((a, b) => a - b);
+  const typical =
+    seconds.length > 0 ? ` expires_in_seconds median=${seconds[Math.floor(seconds.length / 2)]} min=${seconds[0]} max=${seconds[seconds.length - 1]}` : "";
   console.log(
-    `[warp market-options] response keys: ${Object.keys(record).sort().join(",")}; option keys: ${optionKeys}; count: ${rows.length}`
+    `[warp market-options] response keys: ${Object.keys(record).sort().join(",")}; option keys: ${optionKeys}; count: ${rows.length};${typical}`
   );
 }
 
-/** Every priced option that has a quote id. A missing carrier name stays blank so the UI uses the service name. */
+/** Bookable quotes only. One row per carrier and service level, the cheapest of that pair. */
 export function selectMarketOptions(body: unknown, _now = Date.now()): MarketOptionQuote[] {
-  const options: MarketOptionQuote[] = [];
+  const best = new Map<string, MarketOptionQuote>();
   for (const row of readRows(body)) {
+    if (row.bookable !== true) continue;
     const quoteId = String(row.quote_id || "").trim();
-    const price = markedCents(Number(row.price_usd));
+    const rawAmount = Number(row.price_usd);
+    const price = markedCents(rawAmount);
     if (!quoteId || price == null) continue;
     const rawName = String(row.carrier_name || "").trim();
     const carrier = rawName ? normalizeCarrier(rawName) : null;
+    const serviceLevel = normalizeServiceLevel(String(row.service_level || ""), rawName);
     const transit = Number(row.transit_days);
-    options.push({
+    const option: MarketOptionQuote = {
       quoteId,
       carrierName: carrier?.label || "",
-      carrierKey: carrier?.key || "",
-      serviceLevel: normalizeServiceLevel(String(row.service_level || ""), rawName),
+      carrierKey: carrier?.key || serviceLevel.toLowerCase(),
+      serviceLevel,
       price,
+      carrierPrice: Math.round(rawAmount * 100) / 100,
       transitDays: Number.isFinite(transit) ? transit : null,
       expiresAt: String(row.expires_at || "").trim(),
-    });
+      isWarp: row.is_warp === true || /FTL|TRUCKLOAD/.test(serviceLevel),
+    };
+    const key = `${option.carrierKey}|${serviceLevel}`;
+    const current = best.get(key);
+    if (!current || option.price < current.price) best.set(key, option);
   }
-  return options.sort(
+  return [...best.values()].sort(
     (a, b) => a.price - b.price || a.carrierName.localeCompare(b.carrierName) || a.quoteId.localeCompare(b.quoteId)
   );
+}
+
+export function isTruckloadQuote(option: { mode?: string; serviceLevel?: string; isWarp?: boolean }): boolean {
+  if (option.isWarp) return true;
+  if (option.mode === "truckload") return true;
+  return /FTL|TRUCKLOAD/.test(String(option.serviceLevel || "").toUpperCase());
+}
+
+/** Keep LTL when the shipment is one or two pallets. Truckload stays only if nothing else came back. */
+export function hideTruckloadForSmallShipment<T extends { mode?: string; serviceLevel?: string; isWarp?: boolean }>(
+  options: T[],
+  palletCount: number
+): T[] {
+  if (palletCount > 2) return options;
+  const ltl = options.filter((option) => !isTruckloadQuote(option));
+  return ltl.length > 0 ? ltl : options;
+}
+
+export interface FeaturedOption {
+  id: string;
+  price: number;
+  transitDays: number;
+  serviceLevel?: string;
+}
+
+/** Cheapest, fastest, and cheapest guaranteed, then the next lowest prices, up to five. */
+export function featuredCarrierOptions<T extends FeaturedOption>(
+  options: T[],
+  limit = 5
+): { shown: T[]; hidden: T[] } {
+  const byPrice = [...options].sort((a, b) => a.price - b.price || a.transitDays - b.transitDays);
+  if (byPrice.length <= limit) return { shown: byPrice, hidden: [] };
+  const cheapest = byPrice[0];
+  const fastest = [...byPrice].sort((a, b) => a.transitDays - b.transitDays || a.price - b.price)[0];
+  const guaranteed = byPrice.find((option) => option.serviceLevel === "GUARANTEED");
+  const picked: T[] = [];
+  for (const option of [cheapest, fastest, guaranteed]) {
+    if (option && !picked.some((item) => item.id === option.id)) picked.push(option);
+  }
+  for (const option of byPrice) {
+    if (picked.length >= limit) break;
+    if (!picked.some((item) => item.id === option.id)) picked.push(option);
+  }
+  const shownIds = new Set(picked.map((option) => option.id));
+  return {
+    shown: picked.sort((a, b) => a.price - b.price),
+    hidden: byPrice.filter((option) => !shownIds.has(option.id)),
+  };
 }
 
 export async function fetchLtlMarketOptions(input: {
@@ -302,7 +427,15 @@ export async function fetchLtlMarketOptions(input: {
   heightIn?: number;
   timeoutMs?: number;
   now?: number;
-}): Promise<{ httpStatus: number; options: MarketOptionQuote[]; limitExceeded: boolean }> {
+  accessorials?: string[];
+}): Promise<{
+  httpStatus: number;
+  options: MarketOptionQuote[];
+  limitExceeded: boolean;
+  cached: boolean;
+  retryable: boolean;
+  note: string | null;
+}> {
   const items =
     input.items && input.items.length > 0
       ? input.items
@@ -318,42 +451,71 @@ export async function fetchLtlMarketOptions(input: {
             weightLabel: "",
           },
         ]);
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), input.timeoutMs ?? 45_000);
-  try {
-    const response = await fetch(LTL_MARKET_OPTIONS_URL, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${input.apiKey}`,
-      },
-      body: JSON.stringify(
-        marketOptionsBody({
-          originZip: input.originZip,
-          destinationZip: input.destinationZip,
-          pickupDate: input.pickupDate,
-          items,
-        })
-      ),
-      signal: controller.signal,
-    });
-    const raw = await response.text();
-    if (!response.ok) {
-      return { httpStatus: response.status, options: [], limitExceeded: exceedsLtlLimits(raw) };
-    }
-    let parsed: unknown = null;
+  const requestBody = JSON.stringify({
+    ...marketOptionsBody({
+      originZip: input.originZip,
+      destinationZip: input.destinationZip,
+      pickupDate: input.pickupDate,
+      items,
+    }),
+    ...((input.accessorials ?? []).filter(Boolean).length > 0
+      ? { delivery_services: (input.accessorials ?? []).filter(Boolean) }
+      : {}),
+  });
+
+  const once = async () => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), input.timeoutMs ?? 45_000);
     try {
-      parsed = JSON.parse(raw);
-    } catch {
-      parsed = null;
+      const response = await fetch(LTL_MARKET_OPTIONS_URL, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${input.apiKey}`,
+        },
+        body: requestBody,
+        signal: controller.signal,
+      });
+      const raw = await response.text();
+      if (!response.ok) {
+        return {
+          httpStatus: response.status,
+          options: [] as MarketOptionQuote[],
+          limitExceeded: exceedsLtlLimits(raw),
+          cached: false,
+          retryable: false,
+          note: null as string | null,
+        };
+      }
+      let parsed: unknown = null;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        parsed = null;
+      }
+      const meta = marketSpreadMeta(parsed);
+      logMarketShape(parsed);
+      logUnbookableSpread(meta);
+      return {
+        httpStatus: response.status,
+        options: meta.cached ? [] : selectMarketOptions(parsed, input.now),
+        limitExceeded: false,
+        cached: meta.cached,
+        retryable: meta.retryable,
+        note: meta.note,
+      };
+    } finally {
+      clearTimeout(timer);
     }
-    logMarketShape(parsed);
-    return {
-      httpStatus: response.status,
-      options: selectMarketOptions(parsed, input.now),
-      limitExceeded: false,
-    };
-  } finally {
-    clearTimeout(timer);
+  };
+
+  let result = await once();
+  for (const delayMs of MARKET_RETRY_DELAYS_MS) {
+    if (result.limitExceeded || !marketSpreadNeedsRetry({ retryable: result.retryable, bookableQuotes: result.options.length })) {
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    result = await once();
   }
+  return result;
 }

@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   exceedsLtlLimits,
+  featuredCarrierOptions,
+  marketSpreadNeedsRetry,
+  hideTruckloadForSmallShipment,
   marketItemsFromPieces,
   marketOptionsBody,
   normalizeCarrier,
@@ -68,12 +71,27 @@ describe("market option carriers", () => {
     assert.equal(normalizeCarrier("RL Carriers").label, "RL Carriers");
   });
 
-  it("returns every priced quote, cheapest first, and does not invent a carrier", () => {
+  it("keeps the cheapest bookable quote for each carrier and service", () => {
     const selected = selectMarketOptions(SAMPLE, NOW);
-    const withQuote = SAMPLE.market_options.filter((row) => row.quote_id);
-    assert.equal(selected.length, withQuote.length);
+    assert.equal(selected.some((option) => option.quoteId === ""), false);
+    assert.equal(selected.filter((option) => option.carrierKey === "xpo" && option.serviceLevel === "STANDARD").length, 1);
     assert.equal(selected[0]?.carrierName, "Forward");
     assert.ok(selected.every((option, index) => index === 0 || option.price >= selected[index - 1].price));
+    const featured = featuredCarrierOptions(selected.map((option) => ({ ...option, id: option.quoteId, transitDays: option.transitDays || 1 })));
+    assert.equal(featured.shown.length, 5);
+    assert.equal(featured.shown.some((option) => option.id === selected[0]?.quoteId), true);
+    assert.equal(featured.shown.some((option) => option.serviceLevel === "GUARANTEED"), true);
+    const fastest = [...selected].sort((a, b) => (a.transitDays || 99) - (b.transitDays || 99))[0];
+    assert.equal(featured.shown.some((option) => option.id === fastest?.quoteId), true);
+    const mixed = hideTruckloadForSmallShipment(
+      [
+        { mode: "LTL", serviceLevel: "STANDARD", isWarp: false },
+        { mode: "truckload", serviceLevel: "WARP FTL", isWarp: true },
+      ],
+      1
+    );
+    assert.equal(mixed.length, 1);
+    assert.equal(mixed[0]?.mode, "LTL");
     const unnamed = selectMarketOptions(
       {
         market_options: [
@@ -110,6 +128,12 @@ describe("market option carriers", () => {
       () => marketItemsFromPieces([piece({ weightLbs: 0 })]),
       (error: unknown) => error instanceof ShipmentDataError
     );
+  });
+
+  it("retries only a cached spread that has no bookable quote id", () => {
+    assert.equal(marketSpreadNeedsRetry({ retryable: true, bookableQuotes: 0 }), true);
+    assert.equal(marketSpreadNeedsRetry({ retryable: true, bookableQuotes: 2 }), false);
+    assert.equal(marketSpreadNeedsRetry({ retryable: false, bookableQuotes: 0 }), false);
   });
 
   it("reads EXCEEDS_LTL_LIMITS from the JSON code", () => {

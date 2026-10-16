@@ -41,22 +41,6 @@ function roundLbs(amount: number, digits: number): number {
   return Math.round((amount + Number.EPSILON) * factor) / factor;
 }
 
-function officialMachineWeight(
-  input: PackageWeightInput,
-  rolls: number
-): number | null {
-  const width = Math.round(Number(input.widthInches) || 0);
-  const gauge = Math.round(Number(input.gauge) || 0);
-  const length = Math.round(Number(input.lengthFeet) || 0);
-  const spec = MACHINE_FILM_WEIGHT_SPECS.find(
-    (row) => row.width === width && row.gauge === gauge && row.length === length
-  );
-  if (!spec) return null;
-  if (rolls >= 40) return spec.full;
-  if (rolls === 20) return spec.half;
-  return null;
-}
-
 export function packageTotalWeightLbs(input: PackageWeightInput): number | null {
   const rolls = positive(input.rolls) ?? 0;
   const boxes = positive(input.boxes) ?? 0;
@@ -66,10 +50,6 @@ export function packageTotalWeightLbs(input: PackageWeightInput): number | null 
   const perRoll = rollWeight ?? (boxWeight != null && !input.machine ? boxWeight / 4 : boxWeight);
 
   if (input.machine) {
-    const official = officialMachineWeight(input, rolls);
-    if (official != null && (rolls === 20 || rolls === 40)) {
-      return official;
-    }
     const machineRoll = rollWeight ?? boxWeight;
     if (rolls === 40) {
       if (palletWeight != null) return roundLbs(palletWeight, 1);
@@ -103,9 +83,9 @@ export function packageTotalWeightLbs(input: PackageWeightInput): number | null 
 
   if (isLayer) {
     if (filmOnPallet != null && filmOnPallet > 0) {
-      return roundLbs(filmOnPallet * (64 / 256), 1);
+      return roundLbs(filmOnPallet * (64 / 256) + WOODEN_PALLET_LBS, 1);
     }
-    if (perRoll != null) return roundLbs(perRoll * 64, 1);
+    if (perRoll != null) return roundLbs(perRoll * 64 + WOODEN_PALLET_LBS, 1);
   }
 
   if (isBox) {
@@ -118,6 +98,62 @@ export function packageTotalWeightLbs(input: PackageWeightInput): number | null 
   }
 
   return storedPackageWeight(input.weightLbs);
+}
+
+export interface HandShippingUnit {
+  boxes: number;
+  quantity: number;
+  weightLbs: number;
+  tier: "full" | "half" | "layer" | "loose";
+}
+
+/** Wooden pallet implied by the package table: 16-box tier weight minus 16 box weights. */
+export function packagePalletTareLbs(boxWeightLbs: number, layerWeightLbs: number): number | null {
+  const tare = roundLbs(layerWeightLbs - 16 * boxWeightLbs, 2);
+  if (!(tare > 0)) return null;
+  return tare;
+}
+
+/** Split a hand-film box count into full, half, layer, and loose units using the package-table weights. */
+export function packHandShippingUnits(input: {
+  boxes: number;
+  boxWeightLbs: number | null;
+  palletWeightLbs: number | null;
+}): HandShippingUnit[] | null {
+  const boxes = Math.round(input.boxes);
+  if (boxes <= 0) return null;
+  const tier = (count: number, rolls: number) =>
+    packageTotalWeightLbs({
+      boxes: count,
+      rolls,
+      boxWeightLbs: input.boxWeightLbs,
+      palletWeightLbs: input.palletWeightLbs,
+    });
+  const box = tier(1, 4);
+  const layer = tier(16, 64);
+  const half = tier(32, 128);
+  const full = tier(64, 256);
+  if (box == null || layer == null || half == null || full == null) return null;
+
+  const units: HandShippingUnit[] = [];
+  let left = boxes;
+  const fullCount = Math.floor(left / 64);
+  if (fullCount > 0) {
+    units.push({ boxes: 64, quantity: fullCount, weightLbs: roundLbs(full * fullCount, 2), tier: "full" });
+    left -= fullCount * 64;
+  }
+  if (left >= 32) {
+    units.push({ boxes: 32, quantity: 1, weightLbs: half, tier: "half" });
+    left -= 32;
+  }
+  if (left >= 16) {
+    units.push({ boxes: 16, quantity: 1, weightLbs: layer, tier: "layer" });
+    left -= 16;
+  }
+  if (left > 0) {
+    units.push({ boxes: left, quantity: left, weightLbs: roundLbs(box * left, 2), tier: "loose" });
+  }
+  return units;
 }
 
 export function formatPackageWeightLbs(weight: number | null): string {

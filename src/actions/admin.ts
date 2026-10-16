@@ -66,6 +66,13 @@ export interface AdminOrder {
   carrier?: string;
   notes?: string;
   failureReason?: string;
+  bookingStatus?: string | null;
+  shippingQuoteId?: string | null;
+  shippingCarrierName?: string | null;
+  shippingService?: string | null;
+  shippingCarrierCost?: number | null;
+  shippingCustomerPrice?: number | null;
+  shippingQuoteExpiresAt?: string | null;
   items: AdminOrderItem[];
   locale?: "en" | "es";
 }
@@ -417,6 +424,15 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
           row.shipping_address?.error_message ||
           row.notes ||
           undefined,
+        bookingStatus: row.booking_status || null,
+        shippingQuoteId: row.shipping_quote_id || null,
+        shippingCarrierName: row.shipping_method || null,
+        shippingService: row.shipping_service || null,
+        shippingCarrierCost:
+          row.shipping_carrier_cost == null ? null : Number(row.shipping_carrier_cost),
+        shippingCustomerPrice:
+          row.shipping_cost == null ? null : Number(row.shipping_cost),
+        shippingQuoteExpiresAt: row.shipping_quote_expires_at || null,
         items: Array.isArray(row.items) ? row.items : [],
       };
     });

@@ -66,7 +66,10 @@ export function missingFreightFields(freight: ShipmentFreight | null, zip: strin
 
 function explain(code: ShippingQuoteErrorCode, providerMessage?: string, httpStatus?: number): string {
   if (code === "MISSING_DIMS") {
-    return "Pallet dimensions were not sent. Hand film uses 48 x 48 x 78 for a full pallet and 48 x 48 x 39 for a half pallet. Check the package size on the cart line.";
+    return providerMessage || "Length, width, and height are missing for this product and tier.";
+  }
+  if (code === "MISSING_WEIGHT") {
+    return providerMessage || "Package weight is missing for this product and tier.";
   }
   if (code === "CONFIG") {
     return providerMessage || 'Set WARP_ENV to "staging" or "production" and the matching WARP_API_KEY_STAGING or WARP_API_KEY_PRODUCTION value.';

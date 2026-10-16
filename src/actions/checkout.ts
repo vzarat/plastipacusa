@@ -218,7 +218,9 @@ export async function createPaymentIntent(
       carrierName?: string;
       serviceLevel?: string;
       price: number;
+      carrierPrice?: number;
       transitDays: number;
+      expiresAt?: string | null;
       destinationZip: string;
     } | null = null;
     if (options.shippingQuoteId === "rgv-local") {
@@ -292,7 +294,9 @@ export async function createPaymentIntent(
           carrierName: resolved.option.carrierName,
           serviceLevel: resolved.option.serviceLevel,
           price: resolved.option.price,
+          carrierPrice: resolved.option.carrierPrice,
           transitDays: resolved.option.transitDays,
+          expiresAt: resolved.option.expiresAt,
           destinationZip: resolved.option.destinationZip,
         };
       } catch {
@@ -424,6 +428,8 @@ export async function createPaymentIntent(
       discount_amount: priced.discount,
       shipping: priced.shipping,
       shipping_cost: priced.shipping,
+      shipping_carrier_cost: shippingOption?.carrierPrice ?? priced.shipping,
+      shipping_quote_expires_at: shippingOption?.expiresAt || null,
       tax: priced.tax,
       tax_amount: priced.tax,
       total: priced.total,

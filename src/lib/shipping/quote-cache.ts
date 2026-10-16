@@ -43,6 +43,7 @@ interface ShippingQuoteRow {
   description: string;
   shipping_mode: "LTL" | "truckload" | "local";
   price_cents: number;
+  carrier_price_cents?: number | null;
   destination_zip: string;
   weight_lbs: number;
   pallet_count: number;
@@ -168,6 +169,8 @@ function optionFromRow(row: ShippingQuoteRow): ShippingOption {
     serviceName: row.service_name,
     description: row.description,
     price: row.price_cents / 100,
+    carrierPrice:
+      typeof row.carrier_price_cents === "number" ? row.carrier_price_cents / 100 : row.price_cents / 100,
     transitDays: row.transit_days,
     expiresAt: row.expires_at,
     destinationZip: row.destination_zip,
@@ -213,7 +216,9 @@ export async function storeQuotedOptions(
   source: QuoteCacheSource
 ): Promise<ShippingOption[]> {
   const itemsHash = freightItemsHash(freight.pieces);
-  const storedOptions = options.map((option) => withStoredExpiry(option));
+  const storedOptions = options
+    .filter((option) => option.id.trim() && option.price > 0)
+    .map((option) => withStoredExpiry(option));
   const supabase = await quoteTable();
   await deleteStaleQuotes(supabase);
   if (storedOptions.length === 0) return [];
@@ -227,6 +232,7 @@ export async function storeQuotedOptions(
       description: option.description,
       shipping_mode: option.mode,
       price_cents: Math.round(option.price * 100),
+      carrier_price_cents: Math.round((option.carrierPrice ?? option.price) * 100),
       destination_zip: zip,
       weight_lbs: freight.weightLbs,
       pallet_count: freight.palletCount,
@@ -302,7 +308,7 @@ export async function readStoredQuote(
     const { data, error } = await supabase
       .from("shipping_quotes")
       .select(
-        "quote_id, carrier_name, carrier_key, service_level, service_name, description, shipping_mode, price_cents, destination_zip, weight_lbs, pallet_count, transit_days, items_hash, expires_at"
+        "quote_id, carrier_name, carrier_key, service_level, service_name, description, shipping_mode, price_cents, carrier_price_cents, destination_zip, weight_lbs, pallet_count, transit_days, items_hash, expires_at"
       )
       .eq("quote_id", quoteId)
       .maybeSingle();

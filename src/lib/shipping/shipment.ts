@@ -1,11 +1,8 @@
 import { createServerClient } from "@/lib/supabase/server";
-import { packageTotalWeightLbs } from "@/lib/package-weight";
-import {
-  formatFreightDimensions,
-  formatFreightWeightLabel,
-  handHandlingUnit,
-  machineHandlingUnit,
-} from "@/lib/shipping/hand-freight";
+import { formatPackageWeightLbs, packagePalletTareLbs, packageTotalWeightLbs, packHandShippingUnits } from "@/lib/package-weight";
+import { groupLinesBySku, handTierName } from "@/lib/shipping/catalog-freight";
+import { LOOSE_BOX_MODE, resolveFullPalletHeight, tierInchesFromFullHeight } from "@/lib/shipping/tier-height";
+import { formatFreightDimensions, formatFreightWeightLabel } from "@/lib/shipping/hand-freight";
 import type { FreightPiece, ShipmentFreight, ShippingQuoteLine } from "@/lib/shipping/types";
 
 export class ShipmentDataError extends Error {
@@ -47,19 +44,31 @@ export function parsePalletDimensions(value: unknown): {
   return { lengthIn, widthIn, heightIn };
 }
 
-interface FreightProduct {
+export interface FreightProduct {
   slug: string | null;
   application: string | null;
   roll_weight_lbs: number | null;
   pallet_weight_lbs: number | null;
   pallet_dimensions: string | null;
+  pallet_length_in?: number | null;
+  pallet_width_in?: number | null;
+  pallet_height_in?: number | null;
+  box_length_in?: number | null;
+  box_width_in?: number | null;
+  box_height_in?: number | null;
+  layer_length_in?: number | null;
+  layer_width_in?: number | null;
+  layer_height_in?: number | null;
+  half_pallet_length_in?: number | null;
+  half_pallet_width_in?: number | null;
+  half_pallet_height_in?: number | null;
   rolls_per_box: number | null;
   width_inches: number | null;
   gauge: number | null;
   length_feet: number | null;
 }
 
-interface FreightVariant {
+export interface FreightVariant {
   sku: string | null;
   rolls_count: number | null;
   boxes_count: number | null;
@@ -140,7 +149,7 @@ export function shipmentFreightFromCatalog(
   rows: FreightVariant[],
   productsBySlug: Map<string, FreightProduct>
 ): ShipmentFreight {
-  const requested = lines.filter((line) => Number(line.quantity) > 0);
+  const requested = groupLinesBySku(lines.filter((line) => Number(line.quantity) > 0));
   if (requested.length === 0) {
     throw new ShipmentDataError(
       "missing_weight",
@@ -178,36 +187,131 @@ export function shipmentFreightFromCatalog(
       console.error("MISSING_WEIGHT");
       throw new ShipmentDataError(
         "missing_weight",
-        "Product weight is missing, so shipping can't be calculated yet."
+        `MISSING_WEIGHT: ${product?.slug || row?.sku || "product"} is missing package weight. Fill product_variants.box_weight_lbs and product_variants.pallet_weight_lbs.`
       );
     }
 
     const lineBoxes = packageBoxes * quantity;
     const lineRolls = packageRolls * quantity;
-    const catalogDims = parsePalletDimensions(product?.pallet_dimensions);
-    const unit =
+    const packed =
       application === "machine"
-        ? {
-            ...machineHandlingUnit(packageRolls, Number(product?.width_inches) || 0),
-            ...(catalogDims ?? {}),
-            quantity,
-          }
-        : handHandlingUnit(lineBoxes);
-    const lineWeight = Math.round(unitWeight * quantity * 10) / 10;
-    pieces.push({
-      lengthIn: unit.lengthIn,
-      widthIn: unit.widthIn,
-      heightIn: unit.heightIn,
-      weightLbs: lineWeight,
-      quantity: unit.quantity,
-      packaging: unit.packaging,
-      dimensionLabel: formatFreightDimensions(unit),
-      weightLabel: formatFreightWeightLabel(lineWeight, unit),
+        ? null
+        : packHandShippingUnits({
+            boxes: lineBoxes,
+            boxWeightLbs: row?.box_weight_lbs ?? null,
+            palletWeightLbs: row?.pallet_weight_lbs ?? product?.pallet_weight_lbs ?? null,
+          });
+    const productLabel = product?.slug || row?.sku || "product";
+    const fullHeight = resolveFullPalletHeight({
+      palletDimensions: product?.pallet_dimensions,
+      palletHeightIn: product?.pallet_height_in,
+      application,
+      widthInches: product?.width_inches,
     });
-    weightLbs += lineWeight;
+    if (packed) {
+      for (const part of packed) {
+        const tier = handTierName(part.tier);
+        const inches = fullHeight
+          ? tierInchesFromFullHeight({
+              fullHeightIn: fullHeight.heightIn,
+              tier,
+              looseBoxes: part.tier === "loose" ? part.boxes : 1,
+              box: product
+                ? {
+                    lengthIn: product.box_length_in ?? null,
+                    widthIn: product.box_width_in ?? null,
+                    heightIn: product.box_height_in ?? null,
+                  }
+                : null,
+            })
+          : null;
+        if (!inches) {
+          throw new ShipmentDataError(
+            "missing_dims",
+            `MISSING_DIMS: ${productLabel} ${tier} has no full-pallet height. products.pallet_dimensions needs LENGTH x WIDTH x HEIGHT.`
+          );
+        }
+        const loosePallet = part.tier === "loose" && LOOSE_BOX_MODE === "pallet";
+        const boxWeight = part.tier === "loose" && part.boxes > 0 ? part.weightLbs / part.boxes : null;
+        const layerWeight =
+          boxWeight == null
+            ? null
+            : packageTotalWeightLbs({
+                boxes: 16,
+                rolls: 64,
+                boxWeightLbs: boxWeight,
+                palletWeightLbs: row?.pallet_weight_lbs ?? product?.pallet_weight_lbs ?? null,
+              });
+        const tare = boxWeight != null && layerWeight != null ? packagePalletTareLbs(boxWeight, layerWeight) : null;
+        if (loosePallet && tare == null) {
+          throw new ShipmentDataError(
+            "missing_weight",
+            `MISSING_WEIGHT: ${productLabel} loose boxes need the 16-box tier weight and box weight so the pallet can be added.`
+          );
+        }
+        const pieceWeight =
+          part.tier === "loose" && loosePallet && boxWeight != null && tare != null
+            ? Math.round((boxWeight * part.boxes + tare) * 100) / 100
+            : part.weightLbs;
+        const pieceQuantity = loosePallet ? 1 : part.tier === "loose" || part.tier === "full" ? part.quantity : 1;
+        const packaging = part.tier === "full" || part.tier === "half" || loosePallet ? "pallet" : "box";
+        pieces.push({
+          lengthIn: inches.lengthIn,
+          widthIn: inches.widthIn,
+          heightIn: inches.heightIn,
+          weightLbs: pieceWeight,
+          quantity: pieceQuantity,
+          packaging,
+          dimensionLabel: formatFreightDimensions(inches),
+          weightLabel: formatPackageWeightLbs(pieceWeight),
+        });
+        weightLbs += pieceWeight;
+        palletCount += packaging === "pallet" ? pieceQuantity : 0;
+      }
+    } else if (application !== "machine") {
+      throw new ShipmentDataError(
+        "missing_weight",
+        `MISSING_WEIGHT: ${productLabel} is missing box or pallet weight for its package tier. Fill product_variants.box_weight_lbs and product_variants.pallet_weight_lbs.`
+      );
+    } else {
+      if (packageRolls !== 20 && packageRolls !== 40) {
+        throw new ShipmentDataError(
+          "missing_dims",
+          `MISSING_DIMS: ${productLabel} is not a half pallet (20 rolls) or full pallet (40 rolls).`
+        );
+      }
+      const machineTier = packageRolls === 40 ? "full" : "half";
+      const machineInches = fullHeight
+        ? tierInchesFromFullHeight({ fullHeightIn: fullHeight.heightIn, tier: machineTier })
+        : null;
+      if (!machineInches) {
+        throw new ShipmentDataError(
+          "missing_dims",
+          `MISSING_DIMS: ${productLabel} ${machineTier === "full" ? "full pallet" : "half pallet"} has no full-pallet height. products.pallet_dimensions needs LENGTH x WIDTH x HEIGHT.`
+        );
+      }
+      const unit = {
+        ...machineInches,
+        quantity,
+        includesPalletTare: true,
+        packaging: "pallet" as const,
+      };
+      const lineWeight = Math.round(unitWeight * quantity * 100) / 100;
+      pieces.push({
+        lengthIn: unit.lengthIn,
+        widthIn: unit.widthIn,
+        heightIn: unit.heightIn,
+        weightLbs: lineWeight,
+        quantity: unit.quantity,
+        packaging: unit.packaging,
+        dimensionLabel: formatFreightDimensions(unit),
+        weightLabel: formatFreightWeightLabel(lineWeight, unit),
+      });
+      weightLbs += lineWeight;
+      palletCount += unit.packaging === "pallet" ? unit.quantity : 0;
+    }
     rolls += lineRolls;
     boxes += lineBoxes;
-    palletCount += unit.packaging === "pallet" ? unit.quantity : 0;
   }
 
   if (weightLbs <= 0) {
@@ -220,7 +324,7 @@ export function shipmentFreightFromCatalog(
 
   const primary = pieces[0];
   return {
-    weightLbs: Math.round(weightLbs * 10) / 10,
+    weightLbs: Math.round(weightLbs * 100) / 100,
     palletCount: Math.max(1, palletCount || pieces.length),
     lengthIn: primary?.lengthIn ?? 0,
     widthIn: primary?.widthIn ?? 0,
