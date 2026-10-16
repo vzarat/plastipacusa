@@ -153,14 +153,17 @@ export function getWarpConfig(): { env: WarpEnv; baseUrl: string; apiKey: string
   };
 }
 
-/**
- * Off unless set in source. Unset means false, including production.
- * This is not read from the environment, so a NEXT_PUBLIC_ variable cannot turn it on.
- */
+/** Source override. The quote route also honors the SHOW_SHIPPING_DEBUG environment variable. */
 export const SHOW_SHIPPING_DEBUG = false;
 
-/** Full diagnostics in local development, staging, or when the flag above is on. */
+function envFlagOn(value: string | undefined): boolean {
+  const flag = String(value || "").trim().toLowerCase();
+  return flag === "1" || flag === "true" || flag === "yes" || flag === "on";
+}
+
+/** Full diagnostics when SHOW_SHIPPING_DEBUG is on, in local development, or on the Warp staging key. */
 export function shippingDebugVisible(): boolean {
+  if (envFlagOn(process.env.SHOW_SHIPPING_DEBUG)) return true;
   if (SHOW_SHIPPING_DEBUG) return true;
   if (process.env.NODE_ENV === "development") return true;
   if (normalizeWarpEnv(process.env.WARP_ENV) === "staging") return true;

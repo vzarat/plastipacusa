@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient, isServiceRoleConfigured } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
-import { WARP_ORIGIN_ZIP, getWarpConfig } from "@/lib/shipping/config";
+import { WARP_ORIGIN_ZIP, getWarpConfig, shippingDebugVisible } from "@/lib/shipping/config";
 import { buildQuoteFailure, shippingRequestId } from "@/lib/shipping/diagnostics";
 import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
 import { evalShippingEligibility } from "@/lib/shippingRules";
@@ -190,13 +190,14 @@ function failureJson(input: {
     freight: input.freight,
     destination: { zip: input.zip, city: input.city, state: input.state },
   });
+  const debugOn = shippingDebugVisible();
   return NextResponse.json(
     {
       ok: false,
       fallback: "manual_quote",
       requestId,
       error: failure.error,
-      ...(failure.debug ? { debug: failure.debug } : {}),
+      ...(debugOn && failure.debug ? { debug: failure.debug } : {}),
       message: failure.publicMessage,
       weightLbs: input.freight?.weightLbs ?? null,
       palletCount: input.freight?.palletCount ?? null,
@@ -213,20 +214,29 @@ function failureJson(input: {
 }
 
 async function consumeShippingQuoteLimit(headers: Headers): Promise<{ status: QuoteLimitStatus; detail?: string }> {
-  if (!isServiceRoleConfigured()) {
-    return { status: "unconfigured", detail: "service role is not configured" };
+  try {
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
+    if (!serviceRoleKey || serviceRoleKey.includes("placeholder") || !isServiceRoleConfigured()) {
+      return { status: "unconfigured", detail: "SUPABASE_SERVICE_ROLE_KEY is not configured" };
+    }
+    const admin = createServiceRoleClient();
+    const { data, error } = await admin.rpc("consume_shipping_quote_limit", {
+      p_ip_hash: hashClientIp(clientIpFromHeaders(headers)),
+      p_burst_limit: SHIPPING_QUOTE_BURST_LIMIT,
+      p_day_limit: SHIPPING_QUOTE_DAILY_LIMIT,
+      p_burst_seconds: SHIPPING_QUOTE_BURST_SECONDS,
+    });
+    if (error || typeof data !== "boolean") {
+      return {
+        status: "unavailable",
+        detail: error?.message || "consume_shipping_quote_limit did not return a boolean",
+      };
+    }
+    return { status: data ? "allowed" : "blocked" };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "consume_shipping_quote_limit failed";
+    return { status: "unavailable", detail: message };
   }
-  const admin = createServiceRoleClient();
-  const { data, error } = await admin.rpc("consume_shipping_quote_limit", {
-    p_ip_hash: hashClientIp(clientIpFromHeaders(headers)),
-    p_burst_limit: SHIPPING_QUOTE_BURST_LIMIT,
-    p_day_limit: SHIPPING_QUOTE_DAILY_LIMIT,
-    p_burst_seconds: SHIPPING_QUOTE_BURST_SECONDS,
-  });
-  if (error || typeof data !== "boolean") {
-    return { status: "unavailable", detail: error?.message || "consume_shipping_quote_limit did not return a boolean" };
-  }
-  return { status: data ? "allowed" : "blocked" };
 }
 
 export async function POST(request: Request) {
@@ -257,7 +267,11 @@ export async function POST(request: Request) {
     }
 
     const limit = await consumeShippingQuoteLimit(request.headers);
-    return withQuoteRateLimit(limit.status, async () => quoteForSignedInUser(request), limit.detail);
+    return withQuoteRateLimit(
+      limit.status,
+      async () => quoteForSignedInUser(request),
+      limit.detail
+    );
   } catch (error) {
     return failureJson({
       error,
