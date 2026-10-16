@@ -25,6 +25,7 @@ import { useCartStore } from "@/lib/store/useCartStore";
 import { calculateOrderTotal } from "@/lib/sales-tax";
 import { formatCurrency } from "@/lib/utils";
 import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
+import { quotePackageWeightLbs } from "@/lib/package-weight";
 
 const TEST_CARDS = [
   {
@@ -340,6 +341,16 @@ export function StripeEmbeddedCheckout({
           totalBoxes: item.totalBoxes,
           totalRolls: item.totalRolls,
           application: item.application,
+          weightLbs:
+            quotePackageWeightLbs({
+              application: item.application,
+              boxes: item.totalBoxes,
+              rolls: item.totalRolls,
+              weightLbs: item.weightLbs,
+              widthInches: item.widthInches,
+              gauge: item.gauge,
+              lengthFeet: item.lengthFeet,
+            }) ?? 0,
         })),
         shipping,
       });

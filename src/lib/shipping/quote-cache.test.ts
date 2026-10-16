@@ -6,6 +6,7 @@ import {
   getCachedWarpOptions,
   judgeStoredQuote,
   keepPayableOptions,
+  missingQuoteColumn,
   shouldDeleteStoredQuote,
 } from "./quote-cache";
 
@@ -79,6 +80,16 @@ describe("stored shipping quotes", () => {
     assert.equal(judgeStoredQuote({ ...base, freightPalletCount: 2 }).status, "mismatch");
     assert.equal(judgeStoredQuote({ ...base, freightItemsHash: "hash-b" }).status, "mismatch");
     assert.equal(judgeStoredQuote(base).status, "ok");
+  });
+
+  it("recognizes a missing carrier_price_cents column without treating other errors as columns", () => {
+    assert.equal(
+      missingQuoteColumn(
+        "Could not find the 'carrier_price_cents' column of 'shipping_quotes' in the schema cache"
+      ),
+      "carrier_price_cents"
+    );
+    assert.equal(missingQuoteColumn("duplicate key value violates unique constraint"), null);
   });
 
   it("rejects a missing quote id with no substitute", () => {
