@@ -11,7 +11,7 @@ import { formatCurrency } from "@/lib/utils";
 import { ShippingEligibilityAlert } from "@/components/checkout/ShippingEligibilityAlert";
 import { WAREHOUSE_ORIGIN } from "@/lib/shipping-method";
 import { scheduleFromTransitDays } from "@/lib/shipping/dates";
-import { featuredCarrierOptions } from "@/lib/shipping/market-options";
+import { featuredCarrierOptions } from "@/lib/shipping/featured-options";
 import {
   AUTO_REQUOTE_CAP,
   blocksCardStep,

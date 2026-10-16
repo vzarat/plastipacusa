@@ -3,24 +3,10 @@ import { formatPackageWeightLbs, packagePalletTareLbs, packageTotalWeightLbs, pa
 import { groupLinesBySku, handTierName } from "@/lib/shipping/catalog-freight";
 import { LOOSE_BOX_MODE, resolveFullPalletHeight, tierInchesFromFullHeight } from "@/lib/shipping/tier-height";
 import { formatFreightDimensions, formatFreightWeightLabel } from "@/lib/shipping/hand-freight";
+import { ShipmentDataError } from "@/lib/shipping/shipment-error";
 import type { FreightPiece, ShipmentFreight, ShippingQuoteLine } from "@/lib/shipping/types";
 
-export class ShipmentDataError extends Error {
-  weightLbs = 0;
-  rolls = 0;
-  boxes = 0;
-
-  constructor(
-    readonly code: "missing_weight" | "missing_dims",
-    message: string,
-    totals?: { weightLbs?: number; rolls?: number; boxes?: number }
-  ) {
-    super(message);
-    this.weightLbs = totals?.weightLbs ?? 0;
-    this.rolls = totals?.rolls ?? 0;
-    this.boxes = totals?.boxes ?? 0;
-  }
-}
+export { ShipmentDataError };
 
 function positive(value: unknown): number | null {
   const amount = typeof value === "number" ? value : parseFloat(String(value ?? ""));
