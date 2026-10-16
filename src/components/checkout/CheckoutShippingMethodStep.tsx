@@ -12,6 +12,7 @@ import { formatCurrency } from "@/lib/utils";
 import { ShippingEligibilityAlert } from "@/components/checkout/ShippingEligibilityAlert";
 import { WAREHOUSE_ORIGIN } from "@/lib/shipping-method";
 import { scheduleFromTransitDays } from "@/lib/shipping/dates";
+import { CarrierLogo } from "@/components/checkout/CarrierLogo";
 import { featuredCarrierOptions } from "@/lib/shipping/featured-options";
 import {
   AUTO_REQUOTE_CAP,
@@ -109,12 +110,6 @@ function fullZip(postalCode: string | undefined): string | null {
   const digits = String(postalCode || "").replace(/\D/g, "");
   if (digits.length < 5) return null;
   return digits.slice(0, 5);
-}
-
-function carrierInitials(title: string): string {
-  const words = title.split(/\s+/).filter((word) => /[A-Za-z0-9]/.test(word));
-  const letters = words.slice(0, 2).map((word) => word[0]?.toUpperCase() || "");
-  return letters.join("") || "•";
 }
 
 function tagOptions(options: ShippingOption[]) {
@@ -616,12 +611,10 @@ export function CheckoutShippingMethodStep({
           Delivery method
         </p>
         {loading ? (
-          <div className="space-y-3">
-            <p className="text-sm text-slate-600">Getting live carrier rates...</p>
-            <div aria-hidden>
-              {[0, 1, 2].map((item) => (
-                <div key={item} className="mb-3 h-24 animate-pulse rounded-2xl border border-slate-200 bg-slate-100" />
-              ))}
+          <div className="rounded-2xl border border-slate-200 bg-white p-4" role="status">
+            <p className="text-sm font-semibold text-slate-800">Quoting your shipment</p>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div className="animate-splash-bar h-full w-1/3 rounded-full bg-sky-600" />
             </div>
           </div>
         ) : (
@@ -653,12 +646,7 @@ export function CheckoutShippingMethodStep({
                     }}
                     className="mt-1 h-4 w-4 text-sky-600 focus:ring-sky-500"
                   />
-                  <span
-                    aria-hidden
-                    className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-black text-slate-700"
-                  >
-                    {carrierInitials(title)}
-                  </span>
+                  <CarrierLogo carrierKey={method.carrierKey} name={title} />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-start justify-between gap-3">
                       <span>
