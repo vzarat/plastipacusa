@@ -62,6 +62,7 @@ interface QuotePayload {
   dimensions?: string[];
   weightDetail?: string[];
   note?: string | null;
+  requestId?: string | null;
   error?: { code?: string; message?: string; providerMessage?: string; requestId?: string } | null;
 }
 
@@ -122,6 +123,7 @@ export function CheckoutShippingMethodStep({
   const [message, setMessage] = useState<string | null>(null);
   const [quoteNote, setQuoteNote] = useState<string | null>(null);
   const [quoteErrorCode, setQuoteErrorCode] = useState<string | null>(null);
+  const [quoteRequestId, setQuoteRequestId] = useState<string | null>(null);
   const [showErrorCode, setShowErrorCode] = useState(false);
   const [manualQuote, setManualQuote] = useState(false);
   const [priceUpdated, setPriceUpdated] = useState<number | null>(null);
@@ -250,6 +252,7 @@ export function CheckoutShippingMethodStep({
           setMessage(payload.message || PLAIN_FAILURE);
           setQuoteNote(payload.note || payload.error?.message || payload.error?.providerMessage || null);
           setQuoteErrorCode(payload.error?.code || "UNKNOWN");
+          setQuoteRequestId(payload.error?.requestId || payload.requestId || null);
           setShowErrorCode(false);
           return;
         }
@@ -260,6 +263,7 @@ export function CheckoutShippingMethodStep({
           setMessage(payload.message || PLAIN_FAILURE);
           setQuoteNote(payload.note || payload.error?.message || payload.error?.providerMessage || null);
           setQuoteErrorCode(payload.error?.code || "UNKNOWN");
+          setQuoteRequestId(payload.error?.requestId || payload.requestId || null);
           setShowErrorCode(false);
           return;
         }
@@ -272,6 +276,7 @@ export function CheckoutShippingMethodStep({
           setMessage(PLAIN_FAILURE);
           setQuoteNote(payload.note || null);
           setQuoteErrorCode(payload.error?.code || "NO_OPTIONS");
+          setQuoteRequestId(payload.error?.requestId || payload.requestId || null);
           setShowErrorCode(false);
           setSelectedShippingOption(null);
           return;
@@ -281,6 +286,7 @@ export function CheckoutShippingMethodStep({
         setShowAllOptions(false);
         setQuoteNote(null);
         setQuoteErrorCode(null);
+        setQuoteRequestId(null);
         setShowErrorCode(false);
         setMessage(payload.message || null);
         const cheapest = [...quoted].sort((a, b) => a.price - b.price)[0] || null;
@@ -296,6 +302,8 @@ export function CheckoutShippingMethodStep({
         setManualQuote(true);
         setMessage(PLAIN_FAILURE);
         setQuoteErrorCode("UNKNOWN");
+        setQuoteRequestId(null);
+        setQuoteNote(null);
         setShowErrorCode(false);
       } finally {
         if (requestId === requestRef.current) setLoading(false);
@@ -691,19 +699,23 @@ export function CheckoutShippingMethodStep({
         {!loading && manualQuote && (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
             <p>{message || PLAIN_FAILURE}</p>
-            <button
-              type="button"
-              className="mt-3 text-xs font-bold text-amber-950 underline-offset-2 hover:underline"
-              onClick={() => setShowErrorCode((value) => !value)}
-            >
-              {showErrorCode ? "Hide error code" : "Show error code"}
-            </button>
-            {showErrorCode && (
-              <p className="mt-2 whitespace-pre-wrap font-mono text-xs leading-relaxed">
-                {quoteErrorCode || "UNKNOWN"}
-                {quoteNote ? `\n${quoteNote}` : ""}
-              </p>
-            )}
+            <p className="mt-2 whitespace-pre-wrap font-mono text-xs leading-relaxed">
+              {quoteErrorCode || "UNKNOWN"}
+              {"\n"}
+              {quoteRequestId || "request id not returned"}
+            </p>
+            {quoteNote ? (
+              <button
+                type="button"
+                className="mt-3 text-xs font-bold text-amber-950 underline-offset-2 hover:underline"
+                onClick={() => setShowErrorCode((value) => !value)}
+              >
+                {showErrorCode ? "Hide details" : "Show details"}
+              </button>
+            ) : null}
+            {showErrorCode && quoteNote ? (
+              <p className="mt-2 whitespace-pre-wrap font-mono text-xs leading-relaxed">{quoteNote}</p>
+            ) : null}
             <div className="mt-3 flex flex-wrap gap-2">
               <Button type="button" variant="outline" className="h-10" onClick={() => setReloadKey((value) => value + 1)}>
                 Retry

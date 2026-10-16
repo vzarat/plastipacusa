@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { marketItemsFromPieces } from "./market-options";
 import { freeRgvDelivery } from "./rgv-delivery";
-import { shipmentFreightFromCatalog } from "./shipment";
+import { ShipmentDataError, shipmentFreightFromCatalog, type FreightVariant } from "./shipment";
 
 const HAND_80 = {
   sku: "HAND-80-64",
@@ -167,6 +167,100 @@ describe("catalog shipment freight", () => {
       const units = freight.pieces.reduce((sum, piece) => sum + piece.quantity, 0);
       assert.ok(sent >= freight.weightLbs, item.name);
       assert.ok(sent - freight.weightLbs < units, item.name);
+    }
+  });
+
+  it("builds every catalog tier from production-shaped rows, including empty pallet dimensions", () => {
+    const films: Array<{
+      slug: string;
+      application: "hand" | "machine";
+      boxWeightLbs: number | null;
+      rollWeightLbs: number | null;
+      palletWeightLbs: number | null;
+      widthInches: number | string;
+    }> = [
+      ["stretch-film-18-x-60-ga-x-1000ft", "hand", 24.6, 6.15, 1596.7, "18"],
+      ["stretch-film-18-x-70-ga-x-1000ft", "hand", 27.51, 6.88, 1783, 18],
+      ["stretch-film-18-x-80-ga-x-1000ft", "hand", 34.65, 8.66, 2240.2, "18"],
+      ["stretch-film-18-x-60-ga-x-1500ft", "hand", 30.42, 7.61, 1969.2, 18],
+      ["stretch-film-18-x-70-ga-x-1500ft", "hand", 34.74, 8.69, 2245.8, 18],
+      ["stretch-film-18-x-80-ga-x-1500ft", "hand", 39.07, 9.77, 2522.3, 18],
+      ["stretch-film-15-x-40-ga-x-1500ft", "hand", 18, 4.5, 1173.5, 15],
+      ["stretch-film-15-x-60-ga-x-1000ft", "hand", 21.69, 5.42, 1410.3, 15],
+      ["stretch-film-15-x-60-ga-x-1500ft", "hand", 25.13, 6.28, 1630.5, 15],
+      ["stretch-film-15-x-70-ga-x-1500ft", "hand", 28.75, 7.19, 1862, 15],
+      ["stretch-film-15-x-80-ga-x-1500ft", "hand", 32.36, 8.09, 2093.3, 15],
+      ["stretch-film-20-x-51-ga-x-7000ft", "machine", null, 30.6, 1246.1, "20"],
+      ["stretch-film-20-x-51-ga-x-9000ft", "machine", null, 38.78, 1573.3, 20],
+      ["stretch-film-20-x-60-ga-x-5000ft", "machine", null, 25.9, 1058, 20],
+      ["stretch-film-20-x-70-ga-x-5000ft", "machine", null, 30.05, 1224.1, 20],
+      ["stretch-film-20-x-80-ga-x-5000ft", "machine", null, 34.06, 1384.5, 20],
+      ["stretch-film-20-x-60-ga-x-6000ft", "machine", null, null, null, 20],
+      ["stretch-film-20-x-70-ga-x-6000ft", "machine", null, null, null, 20],
+      ["stretch-film-20-x-80-ga-x-6000ft", "machine", null, null, null, 20],
+    ].map(([slug, application, boxWeightLbs, rollWeightLbs, palletWeightLbs, widthInches]) => ({
+      slug: String(slug),
+      application: application as "hand" | "machine",
+      boxWeightLbs: boxWeightLbs as number | null,
+      rollWeightLbs: rollWeightLbs as number | null,
+      palletWeightLbs: palletWeightLbs as number | null,
+      widthInches: widthInches as number | string,
+    }));
+    const palletShapes: unknown[] = [null, "", "48 x 48", {}, "48 x 48 x 78"];
+    const handTiers = [1, 16, 32, 64];
+    const machineTiers = [20, 40];
+
+    for (const film of films) {
+      const tiers = film.application === "hand" ? handTiers : machineTiers;
+      for (const tier of tiers) {
+        for (const palletDimensions of palletShapes) {
+          const sku = `${film.slug}-${tier}`;
+          const label = `${film.slug} ${tier} ${JSON.stringify(palletDimensions)}`;
+          try {
+            const freight = shipmentFreightFromCatalog(
+              [{ sku, productSlug: film.slug, quantity: 1 }],
+              [
+                {
+                  sku,
+                  rolls_count: String(film.application === "hand" ? tier * 4 : tier),
+                  boxes_count: film.application === "hand" ? String(tier) : "1",
+                  roll_weight_lbs: film.rollWeightLbs == null ? null : String(film.rollWeightLbs),
+                  box_weight_lbs: film.boxWeightLbs == null ? null : String(film.boxWeightLbs),
+                  pallet_weight_lbs: film.palletWeightLbs == null ? null : String(film.palletWeightLbs),
+                  products: {
+                    slug: film.slug,
+                    application: film.application,
+                    roll_weight_lbs: film.rollWeightLbs,
+                    pallet_weight_lbs: film.palletWeightLbs,
+                    pallet_dimensions: palletDimensions,
+                    rolls_per_box: film.application === "hand" ? 4 : 1,
+                    width_inches: film.widthInches,
+                    gauge: 80,
+                    length_feet: 1000,
+                  },
+                } as unknown as FreightVariant,
+              ],
+              new Map()
+            );
+            assert.ok(freight.pieces.length > 0, label);
+            for (const piece of freight.pieces) {
+              assert.ok(piece.weightLbs > 0, label);
+              assert.ok(piece.lengthIn > 0 && piece.widthIn > 0 && piece.heightIn > 0, label);
+            }
+            marketItemsFromPieces(freight.pieces);
+            if (film.rollWeightLbs == null && film.palletWeightLbs == null) {
+              assert.fail(`${label} returned pieces without a package weight`);
+            }
+          } catch (error) {
+            assert.ok(error instanceof ShipmentDataError, `${label} threw ${error instanceof Error ? error.name : typeof error}`);
+            assert.ok(error.code === "missing_dims" || error.code === "missing_weight", `${label} ${error.code}`);
+            if (film.rollWeightLbs != null || film.palletWeightLbs != null) {
+              assert.fail(`${label} should build pieces, got ${error.code}: ${error.message}`);
+            }
+            assert.equal(error.code, "missing_weight", label);
+          }
+        }
+      }
     }
   });
 });

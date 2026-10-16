@@ -28,8 +28,25 @@ describe("shipping quote rate limit", () => {
     });
     assert.equal(response.status, 429);
     assert.equal(warpCalls, 0);
-    const body = (await response.json()) as { message?: string };
+    const body = (await response.json()) as {
+      message?: string;
+      requestId?: string;
+      error?: { code?: string; requestId?: string };
+    };
     assert.equal(body.message, "Too many shipping quotes. Try again later.");
+    assert.equal(body.error?.code, "INVALID_INPUT");
+    assert.equal(typeof body.requestId, "string");
+    assert.equal(body.error?.requestId, body.requestId);
     assert.notEqual(hashClientIp("203.0.113.5"), "203.0.113.5");
+  });
+
+  it("still quotes when the limiter cannot run", async () => {
+    let warpCalls = 0;
+    const response = await withQuoteRateLimit("unavailable", async () => {
+      warpCalls += 1;
+      return Response.json({ ok: true });
+    }, "consume_shipping_quote_limit failed");
+    assert.equal(response.status, 200);
+    assert.equal(warpCalls, 1);
   });
 });

@@ -7,16 +7,22 @@ export function shippingRequestId(): string {
   return `sq_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function redactSecrets(value: string): string {
+export function redactSecrets(value: string, limit = 500): string {
   let text = value;
-  for (const secret of [process.env.WARP_API_KEY_STAGING, process.env.WARP_API_KEY_PRODUCTION]) {
+  for (const secret of [
+    process.env.WARP_API_KEY_STAGING,
+    process.env.WARP_API_KEY_PRODUCTION,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  ]) {
     if (secret && secret.length > 8) text = text.split(secret).join("[redacted]");
   }
   return text
     .replace(/apikey["']?\s*[:=]\s*\S+/gi, "apikey=[redacted]")
     .replace(/authorization["']?\s*[:=]\s*\S+/gi, "authorization=[redacted]")
     .replace(/bearer\s+\S+/gi, "bearer [redacted]")
-    .slice(0, 500);
+    .replace(/eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g, "[redacted]")
+    .slice(0, limit);
 }
 
 export function warpEnvironment(): ShippingQuoteDebug["environment"] {
@@ -86,6 +92,15 @@ function explain(code: ShippingQuoteErrorCode, providerMessage?: string, httpSta
       ? `Warp returned ${status}: ${providerMessage}`
       : `Warp returned ${status} and no rate.`;
   }
+  if (code === "WARP_BAD_RESPONSE") {
+    return providerMessage || "Warp answered, but the response could not be read as quote options.";
+  }
+  if (code === "DB_ERROR") {
+    return providerMessage || "The shipping quote could not be saved or checked in the database.";
+  }
+  if (code === "INVALID_INPUT") {
+    return providerMessage || "The shipping quote request was missing a destination or cart line.";
+  }
   if (code === "INVALID_ZIP") return "Enter a valid 5-digit destination ZIP code.";
   if (code === "NO_OPTIONS") {
     return "Warp accepted the request but returned no priced option for this origin, destination, and pallet.";
@@ -101,6 +116,8 @@ export function buildQuoteFailure(input: {
   requestId: string;
   httpStatus?: number;
   providerMessage?: string;
+  errorName?: string;
+  stack?: string;
   freight: ShipmentFreight | null;
   destination: { zip: string | null; city?: string | null; state?: string | null };
   missingFields?: string[];
@@ -121,6 +138,13 @@ export function buildQuoteFailure(input: {
       code: input.code,
       httpStatus: input.httpStatus ?? null,
       providerMessage: providerMessage ?? null,
+      ...(input.code === "UNKNOWN"
+        ? {
+            errorName: input.errorName ? redactSecrets(input.errorName, 200) : null,
+            message: providerMessage ?? null,
+            stack: input.stack ? redactSecrets(input.stack, 4000) : null,
+          }
+        : {}),
       environment: debug.environment,
       endpoint: debug.endpoint,
       requestSummary: debug.requestSummary,

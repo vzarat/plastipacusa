@@ -98,6 +98,23 @@ function freeLocalOption(zip: string): ShippingOption {
   };
 }
 
+function isShipmentDataError(error: unknown): error is ShipmentDataError {
+  if (error instanceof ShipmentDataError) return true;
+  if (!(error instanceof Error)) return false;
+  const code = (error as { code?: unknown }).code;
+  return code === "missing_dims" || code === "missing_weight";
+}
+
+function isDatabaseError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const name = "name" in error ? String(error.name) : "";
+  const code = "code" in error ? String(error.code) : "";
+  const message = error instanceof Error ? error.message : "";
+  if (name === "PostgrestError" || name === "AuthApiError" || name === "AuthRetryableFetchError") return true;
+  if (/^PGRST|^22|^23|^42/.test(code)) return true;
+  return /column .* does not exist|relation .* does not exist|schema cache|invalid supabaseurl/i.test(message);
+}
+
 function classifyFailure(error: unknown): {
   code: ShippingQuoteErrorCode;
   httpStatus?: number;
@@ -110,13 +127,22 @@ function classifyFailure(error: unknown): {
     if (error.status === 401 || error.status === 403) {
       return { code: "WARP_AUTH", httpStatus: error.status, providerMessage: error.detail };
     }
+    if (error.code === "unavailable" || error.code === "invalid_zip" || !error.status) {
+      return { code: "WARP_BAD_RESPONSE", httpStatus: error.status, providerMessage: error.detail };
+    }
     return {
       code: "WARP_HTTP_ERROR",
       httpStatus: error.status,
       providerMessage: error.detail,
     };
   }
-  if (error instanceof ShipmentDataError) {
+  if (error instanceof Error && error.name === "AbortError") {
+    return { code: "WARP_TIMEOUT", providerMessage: error.message };
+  }
+  if (error instanceof SyntaxError) {
+    return { code: "INVALID_INPUT", providerMessage: error.message };
+  }
+  if (isShipmentDataError(error)) {
     return {
       code: error.code === "missing_dims" ? "MISSING_DIMS" : "MISSING_WEIGHT",
       providerMessage: error.message,
@@ -125,10 +151,14 @@ function classifyFailure(error: unknown): {
   if (error instanceof Error && /Missing or invalid:|WARP_ENV|WARP_API_KEY/.test(error.message)) {
     return { code: "CONFIG", providerMessage: error.message };
   }
+  if (isDatabaseError(error)) {
+    const message = error instanceof Error ? error.message : "database error";
+    return { code: "DB_ERROR", providerMessage: message };
+  }
   if (error instanceof Error) {
     return { code: "UNKNOWN", providerMessage: error.message };
   }
-  return { code: "UNKNOWN" };
+  return { code: "UNKNOWN", providerMessage: error == null ? undefined : "non-error rejection" };
 }
 
 function failureJson(input: {
@@ -143,7 +173,11 @@ function failureJson(input: {
   note?: string | null;
 }) {
   const classified = input.code
-    ? { code: input.code, providerMessage: undefined, httpStatus: undefined }
+    ? {
+        code: input.code,
+        providerMessage: input.error instanceof Error ? input.error.message : undefined,
+        httpStatus: undefined as number | undefined,
+      }
     : classifyFailure(input.error);
   const requestId = shippingRequestId();
   const failure = buildQuoteFailure({
@@ -151,6 +185,8 @@ function failureJson(input: {
     requestId,
     httpStatus: classified.httpStatus,
     providerMessage: classified.providerMessage,
+    errorName: input.error instanceof Error ? input.error.name : undefined,
+    stack: classified.code === "UNKNOWN" && input.error instanceof Error ? input.error.stack : undefined,
     freight: input.freight,
     destination: { zip: input.zip, city: input.city, state: input.state },
   });
@@ -158,6 +194,7 @@ function failureJson(input: {
     {
       ok: false,
       fallback: "manual_quote",
+      requestId,
       error: failure.error,
       ...(failure.debug ? { debug: failure.debug } : {}),
       message: failure.publicMessage,
@@ -169,14 +206,16 @@ function failureJson(input: {
       options: [],
       note:
         input.note ||
-        (input.error instanceof ShipmentDataError ? input.error.message : null),
+        (isShipmentDataError(input.error) ? input.error.message : null),
     },
     input.status ? { status: input.status } : undefined
   );
 }
 
-async function consumeShippingQuoteLimit(headers: Headers): Promise<QuoteLimitStatus> {
-  if (!isServiceRoleConfigured()) return "unavailable";
+async function consumeShippingQuoteLimit(headers: Headers): Promise<{ status: QuoteLimitStatus; detail?: string }> {
+  if (!isServiceRoleConfigured()) {
+    return { status: "unconfigured", detail: "service role is not configured" };
+  }
   const admin = createServiceRoleClient();
   const { data, error } = await admin.rpc("consume_shipping_quote_limit", {
     p_ip_hash: hashClientIp(clientIpFromHeaders(headers)),
@@ -184,8 +223,10 @@ async function consumeShippingQuoteLimit(headers: Headers): Promise<QuoteLimitSt
     p_day_limit: SHIPPING_QUOTE_DAILY_LIMIT,
     p_burst_seconds: SHIPPING_QUOTE_BURST_SECONDS,
   });
-  if (error || typeof data !== "boolean") return "unavailable";
-  return data ? "allowed" : "blocked";
+  if (error || typeof data !== "boolean") {
+    return { status: "unavailable", detail: error?.message || "consume_shipping_quote_limit did not return a boolean" };
+  }
+  return { status: data ? "allowed" : "blocked" };
 }
 
 export async function POST(request: Request) {
@@ -203,14 +244,20 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
+      const requestId = shippingRequestId();
       return NextResponse.json(
-        { ok: false, message: "Sign in to calculate shipping." },
+        {
+          ok: false,
+          message: "Sign in to calculate shipping.",
+          requestId,
+          error: { code: "INVALID_INPUT", requestId },
+        },
         { status: 401 }
       );
     }
 
     const limit = await consumeShippingQuoteLimit(request.headers);
-    return withQuoteRateLimit(limit, async () => quoteForSignedInUser(request));
+    return withQuoteRateLimit(limit.status, async () => quoteForSignedInUser(request), limit.detail);
   } catch (error) {
     return failureJson({
       error,
@@ -318,9 +365,16 @@ async function quoteForSignedInUser(request: Request) {
       const offered = fridayRoute ? [fridayRoute, ...options] : options;
 
       if (offered.length === 0 && !freeLocal) {
+        const reason =
+          marketResult.status === "rejected"
+            ? marketResult.reason
+            : warpResult.status === "rejected"
+              ? warpResult.reason
+              : null;
+        const classified = reason ? classifyFailure(reason) : null;
         return failureJson({
-          error: warpResult.status === "rejected" ? warpResult.reason : null,
-          code: "NO_OPTIONS",
+          error: reason,
+          code: classified && classified.code !== "UNKNOWN" ? classified.code : "NO_OPTIONS",
           freight,
           zip,
           city: body.city,
