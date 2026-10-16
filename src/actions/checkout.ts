@@ -7,7 +7,7 @@ import {
   catalogCheckoutLines,
   couponBlockReason,
   priceCheckoutCart,
-  type CatalogCheckoutVariant,
+  toCatalogCheckoutVariant,
   type PricedCheckoutLine,
 } from "@/lib/checkout-pricing";
 import { mapCouponToApplied } from "@/lib/coupons";
@@ -72,25 +72,41 @@ async function loadCatalogLines(
   requested: Array<{ sku: string; quantity: number }>
 ): Promise<PricedCheckoutLine[]> {
   const skus = [...new Set(requested.map((line) => line.sku))];
-  const { data, error } = await supabase
-    .from("product_variants")
-    .select(
-      "sku, price, boxes_count, product_id, products(slug, application, name, width_inches, gauge)"
-    )
-    .in("sku", skus);
-  if (error || !data) throw new Error("We couldn't price this cart from the catalog.");
-  const variants = data as CatalogCheckoutVariant[];
-  const productIds = [
-    ...new Set(variants.map((row) => String(row.product_id || "")).filter(Boolean)),
-  ];
-  let siblings = variants;
-  if (productIds.length > 0) {
-    const extra = await supabase
-      .from("product_variants")
-      .select("sku, price, boxes_count, product_id")
-      .in("product_id", productIds);
-    if (!extra.error && extra.data) siblings = extra.data as CatalogCheckoutVariant[];
+  const { data, error } = await supabase.from("product_variants").select("*").in("sku", skus);
+  if (error || !data) {
+    console.error("[checkout] catalog variants", error?.message || "empty result");
+    throw new Error("We couldn't price this cart from the catalog.");
   }
+  const rows = data as Record<string, unknown>[];
+  const productIds = [
+    ...new Set(rows.map((row) => String(row.product_id || row.productId || "")).filter(Boolean)),
+  ];
+  const productsById = new Map<string, Record<string, unknown>>();
+  let siblingRows = rows;
+  if (productIds.length > 0) {
+    const [productsResult, siblingsResult] = await Promise.all([
+      supabase.from("products").select("*").in("id", productIds),
+      supabase.from("product_variants").select("*").in("product_id", productIds),
+    ]);
+    if (productsResult.error) {
+      console.error("[checkout] catalog products", productsResult.error.message);
+    }
+    for (const product of productsResult.data || []) {
+      const record = product as Record<string, unknown>;
+      productsById.set(String(record.id || ""), record);
+    }
+    if (siblingsResult.error) {
+      console.error("[checkout] catalog sibling variants", siblingsResult.error.message);
+    } else if (siblingsResult.data) {
+      siblingRows = siblingsResult.data as Record<string, unknown>[];
+    }
+  }
+  const variants = rows.map((row) =>
+    toCatalogCheckoutVariant(row, productsById.get(String(row.product_id || row.productId || "")) || null)
+  );
+  const siblings = siblingRows.map((row) =>
+    toCatalogCheckoutVariant(row, productsById.get(String(row.product_id || row.productId || "")) || null)
+  );
   return catalogCheckoutLines(requested, variants, siblings);
 }
 

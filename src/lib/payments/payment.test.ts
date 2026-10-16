@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import Stripe from "stripe";
 import {
   couponBlockReason,
+  toCatalogCheckoutVariant,
   totalsFromCartLines,
   totalsFromCatalog,
 } from "@/lib/checkout-pricing";
@@ -78,6 +79,23 @@ describe("shared checkout pricing", () => {
     const charged = Math.round(server.total * 100);
     assert.equal(charged, 4000 + Math.round(server.tax * 100));
     assert.notEqual(charged, clientAmountCents);
+  });
+
+  it("prices a live catalog row that stores price_usd and a product title", () => {
+    const row = {
+      sku: "15-40-1500-64",
+      price_usd: 21.2,
+      boxes_count: null,
+      rolls_count: 256,
+      product_id: "film-15",
+      title: "64 BOXES = 256 ROLLS",
+    };
+    const product = { id: "film-15", title: "STRETCH FILM 15\" x 40 GA x 1500 FT", slug: "15-40-1500", type: "hand", width_inches: 15, gauge: 40 };
+    const variant = toCatalogCheckoutVariant(row, product);
+    const priced = totalsFromCatalog([{ sku: "15-40-1500-64", quantity: 1 }], [variant], null, 0);
+    assert.equal(priced.lines[0]?.boxUnitPrice, 21.2);
+    assert.equal(priced.subtotal, 1356.8);
+    assert.equal(priced.lines[0]?.productName, product.title);
   });
 
   it("prices two 16-box lines at the 16-box rate, not the combined 32-box rate", () => {

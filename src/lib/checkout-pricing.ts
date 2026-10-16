@@ -39,6 +39,56 @@ export interface PricedCheckoutLine {
   gauge: number;
 }
 
+function positiveMoney(...values: unknown[]): number | null {
+  for (const value of values) {
+    if (value === null || value === undefined || value === "") continue;
+    const amount = typeof value === "number" ? value : parseFloat(String(value));
+    if (Number.isFinite(amount) && amount > 0) return amount;
+  }
+  return null;
+}
+
+function textOf(...values: unknown[]): string {
+  for (const value of values) {
+    const text = String(value ?? "").trim();
+    if (text) return text;
+  }
+  return "";
+}
+
+function inferredBoxes(row: Record<string, unknown>): number | null {
+  const boxes = Math.floor(Number(row.boxes_count ?? row.boxesCount) || 0);
+  if (boxes > 0) return boxes;
+  const rolls = Math.floor(Number(row.rolls_count ?? row.rollsCount) || 0);
+  if (rolls === 4) return 1;
+  if (rolls === 64) return 16;
+  if (rolls === 128) return 32;
+  if (rolls === 256) return 64;
+  const label = textOf(row.title, row.package_size, row.packageSize);
+  const labeled = Math.floor(Number(label.match(/(\d+)\s*BOX/i)?.[1]) || 0);
+  return labeled > 0 ? labeled : null;
+}
+
+/** Accepts the live catalog shape: price or price_usd, and product title or name. */
+export function toCatalogCheckoutVariant(
+  row: Record<string, unknown>,
+  product: Record<string, unknown> | null
+): CatalogCheckoutVariant {
+  return {
+    sku: textOf(row.sku),
+    price: positiveMoney(row.price, row.price_usd, row.priceUsd),
+    boxes_count: inferredBoxes(row),
+    product_id: textOf(row.product_id, row.productId) || null,
+    products: {
+      slug: textOf(product?.slug),
+      application: textOf(product?.application, product?.type) || null,
+      name: textOf(product?.name, product?.title, product?.storefront_title) || null,
+      width_inches: (product?.width_inches ?? product?.widthInches ?? null) as number | string | null,
+      gauge: (product?.gauge ?? null) as number | string | null,
+    },
+  };
+}
+
 function productOf(variant: CatalogCheckoutVariant) {
   const products = variant.products as CatalogCheckoutVariant["products"] | CatalogCheckoutVariant["products"][] | null;
   if (Array.isArray(products)) return products[0] || null;
