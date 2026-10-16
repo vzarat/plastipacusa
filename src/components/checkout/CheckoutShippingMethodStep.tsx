@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Calendar, MapPin, Warehouse } from "lucide-react";
+import { MapPin, Warehouse } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
@@ -11,7 +11,6 @@ import { submitInquiry } from "@/actions/inquiries";
 import { formatCurrency } from "@/lib/utils";
 import { ShippingEligibilityAlert } from "@/components/checkout/ShippingEligibilityAlert";
 import { WAREHOUSE_ORIGIN } from "@/lib/shipping-method";
-import { scheduleFromTransitDays } from "@/lib/shipping/dates";
 import { CarrierLogo } from "@/components/checkout/CarrierLogo";
 import { featuredCarrierOptions } from "@/lib/shipping/featured-options";
 import {
@@ -469,9 +468,6 @@ export function CheckoutShippingMethodStep({
     };
   }, [freeLocal, options, showAllOptions]);
 
-  const schedule = selectedShippingOption
-    ? scheduleFromTransitDays(selectedShippingOption.transitDays)
-    : null;
   const expired = selectedShippingOption
     ? blocksCardStep(selectedShippingOption.expiresAt, now)
     : false;
@@ -512,7 +508,7 @@ export function CheckoutShippingMethodStep({
         <p className="text-xs font-bold uppercase tracking-wider text-sky-700">Step 3</p>
         <h2 className="mt-1 text-lg font-black text-slate-900">Shipping Method</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Confirm the shipment, choose a delivery method, and review estimated dates.
+          Confirm the shipment and choose a delivery method.
         </p>
       </div>
 
@@ -543,37 +539,6 @@ export function CheckoutShippingMethodStep({
           <p>
             Ship From: <span className="font-semibold">{WAREHOUSE_ORIGIN}</span>
           </p>
-        </div>
-        {schedule && (
-          <p className="text-sm text-slate-700">
-            Estimated Delivery:{" "}
-            <span className="font-semibold">{schedule.deliveryLabel}</span>
-          </p>
-        )}
-      </section>
-
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="flex items-center gap-2 text-sky-800">
-            <Calendar className="h-4 w-4" />
-            <p className="text-[11px] font-bold uppercase tracking-wider">Estimated Ship Date</p>
-          </div>
-          <p className="mt-2 text-sm font-black text-slate-900">
-            {schedule?.shippingLabel || "Next business day"}
-          </p>
-          {schedule && <p className="mt-1 text-xs text-slate-500">{schedule.shippingDate}</p>}
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="flex items-center gap-2 text-sky-800">
-            <Calendar className="h-4 w-4" />
-            <p className="text-[11px] font-bold uppercase tracking-wider">
-              Estimated Delivery Date
-            </p>
-          </div>
-          <p className="mt-2 text-sm font-black text-slate-900">
-            {schedule?.deliveryLabel || "Select a delivery method"}
-          </p>
-          {schedule && <p className="mt-1 text-xs text-slate-500">{schedule.deliveryDate}</p>}
         </div>
       </section>
 
@@ -655,7 +620,7 @@ export function CheckoutShippingMethodStep({
                     }}
                     className="mt-1 h-4 w-4 text-sky-600 focus:ring-sky-500"
                   />
-                  <CarrierLogo carrierKey={method.carrierKey} name={title} />
+                  <CarrierLogo carrierKey={method.carrierKey} name={title} serviceLevel={method.serviceLevel} />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-start justify-between gap-3">
                       <span>
