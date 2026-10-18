@@ -170,6 +170,7 @@ export async function createOrderFromCheckout(
       subtotal: merchandise,
       discount: metaDiscount,
       shipping: metaShipping,
+      taxExempt: paymentIntentDetails?.metadata?.tax_exempt === "true",
     });
     const taxAmount = metaTax > 0 ? roundMoney(metaTax) : quote.tax;
     const subtotalAmount = quote.subtotal;

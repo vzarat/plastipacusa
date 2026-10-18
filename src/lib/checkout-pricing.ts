@@ -210,11 +210,12 @@ function asCartItem(line: PricedCheckoutLine): CartItem {
   };
 }
 
-/** Shared by the cart display and the payment server. Shipping is added after tax on merchandise. */
+/** Shared by the cart display and the payment server. Tax covers merchandise and shipping. */
 export function priceCheckoutCart(input: {
   lines: PricedCheckoutLine[];
   coupon: AppliedCoupon | null;
   shipping: number;
+  taxExempt?: boolean;
 }): CheckoutTotals & { lines: PricedCheckoutLine[] } {
   const subtotal = roundMoney(input.lines.reduce((sum, line) => sum + line.totalPrice, 0));
   const discount = getCartDiscountAmount(
@@ -225,6 +226,7 @@ export function priceCheckoutCart(input: {
     subtotal,
     discount,
     shipping: input.shipping,
+    taxExempt: input.taxExempt,
   });
   return { ...totals, lines: input.lines };
 }
@@ -232,9 +234,10 @@ export function priceCheckoutCart(input: {
 export function totalsFromCartLines(
   lines: PricedCheckoutLine[],
   coupon: AppliedCoupon | null,
-  shipping: number
+  shipping: number,
+  taxExempt = false
 ) {
-  return priceCheckoutCart({ lines, coupon, shipping });
+  return priceCheckoutCart({ lines, coupon, shipping, taxExempt });
 }
 
 export function totalsFromCatalog(
@@ -242,12 +245,14 @@ export function totalsFromCatalog(
   variants: CatalogCheckoutVariant[],
   coupon: AppliedCoupon | null,
   shipping: number,
-  siblings?: CatalogCheckoutVariant[]
+  siblings?: CatalogCheckoutVariant[],
+  taxExempt = false
 ) {
   return priceCheckoutCart({
     lines: catalogCheckoutLines(requested, variants, siblings),
     coupon,
     shipping,
+    taxExempt,
   });
 }
 

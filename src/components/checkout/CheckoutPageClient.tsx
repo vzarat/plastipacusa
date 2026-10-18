@@ -41,15 +41,15 @@ import { blocksCardStep } from "@/lib/shipping/quote-window";
 
 const EXPIRED_QUOTE = "This shipping quote expired. Review the updated price before paying.";
 
-export function CheckoutPageClient() {
+export function CheckoutPageClient({ taxExempt = false }: { taxExempt?: boolean }) {
   return (
     <CheckoutStateProvider>
-      <CheckoutPageInner />
+      <CheckoutPageInner taxExempt={taxExempt} />
     </CheckoutStateProvider>
   );
 }
 
-function CheckoutPageInner() {
+function CheckoutPageInner({ taxExempt }: { taxExempt: boolean }) {
   const router = useRouter();
   const [step, setStep] = useState<CheckoutStepId>(1);
   const [furthestStep, setFurthestStep] = useState<CheckoutStepId>(1);
@@ -180,6 +180,7 @@ function CheckoutPageInner() {
     subtotal,
     discount: discountAmount,
     shipping: shippingEstimate,
+    taxExempt,
   });
   const [serverChargeTotal, setServerChargeTotal] = useState<number | null>(null);
   const total = step === 4 ? serverChargeTotal : quote.total;
@@ -500,7 +501,7 @@ function CheckoutPageInner() {
             )}
             {furthestStep >= 3 && (
             <div className="flex items-center justify-between text-slate-600" aria-live="polite">
-              <span>Estimated shipping</span>
+              <span>Shipping</span>
               <span className="font-semibold text-slate-800">
                 {selectedShippingOption
                   ? quote.shipping > 0
@@ -513,7 +514,7 @@ function CheckoutPageInner() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-slate-600">
                 <span>
-                  Estimated Tax ({(quote.taxRate * 100).toFixed(2)}%)
+                  {taxExempt ? "Tax" : `Tax (${(quote.taxRate * 100).toFixed(2)}%)`}
                 </span>
                 <span className="font-semibold text-slate-800">
                   {formatCurrency(quote.tax)}

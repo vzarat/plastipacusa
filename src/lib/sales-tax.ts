@@ -13,9 +13,18 @@ export function roundMoney(amount: number): number {
   return Math.round(Math.max(0, value) * 100) / 100;
 }
 
-/** Tax applies once to the discounted merchandise amount, not to shipping. */
-export function calculateSalesTax(taxableMerchandise: number): number {
-  return roundMoney(roundMoney(taxableMerchandise) * US_SALES_TAX_RATE);
+/** Tax applies to discounted merchandise plus shipping. */
+export function calculateSalesTax(taxableAmount: number): number {
+  return roundMoney(roundMoney(taxableAmount) * US_SALES_TAX_RATE);
+}
+
+/** A reseller or tax-exempt account flagged on the profile pays no sales tax. */
+export function profileIsTaxExempt(profile: {
+  is_tax_exempt?: boolean | null;
+  tax_exempt_verified?: boolean | null;
+} | null): boolean {
+  if (!profile) return false;
+  return profile.is_tax_exempt === true || profile.tax_exempt_verified === true;
 }
 
 export interface CheckoutTotals {
@@ -27,25 +36,28 @@ export interface CheckoutTotals {
   total: number;
 }
 
-/** Total = Subtotal − discount + tax + shipping. Tax is the rate times discounted merchandise. */
+/** Total = Subtotal − discount + shipping + tax. Tax is the rate times that merchandise and shipping. */
 export function calculateOrderTotal(input: {
   subtotal: number;
   discount?: number;
   shipping?: number;
+  taxExempt?: boolean;
 }): CheckoutTotals {
   const subtotal = roundMoney(input.subtotal);
   const discount = roundMoney(Math.min(Math.max(0, input.discount || 0), subtotal));
   const shipping = roundMoney(input.shipping || 0);
-  const taxable = roundMoney(subtotal - discount);
-  const tax = calculateSalesTax(taxable);
-  const total = roundMoney(taxable + tax + shipping);
+  const merchandise = roundMoney(subtotal - discount);
+  const taxable = roundMoney(merchandise + shipping);
+  const taxExempt = input.taxExempt === true;
+  const tax = taxExempt ? 0 : calculateSalesTax(taxable);
+  const total = roundMoney(merchandise + shipping + tax);
 
   return {
     subtotal,
     discount,
     shipping,
     tax,
-    taxRate: US_SALES_TAX_RATE,
+    taxRate: taxExempt ? 0 : US_SALES_TAX_RATE,
     total,
   };
 }

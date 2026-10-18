@@ -24,6 +24,7 @@ import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
 import { resolveShippingCharge } from "@/lib/shipping/quote-cache";
 import { evalShippingEligibility, RGV_FREE_DELIVERY_LABEL } from "@/lib/shippingRules";
 import { buildShipmentFreight } from "@/lib/shipping/shipment";
+import { profileIsTaxExempt } from "@/lib/sales-tax";
 import type { ShippingQuoteLine } from "@/lib/shipping/types";
 
 export interface CreatePaymentIntentOptions {
@@ -339,10 +340,28 @@ export async function createPaymentIntent(
         };
       }
     }
+    const { data: taxProfile, error: taxProfileError } = await supabase
+      .from("profiles")
+      .select("is_tax_exempt, tax_exempt_verified")
+      .eq("id", userId)
+      .maybeSingle();
+    const taxExempt =
+      taxProfileError && /tax_exempt_verified/i.test(taxProfileError.message)
+        ? profileIsTaxExempt(
+            (
+              await supabase
+                .from("profiles")
+                .select("is_tax_exempt")
+                .eq("id", userId)
+                .maybeSingle()
+            ).data
+          )
+        : profileIsTaxExempt(taxProfile);
     const priced = priceCheckoutCart({
       lines: pricedLines,
       coupon,
       shipping: shippingOption ? shippingOption.price : 0,
+      taxExempt,
     });
     const normalizedAmount = Math.round(priced.total * 100);
     if (!Number.isFinite(normalizedAmount) || normalizedAmount < 50) {
@@ -667,6 +686,7 @@ export async function createPaymentIntent(
         tax_amount: (Math.round(priced.tax * 100) / 100).toFixed(2),
         tax_rate: String(priced.taxRate),
         total_amount: (Math.round(priced.total * 100) / 100).toFixed(2),
+        tax_exempt: taxExempt ? "true" : "false",
         tax_exempt_requested: options.taxExemptRequested ? "true" : "false",
         line_items: lineItemsMeta,
         shipping_address: shippingMeta,

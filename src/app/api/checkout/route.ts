@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createServerClient } from "@/lib/supabase/server";
 import { getAppBaseUrl } from "@/lib/email";
-import { calculateOrderTotal } from "@/lib/sales-tax";
+import { calculateOrderTotal, profileIsTaxExempt } from "@/lib/sales-tax";
 import { clampCartQuantity } from "@/lib/cart-quantity";
 
 interface CheckoutLineItemInput {
@@ -109,10 +109,28 @@ export async function POST(request: NextRequest) {
       return sum + line;
     }, 0);
 
+    const { data: taxProfile, error: taxProfileError } = await supabase
+      .from("profiles")
+      .select("is_tax_exempt, tax_exempt_verified")
+      .eq("id", authenticatedUserId)
+      .maybeSingle();
+    const taxExempt =
+      taxProfileError && /tax_exempt_verified/i.test(taxProfileError.message)
+        ? profileIsTaxExempt(
+            (
+              await supabase
+                .from("profiles")
+                .select("is_tax_exempt")
+                .eq("id", authenticatedUserId)
+                .maybeSingle()
+            ).data
+          )
+        : profileIsTaxExempt(taxProfile);
     const quote = calculateOrderTotal({
       subtotal,
       discount: Number(body.discountAmount || 0),
       shipping: Number(body.shippingAmount || 0),
+      taxExempt,
     });
     const discountAmount = quote.discount;
     const payable = Math.max(0, subtotal - discountAmount);
@@ -176,7 +194,7 @@ export async function POST(request: NextRequest) {
           currency: "usd",
           unit_amount: toCents(quote.tax),
           product_data: {
-            name: "Estimated Tax (8.25%)",
+            name: "Sales tax",
           },
         },
       });
@@ -216,6 +234,7 @@ export async function POST(request: NextRequest) {
         tax_rate: String(quote.taxRate),
         shipping_method: String(body.shippingMethod || ""),
         shipping_address_id: String(body.shippingAddressId || ""),
+        tax_exempt: taxExempt ? "true" : "false",
         tax_exempt_requested: body.taxExemptRequested ? "true" : "false",
         order_total: quote.total.toFixed(2),
         cart_item_count: String(normalizedItems.length),
@@ -240,6 +259,7 @@ export async function POST(request: NextRequest) {
           shipping_address_id: String(body.shippingAddressId || ""),
           tax_amount: quote.tax.toFixed(2),
           tax_rate: String(quote.taxRate),
+          tax_exempt: taxExempt ? "true" : "false",
           tax_exempt_requested: body.taxExemptRequested ? "true" : "false",
           total_amount: quote.total.toFixed(2),
           items_summary: normalizedItems
