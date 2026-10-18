@@ -17,6 +17,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminProduct } from "@/types/product";
@@ -29,6 +30,7 @@ import {
 } from "@/actions/products";
 import { toast } from "sonner";
 import { ProductFormModal } from "./ProductFormModal";
+import { exportPackagingSpecsCsv } from "@/actions/packaging-specs";
 
 interface AdminCatalogViewProps {
   initialProducts: AdminProduct[];
@@ -126,6 +128,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [isExportingSpecs, setIsExportingSpecs] = useState(false);
   const [localToast, setLocalToast] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = PAGE_SIZE;
@@ -225,6 +228,31 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
       toast.error(`Error de conexión a Supabase: ${message}`);
     } finally {
       setIsTestingConnection(false);
+    }
+  };
+
+  const exportPackagingSpecs = async () => {
+    if (isExportingSpecs) return;
+    setIsExportingSpecs(true);
+    try {
+      const result = await exportPackagingSpecsCsv();
+      if (!result.success) {
+        notify(result.error);
+        return;
+      }
+      const today = new Date();
+      const filename = `plastipac_product_packaging_specs_${today.getFullYear()}_${String(today.getMonth() + 1).padStart(2, "0")}_${String(today.getDate()).padStart(2, "0")}.csv`;
+      const blob = new Blob(["\uFEFF", result.csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      notify("Couldn't export packaging specs.");
+    } finally {
+      setIsExportingSpecs(false);
     }
   };
 
@@ -339,7 +367,18 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
           <p className="text-xs sm:text-sm text-slate-500">{t("admin.manageCatalog")}</p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={exportPackagingSpecs}
+            disabled={isExportingSpecs}
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl cursor-pointer"
+          >
+            {isExportingSpecs ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+            <span>{isExportingSpecs ? "Exporting…" : "Export Packaging Specs CSV"}</span>
+          </Button>
           <Button
             type="button"
             size="sm"
