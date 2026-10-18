@@ -45,7 +45,7 @@ interface ShippingQuoteRow {
   service_level: string | null;
   service_name: string;
   description: string;
-  shipping_mode: "LTL" | "truckload" | "local";
+  shipping_mode: "LTL" | "truckload" | "local" | "parcel";
   price_cents: number;
   carrier_price_cents?: number | null;
   destination_zip: string;
@@ -157,7 +157,7 @@ export function safeStoreLog(error: unknown): void {
 }
 
 function isShippingMode(value: unknown): value is ShippingQuoteRow["shipping_mode"] {
-  return value === "LTL" || value === "truckload" || value === "local";
+  return value === "LTL" || value === "truckload" || value === "local" || value === "parcel";
 }
 
 function optionFromRow(row: ShippingQuoteRow): ShippingOption {

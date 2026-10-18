@@ -19,7 +19,7 @@ import {
 import { getCachedWarpOptions, safeStoreLog, storeQuotedOptions } from "@/lib/shipping/quote-cache";
 import { nextBusinessPickupDate } from "@/lib/shipping/dates";
 import { ShipmentDataError, buildShipmentFreight } from "@/lib/shipping/shipment";
-import { WarpQuoteError } from "@/lib/shipping/warp";
+import { quoteWarpParcel, usesWarpParcel, WarpQuoteError } from "@/lib/shipping/warp";
 import {
   SHIPPING_QUOTE_BURST_LIMIT,
   SHIPPING_QUOTE_BURST_SECONDS,
@@ -371,6 +371,43 @@ async function quoteForSignedInUser(request: Request) {
     const fridayRoute = fridayRule ? houstonFridayOption(zip, fridayRule.label) : null;
 
     const destinationZip = zip;
+
+    if (usesWarpParcel(freight)) {
+      try {
+        const parcel = await quoteWarpParcel({
+          originZip: WARP_ORIGIN_ZIP,
+          destinationZip,
+          freight,
+        });
+        if (parcel) {
+          let offered = [parcel];
+          try {
+            const stored = await storeQuotedOptions(destinationZip, freight, [parcel], "freights");
+            if (stored.length > 0) offered = stored;
+          } catch (error) {
+            safeStoreLog(error);
+          }
+          return NextResponse.json({
+            ok: true,
+            weightLbs: freight.weightLbs,
+            palletCount: freight.palletCount,
+            dimensions: freight.pieces.map((piece) => piece.dimensionLabel),
+            weightDetail: freight.pieces.map((piece) => piece.weightLabel),
+            freeLocal,
+            options: fridayRoute ? [fridayRoute, ...offered] : offered,
+            message: null,
+          });
+        }
+      } catch (error) {
+        console.error(
+          JSON.stringify({
+            source: "shipping-quote",
+            stage: "warp-parcel",
+            message: error instanceof Error ? error.name : "parcel quote failed",
+          })
+        );
+      }
+    }
 
     try {
       const [marketResult, warpResult] = await Promise.allSettled([

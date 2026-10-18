@@ -111,9 +111,10 @@ function fullZip(postalCode: string | undefined): string | null {
   return digits.slice(0, 5);
 }
 
-function deliveryMethodForOption(id: string) {
-  if (id === "rgv-local") return "rgv-express" as const;
-  if (id === "houston-friday") return "houston-friday" as const;
+function deliveryMethodForOption(option: { id: string; mode?: string }) {
+  if (option.id === "rgv-local") return "rgv-express" as const;
+  if (option.id === "houston-friday") return "houston-friday" as const;
+  if (option.mode === "parcel") return "ground" as const;
   return "freight" as const;
 }
 
@@ -324,7 +325,7 @@ export function CheckoutShippingMethodStep({
         const cheapest = [...quoted].sort((a, b) => a.price - b.price)[0] || null;
         const selected = local || cheapest;
         setSelectedShippingOption(selected);
-        setDeliveryMethod(selected ? deliveryMethodForOption(selected.id) : "ground");
+        setDeliveryMethod(selected ? deliveryMethodForOption(selected) : "ground");
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") return;
         if (requestId !== requestRef.current) return;
@@ -406,7 +407,7 @@ export function CheckoutShippingMethodStep({
       autoCountRef.current = manual ? 0 : autoCountRef.current + 1;
       if (manual) requoteLockRef.current = null;
       setSelectedShippingOption(next);
-      setDeliveryMethod(deliveryMethodForOption(next.id));
+      setDeliveryMethod(deliveryMethodForOption(next));
       setPriceUpdated(decision.priceUpdated ? next.price : null);
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
@@ -616,7 +617,7 @@ export function CheckoutShippingMethodStep({
                       setPriceUpdated(null);
                       setRequoteFailed(false);
                       setSelectedShippingOption(method);
-                      setDeliveryMethod(deliveryMethodForOption(method.id));
+                      setDeliveryMethod(deliveryMethodForOption(method));
                     }}
                     className="mt-1 h-4 w-4 text-sky-600 focus:ring-sky-500"
                   />
@@ -641,7 +642,7 @@ export function CheckoutShippingMethodStep({
                             </span>
                           )}
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
-                            {method.mode === "local" ? "Local" : method.mode}
+                            {method.mode === "local" ? "Local" : method.mode === "parcel" ? "Ground" : method.mode}
                           </span>
                           {"cheapest" in method && method.cheapest && (
                             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">

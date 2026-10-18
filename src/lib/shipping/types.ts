@@ -12,7 +12,7 @@ export interface ShippingQuoteLine {
 export interface ShippingOption {
   id: string;
   provider: "warp" | "plastipac";
-  mode: "LTL" | "truckload" | "local";
+  mode: "LTL" | "truckload" | "local" | "parcel";
   serviceName: string;
   description: string;
   price: number;

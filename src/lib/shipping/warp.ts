@@ -61,6 +61,75 @@ function warpProviderMessage(status: number, raw: string): string {
   return text.slice(0, 500) || "request rejected";
 }
 
+export function usesWarpParcel(freight: Pick<ShipmentFreight, "boxes" | "pieces">): boolean {
+  const boxes = Math.floor(Number(freight.boxes) || 0);
+  if (boxes < 1 || boxes >= 16) return false;
+  if (freight.pieces.length === 0) return false;
+  return freight.pieces.every((piece) => piece.packaging === "box");
+}
+
+/** Warp list item. Cartons use packaging "carton"; pallet tiers use "pallet". */
+export function warpListItem(piece: FreightPiece): {
+  name: string;
+  length: number;
+  width: number;
+  height: number;
+  sizeUnit: "IN";
+  totalWeight: number;
+  weightUnit: "lbs";
+  quantity: number;
+  packaging: "carton" | "pallet";
+  stackable: false;
+} {
+  const quantity = Math.max(1, wholeNumber(piece.quantity));
+  const lineWeight = finiteNumber(piece.weightLbs);
+  const totalWeight = quantity > 1 ? Math.round((lineWeight / quantity) * 10) / 10 : lineWeight;
+  return {
+    name: "Stretch film",
+    length: finiteNumber(piece.lengthIn),
+    width: finiteNumber(piece.widthIn),
+    height: finiteNumber(piece.heightIn),
+    sizeUnit: "IN",
+    totalWeight,
+    weightUnit: "lbs",
+    quantity,
+    packaging: piece.packaging === "box" ? "carton" : "pallet",
+    stackable: false,
+  };
+}
+
+export function warpFreightQuoteBody(input: {
+  pickupDate: string;
+  originZip: string;
+  destinationZip: string;
+  freight: ShipmentFreight;
+  shipmentType: "PARCEL" | "LTL" | "FTL";
+  vehicleCode?: string;
+}): Record<string, unknown> {
+  const pieces = input.freight.pieces.length
+    ? input.freight.pieces
+    : [
+        {
+          lengthIn: input.freight.lengthIn,
+          widthIn: input.freight.widthIn,
+          heightIn: input.freight.heightIn,
+          weightLbs: input.freight.weightLbs,
+          quantity: input.freight.palletCount,
+          packaging: "pallet" as const,
+          dimensionLabel: "",
+          weightLabel: "",
+        },
+      ];
+  return {
+    pickupDate: input.pickupDate,
+    pickupInfo: { zipcode: input.originZip },
+    deliveryInfo: { zipcode: input.destinationZip },
+    shipmentType: input.shipmentType,
+    ...(input.vehicleCode ? { vehicleType: { code: input.vehicleCode } } : {}),
+    listItems: pieces.map((piece) => warpListItem(piece)),
+  };
+}
+
 function nextPickupDate(): string {
   const date = new Date();
   date.setDate(date.getDate() + 1);
@@ -93,43 +162,16 @@ async function quoteVehicle(input: {
         apikey: input.apiKey,
       },
       signal: controller.signal,
-      body: JSON.stringify({
-        pickupDate: nextPickupDate(),
-        pickupInfo: { zipcode: input.originZip },
-        deliveryInfo: { zipcode: input.destinationZip },
-        shipmentType: input.vehicle.shipmentType,
-        vehicleType: { code: input.vehicle.code },
-        listItems: (input.freight.pieces?.length
-          ? input.freight.pieces
-          : [
-              {
-                lengthIn: input.freight.lengthIn,
-                widthIn: input.freight.widthIn,
-                heightIn: input.freight.heightIn,
-                weightLbs: input.freight.weightLbs,
-                quantity: input.freight.palletCount,
-                packaging: "pallet" as const,
-              },
-            ]
-        ).map((piece) => {
-          const quantity = Math.max(1, wholeNumber(piece.quantity));
-          const lineWeight = finiteNumber(piece.weightLbs);
-          const totalWeight =
-            quantity > 1 ? Math.round((lineWeight / quantity) * 10) / 10 : lineWeight;
-          return {
-            name: "Stretch film",
-            length: finiteNumber(piece.lengthIn),
-            width: finiteNumber(piece.widthIn),
-            height: finiteNumber(piece.heightIn),
-            sizeUnit: "IN",
-            totalWeight,
-            weightUnit: "lbs",
-            quantity,
-            packaging: piece.packaging,
-            stackable: false,
-          };
-        }),
-      }),
+      body: JSON.stringify(
+        warpFreightQuoteBody({
+          pickupDate: nextPickupDate(),
+          originZip: input.originZip,
+          destinationZip: input.destinationZip,
+          freight: input.freight,
+          shipmentType: input.vehicle.shipmentType as "LTL" | "FTL",
+          vehicleCode: input.vehicle.code,
+        })
+      ),
     });
 
     if (response.status === 401 || response.status === 403) {
@@ -181,6 +223,80 @@ async function quoteVehicle(input: {
     }
     const detail = error instanceof Error ? redactSecrets(error.message) : "request failed";
     throw new WarpQuoteError("unavailable", undefined, detail);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** One Warp quote with shipmentType PARCEL and one carton per box. */
+export async function quoteWarpParcel(input: {
+  originZip: string;
+  destinationZip: string;
+  freight: ShipmentFreight;
+}): Promise<ShippingOption | null> {
+  const { baseUrl, apiKey } = getWarpConfig();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), QUOTE_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${baseUrl}/freights/quote`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        apikey: apiKey,
+      },
+      signal: controller.signal,
+      body: JSON.stringify(
+        warpFreightQuoteBody({
+          pickupDate: nextPickupDate(),
+          originZip: input.originZip,
+          destinationZip: input.destinationZip,
+          freight: input.freight,
+          shipmentType: "PARCEL",
+        })
+      ),
+    });
+    if (response.status === 401 || response.status === 403) {
+      const raw = await response.text();
+      throw new WarpQuoteError("provider", response.status, warpProviderMessage(response.status, raw));
+    }
+    if (!response.ok) {
+      await response.text();
+      return null;
+    }
+    const body = (await response.json()) as {
+      quote_id?: string;
+      price?: { amount?: number };
+      transit_time?: number;
+      expiration_time_utc?: number;
+      status?: string;
+    };
+    if (body.status && body.status !== "ACCEPT") return null;
+    const amount = Number(body.price?.amount);
+    const quoteId = String(body.quote_id || "");
+    if (!quoteId || !Number.isFinite(amount) || amount <= 0) return null;
+    const expiresAt =
+      body.expiration_time_utc && Number(body.expiration_time_utc) > 0
+        ? new Date(Number(body.expiration_time_utc) * 1000).toISOString()
+        : new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    return {
+      id: quoteId,
+      provider: "warp",
+      mode: "parcel",
+      serviceName: "Parcel",
+      description: "Small parcel shipment for individual cartons.",
+      price: applyMarkup(amount),
+      carrierPrice: amount,
+      transitDays: Math.max(1, Math.round(Number(body.transit_time) || 3)),
+      expiresAt,
+      destinationZip: input.destinationZip,
+      carrierName: "Warp",
+      carrierKey: "warp",
+      serviceLevel: "PARCEL",
+    };
+  } catch (error) {
+    if (error instanceof WarpQuoteError) throw error;
+    if (error instanceof Error && error.name === "AbortError") return null;
+    return null;
   } finally {
     clearTimeout(timer);
   }
