@@ -74,6 +74,8 @@ export interface ProductWithVariants
   width_inches?: string;
   gauge?: number | null;
   length_feet?: number;
+  palletDimensions?: string;
+  pallet_dimensions?: string;
   core_type?: string;
   fullPalletRolls?: number;
   palletLayers?: number;

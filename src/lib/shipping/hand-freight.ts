@@ -110,3 +110,81 @@ function roundInches(value: number): number {
 function formatInches(value: number): string {
   return Number.isInteger(value) ? String(value) : String(roundInches(value));
 }
+
+/** Deck added under the 16-box and 32-box stacks on the product specs matrix. */
+export const HAND_MATRIX_PALLET_BASE_IN = 10;
+
+function parseStoredPalletInches(value: string | null | undefined): {
+  lengthIn: number;
+  widthIn: number;
+  heightIn: number;
+} | null {
+  const match = String(value || "").match(
+    /(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/i
+  );
+  if (!match) return null;
+  const lengthIn = Number(match[1]);
+  const widthIn = Number(match[2]);
+  const heightIn = Number(match[3]);
+  if (lengthIn <= 0 || widthIn <= 0 || heightIn <= 0) return null;
+  return { lengthIn, widthIn, heightIn };
+}
+
+/**
+ * Specs-table sizes. One box stays a carton. Pallet tiers add a 10 in deck.
+ * The 64-box height is products.pallet_dimensions when that text is set.
+ */
+export function handMatrixDimensions(
+  boxes: number,
+  palletDimensions?: string | null
+): { lengthIn: number; widthIn: number; heightIn: number } {
+  const count = Math.max(0, Math.floor(Number(boxes) || 0));
+  if (count >= 64) {
+    return parseStoredPalletInches(palletDimensions) ?? { lengthIn: 48, widthIn: 48, heightIn: 78 };
+  }
+  if (count >= 32) {
+    return { lengthIn: 48, widthIn: 48, heightIn: roundInches(39 + HAND_MATRIX_PALLET_BASE_IN) };
+  }
+  if (count >= 16) {
+    return { lengthIn: 48, widthIn: 48, heightIn: roundInches(HAND_LAYER_HEIGHT_IN + HAND_MATRIX_PALLET_BASE_IN) };
+  }
+  return { lengthIn: HAND_BOX_EDGE_IN, widthIn: HAND_BOX_EDGE_IN, heightIn: HAND_LAYER_HEIGHT_IN };
+}
+
+/** 1 box uses box_weight_lbs. 16, 32, and 64 boxes are fractions of pallet_weight_lbs. */
+export function handMatrixWeightLbs(
+  boxes: number,
+  boxWeightLbs: number | null,
+  palletWeightLbs: number | null
+): number | null {
+  const count = Math.max(0, Math.floor(Number(boxes) || 0));
+  const box = Number(boxWeightLbs);
+  const pallet = Number(palletWeightLbs);
+  const boxOk = Number.isFinite(box) && box > 0;
+  const palletOk = Number.isFinite(pallet) && pallet > 0;
+  if (count >= 64) return palletOk ? Math.round(pallet * 100) / 100 : null;
+  if (count >= 32) return palletOk ? Math.round((pallet / 2) * 100) / 100 : null;
+  if (count >= 16) return palletOk ? Math.round((pallet / 4) * 100) / 100 : null;
+  if (count >= 1) return boxOk ? Math.round(box * count * 100) / 100 : null;
+  return null;
+}
+
+export function formatHandMatrixWeight(weightLbs: number | null): string {
+  if (weightLbs == null || !Number.isFinite(weightLbs) || weightLbs <= 0) return "—";
+  return `${weightLbs.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} lbs`;
+}
+
+export function formatHandMatrixDimensions(unit: {
+  lengthIn: number;
+  widthIn: number;
+  heightIn: number;
+}): string {
+  const height = unit.heightIn.toLocaleString("en-US", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+  return `${formatInches(unit.widthIn)}" W x ${formatInches(unit.lengthIn)}" L x ${height}" H`;
+}

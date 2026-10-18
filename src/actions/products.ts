@@ -638,6 +638,8 @@ function formatProduct(raw: any): ProductWithVariants {
     boxesPerFullPallet: palletizing.boxesPerFullPallet,
     palletizingSummary: palletizing.packOutSummary,
     palletizingFamily: palletizing.familyLabel,
+    palletDimensions: String(raw.pallet_dimensions || raw.palletDimensions || ""),
+    pallet_dimensions: String(raw.pallet_dimensions || raw.palletDimensions || ""),
     partNumber: raw.part_number || raw.partNumber || null,
     stockQuantity: Number(raw.stock_quantity ?? raw.stockQuantity ?? 0),
     isSoldOut: CATALOG_SOLD_OUT || raw.is_sold_out === true || raw.isSoldOut === true,

@@ -14,7 +14,11 @@ import { packageTotalWeightLbs } from "@/lib/package-weight";
 import {
   formatFreightDimensions,
   formatFreightWeightLabel,
+  formatHandMatrixDimensions,
+  formatHandMatrixWeight,
   handHandlingUnit,
+  handMatrixDimensions,
+  handMatrixWeightLbs,
   machineHandlingUnit,
 } from "@/lib/shipping/hand-freight";
 import { buildMachineFilmSelectorTiers, formatBoxRollLabel, isMachineFilm } from "@/lib/products";
@@ -41,6 +45,8 @@ interface SpecsTableProps {
     gauge?: number | null;
     length_feet?: number | null;
     lengthFeet?: number | null;
+    palletDimensions?: string | null;
+    pallet_dimensions?: string | null;
     filmType?: string | null;
     packageOptions?: Array<{
       rolls: number;
@@ -217,9 +223,23 @@ export function SpecsTable({ variants, product }: SpecsTableProps) {
                   gauge: v?.gauge,
                   lengthFeet: v?.lengthFeet,
                 });
+                const matrixWeight = machine
+                  ? null
+                  : handMatrixWeightLbs(boxes, v?.boxWeightLbs ?? null, v?.palletWeightLbs ?? null);
                 const unit = machine
                   ? machineHandlingUnit(Number(rolls) || 0, Number(v?.widthInches) || 0)
                   : handHandlingUnit(boxes);
+                const matrixDimensions = machine
+                  ? null
+                  : handMatrixDimensions(
+                      boxes,
+                      product?.palletDimensions || product?.pallet_dimensions
+                    );
+                const weightLabel = machine
+                  ? gross == null
+                    ? "—"
+                    : formatFreightWeightLabel(gross, unit)
+                  : formatHandMatrixWeight(matrixWeight ?? gross);
                 return (
                   <TableRow
                     key={v?.id || v?.sku || index}
@@ -241,12 +261,10 @@ export function SpecsTable({ variants, product }: SpecsTableProps) {
                       {safeLocaleNumber(v?.lengthFeet, " ft")}
                     </TableCell>
                     <TableCell className="text-slate-700 font-sans">
-                      {formatFreightDimensions(unit)}
+                      {matrixDimensions ? formatHandMatrixDimensions(matrixDimensions) : formatFreightDimensions(unit)}
                     </TableCell>
                     <TableCell className="text-slate-600 font-sans">
-                      {gross == null
-                        ? "—"
-                        : formatFreightWeightLabel(gross, unit)}
+                      {weightLabel}
                     </TableCell>
                     <TableCell className="text-slate-600 font-sans font-medium">
                       {rolls != null ? `${rolls} rolls` : "—"}
