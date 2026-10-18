@@ -172,7 +172,7 @@ function ceilPositive(value: number, kind: "weight" | "dimensions"): number {
       "Pallet dimensions are missing, so shipping can't be calculated yet."
     );
   }
-  return Math.ceil(value);
+  return Math.round(value * 10) / 10;
 }
 
 export function marketItemsFromPieces(pieces: FreightPiece[]): MarketFreightItem[] {

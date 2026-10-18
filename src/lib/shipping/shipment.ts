@@ -1,8 +1,15 @@
 import { createServerClient } from "@/lib/supabase/server";
-import { packageTotalWeightLbs, packHandShippingUnits } from "@/lib/package-weight";
-import { groupLinesBySku, handTierName } from "@/lib/shipping/catalog-freight";
-import { LOOSE_BOX_MODE, resolveFullPalletHeight, tierInchesFromFullHeight } from "@/lib/shipping/tier-height";
-import { formatFreightDimensions, formatFreightWeightLabel, handHandlingUnit } from "@/lib/shipping/hand-freight";
+import { packageTotalWeightLbs } from "@/lib/package-weight";
+import { groupLinesBySku } from "@/lib/shipping/catalog-freight";
+import { resolveFullPalletHeight, tierInchesFromFullHeight } from "@/lib/shipping/tier-height";
+import {
+  formatFreightDimensions,
+  formatFreightWeightLabel,
+  formatHandMatrixDimensions,
+  formatHandMatrixWeight,
+  handMatrixDimensions,
+  handMatrixWeightLbs,
+} from "@/lib/shipping/hand-freight";
 import { ShipmentDataError } from "@/lib/shipping/shipment-error";
 import type { FreightPiece, ShipmentFreight, ShippingQuoteLine } from "@/lib/shipping/types";
 
@@ -238,30 +245,6 @@ export function shipmentFreightFromCatalog(
 
     const lineBoxes = packageBoxes * quantity;
     const lineRolls = packageRolls * quantity;
-    const packed =
-      application === "machine"
-        ? null
-        : packHandShippingUnits({
-            boxes: lineBoxes,
-            boxWeightLbs,
-            palletWeightLbs,
-          }) ??
-          (unitWeight != null && packageBoxes > 0
-            ? [
-                {
-                  boxes: packageBoxes,
-                  quantity,
-                  weightLbs: Math.round(unitWeight * quantity * 100) / 100,
-                  tier: (packageBoxes >= 64
-                    ? "full"
-                    : packageBoxes >= 32
-                      ? "half"
-                      : packageBoxes >= 16
-                        ? "layer"
-                        : "loose") as "full" | "half" | "layer" | "loose",
-                },
-              ]
-            : null);
     const productLabel = product?.slug || row?.sku || "product";
     const fullHeight = resolveFullPalletHeight({
       palletDimensions: product?.pallet_dimensions,
@@ -269,65 +252,34 @@ export function shipmentFreightFromCatalog(
       application,
       widthInches: product?.width_inches,
     });
-    if (packed) {
-      for (const part of packed) {
-        const tier = handTierName(part.tier);
-        const inches = fullHeight
-          ? tierInchesFromFullHeight({
-              fullHeightIn: fullHeight.heightIn,
-              tier,
-              looseBoxes: part.tier === "loose" ? part.boxes : 1,
-              box: product
-                ? {
-                    lengthIn: product.box_length_in ?? null,
-                    widthIn: product.box_width_in ?? null,
-                    heightIn: product.box_height_in ?? null,
-                  }
-                : null,
-            })
-          : null;
-        if (!inches) {
-          throw new ShipmentDataError(
-            "missing_dims",
-            `MISSING_DIMS: ${productLabel} ${tier} has no full-pallet height. products.pallet_dimensions needs LENGTH x WIDTH x HEIGHT.`
-          );
-        }
-        const loosePallet = part.tier === "loose" && LOOSE_BOX_MODE === "pallet";
-        const pieceWeight = part.weightLbs;
-        if (!(pieceWeight > 0)) {
-          throw new ShipmentDataError(
-            "missing_weight",
-            `MISSING_WEIGHT: ${productLabel} ${tier} has no package weight.`
-          );
-        }
-        const pieceQuantity = loosePallet ? 1 : part.tier === "loose" || part.tier === "full" ? part.quantity : 1;
-        const packaging = part.tier === "full" || part.tier === "half" || loosePallet ? "pallet" : "box";
-        const shownBoxes =
-          part.tier === "loose"
-            ? part.boxes
-            : part.tier === "full"
-              ? 64 * part.quantity
-              : part.tier === "half"
-                ? 32
-                : 16;
-        pieces.push({
-          lengthIn: inches.lengthIn,
-          widthIn: inches.widthIn,
-          heightIn: inches.heightIn,
-          weightLbs: pieceWeight,
-          quantity: pieceQuantity,
-          packaging,
-          dimensionLabel: formatFreightDimensions(inches),
-          weightLabel: formatFreightWeightLabel(pieceWeight, handHandlingUnit(shownBoxes)),
-        });
-        weightLbs += pieceWeight;
-        palletCount += packaging === "pallet" ? pieceQuantity : 0;
+    if (application !== "machine") {
+      const perPackage =
+        handMatrixWeightLbs(packageBoxes, boxWeightLbs, palletWeightLbs) ??
+        (packageBoxes > 0 ? unitWeight : null);
+      if (perPackage == null || !(perPackage > 0) || !(packageBoxes > 0)) {
+        throw new ShipmentDataError(
+          "missing_weight",
+          `MISSING_WEIGHT: ${productLabel} is missing box or pallet weight for its package tier. Fill product_variants.box_weight_lbs and product_variants.pallet_weight_lbs.`
+        );
       }
-    } else if (application !== "machine") {
-      throw new ShipmentDataError(
-        "missing_weight",
-        `MISSING_WEIGHT: ${productLabel} is missing box or pallet weight for its package tier. Fill product_variants.box_weight_lbs and product_variants.pallet_weight_lbs.`
-      );
+      const inches = handMatrixDimensions(packageBoxes, product?.pallet_dimensions);
+      const packaging = packageBoxes >= 16 ? ("pallet" as const) : ("box" as const);
+      const lineWeight = Math.round(perPackage * quantity * 100) / 100;
+      pieces.push({
+        lengthIn: inches.lengthIn,
+        widthIn: inches.widthIn,
+        heightIn: inches.heightIn,
+        weightLbs: lineWeight,
+        quantity,
+        packaging,
+        dimensionLabel: formatHandMatrixDimensions(inches),
+        weightLabel:
+          quantity > 1
+            ? `${formatHandMatrixWeight(perPackage)} × ${quantity}`
+            : formatHandMatrixWeight(perPackage),
+      });
+      weightLbs += lineWeight;
+      palletCount += packaging === "pallet" ? quantity : 0;
     } else {
       if (packageRolls !== 20 && packageRolls !== 40) {
         throw new ShipmentDataError(

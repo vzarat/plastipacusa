@@ -113,9 +113,10 @@ describe("market option carriers", () => {
   });
 
   it("rounds one piece up into a scalar body and refuses a zero weight", () => {
-    const items = marketItemsFromPieces([piece({ weightLbs: 100.1, lengthIn: 48.1 })]);
+    const items = marketItemsFromPieces([piece({ weightLbs: 100.1, lengthIn: 48.1, heightIn: 19.5 })]);
     assert.equal(items[0]?.weightLbsPerPallet, 101);
-    assert.equal(items[0]?.lengthIn, 49);
+    assert.equal(items[0]?.lengthIn, 48.1);
+    assert.equal(items[0]?.heightIn, 19.5);
     const body = marketOptionsBody({
       originZip: "78572",
       destinationZip: "77002",

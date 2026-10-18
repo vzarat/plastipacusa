@@ -65,7 +65,7 @@ describe("catalog freight", () => {
       new Map()
     );
     assert.equal(freight.pieces.length, 2);
-    assert.equal(freight.weightLbs, 2816.8);
+    assert.equal(freight.weightLbs, 2800.25);
   });
 
   it("uses a product's own full-pallet height and derives the other tiers", () => {
@@ -80,7 +80,7 @@ describe("catalog freight", () => {
       [halfRow],
       new Map()
     );
-    assert.equal(half.pieces[0]?.heightIn, 30);
+    assert.equal(half.pieces[0]?.heightIn, 49);
     const layerRow = variant("tall-layer", 16);
     layerRow.products = row.products;
     const layer = shipmentFreightFromCatalog(
@@ -88,7 +88,7 @@ describe("catalog freight", () => {
       [layerRow],
       new Map()
     );
-    assert.equal(layer.pieces[0]?.heightIn, 15);
+    assert.equal(layer.pieces[0]?.heightIn, 29.5);
   });
 
   it("names the product when a machine film has no height", () => {
