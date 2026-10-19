@@ -10,7 +10,7 @@ SET
 FROM (
   VALUES
     ('stretch-film-18-x-60-ga-x-1000ft', 18::numeric, 60::numeric, 1000::numeric, 6.15::numeric, 1416.88::numeric),
-    ('stretch-film-18-x-70-ga-x-1000ft', 18::numeric, 70::numeric, 1000::numeric, 6.88::numeric, 1783.0::numeric),
+    ('stretch-film-18-x-70-ga-x-1000ft', 18::numeric, 70::numeric, 1000::numeric, 6.88::numeric, 1789.82::numeric),
     ('stretch-film-18-x-80-ga-x-1000ft', 18::numeric, 80::numeric, 1000::numeric, 8.66::numeric, 2240.2::numeric),
     ('stretch-film-18-x-60-ga-x-1500ft', 18::numeric, 60::numeric, 1500::numeric, 7.61::numeric, 1973.00::numeric),
     ('stretch-film-18-x-70-ga-x-1500ft', 18::numeric, 70::numeric, 1500::numeric, 8.69::numeric, 2245.8::numeric),
@@ -39,7 +39,7 @@ FROM public.products AS p
 JOIN (
   VALUES
     ('stretch-film-18-x-60-ga-x-1000ft', 18::numeric, 60::numeric, 1000::numeric, 6.15::numeric, 21.68::numeric, 1416.88::numeric),
-    ('stretch-film-18-x-70-ga-x-1000ft', 18::numeric, 70::numeric, 1000::numeric, 6.88::numeric, 27.51::numeric, 1783.0::numeric),
+    ('stretch-film-18-x-70-ga-x-1000ft', 18::numeric, 70::numeric, 1000::numeric, 6.88::numeric, 27.51::numeric, 1789.82::numeric),
     ('stretch-film-18-x-80-ga-x-1000ft', 18::numeric, 80::numeric, 1000::numeric, 8.66::numeric, 34.65::numeric, 2240.2::numeric),
     ('stretch-film-18-x-60-ga-x-1500ft', 18::numeric, 60::numeric, 1500::numeric, 7.61::numeric, 30.37::numeric, 1973.00::numeric),
     ('stretch-film-18-x-70-ga-x-1500ft', 18::numeric, 70::numeric, 1500::numeric, 8.69::numeric, 34.74::numeric, 2245.8::numeric),
@@ -82,7 +82,7 @@ BEGIN
     JOIN (
       VALUES
         ('stretch-film-18-x-60-ga-x-1000ft', 18::numeric, 60::numeric, 1000::numeric, 6.15::numeric, 21.68::numeric, 1416.88::numeric),
-        ('stretch-film-18-x-70-ga-x-1000ft', 18::numeric, 70::numeric, 1000::numeric, 6.88::numeric, 27.51::numeric, 1783.0::numeric),
+        ('stretch-film-18-x-70-ga-x-1000ft', 18::numeric, 70::numeric, 1000::numeric, 6.88::numeric, 27.51::numeric, 1789.82::numeric),
         ('stretch-film-18-x-80-ga-x-1000ft', 18::numeric, 80::numeric, 1000::numeric, 8.66::numeric, 34.65::numeric, 2240.2::numeric),
         ('stretch-film-18-x-60-ga-x-1500ft', 18::numeric, 60::numeric, 1500::numeric, 7.61::numeric, 30.37::numeric, 1973.00::numeric),
         ('stretch-film-18-x-70-ga-x-1500ft', 18::numeric, 70::numeric, 1500::numeric, 8.69::numeric, 34.74::numeric, 2245.8::numeric),

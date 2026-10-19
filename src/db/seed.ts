@@ -599,7 +599,7 @@ async function seed() {
 
     const freightSpecs = [
       { slug: "stretch-film-18-x-60-ga-x-1000ft", gauge: 60, lengthFeet: 1000, roll: "6.15", box: "21.68", pallet: "1416.88" },
-      { slug: "stretch-film-18-x-70-ga-x-1000ft", gauge: 70, lengthFeet: 1000, roll: "6.88", box: "27.51", pallet: "1783.00" },
+      { slug: "stretch-film-18-x-70-ga-x-1000ft", gauge: 70, lengthFeet: 1000, roll: "6.88", box: "27.51", pallet: "1789.82" },
       { slug: "stretch-film-18-x-80-ga-x-1000ft", gauge: 80, lengthFeet: 1000, roll: "8.66", box: "34.65", pallet: "2240.20" },
       { slug: "stretch-film-18-x-60-ga-x-1500ft", gauge: 60, lengthFeet: 1500, roll: "7.61", box: "30.37", pallet: "1973.00" },
       { slug: "stretch-film-18-x-70-ga-x-1500ft", gauge: 70, lengthFeet: 1500, roll: "8.69", box: "34.74", pallet: "2245.80" },

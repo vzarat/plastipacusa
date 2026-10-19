@@ -205,7 +205,6 @@ export function SpecsTable({ variants, product }: SpecsTableProps) {
                 <TableHead>Dimensions</TableHead>
                 <TableHead>Total Weight</TableHead>
                 <TableHead>Total Rolls</TableHead>
-                <TableHead>Full Pallet</TableHead>
                 <TableHead className="text-right">Price (USD)</TableHead>
               </TableRow>
             </TableHeader>
@@ -279,11 +278,6 @@ export function SpecsTable({ variants, product }: SpecsTableProps) {
                     </TableCell>
                     <TableCell className="text-slate-600 font-sans font-medium">
                       {rolls != null ? `${rolls} rolls` : "—"}
-                    </TableCell>
-                    <TableCell className="text-slate-600 font-sans font-medium">
-                      {v?.rollsPerPallet != null
-                        ? `${v.rollsPerPallet} rolls`
-                        : "—"}
                     </TableCell>
                     <TableCell className="text-right font-sans font-black text-slate-900 text-sm">
                       {machine ? (
