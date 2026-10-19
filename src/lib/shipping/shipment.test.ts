@@ -142,8 +142,8 @@ describe("catalog shipment freight", () => {
       assert.equal(freight.pieces.length, 1, `${item.boxes} boxes`);
       assert.equal(freight.pieces[0]?.quantity, item.boxes);
       assert.equal(freight.pieces[0]?.packaging, "box");
-      assert.equal(freight.pieces[0]?.lengthIn, 12);
-      assert.equal(freight.pieces[0]?.widthIn, 12);
+      assert.equal(freight.pieces[0]?.lengthIn, 11);
+      assert.equal(freight.pieces[0]?.widthIn, 11);
       assert.equal(freight.pieces[0]?.heightIn, 19.5);
       assert.equal(freight.weightLbs, item.weight);
     }
@@ -155,8 +155,8 @@ describe("catalog shipment freight", () => {
     assert.equal(mixed.pieces.length, 2);
     assert.equal(mixed.pieces[0]?.heightIn, 78);
     assert.equal(mixed.pieces[0]?.weightLbs, 2240.2);
-    assert.equal(mixed.pieces[1]?.lengthIn, 12);
-    assert.equal(mixed.pieces[1]?.widthIn, 12);
+    assert.equal(mixed.pieces[1]?.lengthIn, 11);
+    assert.equal(mixed.pieces[1]?.widthIn, 11);
     assert.equal(mixed.pieces[1]?.heightIn, 19.5);
     assert.equal(mixed.pieces[1]?.quantity, 5);
     assert.equal(mixed.pieces[1]?.weightLbs, 173.25);
@@ -349,7 +349,7 @@ describe("catalog shipment freight", () => {
     }
   });
 
-  it("sends a single box as 12 x 12 x 19.5 and pallet tiers with a 10 in deck", () => {
+  it("sends a single box as 11 x 11 x 19.5 and pallet tiers with a 10 in deck", () => {
     const product = {
       slug: "stretch-film-15-x-40-ga-x-1500ft",
       application: "hand",
@@ -378,8 +378,8 @@ describe("catalog shipment freight", () => {
         new Map()
       );
     const one = quote(1);
-    assert.equal(one.pieces[0]?.lengthIn, 12);
-    assert.equal(one.pieces[0]?.widthIn, 12);
+    assert.equal(one.pieces[0]?.lengthIn, 11);
+    assert.equal(one.pieces[0]?.widthIn, 11);
     assert.equal(one.pieces[0]?.heightIn, 16.5);
     assert.equal(one.pieces[0]?.weightLbs, 18);
     assert.equal(one.pieces[0]?.packaging, "box");
@@ -395,8 +395,8 @@ describe("catalog shipment freight", () => {
     assert.equal(full.pieces[0]?.heightIn, 78);
     assert.equal(full.pieces[0]?.weightLbs, 1175.74);
     const sent = marketItemsFromPieces(one.pieces)[0];
-    assert.equal(sent?.lengthIn, 12);
-    assert.equal(sent?.widthIn, 12);
+    assert.equal(sent?.lengthIn, 11);
+    assert.equal(sent?.widthIn, 11);
     assert.equal(sent?.heightIn, 16.5);
     assert.equal(sent?.weightLbsPerPallet, 18);
     const layerSent = marketItemsFromPieces(layer.pieces)[0];

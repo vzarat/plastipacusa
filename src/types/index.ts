@@ -22,6 +22,8 @@ export interface ProductVariant extends Omit<
   rollWeightLbs?: number | null;
   boxWeightLbs?: number | null;
   palletWeightLbs?: number | null;
+  /** Stored carton label from product_variants.dimensions. Used for the 1-box matrix row. */
+  dimensions?: string | null;
 }
 
 export interface PackageOption {

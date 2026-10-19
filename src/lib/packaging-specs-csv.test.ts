@@ -54,11 +54,11 @@ describe("packaging specs csv", () => {
     assert.equal(header.split(",").length, PACKAGING_SPECS_CSV_HEADERS.length);
     assert.equal(csv.split("\r\n").length, 2);
     assert.match(row, /18\.00/);
-    assert.match(row, /309\.9/);
-    assert.match(row, /597\.8/);
+    assert.match(row, /317\.2/);
+    assert.match(row, /605\.2/);
     assert.match(row, /1173\.5/);
-    assert.match(row, /22\.05/);
-    assert.match(row, /12 x 12 x 19\.5/);
+    assert.match(row, /29\.18/);
+    assert.match(row, /11 x 11 x 19\.5/);
     assert.match(row, /48 x 48 x 78/);
     assert.match(row, /1356\.80/);
     assert.match(row, /2\.56/);

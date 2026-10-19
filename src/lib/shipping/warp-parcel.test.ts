@@ -6,13 +6,13 @@ import { usesWarpParcel, warpFreightQuoteBody } from "./warp";
 
 function carton(quantity: number, weightLbs: number): FreightPiece {
   return {
-    lengthIn: 12,
-    widthIn: 12,
+    lengthIn: 11,
+    widthIn: 11,
     heightIn: 19.5,
     weightLbs,
     quantity,
     packaging: "box",
-    dimensionLabel: "12\" W x 12\" L x 19.5\" H",
+    dimensionLabel: "11\" W x 11\" L x 19.5\" H",
     weightLabel: `${weightLbs.toFixed(2)} lbs`,
   };
 }
@@ -57,7 +57,7 @@ describe("Warp carton versus pallet payload", () => {
     assert.equal(fel(64)?.[0]?.weightLbs, 1637.5);
   });
 
-  it("quotes fewer than 16 boxes as PARCEL cartons at 12 x 12 x 19.5 and 18 lb", () => {
+  it("quotes fewer than 16 boxes as PARCEL cartons at 11 x 11 x 19.5 and 18 lb", () => {
     const shipment = freight([carton(1, 18)], 1);
     assert.equal(usesWarpParcel(shipment), true);
     const body = warpFreightQuoteBody({
@@ -71,8 +71,8 @@ describe("Warp carton versus pallet payload", () => {
     assert.equal("vehicleType" in body, false);
     const item = (body.listItems as Array<Record<string, unknown>>)[0];
     assert.equal(item?.packaging, "carton");
-    assert.equal(item?.length, 12);
-    assert.equal(item?.width, 12);
+    assert.equal(item?.length, 11);
+    assert.equal(item?.width, 11);
     assert.equal(item?.height, 19.5);
     assert.equal(item?.totalWeight, 18);
     assert.equal(item?.quantity, 1);

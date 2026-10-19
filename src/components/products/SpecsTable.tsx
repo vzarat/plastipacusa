@@ -18,6 +18,7 @@ import {
   formatHandMatrixWeight,
   handHandlingUnit,
   handMatrixDimensions,
+  storedOneBoxDimensions,
   handMatrixWeightLbs,
   machineHandlingUnit,
 } from "@/lib/shipping/hand-freight";
@@ -117,6 +118,10 @@ function handMatrixRows(
       rollWeightLbs: match?.rollWeightLbs || boxVariant?.rollWeightLbs || rollWeight,
       boxWeightLbs: boxWeight || match?.boxWeightLbs || boxVariant?.boxWeightLbs,
       palletWeightLbs: match?.palletWeightLbs || boxVariant?.palletWeightLbs || palletWeight,
+      dimensions:
+        tier.boxes === 1
+          ? match?.dimensions || boxVariant?.dimensions || null
+          : null,
       widthInches: String(
         match?.widthInches ||
           product?.widthInches ||
@@ -234,11 +239,15 @@ export function SpecsTable({ variants, product }: SpecsTableProps) {
                 const unit = machine
                   ? machineHandlingUnit(Number(rolls) || 0, Number(v?.widthInches) || 0)
                   : handHandlingUnit(boxes);
+                const storedDimensions = machine
+                  ? null
+                  : storedOneBoxDimensions(boxes, (v as { dimensions?: string | null }).dimensions);
                 const matrixDimensions = machine
                   ? null
                   : handMatrixDimensions(
                       boxes,
-                      product?.palletDimensions || product?.pallet_dimensions
+                      product?.palletDimensions || product?.pallet_dimensions,
+                      Number(v?.widthInches) || Number(product?.widthInches ?? product?.width_inches) || null
                     );
                 const weightLabel = machine
                   ? gross == null
@@ -271,7 +280,8 @@ export function SpecsTable({ variants, product }: SpecsTableProps) {
                       {safeLocaleNumber(v?.lengthFeet, " ft")}
                     </TableCell>
                     <TableCell className="text-slate-700 font-sans">
-                      {matrixDimensions ? formatHandMatrixDimensions(matrixDimensions) : formatFreightDimensions(unit)}
+                      {storedDimensions ||
+                        (matrixDimensions ? formatHandMatrixDimensions(matrixDimensions) : formatFreightDimensions(unit))}
                     </TableCell>
                     <TableCell className="text-slate-600 font-sans">
                       {weightLabel}

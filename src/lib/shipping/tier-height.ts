@@ -21,7 +21,7 @@ export const TIER_HEIGHT = {
   layerOfFull: 1 / 4,
 } as const;
 
-/** Single-box size shown on the product specs table (12 x 12 x 19.5). */
+/** Single-box size shown on the product specs table (11 x 11 x 19.5). */
 export const SPECS_BOX_INCHES = HAND_FREIGHT_DIMENSIONS_IN.loose;
 
 export interface FullPalletHeight {

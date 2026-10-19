@@ -2,7 +2,7 @@ import { formatPackageWeightLbs, formatPalletizedWeight, HAND_WOODEN_PALLET_LBS 
 
 /** One layer of 16 hand-film boxes on a 48 x 48 deck. Height follows 78 / 4 and 39 / 2. */
 const HAND_LAYER_HEIGHT_IN = 19.5;
-const HAND_BOX_EDGE_IN = 12;
+const HAND_BOX_EDGE_IN = 11;
 
 export const HAND_FREIGHT_DIMENSIONS_IN = {
   loose: { lengthIn: HAND_BOX_EDGE_IN, widthIn: HAND_BOX_EDGE_IN, heightIn: HAND_LAYER_HEIGHT_IN },
@@ -202,8 +202,8 @@ export function warpHandPieces(input: {
   if (left > 0) {
     if (!boxOk) return null;
     pieces.push({
-      lengthIn: 12,
-      widthIn: 12,
+      lengthIn: 11,
+      widthIn: 11,
       heightIn: handBoxHeightIn(input.widthInches),
       weightLbs: Math.round(boxWeight * left * 100) / 100,
       quantity: left,
@@ -238,7 +238,8 @@ function parseStoredPalletInches(value: string | null | undefined): {
  */
 export function handMatrixDimensions(
   boxes: number,
-  palletDimensions?: string | null
+  palletDimensions?: string | null,
+  widthInches?: number | null
 ): { lengthIn: number; widthIn: number; heightIn: number } {
   const count = Math.max(0, Math.floor(Number(boxes) || 0));
   if (count >= 64) {
@@ -250,7 +251,7 @@ export function handMatrixDimensions(
   if (count >= 16) {
     return { lengthIn: 48, widthIn: 48, heightIn: roundInches(HAND_LAYER_HEIGHT_IN + HAND_MATRIX_PALLET_BASE_IN) };
   }
-  return { lengthIn: HAND_BOX_EDGE_IN, widthIn: HAND_BOX_EDGE_IN, heightIn: HAND_LAYER_HEIGHT_IN };
+  return { lengthIn: HAND_BOX_EDGE_IN, widthIn: HAND_BOX_EDGE_IN, heightIn: handBoxHeightIn(widthInches) };
 }
 
 /** 1 box is box_weight_lbs. 16, 32, and 64 boxes add one 29.18 lb wooden pallet. */
@@ -281,6 +282,13 @@ export function formatHandMatrixWeight(weightLbs: number | null): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })} lbs`;
+}
+
+/** 1-box row uses the stored variant label. Other tiers keep the calculated pallet sizes. */
+export function storedOneBoxDimensions(boxes: number, dimensions: unknown): string | null {
+  if (Math.floor(Number(boxes) || 0) !== 1) return null;
+  const text = String(dimensions ?? "").trim();
+  return text || null;
 }
 
 export function formatHandMatrixDimensions(unit: {

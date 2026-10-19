@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_noStore as noStore } from "next/cache";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import {
   createServiceRoleClient,
@@ -320,6 +320,7 @@ function formatProduct(raw: any): ProductWithVariants {
         casePriceUsd: v.case_price_usd ? String(v.case_price_usd) : (v.casePriceUsd ? String(v.casePriceUsd) : null),
         palletPriceUsd: v.pallet_price_usd ? String(v.pallet_price_usd) : (v.palletPriceUsd ? String(v.palletPriceUsd) : null),
         stockStatus: String(v.stock_status || v.stockStatus || "in_stock"),
+        dimensions: firstText(v.dimensions, v.package_dimensions) || null,
         createdAt: v.created_at ? new Date(v.created_at) : new Date(),
       };
     })
@@ -777,6 +778,7 @@ export async function getProducts(
   applicationFilter?: "all" | "hand" | "machine",
   categoryFilter?: string
 ): Promise<ProductWithVariants[]> {
+  noStore();
   const supabase = await createServerClient();
 
   const matchesCategory = (p: ProductWithVariants, filter: string) => {
@@ -849,6 +851,7 @@ export async function getProducts(
  * Fetch a single product by slug joined with its parent category and product_variants
  */
 export async function getProductBySlug(slug: string): Promise<ProductWithVariants | null> {
+  noStore();
   const normalizedSlug = String(slug || "").toLowerCase();
   if (normalizedSlug.includes("50-ga") || normalizedSlug.includes("-50ga")) {
     return null;

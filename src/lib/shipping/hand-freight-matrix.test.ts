@@ -5,6 +5,7 @@ import {
   formatHandMatrixWeight,
   handMatrixDimensions,
   handMatrixWeightLbs,
+  storedOneBoxDimensions,
 } from "./hand-freight";
 
 describe("hand film specs matrix", () => {
@@ -13,7 +14,14 @@ describe("hand film specs matrix", () => {
     const layer = handMatrixDimensions(16);
     const half = handMatrixDimensions(32);
     const full = handMatrixDimensions(64, "48 x 48 x 66");
-    assert.equal(formatHandMatrixDimensions(box), '12" W x 12" L x 19.5" H');
+    assert.equal(formatHandMatrixDimensions(box), '11" W x 11" L x 19.5" H');
+    assert.equal(
+      storedOneBoxDimensions(1, '11" W x 11" L x 16.5" H'),
+      '11" W x 11" L x 16.5" H'
+    );
+    assert.equal(storedOneBoxDimensions(16, '11" W x 11" L x 16.5" H'), null);
+    assert.equal(formatHandMatrixDimensions(handMatrixDimensions(1, null, 15)), '11" W x 11" L x 16.5" H');
+    assert.equal(formatHandMatrixDimensions(handMatrixDimensions(1, null, 18)), '11" W x 11" L x 19.5" H');
     assert.equal(formatHandMatrixDimensions(layer), '48" W x 48" L x 29.5" H');
     assert.equal(formatHandMatrixDimensions(half), '48" W x 48" L x 49.0" H');
     assert.equal(formatHandMatrixDimensions(full), '48" W x 48" L x 66.0" H');
