@@ -25,7 +25,9 @@ const HOUSTON_HIGHLIGHTS = [
 ] as const;
 
 const SLIDE_ONE_BG =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_1.jpg";
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_1%20(1).jpg";
+const SLIDE_ONE_ROLLS =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/STRETCH_SLIDE_1.png";
 const HOUSTON_BG =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/Gemini_Generated_Image_2q84y2q84y2q84y2-artguru.jpeg";
 
@@ -165,7 +167,7 @@ export function Hero() {
         }, 4000);
       }}
     >
-      <div className="relative mx-auto min-h-[560px] w-full max-w-[1400px] overflow-hidden rounded-[28px] bg-[#031433] md:rounded-[32px] lg:h-[540px] lg:min-h-0">
+      <div className="relative mx-auto min-h-[560px] w-full max-w-[1400px] overflow-hidden rounded-[28px] bg-[#031433] md:rounded-[32px] lg:h-[640px] lg:min-h-0">
       <div className="pointer-events-none absolute inset-0">
         <div
           className={`absolute inset-0 transition-opacity duration-700 ease-out ${
@@ -181,7 +183,7 @@ export function Hero() {
             sizes="(max-width: 1400px) 100vw, 1400px"
             className="object-cover object-center"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-black/15 md:bg-gradient-to-r md:from-black/70 md:via-black/40 md:to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/45 to-transparent md:bg-gradient-to-r md:from-black/80 md:via-black/40 md:to-transparent" />
         </div>
         <div
           className={`absolute inset-0 z-0 transition-opacity duration-700 ease-out ${
@@ -230,17 +232,26 @@ export function Hero() {
               exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
               className="relative flex min-h-[560px] items-end overflow-hidden lg:absolute lg:inset-0 lg:min-h-0 lg:items-center"
             >
-              <motion.div variants={fadeUp} className="relative z-20 flex w-full max-w-[680px] flex-col px-5 pb-14 pt-16 text-left sm:px-8 md:px-10 lg:px-12 lg:py-10">
-                <div className="max-w-[36rem] space-y-4">
+              <div className="pointer-events-none absolute bottom-0 right-0 z-10 hidden h-[85%] w-[min(48%,560px)] md:block md:h-[95%]">
+                <Image
+                  src={SLIDE_ONE_ROLLS}
+                  alt=""
+                  fill
+                  sizes="(max-width: 1024px) 48vw, 560px"
+                  className="object-contain object-right object-bottom"
+                />
+              </div>
+              <motion.div variants={fadeUp} className="relative z-20 flex w-full max-w-[820px] flex-col px-5 pb-14 pt-16 text-left sm:px-8 md:max-w-[58%] md:px-10 lg:px-12 lg:py-10">
+                <div className="space-y-4">
                   <p className="inline-flex w-fit items-center rounded-full border border-blue-400/30 bg-blue-900/40 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
                     Stretch Film Manufacturer
                   </p>
-                  <h1 className="text-left text-4xl font-extrabold uppercase leading-[0.95] tracking-tight text-white sm:text-5xl lg:text-6xl">
+                  <h1 className="text-left font-teko text-5xl font-bold uppercase leading-none tracking-wide text-white sm:text-6xl md:text-7xl lg:text-8xl">
                     Order Bulk,
-                    <span className="mt-1 block bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
+                    <span className="block bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text font-bold text-transparent">
                       Save More
                     </span>
-                    <span className="mt-1 block">Wrap Better</span>
+                    <span className="block">Wrap Better</span>
                   </h1>
                   <p className="max-w-[28rem] text-base font-medium leading-snug text-gray-100 sm:text-lg">
                     <strong className="font-bold text-white">FREE DELIVERY</strong> in the area of{" "}

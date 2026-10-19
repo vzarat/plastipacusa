@@ -37,6 +37,7 @@ const config: Config = {
           "Arial",
           "sans-serif",
         ],
+        teko: ["var(--font-teko)", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",

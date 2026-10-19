@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  .font-teko {
+    font-family: var(--font-teko), sans-serif;
+  }
+}
+
 :root {
   --background: 0 0% 100%;
   --foreground: 222 47% 11%;

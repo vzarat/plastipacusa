@@ -1,7 +1,7 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import dynamic from "next/dynamic";
-import { Inter } from "next/font/google";
+import { Inter, Teko } from "next/font/google";
 import { Toaster } from "sonner";
 import { LanguageProvider } from "@/context/LanguageContext";
 import ClientPWAProvider from "@/components/providers/ClientPWAProvider";
@@ -25,6 +25,14 @@ const inter = Inter({
     "Arial",
     "sans-serif",
   ],
+});
+
+const teko = Teko({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  display: "swap",
+  variable: "--font-teko",
+  fallback: ["Arial Narrow", "Impact", "sans-serif"],
 });
 
 const CartDrawer = dynamic(() => import("@/components/layout/CartDrawer"));
@@ -115,7 +123,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`scroll-smooth ${inter.variable}`}>
+    <html lang="en" className={`scroll-smooth ${inter.variable} ${teko.variable}`}>
       <head>
         {/* Critical-path DNS / TLS warm-up for remote product media + API.
             Fonts: next/font self-hosts Inter and injects correct
