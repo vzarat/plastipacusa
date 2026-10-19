@@ -104,7 +104,7 @@ export function Hero() {
           alt=""
           width={559}
           height={455}
-          className="pointer-events-none absolute bottom-0 z-10 w-auto max-w-[42%] object-contain object-bottom md:right-2 md:h-[95%] md:max-h-[95%] lg:right-10 lg:h-auto lg:max-h-[88%] lg:max-w-[40%]"
+          className="pointer-events-none absolute bottom-0 z-10 w-auto object-contain object-bottom md:right-0 md:h-[96%] md:max-h-[96%] md:max-w-[52%] lg:right-10 lg:h-auto lg:max-h-[88%] lg:max-w-[40%]"
         />
 
         <div className="relative z-20 flex h-full max-w-[56%] flex-col justify-center px-6 py-8 text-left md:px-12 md:py-12 lg:max-w-[58%]">
