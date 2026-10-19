@@ -67,9 +67,6 @@ export function recommendProduct(profile: CustomerProfile): AssistantResult<Prod
   if (width !== 15 && width !== 18) {
     return { ok: false, error: 'Hand film in the catalog is 15" or 18" only.' };
   }
-  if (width === 15 && gauge === 80) {
-    return { ok: false, error: '15" × 80 GA is not in the active catalog. Choose 70 GA.' };
-  }
   return {
     ok: true,
     film: "hand",

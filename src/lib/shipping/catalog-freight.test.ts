@@ -65,7 +65,7 @@ describe("catalog freight", () => {
       new Map()
     );
     assert.equal(freight.pieces.length, 2);
-    assert.equal(freight.weightLbs, 2800);
+    assert.equal(freight.weightLbs, 2823.78);
   });
 
   it("uses a product's own full-pallet height and derives the other tiers", () => {

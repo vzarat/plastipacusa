@@ -177,7 +177,7 @@ function printRepoAudit() {
     ["stretch-film-18-x-70-ga-x-1500ft", 34.74, 2245.8],
     ["stretch-film-18-x-80-ga-x-1500ft", 39.07, 2522.3],
     ["stretch-film-15-x-40-ga-x-1500ft", 18, 1173.5],
-    ["stretch-film-15-x-60-ga-x-1000ft", 21.69, 1410.3],
+    ["stretch-film-15-x-60-ga-x-1000ft", 25.13, 1637.5],
     ["stretch-film-15-x-60-ga-x-1500ft", 25.13, 1630.5],
     ["stretch-film-15-x-70-ga-x-1500ft", 28.75, 1862],
     ["stretch-film-15-x-80-ga-x-1500ft", 32.36, 2093.3],

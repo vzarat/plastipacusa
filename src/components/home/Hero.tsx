@@ -169,7 +169,7 @@ export function Hero() {
         }, 4000);
       }}
     >
-      <div className="relative mx-auto h-[640px] w-full max-w-[1400px] overflow-hidden rounded-[28px] bg-[#031433] md:h-[480px] md:rounded-[32px] lg:h-[440px]">
+      <div className="relative mx-auto w-full max-w-[1400px] overflow-hidden rounded-[28px] bg-[#031433] md:rounded-[32px] lg:h-[440px]">
       <div className="pointer-events-none absolute inset-0">
         <div
           className={`absolute inset-0 transition-opacity duration-700 ease-out ${
@@ -241,7 +241,7 @@ export function Hero() {
         </div>
       </div>
 
-      <div className="relative z-10 h-full">
+      <div className="relative z-10 lg:h-full">
         <AnimatePresence mode="wait">
           {index === 0 ? (
             <motion.div
@@ -249,10 +249,10 @@ export function Hero() {
               initial="hidden"
               animate="show"
               exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
-              className="absolute inset-0 overflow-hidden"
+              className="relative flex flex-col overflow-hidden pb-12 lg:absolute lg:inset-0 lg:block lg:pb-0"
             >
               <div className="pointer-events-none absolute inset-y-0 left-0 z-[1] hidden w-[52%] backdrop-blur-[3px] lg:block" aria-hidden />
-              <motion.div variants={fadeRight} className="pointer-events-none absolute bottom-14 right-0 z-10 lg:bottom-0 lg:h-full lg:w-[58%]">
+              <motion.div variants={fadeRight} className="pointer-events-none relative z-10 order-3 mt-2 h-[180px] shrink-0 lg:absolute lg:bottom-0 lg:right-0 lg:order-none lg:mt-0 lg:h-full lg:w-[58%]">
                 <div className="absolute bottom-3 right-10 h-8 w-[68%] rounded-full bg-[#020B1F]/80 blur-2xl lg:bottom-6" aria-hidden />
                 <Image
                   src={FORCE_HAND_IMAGE}
@@ -261,7 +261,7 @@ export function Hero() {
                   height={560}
                   priority
                   sizes="(max-width: 1024px) 80vw, 720px"
-                  className="relative ml-auto h-[200px] w-auto max-w-[92%] object-contain object-right drop-shadow-[0_18px_28px_rgba(2,11,31,0.55)] lg:absolute lg:bottom-0 lg:right-0 lg:h-[118%] lg:max-w-none lg:translate-x-6 lg:translate-y-5"
+                  className="relative ml-auto h-[180px] w-auto max-w-[88%] object-contain object-right object-bottom drop-shadow-[0_18px_28px_rgba(2,11,31,0.55)] lg:absolute lg:bottom-0 lg:right-0 lg:h-[118%] lg:max-w-none lg:translate-x-6 lg:translate-y-5 lg:object-right"
                 />
               </motion.div>
               <motion.div
@@ -271,7 +271,7 @@ export function Hero() {
                     ? undefined
                     : { duration: 4.2, repeat: Infinity, ease: "easeInOut" }
                 }
-                className="absolute right-6 top-16 z-20 max-w-[240px] rounded-2xl border-[1.5px] border-sky-400/70 bg-white/10 px-4 py-3 text-left shadow-[0_8px_32px_rgba(2,11,31,0.35),0_0_24px_rgba(56,189,248,0.25),inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur-xl lg:top-8"
+                className="absolute right-6 top-16 z-20 hidden max-w-[240px] rounded-2xl border-[1.5px] border-sky-400/70 bg-white/10 px-4 py-3 text-left shadow-[0_8px_32px_rgba(2,11,31,0.35),0_0_24px_rgba(56,189,248,0.25),inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur-xl lg:block lg:top-8"
                 style={{ WebkitBackdropFilter: "blur(24px)" }}
               >
                 <p className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-sky-300">
@@ -292,7 +292,7 @@ export function Hero() {
                     ? undefined
                     : { duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.4 }
                 }
-                className="absolute bottom-14 right-6 z-20 max-w-[min(28rem,calc(100%-3rem))] rounded-2xl border-[1.5px] border-transparent bg-white/[0.12] px-4 py-3 shadow-[0_8px_32px_rgba(2,11,31,0.35),0_0_24px_rgba(56,189,248,0.25),inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur-xl [background-clip:padding-box,border-box] [background-image:linear-gradient(rgba(255,255,255,0.12),rgba(255,255,255,0.12)),linear-gradient(90deg,rgba(56,189,248,0.85),rgba(37,99,235,0.9))] [background-origin:border-box]"
+                className="absolute bottom-14 right-6 z-20 hidden max-w-[min(28rem,calc(100%-3rem))] rounded-2xl border-[1.5px] border-transparent bg-white/[0.12] px-4 py-3 shadow-[0_8px_32px_rgba(2,11,31,0.35),0_0_24px_rgba(56,189,248,0.25),inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur-xl [background-clip:padding-box,border-box] [background-image:linear-gradient(rgba(255,255,255,0.12),rgba(255,255,255,0.12)),linear-gradient(90deg,rgba(56,189,248,0.85),rgba(37,99,235,0.9))] [background-origin:border-box] lg:block"
                 style={{ WebkitBackdropFilter: "blur(24px)" }}
               >
                 <ul className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
@@ -306,8 +306,8 @@ export function Hero() {
                   )}
                 </ul>
               </motion.div>
-              <motion.div variants={fadeUp} className="relative z-20 flex h-full w-full max-w-[620px] flex-col justify-center px-5 py-5 pb-52 text-left sm:px-8 md:px-10 lg:w-[55%] lg:max-w-[620px] lg:px-12 lg:pb-5">
-                  <div className="max-w-[560px] space-y-2">
+              <motion.div variants={fadeUp} className="relative z-20 order-1 flex w-full max-w-[620px] flex-col px-5 pb-2 pt-5 text-left sm:px-8 md:px-10 lg:h-full lg:w-[55%] lg:max-w-[620px] lg:justify-center lg:px-12 lg:py-5">
+                  <div className="max-w-[560px] space-y-3">
                     <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-300">
                       <span className="h-1.5 w-1.5 rounded-full bg-sky-300" aria-hidden />
                       Serving the industry since 2008
@@ -359,6 +359,16 @@ export function Hero() {
                         </button>
                       </p>
                     </div>
+                    <ul className="flex flex-col gap-1.5 pt-1 lg:hidden">
+                      {["300%+ Pre-Stretch Yield", "Extreme Puncture Hold", "Factory Direct Pricing"].map(
+                        (label) => (
+                          <li key={label} className="inline-flex items-center gap-1.5 text-xs font-semibold text-white">
+                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                            {label}
+                          </li>
+                        )
+                      )}
+                    </ul>
                   </div>
                 </motion.div>
             </motion.div>
@@ -370,7 +380,7 @@ export function Hero() {
               initial="hidden"
               animate="show"
               exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
-              className="absolute inset-0 flex items-center overflow-hidden px-5 py-5 sm:px-8 md:px-10 lg:px-12"
+              className="relative flex items-center overflow-hidden px-5 pb-14 pt-6 sm:px-8 md:px-10 lg:absolute lg:inset-0 lg:py-5 lg:px-12"
             >
               <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-12 md:gap-6">
                 <motion.div
@@ -491,7 +501,7 @@ export function Hero() {
               initial="hidden"
               animate="show"
               exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
-              className="absolute inset-0 flex items-center overflow-hidden px-5 py-5 sm:px-8 md:px-10 lg:px-12"
+              className="relative flex items-center overflow-hidden px-5 pb-14 pt-6 sm:px-8 md:px-10 lg:absolute lg:inset-0 lg:py-5 lg:px-12"
             >
               <div className="relative z-20 mx-auto flex w-full max-w-7xl items-center md:h-full md:px-6 lg:px-8">
                 <motion.div variants={fadeUp} className="w-full max-w-xl space-y-2 text-left">

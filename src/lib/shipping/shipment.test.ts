@@ -104,27 +104,27 @@ describe("catalog shipment freight", () => {
     });
     const cases = [
       { name: "1 box", lines: [line("b1")], rows: [variant("b1", 1)], weight: 34.65 },
-      { name: "16 boxes", lines: [line("b16")], rows: [variant("b16", 16)], weight: 560 },
-      { name: "32 boxes", lines: [line("b32")], rows: [variant("b32", 32)], weight: 1120 },
-      { name: "64 boxes", lines: [line("b64")], rows: [variant("b64", 64)], weight: 2240 },
+      { name: "16 boxes", lines: [line("b16")], rows: [variant("b16", 16)], weight: 583.58 },
+      { name: "32 boxes", lines: [line("b32")], rows: [variant("b32", 32)], weight: 1137.98 },
+      { name: "64 boxes", lines: [line("b64")], rows: [variant("b64", 64)], weight: 2240.2 },
       {
         name: "16+16",
         lines: [line("a16"), line("b16")],
         rows: [variant("a16", 16), variant("b16", 16)],
-        weight: 1120,
+        weight: 1167.16,
       },
       {
         name: "64+16",
         lines: [line("b64"), line("b16")],
         rows: [variant("b64", 64), variant("b16", 16)],
-        weight: 2800,
+        weight: 2823.78,
       },
-      { name: "2x64", lines: [line("b64", 2)], rows: [variant("b64", 64)], weight: 4480 },
+      { name: "2x64", lines: [line("b64", 2)], rows: [variant("b64", 64)], weight: 4480.4 },
       {
         name: "loose plus a layer",
         lines: [line("b16"), line("b1", 3)],
         rows: [variant("b16", 16), variant("b1", 1)],
-        weight: 663.95,
+        weight: 687.53,
       },
     ];
     const loose = [
@@ -154,13 +154,13 @@ describe("catalog shipment freight", () => {
     );
     assert.equal(mixed.pieces.length, 2);
     assert.equal(mixed.pieces[0]?.heightIn, 78);
-    assert.equal(mixed.pieces[0]?.weightLbs, 2240);
+    assert.equal(mixed.pieces[0]?.weightLbs, 2240.2);
     assert.equal(mixed.pieces[1]?.lengthIn, 12);
     assert.equal(mixed.pieces[1]?.widthIn, 12);
     assert.equal(mixed.pieces[1]?.heightIn, 19.5);
     assert.equal(mixed.pieces[1]?.quantity, 5);
     assert.equal(mixed.pieces[1]?.weightLbs, 173.25);
-    assert.equal(mixed.weightLbs, 2413.25);
+    assert.equal(mixed.weightLbs, 2413.45);
 
     for (const item of cases) {
       const freight = shipmentFreightFromCatalog(item.lines, item.rows, new Map());
@@ -204,8 +204,8 @@ describe("catalog shipment freight", () => {
         palletWeightLbs: 1173.5,
       });
     assert.equal(matrix(1, 4), 18);
-    assert.equal(matrix(16, 64), 309.9);
-    assert.equal(matrix(32, 128), 597.8);
+    assert.equal(matrix(16, 64), 317.18);
+    assert.equal(matrix(32, 128), 605.18);
 
     const freight = shipmentFreightFromCatalog(
       [{ sku: "FST-1B", productSlug: "stretch-film-15-x-40-ga-x-1500ft", quantity: 1 }],
@@ -271,7 +271,7 @@ describe("catalog shipment freight", () => {
       ["stretch-film-18-x-70-ga-x-1500ft", "hand", 34.74, 8.69, 2245.8, 18],
       ["stretch-film-18-x-80-ga-x-1500ft", "hand", 39.07, 9.77, 2522.3, 18],
       ["stretch-film-15-x-40-ga-x-1500ft", "hand", 18, 4.5, 1173.5, 15],
-      ["stretch-film-15-x-60-ga-x-1000ft", "hand", 21.69, 5.42, 1410.3, 15],
+      ["stretch-film-15-x-60-ga-x-1000ft", "hand", 25.13, 5.42, 1637.5, 15],
       ["stretch-film-15-x-60-ga-x-1500ft", "hand", 25.13, 6.28, 1630.5, 15],
       ["stretch-film-15-x-70-ga-x-1500ft", "hand", 28.75, 7.19, 1862, 15],
       ["stretch-film-15-x-80-ga-x-1500ft", "hand", 32.36, 8.09, 2093.3, 15],
@@ -387,13 +387,13 @@ describe("catalog shipment freight", () => {
     assert.equal(layer.pieces[0]?.lengthIn, 48);
     assert.equal(layer.pieces[0]?.widthIn, 48);
     assert.equal(layer.pieces[0]?.heightIn, 29.5);
-    assert.equal(layer.pieces[0]?.weightLbs, 294);
+    assert.equal(layer.pieces[0]?.weightLbs, 317.18);
     const half = quote(32);
     assert.equal(half.pieces[0]?.heightIn, 39);
-    assert.equal(half.pieces[0]?.weightLbs, 588);
+    assert.equal(half.pieces[0]?.weightLbs, 605.18);
     const full = quote(64);
     assert.equal(full.pieces[0]?.heightIn, 78);
-    assert.equal(full.pieces[0]?.weightLbs, 1176);
+    assert.equal(full.pieces[0]?.weightLbs, 1175.74);
     const sent = marketItemsFromPieces(one.pieces)[0];
     assert.equal(sent?.lengthIn, 12);
     assert.equal(sent?.widthIn, 12);
@@ -401,6 +401,6 @@ describe("catalog shipment freight", () => {
     assert.equal(sent?.weightLbsPerPallet, 18);
     const layerSent = marketItemsFromPieces(layer.pieces)[0];
     assert.equal(layerSent?.heightIn, 29.5);
-    assert.equal(layerSent?.weightLbsPerPallet, 294);
+    assert.equal(layerSent?.weightLbsPerPallet, 318);
   });
 });

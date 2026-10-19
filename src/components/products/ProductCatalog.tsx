@@ -91,16 +91,36 @@ function listPrice(product: ProductWithVariants): number {
   return Number.POSITIVE_INFINITY;
 }
 
-function matchesWidth(product: ProductWithVariants, targetWidth: number): boolean {
-  const productWidth = Number(product.widthInches ?? product.width_inches);
-  if (Number.isFinite(productWidth) && Math.round(productWidth) === targetWidth) {
-    return true;
+function catalogNumber(value: unknown): number | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value > 0 ? Math.round(value) : null;
   }
+  const raw = String(value ?? "").trim().replace(/,/g, "");
+  if (!raw) return null;
+  const amount = parseFloat(raw);
+  return Number.isFinite(amount) && amount > 0 ? Math.round(amount) : null;
+}
 
-  return (product.variants || []).some((v) => {
-    const w = Number(v.widthInches);
-    return Number.isFinite(w) && Math.round(w) === targetWidth;
-  });
+function productText(product: ProductWithVariants): string {
+  return `${product.slug || ""} ${product.title || ""} ${product.name || ""}`.toLowerCase();
+}
+
+function matchesWidth(product: ProductWithVariants, targetWidth: number): boolean {
+  const widths = [
+    product.widthInches,
+    product.width_inches,
+    ...(product.variants || []).map((variant) => variant.widthInches),
+  ];
+  if (widths.some((value) => catalogNumber(value) === targetWidth)) return true;
+
+  const text = productText(product);
+  return (
+    text.includes(`${targetWidth}-x`) ||
+    text.includes(`${targetWidth}x`) ||
+    text.includes(`${targetWidth}"`) ||
+    text.includes(`${targetWidth}″`) ||
+    new RegExp(`(?:^|[^0-9])${targetWidth}\\s*(?:in\\b|inch)`).test(text)
+  );
 }
 
 function parseLengthFeet(value: unknown): number | null {
@@ -140,13 +160,20 @@ function matchesLength(
 }
 
 function gaugeNumber(value: unknown): number | null {
-  const amount = typeof value === "number" ? value : parseFloat(String(value ?? ""));
-  return Number.isFinite(amount) ? Math.round(amount) : null;
+  return catalogNumber(value);
 }
 
 function matchesGauge(product: ProductWithVariants, targetGauge: number): boolean {
   if (gaugeNumber(product.gauge) === targetGauge) return true;
-  return (product.variants || []).some((variant) => gaugeNumber(variant?.gauge) === targetGauge);
+  if ((product.variants || []).some((variant) => gaugeNumber(variant?.gauge) === targetGauge)) {
+    return true;
+  }
+  const text = productText(product);
+  return (
+    text.includes(`${targetGauge}-ga`) ||
+    text.includes(`-${targetGauge}ga`) ||
+    new RegExp(`(?:^|[^0-9])${targetGauge}\\s*ga`).test(text)
+  );
 }
 
 function excludeFiftyGauge(product: ProductWithVariants): boolean {
@@ -442,21 +469,15 @@ export function ProductCatalog({
         }
 
         if (selectedWidth !== "all") {
-          const targetWidth = parseInt(selectedWidth, 10);
-          if (
-            Number.isFinite(targetWidth) &&
-            !matchesWidth(product, targetWidth)
-          ) {
+          const targetWidth = catalogNumber(selectedWidth);
+          if (targetWidth !== null && !matchesWidth(product, targetWidth)) {
             return false;
           }
         }
 
         if (selectedGauge !== "all") {
-          const targetGauge = parseInt(selectedGauge, 10);
-          if (
-            Number.isFinite(targetGauge) &&
-            !matchesGauge(product, targetGauge)
-          ) {
+          const targetGauge = catalogNumber(selectedGauge);
+          if (targetGauge !== null && !matchesGauge(product, targetGauge)) {
             return false;
           }
         }

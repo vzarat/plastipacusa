@@ -1,5 +1,8 @@
-/** Wooden pallet added to layer, half-pallet, and full-pallet totals. 10 kg. */
+/** Older 10 kg tare still shown on the packaging CSV pallet column. */
 export const WOODEN_PALLET_LBS = 22.05;
+
+/** Wooden pallet added once to every 16-, 32-, and 64-box hand-film shipment. */
+export const HAND_WOODEN_PALLET_LBS = 29.18;
 
 /** Official 20" automated machine film weights, including the wooden pallet on half and full pallets. */
 export const MACHINE_FILM_WEIGHT_SPECS = [
@@ -78,26 +81,21 @@ export function packageTotalWeightLbs(input: PackageWeightInput): number | null 
   const isHalfPallet = rolls === 128 || boxes === 32;
   const isLayer = rolls === 64 || boxes === 16;
   const isBox = rolls === 4 || boxes === 1;
-  const filmOnPallet =
-    palletWeight != null ? palletWeight - WOODEN_PALLET_LBS : null;
 
   if (isFullPallet) {
-    if (palletWeight != null) return roundLbs(palletWeight, 1);
-    if (perRoll != null) return roundLbs(perRoll * 256 + WOODEN_PALLET_LBS, 1);
+    if (palletWeight != null) return roundLbs(palletWeight, 2);
+    if (boxWeight != null) return roundLbs(boxWeight * 64 + HAND_WOODEN_PALLET_LBS, 2);
+    if (perRoll != null) return roundLbs(perRoll * 256 + HAND_WOODEN_PALLET_LBS, 2);
   }
 
   if (isHalfPallet) {
-    if (filmOnPallet != null && filmOnPallet > 0) {
-      return roundLbs(filmOnPallet * (128 / 256) + WOODEN_PALLET_LBS, 1);
-    }
-    if (perRoll != null) return roundLbs(perRoll * 128 + WOODEN_PALLET_LBS, 1);
+    if (boxWeight != null) return roundLbs(boxWeight * 32 + HAND_WOODEN_PALLET_LBS, 2);
+    if (perRoll != null) return roundLbs(perRoll * 128 + HAND_WOODEN_PALLET_LBS, 2);
   }
 
   if (isLayer) {
-    if (filmOnPallet != null && filmOnPallet > 0) {
-      return roundLbs(filmOnPallet * (64 / 256) + WOODEN_PALLET_LBS, 1);
-    }
-    if (perRoll != null) return roundLbs(perRoll * 64 + WOODEN_PALLET_LBS, 1);
+    if (boxWeight != null) return roundLbs(boxWeight * 16 + HAND_WOODEN_PALLET_LBS, 2);
+    if (perRoll != null) return roundLbs(perRoll * 64 + HAND_WOODEN_PALLET_LBS, 2);
   }
 
   if (isBox) {

@@ -205,6 +205,9 @@ function getPackageSavings(variant: any, baseUnitPrice: number, isMachine: boole
   return { unitCount, savingsPercent, perUnitPrice };
 }
 
+const HAND_PALLET_WEIGHT_NOTE =
+  "Includes wooden pallet weight (~29.2 lbs) for LTL freight accuracy.";
+
 /** Official hand-film presets. Totals come from the live per-box bracket, not a stored pallet rate. */
 const STANDARD_HAND_PACKAGE_TIERS = [
   {
@@ -219,21 +222,21 @@ const STANDARD_HAND_PACKAGE_TIERS = [
     title: "16 Boxes (64 Rolls)",
     rolls: 64,
     boxes: 16,
-    subtext: "64 Rolls included · Free RGV Freight Eligible",
+    subtext: `64 Rolls included · Free RGV Freight Eligible. ${HAND_PALLET_WEIGHT_NOTE}`,
   },
   {
     key: "half",
     title: "32 Boxes (128 Rolls)",
     rolls: 128,
     boxes: 32,
-    subtext: "128 Rolls included",
+    subtext: `128 Rolls included. ${HAND_PALLET_WEIGHT_NOTE}`,
   },
   {
     key: "full",
-    title: "64 Boxes (256 Rolls)",
+    title: "Full Pallet (Includes pallet & packaging)",
     rolls: 256,
     boxes: 64,
-    subtext: "256 Rolls included",
+    subtext: `64 Boxes · 256 Rolls. ${HAND_PALLET_WEIGHT_NOTE}`,
   },
 ] as const;
 
@@ -271,7 +274,11 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
     return null;
   };
   const sharedRollWeight = storedWeight(["rollWeightLbs", "roll_weight_lbs"]);
-  const sharedBoxWeight = storedWeight(["boxWeightLbs", "box_weight_lbs"]);
+  const boxAmounts = weightSources.flatMap((source) =>
+    ["boxWeightLbs", "box_weight_lbs"].map((key) => Number(source?.[key]))
+  );
+  const positiveBoxes = boxAmounts.filter((amount) => Number.isFinite(amount) && amount > 0);
+  const sharedBoxWeight = positiveBoxes.length > 0 ? Math.min(...positiveBoxes) : null;
   const sharedPalletWeight = storedWeight(["palletWeightLbs", "pallet_weight_lbs"]);
 
   return STANDARD_HAND_PACKAGE_TIERS.flatMap((tier) => {
@@ -294,6 +301,7 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
         ? Math.round(((baseBoxPrice - unit) / baseBoxPrice) * 100)
         : 0;
     const sku = String(matched?.sku || `${baseSku}-${tier.boxes}BX`);
+    const houston = houstonFridayPresetLabel(catalogBoxes, catalogRolls);
     const gross = packageTotalWeightLbs({
       rolls: tier.rolls,
       boxes: tier.boxes,
@@ -311,7 +319,9 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
         tierKey: tier.key,
         packageSize: tier.title,
         title: tier.title,
-        tierSubtext: houstonFridayPresetLabel(catalogBoxes, catalogRolls) ?? tier.subtext,
+        tierSubtext: houston
+          ? `${houston} ${HAND_PALLET_WEIGHT_NOTE}`
+          : tier.subtext,
         tierBadges: savings > 0 ? [`Save ${savings}% OFF`] : [],
         tierTag: tier.boxes >= 64 && savings > 0 ? "BEST VALUE" : "",
         boxUnitPrice: unit,
@@ -343,6 +353,9 @@ function displayPackageTitle(variant: any, isMachine: boolean): string {
   const kind = getPackageTierKind(variant, false);
   const rolls = Math.max(0, getRollsCount(variant));
   const boxes = getBoxesCount(variant, false);
+  if (kind === "full_pallet" || boxes === 64) {
+    return "Full Pallet (Includes pallet & packaging)";
+  }
   if (boxes > 0) {
     const rollCount = rolls > 0 ? rolls : boxes * 4;
     return formatBoxRollLabel(boxes, rollCount);
@@ -365,10 +378,16 @@ function displayPackageSubtext(variant: any, isMachine: boolean): string {
   const catalogRolls = Number(variant?.rolls_count ?? variant?.rollsCount ?? variant?.rolls ?? 0);
   const houston = houstonFridayPresetLabel(boxes, catalogRolls);
   const kind = getPackageTierKind(variant, false);
-  if (houston) return houston;
-  if (rolls === 128 || boxes === 32) return "128 Rolls included";
+  const palletNote = boxes >= 16 || kind === "full_pallet" || kind === "fixed_half" || kind === "fixed_mid"
+    ? ` ${HAND_PALLET_WEIGHT_NOTE}`
+    : "";
+  if (houston) return `${houston}${palletNote}`;
+  if (kind === "full_pallet" || boxes === 64 || rolls === 256) {
+    return `64 Boxes · 256 Rolls.${palletNote}`;
+  }
+  if (rolls === 128 || boxes === 32) return `128 Rolls included.${palletNote}`;
   if (kind === "fixed_mid" || rolls === 64 || boxes === 16) {
-    return "64 Rolls included · Free RGV Freight Eligible";
+    return `64 Rolls included · Free RGV Freight Eligible.${palletNote}`;
   }
   if (kind === "single_unit" || boxes === 1) {
     const rollCount = rolls > 0 ? rolls : 4;

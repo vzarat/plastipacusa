@@ -21,16 +21,16 @@ SET
   pallet_dimensions = '48 x 48 x 78'
 FROM (
   VALUES
-    ('stretch-film-18-x-60-ga-x-1000ft', 18::numeric, 60::numeric, 1000::numeric, 6.15::numeric, 1596.7::numeric),
+    ('stretch-film-18-x-60-ga-x-1000ft', 18::numeric, 60::numeric, 1000::numeric, 6.15::numeric, 1416.88::numeric),
     ('stretch-film-18-x-70-ga-x-1000ft', 18::numeric, 70::numeric, 1000::numeric, 6.88::numeric, 1783.0::numeric),
     ('stretch-film-18-x-80-ga-x-1000ft', 18::numeric, 80::numeric, 1000::numeric, 8.66::numeric, 2240.2::numeric),
-    ('stretch-film-18-x-60-ga-x-1500ft', 18::numeric, 60::numeric, 1500::numeric, 7.61::numeric, 1969.2::numeric),
+    ('stretch-film-18-x-60-ga-x-1500ft', 18::numeric, 60::numeric, 1500::numeric, 7.61::numeric, 1973.00::numeric),
     ('stretch-film-18-x-70-ga-x-1500ft', 18::numeric, 70::numeric, 1500::numeric, 8.69::numeric, 2245.8::numeric),
     ('stretch-film-18-x-80-ga-x-1500ft', 18::numeric, 80::numeric, 1500::numeric, 9.77::numeric, 2522.3::numeric),
     ('stretch-film-15-x-40-ga-x-1500ft', 15::numeric, 40::numeric, 1500::numeric, 4.50::numeric, 1175.74::numeric),
-    ('stretch-film-15-x-60-ga-x-1000ft', 15::numeric, 60::numeric, 1000::numeric, 5.42::numeric, 1410.3::numeric),
+    ('stretch-film-15-x-60-ga-x-1000ft', 15::numeric, 60::numeric, 1000::numeric, 5.42::numeric, 1637.50::numeric),
     ('stretch-film-15-x-60-ga-x-1500ft', 15::numeric, 60::numeric, 1500::numeric, 6.28::numeric, 1630.5::numeric),
-    ('stretch-film-15-x-70-ga-x-1500ft', 15::numeric, 70::numeric, 1500::numeric, 7.19::numeric, 1862.0::numeric),
+    ('stretch-film-15-x-70-ga-x-1500ft', 15::numeric, 70::numeric, 1500::numeric, 7.19::numeric, 1869.18::numeric),
     ('stretch-film-15-x-80-ga-x-1500ft', 15::numeric, 80::numeric, 1500::numeric, 8.09::numeric, 2093.3::numeric)
 ) AS spec(slug, width_in, gauge, length_ft, roll_lbs, pallet_lbs)
 WHERE p.slug = spec.slug
@@ -49,16 +49,16 @@ SET
 FROM public.products AS p
 JOIN (
   VALUES
-    ('stretch-film-18-x-60-ga-x-1000ft', 18::numeric, 60::numeric, 1000::numeric, 6.15::numeric, 24.60::numeric, 1596.7::numeric),
+    ('stretch-film-18-x-60-ga-x-1000ft', 18::numeric, 60::numeric, 1000::numeric, 6.15::numeric, 21.68::numeric, 1416.88::numeric),
     ('stretch-film-18-x-70-ga-x-1000ft', 18::numeric, 70::numeric, 1000::numeric, 6.88::numeric, 27.51::numeric, 1783.0::numeric),
     ('stretch-film-18-x-80-ga-x-1000ft', 18::numeric, 80::numeric, 1000::numeric, 8.66::numeric, 34.65::numeric, 2240.2::numeric),
-    ('stretch-film-18-x-60-ga-x-1500ft', 18::numeric, 60::numeric, 1500::numeric, 7.61::numeric, 30.42::numeric, 1969.2::numeric),
+    ('stretch-film-18-x-60-ga-x-1500ft', 18::numeric, 60::numeric, 1500::numeric, 7.61::numeric, 30.37::numeric, 1973.00::numeric),
     ('stretch-film-18-x-70-ga-x-1500ft', 18::numeric, 70::numeric, 1500::numeric, 8.69::numeric, 34.74::numeric, 2245.8::numeric),
     ('stretch-film-18-x-80-ga-x-1500ft', 18::numeric, 80::numeric, 1500::numeric, 9.77::numeric, 39.07::numeric, 2522.3::numeric),
     ('stretch-film-15-x-40-ga-x-1500ft', 15::numeric, 40::numeric, 1500::numeric, 4.50::numeric, 18.00::numeric, 1175.74::numeric),
-    ('stretch-film-15-x-60-ga-x-1000ft', 15::numeric, 60::numeric, 1000::numeric, 5.42::numeric, 21.69::numeric, 1410.3::numeric),
+    ('stretch-film-15-x-60-ga-x-1000ft', 15::numeric, 60::numeric, 1000::numeric, 5.42::numeric, 25.13::numeric, 1637.50::numeric),
     ('stretch-film-15-x-60-ga-x-1500ft', 15::numeric, 60::numeric, 1500::numeric, 6.28::numeric, 25.13::numeric, 1630.5::numeric),
-    ('stretch-film-15-x-70-ga-x-1500ft', 15::numeric, 70::numeric, 1500::numeric, 7.19::numeric, 28.75::numeric, 1862.0::numeric),
+    ('stretch-film-15-x-70-ga-x-1500ft', 15::numeric, 70::numeric, 1500::numeric, 7.19::numeric, 28.75::numeric, 1869.18::numeric),
     ('stretch-film-15-x-80-ga-x-1500ft', 15::numeric, 80::numeric, 1500::numeric, 8.09::numeric, 32.36::numeric, 2093.3::numeric)
 ) AS spec(slug, width_in, gauge, length_ft, roll_lbs, box_lbs, pallet_lbs)
   ON p.slug = spec.slug

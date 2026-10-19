@@ -8,7 +8,7 @@ import {
 } from "./hand-freight";
 
 describe("hand film specs matrix", () => {
-  it("adds a 10 in pallet deck and splits the stored pallet weight", () => {
+  it("adds a 10 in pallet deck and weighs pallet tiers from the box plus 29.18 lb", () => {
     const box = handMatrixDimensions(1);
     const layer = handMatrixDimensions(16);
     const half = handMatrixDimensions(32);
@@ -18,8 +18,16 @@ describe("hand film specs matrix", () => {
     assert.equal(formatHandMatrixDimensions(half), '48" W x 48" L x 49.0" H');
     assert.equal(formatHandMatrixDimensions(full), '48" W x 48" L x 66.0" H');
     assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(1, 18, 1175.74)), "18.00 lbs");
-    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(16, 18, 1175.74)), "293.94 lbs");
-    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(32, 18, 1175.74)), "587.87 lbs");
+    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(16, 18, 1175.74)), "317.18 lbs");
+    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(32, 18, 1175.74)), "605.18 lbs");
     assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(64, 18, 1175.74)), "1,175.74 lbs");
+    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(1, 25.13, 1637.5)), "25.13 lbs");
+    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(16, 25.13, 1637.5)), "431.26 lbs");
+    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(32, 25.13, 1637.5)), "833.34 lbs");
+    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(64, 25.13, 1637.5)), "1,637.50 lbs");
+    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(1, 21.68, 1416.88)), "21.68 lbs");
+    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(16, 21.68, 1416.88)), "376.06 lbs");
+    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(32, 21.68, 1416.88)), "722.94 lbs");
+    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(64, 21.68, 1416.88)), "1,416.88 lbs");
   });
 });

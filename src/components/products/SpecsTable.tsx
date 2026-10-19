@@ -82,7 +82,10 @@ function handMatrixRows(
   product: SpecsTableProps["product"]
 ): ProductVariant[] {
   const rollWeight = firstPositive(variants.map((variant) => variant.rollWeightLbs));
-  const boxWeight = firstPositive(variants.map((variant) => variant.boxWeightLbs));
+  const boxAmounts = variants
+    .map((variant) => Number(variant.boxWeightLbs))
+    .filter((amount) => Number.isFinite(amount) && amount > 0);
+  const boxWeight = boxAmounts.length > 0 ? Math.min(...boxAmounts) : 0;
   const palletWeight = firstPositive(variants.map((variant) => variant.palletWeightLbs));
   const sample = variants[0];
   const prices = readBoxTierPrices(product);
@@ -112,7 +115,7 @@ function handMatrixRows(
       boxesCount: tier.boxes,
       rollsPerPallet: 256,
       rollWeightLbs: match?.rollWeightLbs || boxVariant?.rollWeightLbs || rollWeight,
-      boxWeightLbs: match?.boxWeightLbs || boxVariant?.boxWeightLbs || boxWeight,
+      boxWeightLbs: boxWeight || match?.boxWeightLbs || boxVariant?.boxWeightLbs,
       palletWeightLbs: match?.palletWeightLbs || boxVariant?.palletWeightLbs || palletWeight,
       widthInches: String(
         match?.widthInches ||
@@ -138,12 +141,15 @@ function boxesForRolls(rolls: number): number {
   return 0;
 }
 
+const HAND_PALLET_WEIGHT_NOTE =
+  "Includes wooden pallet weight (~29.2 lbs) for LTL freight accuracy.";
+
 function packageTierLabel(variant: ProductVariant): string {
   const explicit = Number(variant.rolls_count ?? variant.rollsCount);
   const rolls = Number.isFinite(explicit) && explicit > 0 ? explicit : 0;
   const boxes = Number(variant.boxes_count ?? variant.boxesCount) || 0;
+  if (rolls === 256 || boxes === 64) return "Full Pallet (Includes pallet & packaging)";
   if (boxes > 0 && rolls > 0) return formatBoxRollLabel(boxes, rolls);
-  if (rolls === 256 || boxes === 64) return formatBoxRollLabel(64, 256);
   if (rolls === 128 || boxes === 32) return formatBoxRollLabel(32, 128);
   if (rolls === 64 || boxes === 16) return formatBoxRollLabel(16, 64);
   if (rolls === 4 || boxes === 1) return formatBoxRollLabel(1, 4);
@@ -239,14 +245,19 @@ export function SpecsTable({ variants, product }: SpecsTableProps) {
                   ? gross == null
                     ? "—"
                     : formatFreightWeightLabel(gross, unit)
-                  : formatHandMatrixWeight(matrixWeight ?? gross);
+                  : formatHandMatrixWeight(matrixWeight);
                 return (
                   <TableRow
                     key={v?.id || v?.sku || index}
                     className="hover:bg-sky-50/50 font-mono text-xs"
                   >
                     <TableCell className="font-bold text-slate-900 font-sans">
-                      {packageTierLabel(v)}
+                      <span className="block">{packageTierLabel(v)}</span>
+                      {!machine && boxes >= 16 ? (
+                        <span className="mt-1 block whitespace-normal text-[11px] font-medium text-slate-500">
+                          {HAND_PALLET_WEIGHT_NOTE}
+                        </span>
+                      ) : null}
                     </TableCell>
                     <TableCell className="text-sky-700 font-bold">
                       {v?.sku || "—"}

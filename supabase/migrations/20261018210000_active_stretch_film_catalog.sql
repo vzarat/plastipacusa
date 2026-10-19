@@ -8,6 +8,7 @@ ALTER TABLE public.products
 WITH master(width_in, gauge, length_ft) AS (
   VALUES
     -- Manual 15 in
+    (15::numeric, 40::numeric, 1500::numeric),
     (15::numeric, 60::numeric, 1500::numeric),
     (15::numeric, 70::numeric, 1500::numeric),
     (15::numeric, 80::numeric, 1500::numeric),
@@ -62,3 +63,64 @@ WHERE p.slug ILIKE 'stretch-film%'
          OR c.name ILIKE '%stretch%'
        )
    );
+
+-- Force the authorized specs on by title, slug, or width/gauge/length.
+-- Covers "15x70x1500", "15 x 70 x 1500", and "15\" x 70 x 1500".
+UPDATE public.products
+SET is_active = true
+WHERE title ILIKE '%15%40%1500%'
+   OR slug ILIKE '%15%40%1500%'
+   OR title ILIKE '%15%60%1500%'
+   OR slug ILIKE '%15%60%1500%'
+   OR title ILIKE '%15%70%1500%'
+   OR slug ILIKE '%15%70%1500%'
+   OR title ILIKE '%15%80%1500%'
+   OR slug ILIKE '%15%80%1500%'
+   OR (
+     ROUND(width_inches::numeric) = 15
+     AND ROUND(gauge::numeric) IN (40, 60, 70, 80)
+     AND ROUND(length_feet::numeric) = 1500
+   )
+   OR title ILIKE '%18%60%1000%'
+   OR slug ILIKE '%18%60%1000%'
+   OR title ILIKE '%18%60%1500%'
+   OR slug ILIKE '%18%60%1500%'
+   OR title ILIKE '%18%70%1000%'
+   OR slug ILIKE '%18%70%1000%'
+   OR title ILIKE '%18%70%1500%'
+   OR slug ILIKE '%18%70%1500%'
+   OR title ILIKE '%18%80%1000%'
+   OR slug ILIKE '%18%80%1000%'
+   OR title ILIKE '%18%80%1500%'
+   OR slug ILIKE '%18%80%1500%'
+   OR (
+     ROUND(width_inches::numeric) = 18
+     AND (
+       (ROUND(gauge::numeric) = 60 AND ROUND(length_feet::numeric) IN (1000, 1500))
+       OR (ROUND(gauge::numeric) = 70 AND ROUND(length_feet::numeric) IN (1000, 1500))
+       OR (ROUND(gauge::numeric) = 80 AND ROUND(length_feet::numeric) IN (1000, 1500))
+     )
+   )
+   OR title ILIKE '%20%51%7000%'
+   OR slug ILIKE '%20%51%7000%'
+   OR title ILIKE '%20%51%9000%'
+   OR slug ILIKE '%20%51%9000%'
+   OR title ILIKE '%20%70%5000%'
+   OR slug ILIKE '%20%70%5000%'
+   OR title ILIKE '%20%80%5000%'
+   OR slug ILIKE '%20%80%5000%'
+   OR (
+     ROUND(width_inches::numeric) = 20
+     AND (
+       (ROUND(gauge::numeric) = 51 AND ROUND(length_feet::numeric) IN (7000, 9000))
+       OR (ROUND(gauge::numeric) = 70 AND ROUND(length_feet::numeric) = 5000)
+       OR (ROUND(gauge::numeric) = 80 AND ROUND(length_feet::numeric) = 5000)
+     )
+   );
+
+-- Force every 15" stretch film active, including text widths such as 15".
+UPDATE public.products
+SET is_active = true
+WHERE title ILIKE '%15%'
+   OR slug ILIKE '%15%'
+   OR CAST(width_inches AS text) ILIKE '%15%';

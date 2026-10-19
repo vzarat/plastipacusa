@@ -58,11 +58,9 @@ export function usesCompact1880Pallets(input: PalletizingInput): boolean {
   return is1880;
 }
 
-/** 15" × 80 GA variants are excluded from the active catalog when flagged. */
-export function isExcludedFifteenInchEightyGauge(input: PalletizingInput): boolean {
-  const width = resolveWidth(input);
-  const gauge = Math.round(toNumber(input.gauge));
-  return width === 15 && gauge === 80;
+/** 15" × 80 GA is part of the active catalog. */
+export function isExcludedFifteenInchEightyGauge(_input: PalletizingInput): boolean {
+  return false;
 }
 
 /**
@@ -95,7 +93,7 @@ export function resolvePalletizingSpecs(input: PalletizingInput): PalletizingSpe
     };
   }
 
-  // 15" Width Films — 60 GA & 70 GA @ 1500 FT (80 GA excluded)
+  // 15" Width Films — 40, 60, 70, and 80 GA @ 1500 FT
   if (width === 15) {
     return {
       fullPalletRolls: 256,

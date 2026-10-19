@@ -1,4 +1,4 @@
-import { WOODEN_PALLET_LBS, packageTotalWeightLbs } from "@/lib/package-weight";
+import { HAND_WOODEN_PALLET_LBS, packageTotalWeightLbs } from "@/lib/package-weight";
 import { quoteTierPrice, roundMoney } from "@/lib/pricing";
 import { handHandlingUnit } from "@/lib/shipping/hand-freight";
 import type { AdminPackageTier, AdminProduct } from "@/types/product";
@@ -170,7 +170,7 @@ export function packagingSpecsCsv(products: AdminProduct[]): string {
       } else {
         cells.push(
           weightCell(gross),
-          gross != null ? weightCell(WOODEN_PALLET_LBS) : "",
+          gross != null ? weightCell(HAND_WOODEN_PALLET_LBS) : "",
           unit ? dimensionLabel(unit) : "",
           money(rate),
           money(total),

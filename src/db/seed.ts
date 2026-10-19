@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db, products, productVariants } from "./index";
 import * as dotenv from "dotenv";
 
@@ -598,10 +598,10 @@ async function seed() {
     ]);
 
     const freightSpecs = [
-      { slug: "stretch-film-18-x-60-ga-x-1000ft", gauge: 60, lengthFeet: 1000, roll: "6.15", box: "24.60", pallet: "1596.70" },
+      { slug: "stretch-film-18-x-60-ga-x-1000ft", gauge: 60, lengthFeet: 1000, roll: "6.15", box: "21.68", pallet: "1416.88" },
       { slug: "stretch-film-18-x-70-ga-x-1000ft", gauge: 70, lengthFeet: 1000, roll: "6.88", box: "27.51", pallet: "1783.00" },
       { slug: "stretch-film-18-x-80-ga-x-1000ft", gauge: 80, lengthFeet: 1000, roll: "8.66", box: "34.65", pallet: "2240.20" },
-      { slug: "stretch-film-18-x-60-ga-x-1500ft", gauge: 60, lengthFeet: 1500, roll: "7.61", box: "30.42", pallet: "1969.20" },
+      { slug: "stretch-film-18-x-60-ga-x-1500ft", gauge: 60, lengthFeet: 1500, roll: "7.61", box: "30.37", pallet: "1973.00" },
       { slug: "stretch-film-18-x-70-ga-x-1500ft", gauge: 70, lengthFeet: 1500, roll: "8.69", box: "34.74", pallet: "2245.80" },
       { slug: "stretch-film-18-x-80-ga-x-1500ft", gauge: 80, lengthFeet: 1500, roll: "9.77", box: "39.07", pallet: "2522.30" },
     ] as const;
@@ -629,6 +629,17 @@ async function seed() {
           )
         );
     }
+
+    await db
+      .update(productVariants)
+      .set({ boxWeightLbs: "25.13", palletWeightLbs: "1637.50" })
+      .where(sql`${productVariants.sku} ILIKE 'FEL-156010%'`);
+    await db
+      .update(products)
+      .set({ palletWeightLbs: "1637.50" })
+      .where(
+        sql`${products.slug} = 'stretch-film-15-x-60-ga-x-1000ft' OR ${products.partNumber} ILIKE 'FEL-156010%'`
+      );
 
     console.log(
       "✅ Seed completed successfully! Inserted all 8 FORCE Standard products (4x 1000FT and 4x 1500FT) with exact 4-tier package pricing."
