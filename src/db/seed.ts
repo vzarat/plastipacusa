@@ -1,3 +1,4 @@
+import { and, eq } from "drizzle-orm";
 import { db, products, productVariants } from "./index";
 import * as dotenv from "dotenv";
 
@@ -595,6 +596,39 @@ async function seed() {
         stockStatus: "in_stock",
       },
     ]);
+
+    const freightSpecs = [
+      { slug: "stretch-film-18-x-60-ga-x-1000ft", gauge: 60, lengthFeet: 1000, roll: "6.15", box: "24.60", pallet: "1596.70" },
+      { slug: "stretch-film-18-x-70-ga-x-1000ft", gauge: 70, lengthFeet: 1000, roll: "6.88", box: "27.51", pallet: "1783.00" },
+      { slug: "stretch-film-18-x-80-ga-x-1000ft", gauge: 80, lengthFeet: 1000, roll: "8.66", box: "34.65", pallet: "2240.20" },
+      { slug: "stretch-film-18-x-60-ga-x-1500ft", gauge: 60, lengthFeet: 1500, roll: "7.61", box: "30.42", pallet: "1969.20" },
+      { slug: "stretch-film-18-x-70-ga-x-1500ft", gauge: 70, lengthFeet: 1500, roll: "8.69", box: "34.74", pallet: "2245.80" },
+      { slug: "stretch-film-18-x-80-ga-x-1500ft", gauge: 80, lengthFeet: 1500, roll: "9.77", box: "39.07", pallet: "2522.30" },
+    ] as const;
+    for (const spec of freightSpecs) {
+      await db
+        .update(products)
+        .set({
+          rollWeightLbs: spec.roll,
+          palletWeightLbs: spec.pallet,
+          palletDimensions: "48 x 48 x 78",
+        })
+        .where(eq(products.slug, spec.slug));
+      await db
+        .update(productVariants)
+        .set({
+          rollWeightLbs: spec.roll,
+          boxWeightLbs: spec.box,
+          palletWeightLbs: spec.pallet,
+        })
+        .where(
+          and(
+            eq(productVariants.gauge, spec.gauge),
+            eq(productVariants.lengthFeet, spec.lengthFeet),
+            eq(productVariants.widthInches, "18.00")
+          )
+        );
+    }
 
     console.log(
       "✅ Seed completed successfully! Inserted all 8 FORCE Standard products (4x 1000FT and 4x 1500FT) with exact 4-tier package pricing."

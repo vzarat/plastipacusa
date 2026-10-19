@@ -111,6 +111,91 @@ function formatInches(value: number): string {
   return Number.isInteger(value) ? String(value) : String(roundInches(value));
 }
 
+/** 15 in film ships in a shorter carton. 18 in film uses the taller carton. */
+export function handBoxHeightIn(widthInches: number | null | undefined): number {
+  const width = Number(widthInches);
+  if (Number.isFinite(width) && width > 0 && width < 17) return 16.5;
+  return 19.5;
+}
+
+export interface WarpHandPiece {
+  lengthIn: number;
+  widthIn: number;
+  heightIn: number;
+  weightLbs: number;
+  quantity: number;
+  packaging: "pallet" | "box";
+}
+
+/**
+ * Warp handling units for a hand-film box count.
+ * Under 16 boxes stay individual cartons. Larger counts are quarter, half, and full pallets.
+ */
+export function warpHandPieces(input: {
+  boxes: number;
+  widthInches?: number | null;
+  boxWeightLbs: number | null;
+  palletWeightLbs: number | null;
+}): WarpHandPiece[] | null {
+  const boxes = Math.max(0, Math.floor(Number(input.boxes) || 0));
+  if (boxes < 1) return null;
+  const boxWeight = Number(input.boxWeightLbs);
+  const palletWeight = Number(input.palletWeightLbs);
+  const boxOk = Number.isFinite(boxWeight) && boxWeight > 0;
+  const palletOk = Number.isFinite(palletWeight) && palletWeight > 0;
+  const pieces: WarpHandPiece[] = [];
+  let left = boxes;
+  const fullCount = Math.floor(left / 64);
+  if (fullCount > 0) {
+    if (!palletOk) return null;
+    pieces.push({
+      lengthIn: 48,
+      widthIn: 48,
+      heightIn: 78,
+      weightLbs: Math.round(palletWeight) * fullCount,
+      quantity: fullCount,
+      packaging: "pallet",
+    });
+    left -= fullCount * 64;
+  }
+  if (left >= 32) {
+    if (!palletOk) return null;
+    pieces.push({
+      lengthIn: 48,
+      widthIn: 48,
+      heightIn: 39,
+      weightLbs: Math.round(palletWeight / 2),
+      quantity: 1,
+      packaging: "pallet",
+    });
+    left -= 32;
+  }
+  if (left >= 16) {
+    if (!palletOk) return null;
+    pieces.push({
+      lengthIn: 48,
+      widthIn: 48,
+      heightIn: 29.5,
+      weightLbs: Math.round(palletWeight / 4),
+      quantity: 1,
+      packaging: "pallet",
+    });
+    left -= 16;
+  }
+  if (left > 0) {
+    if (!boxOk) return null;
+    pieces.push({
+      lengthIn: 12,
+      widthIn: 12,
+      heightIn: handBoxHeightIn(input.widthInches),
+      weightLbs: Math.round(boxWeight * left * 100) / 100,
+      quantity: left,
+      packaging: "box",
+    });
+  }
+  return pieces;
+}
+
 /** Deck added under the 16-box and 32-box stacks on the product specs matrix. */
 export const HAND_MATRIX_PALLET_BASE_IN = 10;
 

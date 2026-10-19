@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { FreightPiece, ShipmentFreight } from "./types";
+import { handBoxHeightIn, warpHandPieces } from "./hand-freight";
 import { usesWarpParcel, warpFreightQuoteBody } from "./warp";
 
 function carton(quantity: number, weightLbs: number): FreightPiece {
@@ -31,6 +32,24 @@ function freight(pieces: FreightPiece[], boxes: number): ShipmentFreight {
 }
 
 describe("Warp carton versus pallet payload", () => {
+  it("uses a 16.5 in carton for 15 in film and rounded pallet-tier weights", () => {
+    assert.equal(handBoxHeightIn(15), 16.5);
+    assert.equal(handBoxHeightIn(18), 19.5);
+    const cartons = warpHandPieces({ boxes: 2, widthInches: 15, boxWeightLbs: 18, palletWeightLbs: 1175.74 });
+    assert.equal(cartons?.[0]?.heightIn, 16.5);
+    assert.equal(cartons?.[0]?.packaging, "box");
+    assert.equal(cartons?.[0]?.weightLbs, 36);
+    const quarter = warpHandPieces({ boxes: 16, widthInches: 15, boxWeightLbs: 18, palletWeightLbs: 1175.74 });
+    assert.equal(quarter?.[0]?.heightIn, 29.5);
+    assert.equal(quarter?.[0]?.weightLbs, 294);
+    const half = warpHandPieces({ boxes: 32, widthInches: 18, boxWeightLbs: 34.65, palletWeightLbs: 2240.2 });
+    assert.equal(half?.[0]?.heightIn, 39);
+    assert.equal(half?.[0]?.weightLbs, 1120);
+    const full = warpHandPieces({ boxes: 64, widthInches: 18, boxWeightLbs: 34.65, palletWeightLbs: 2240.2 });
+    assert.equal(full?.[0]?.heightIn, 78);
+    assert.equal(full?.[0]?.weightLbs, 2240);
+  });
+
   it("quotes fewer than 16 boxes as PARCEL cartons at 12 x 12 x 19.5 and 18 lb", () => {
     const shipment = freight([carton(1, 18)], 1);
     assert.equal(usesWarpParcel(shipment), true);

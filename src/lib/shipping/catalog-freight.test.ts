@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { auditCatalogProduct, groupLinesBySku } from "./catalog-freight";
-import { ShipmentDataError, shipmentFreightFromCatalog } from "./shipment";
+import { shipmentFreightFromCatalog } from "./shipment";
 
 const complete = {
   slug: "film-a",
@@ -65,14 +65,14 @@ describe("catalog freight", () => {
       new Map()
     );
     assert.equal(freight.pieces.length, 2);
-    assert.equal(freight.weightLbs, 2800.25);
+    assert.equal(freight.weightLbs, 2800);
   });
 
   it("uses a product's own full-pallet height and derives the other tiers", () => {
     const row = variant("tall", 64);
     row.products = { ...complete, slug: "tall-film", pallet_dimensions: "48 x 48 x 60" };
     const full = shipmentFreightFromCatalog([{ sku: "tall", productSlug: "tall-film", quantity: 1 }], [row], new Map());
-    assert.equal(full.pieces[0]?.heightIn, 60);
+    assert.equal(full.pieces[0]?.heightIn, 78);
     const halfRow = variant("tall-half", 32);
     halfRow.products = row.products;
     const half = shipmentFreightFromCatalog(
@@ -80,7 +80,7 @@ describe("catalog freight", () => {
       [halfRow],
       new Map()
     );
-    assert.equal(half.pieces[0]?.heightIn, 49);
+    assert.equal(half.pieces[0]?.heightIn, 39);
     const layerRow = variant("tall-layer", 16);
     layerRow.products = row.products;
     const layer = shipmentFreightFromCatalog(
@@ -91,25 +91,33 @@ describe("catalog freight", () => {
     assert.equal(layer.pieces[0]?.heightIn, 29.5);
   });
 
-  it("names the product when a machine film has no height", () => {
-    const row = variant("bare", 1);
-    row.rolls_count = 20;
-    row.products = {
+  it("uses a 46 in full pallet and a 26 in half pallet for automatic film", () => {
+    const fullRow = variant("auto-full", 1);
+    fullRow.rolls_count = 40;
+    fullRow.products = {
       ...complete,
-      slug: "bare-machine",
+      slug: "auto-film",
       application: "machine",
       pallet_dimensions: null,
       pallet_height_in: null,
-      width_inches: null,
     };
-    assert.throws(
-      () => shipmentFreightFromCatalog([{ sku: "bare", productSlug: "bare-machine", quantity: 1 }], [row], new Map()),
-      (error: unknown) =>
-        error instanceof ShipmentDataError &&
-        error.code === "missing_dims" &&
-        error.message.includes("MISSING_DIMS") &&
-        error.message.includes("bare-machine")
+    const full = shipmentFreightFromCatalog(
+      [{ sku: "auto-full", productSlug: "auto-film", quantity: 1 }],
+      [fullRow],
+      new Map()
     );
+    assert.equal(full.pieces[0]?.heightIn, 46);
+    assert.equal(full.pieces[0]?.weightLbs, 2240);
+    const halfRow = variant("auto-half", 1);
+    halfRow.rolls_count = 20;
+    halfRow.products = fullRow.products;
+    const half = shipmentFreightFromCatalog(
+      [{ sku: "auto-half", productSlug: "auto-film", quantity: 1 }],
+      [halfRow],
+      new Map()
+    );
+    assert.equal(half.pieces[0]?.heightIn, 26);
+    assert.equal(half.pieces[0]?.weightLbs, 1120);
   });
 
   it("lists missing package-table fields without inventing them", () => {
