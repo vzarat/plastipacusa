@@ -167,7 +167,7 @@ export function Hero() {
         }, 4000);
       }}
     >
-      <div className="relative mx-auto min-h-[560px] w-full max-w-[1400px] overflow-hidden rounded-[28px] bg-[#031433] md:rounded-[32px] lg:h-[640px] lg:min-h-0">
+      <div className="relative mx-auto h-[420px] w-full max-w-[1400px] overflow-hidden rounded-3xl bg-[#031433] md:h-[480px] lg:h-[520px]">
       <div className="pointer-events-none absolute inset-0">
         <div
           className={`absolute inset-0 transition-opacity duration-700 ease-out ${
@@ -222,7 +222,7 @@ export function Hero() {
         </div>
       </div>
 
-      <div className="relative z-10 lg:h-full">
+      <div className="relative z-10 h-full">
         <AnimatePresence mode="wait">
           {index === 0 ? (
             <motion.div
@@ -230,23 +230,21 @@ export function Hero() {
               initial="hidden"
               animate="show"
               exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
-              className="relative flex min-h-[560px] items-end overflow-hidden lg:absolute lg:inset-0 lg:min-h-0 lg:items-center"
+              className="absolute inset-0 flex items-center overflow-hidden"
             >
-              <div className="pointer-events-none absolute bottom-0 right-0 z-10 hidden h-[85%] w-[min(48%,560px)] md:block md:h-[95%]">
-                <Image
-                  src={SLIDE_ONE_ROLLS}
-                  alt=""
-                  fill
-                  sizes="(max-width: 1024px) 48vw, 560px"
-                  className="object-contain object-right object-bottom"
-                />
-              </div>
-              <motion.div variants={fadeUp} className="relative z-20 flex w-full max-w-[820px] flex-col px-5 pb-14 pt-16 text-left sm:px-8 md:max-w-[58%] md:px-10 lg:px-12 lg:py-10">
-                <div className="space-y-4">
+              <Image
+                src={SLIDE_ONE_ROLLS}
+                alt=""
+                width={559}
+                height={455}
+                className="pointer-events-none absolute bottom-0 right-6 z-10 hidden h-[85%] w-auto object-contain object-bottom md:block md:right-12 md:h-[92%] md:max-w-[46%]"
+              />
+              <motion.div variants={fadeUp} className="relative z-20 flex h-full w-full max-w-[820px] flex-col justify-center px-6 py-8 text-left md:max-w-[56%] md:px-12 md:py-12">
+                <div className="space-y-2 md:space-y-3">
                   <p className="inline-flex w-fit items-center rounded-full border border-blue-400/30 bg-blue-900/40 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
                     Stretch Film Manufacturer
                   </p>
-                  <h1 className="text-left font-teko text-5xl font-bold uppercase leading-none tracking-wide text-white sm:text-6xl md:text-7xl lg:text-8xl">
+                  <h1 className="whitespace-nowrap text-left font-teko text-[2.75rem] font-bold uppercase leading-none tracking-wide text-white sm:text-5xl md:text-6xl lg:text-7xl">
                     Order Bulk,
                     <span className="block bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text font-bold text-transparent">
                       Save More
@@ -281,9 +279,9 @@ export function Hero() {
               initial="hidden"
               animate="show"
               exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
-              className="relative flex items-center overflow-hidden px-5 pb-14 pt-6 sm:px-8 md:px-10 lg:absolute lg:inset-0 lg:py-5 lg:px-12"
+              className="absolute inset-0 flex items-center overflow-hidden px-6 py-8 md:px-12 md:py-12"
             >
-              <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-12 md:gap-6">
+              <div className="grid w-full grid-cols-1 items-center gap-3 md:grid-cols-12 md:gap-6">
                 <motion.div
                   variants={fadeUp}
                   className="space-y-2 text-left md:col-span-7"
@@ -402,7 +400,7 @@ export function Hero() {
               initial="hidden"
               animate="show"
               exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
-              className="relative flex items-center overflow-hidden px-5 pb-14 pt-6 sm:px-8 md:px-10 lg:absolute lg:inset-0 lg:py-5 lg:px-12"
+              className="absolute inset-0 flex items-center overflow-hidden px-6 py-8 md:px-12 md:py-12"
             >
               <div className="relative z-20 mx-auto flex w-full max-w-7xl items-center md:h-full md:px-6 lg:px-8">
                 <motion.div variants={fadeUp} className="w-full max-w-xl space-y-2 text-left">
@@ -470,7 +468,7 @@ export function Hero() {
         </AnimatePresence>
 
         <div
-          className="absolute bottom-4 right-4 z-30 flex items-center gap-1.5 rounded-full bg-white/10 px-2 py-1 backdrop-blur lg:bottom-5 lg:right-6"
+          className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-white/10 px-2 py-1 backdrop-blur"
           aria-label="Hero slides"
         >
           {Array.from({ length: SLIDE_COUNT }, (_, dot) => {
