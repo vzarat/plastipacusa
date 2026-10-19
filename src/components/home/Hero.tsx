@@ -10,12 +10,10 @@ import {
   CheckCircle2,
   Clock,
   Package,
-  ShieldCheck,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GradientWaves from "@/components/ui/GradientWaves";
-import { startGuidedTour } from "@/lib/onboarding-tour";
 
 const SLIDE_COUNT = 3;
 const AUTO_MS = 6000;
@@ -26,10 +24,8 @@ const HOUSTON_HIGHLIGHTS = [
   "Direct Industrial Dock Unloading",
 ] as const;
 
-const FORCE_HAND_IMAGE =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/Group%2088.png";
-const WAREHOUSE_BG =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/warehouse_storage_background.png";
+const SLIDE_ONE_BG =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_1.jpg";
 const HOUSTON_BG =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/Gemini_Generated_Image_2q84y2q84y2q84y2-artguru.jpeg";
 
@@ -169,7 +165,7 @@ export function Hero() {
         }, 4000);
       }}
     >
-      <div className="relative mx-auto w-full max-w-[1400px] overflow-hidden rounded-[28px] bg-[#031433] md:rounded-[32px] lg:h-[440px]">
+      <div className="relative mx-auto min-h-[560px] w-full max-w-[1400px] overflow-hidden rounded-[28px] bg-[#031433] md:rounded-[32px] lg:h-[540px] lg:min-h-0">
       <div className="pointer-events-none absolute inset-0">
         <div
           className={`absolute inset-0 transition-opacity duration-700 ease-out ${
@@ -178,31 +174,14 @@ export function Hero() {
           aria-hidden
         >
           <Image
-            src={WAREHOUSE_BG}
+            src={SLIDE_ONE_BG}
             alt=""
             fill
             priority
             sizes="(max-width: 1400px) 100vw, 1400px"
             className="object-cover object-center"
           />
-          <div
-            className="absolute inset-0 lg:hidden"
-            style={{ background: "rgba(4,20,52,0.72)" }}
-          />
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(90deg, rgba(2,11,31,0.95) 0%, rgba(4,20,52,0.85) 35%, rgba(6,26,63,0.55) 65%, rgba(2,11,31,0.80) 100%)",
-            }}
-          />
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(ellipse at 70% 50%, rgba(10,60,140,0.25) 0%, transparent 60%), linear-gradient(to top, rgba(2,11,31,0.72), transparent 42%), linear-gradient(to right, rgba(2,11,31,0.35), transparent 28%, transparent 78%, rgba(2,11,31,0.55))",
-            }}
-          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-black/15 md:bg-gradient-to-r md:from-black/70 md:via-black/40 md:to-transparent" />
         </div>
         <div
           className={`absolute inset-0 z-0 transition-opacity duration-700 ease-out ${
@@ -249,128 +228,39 @@ export function Hero() {
               initial="hidden"
               animate="show"
               exit={{ opacity: 0, transition: { duration: reduceMotion ? 0 : 0.2 } }}
-              className="relative flex flex-col overflow-hidden pb-12 lg:absolute lg:inset-0 lg:block lg:pb-0"
+              className="relative flex min-h-[560px] items-end overflow-hidden lg:absolute lg:inset-0 lg:min-h-0 lg:items-center"
             >
-              <div className="pointer-events-none absolute inset-y-0 left-0 z-[1] hidden w-[52%] backdrop-blur-[3px] lg:block" aria-hidden />
-              <motion.div variants={fadeRight} className="pointer-events-none relative z-10 order-3 mt-2 h-[180px] shrink-0 lg:absolute lg:bottom-0 lg:right-0 lg:order-none lg:mt-0 lg:h-full lg:w-[58%]">
-                <div className="absolute bottom-3 right-10 h-8 w-[68%] rounded-full bg-[#020B1F]/80 blur-2xl lg:bottom-6" aria-hidden />
-                <Image
-                  src={FORCE_HAND_IMAGE}
-                  alt="FORCE™ Hand Stretch Film"
-                  width={1400}
-                  height={560}
-                  priority
-                  sizes="(max-width: 1024px) 80vw, 720px"
-                  className="relative ml-auto h-[180px] w-auto max-w-[88%] object-contain object-right object-bottom drop-shadow-[0_18px_28px_rgba(2,11,31,0.55)] lg:absolute lg:bottom-0 lg:right-0 lg:h-[118%] lg:max-w-none lg:translate-x-6 lg:translate-y-5 lg:object-right"
-                />
+              <motion.div variants={fadeUp} className="relative z-20 flex w-full max-w-[680px] flex-col px-5 pb-14 pt-16 text-left sm:px-8 md:px-10 lg:px-12 lg:py-10">
+                <div className="max-w-[36rem] space-y-4">
+                  <p className="inline-flex w-fit items-center rounded-full border border-blue-400/30 bg-blue-900/40 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
+                    Stretch Film Manufacturer
+                  </p>
+                  <h1 className="text-left text-4xl font-extrabold uppercase leading-[0.95] tracking-tight text-white sm:text-5xl lg:text-6xl">
+                    Order Bulk,
+                    <span className="mt-1 block bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
+                      Save More
+                    </span>
+                    <span className="mt-1 block">Wrap Better</span>
+                  </h1>
+                  <p className="max-w-[28rem] text-base font-medium leading-snug text-gray-100 sm:text-lg">
+                    <strong className="font-bold text-white">FREE DELIVERY</strong> in the area of{" "}
+                    <strong className="font-bold text-white">the RGV</strong> with purchases of 20 boxes or more.
+                  </p>
+                  <Link
+                    href="/#product-catalog-section"
+                    onClick={(event) => {
+                      const target = document.getElementById("product-catalog-section");
+                      if (!target) return;
+                      event.preventDefault();
+                      target.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    className="inline-flex w-fit items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-blue-500/30 transition-all duration-200 hover:scale-105 hover:from-cyan-400 hover:to-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                  >
+                    Shop Bulk Now
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
               </motion.div>
-              <motion.div
-                animate={reduceMotion ? undefined : { y: [0, -6, 0] }}
-                transition={
-                  reduceMotion
-                    ? undefined
-                    : { duration: 4.2, repeat: Infinity, ease: "easeInOut" }
-                }
-                className="absolute right-6 top-16 z-20 hidden max-w-[240px] rounded-2xl border-[1.5px] border-sky-400/70 bg-white/10 px-4 py-3 text-left shadow-[0_8px_32px_rgba(2,11,31,0.35),0_0_24px_rgba(56,189,248,0.25),inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur-xl lg:block lg:top-8"
-                style={{ WebkitBackdropFilter: "blur(24px)" }}
-              >
-                <p className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-sky-300">
-                  <ShieldCheck className="h-3 w-3 shrink-0" />
-                  Featured Product
-                </p>
-                <p className="text-xs font-bold tracking-tight text-white">
-                  FORCE™ Hand Stretch Film
-                </p>
-                <p className="text-[10px] font-medium text-white/70">
-                  1 Box (4 Rolls) · 18&quot; x 80 Ga x 1500 ft
-                </p>
-              </motion.div>
-              <motion.div
-                animate={reduceMotion ? undefined : { y: [0, -4, 0] }}
-                transition={
-                  reduceMotion
-                    ? undefined
-                    : { duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.4 }
-                }
-                className="absolute bottom-14 right-6 z-20 hidden max-w-[min(28rem,calc(100%-3rem))] rounded-2xl border-[1.5px] border-transparent bg-white/[0.12] px-4 py-3 shadow-[0_8px_32px_rgba(2,11,31,0.35),0_0_24px_rgba(56,189,248,0.25),inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur-xl [background-clip:padding-box,border-box] [background-image:linear-gradient(rgba(255,255,255,0.12),rgba(255,255,255,0.12)),linear-gradient(90deg,rgba(56,189,248,0.85),rgba(37,99,235,0.9))] [background-origin:border-box] lg:block"
-                style={{ WebkitBackdropFilter: "blur(24px)" }}
-              >
-                <ul className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-                  {["300%+ Pre-Stretch Yield", "Extreme Puncture Hold", "Factory Direct Pricing"].map(
-                    (label) => (
-                      <li key={label} className="inline-flex items-center gap-1 text-[10px] font-semibold text-white">
-                        <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" />
-                        {label}
-                      </li>
-                    )
-                  )}
-                </ul>
-              </motion.div>
-              <motion.div variants={fadeUp} className="relative z-20 order-1 flex w-full max-w-[620px] flex-col px-5 pb-2 pt-5 text-left sm:px-8 md:px-10 lg:h-full lg:w-[55%] lg:max-w-[620px] lg:justify-center lg:px-12 lg:py-5">
-                  <div className="max-w-[560px] space-y-3">
-                    <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-300">
-                      <span className="h-1.5 w-1.5 rounded-full bg-sky-300" aria-hidden />
-                      Serving the industry since 2008
-                    </p>
-
-                    <h1 className="max-w-[560px] text-left text-[1.65rem] font-extrabold uppercase leading-[1.15] tracking-tight text-white md:text-3xl">
-                      Performance you can wrap around every load
-                    </h1>
-
-                    <p className="max-w-[460px] text-left text-sm font-normal leading-snug text-white/75">
-                      From superior load containment and exceptional puncture resistance to optimized material usage, our films are designed to deliver consistent performance, greater efficiency, and dependable protection — load after load.
-                    </p>
-
-                    <div className="max-w-[560px] space-y-2 pt-1">
-                      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                      <Link
-                        href="/#product-catalog-section"
-                        onClick={(event) => {
-                          const target = document.getElementById("product-catalog-section");
-                          if (!target) return;
-                          event.preventDefault();
-                          target.scrollIntoView({ behavior: "smooth", block: "start" });
-                        }}
-                        className="group inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-slate-950 shadow-md transition duration-200 hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a3a9a]"
-                      >
-                        Explore catalog
-                        <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                      </Link>
-                      <Button
-                        asChild
-                        size="lg"
-                        variant="outline"
-                        className="h-10 w-full rounded-full border-white/40 bg-transparent px-4 text-sm font-semibold text-white shadow-none hover:-translate-y-0.5 hover:bg-white/10 hover:text-white focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a3a9a] sm:w-auto"
-                      >
-                        <Link href="/#inquiry-form">
-                          <span>Contact us</span>
-                        </Link>
-                      </Button>
-                      </div>
-                      <p className="max-w-[560px] text-sm text-sky-100/85">
-                        Need help placing your first B2B order?{" "}
-                        <button
-                          type="button"
-                          onClick={() => startGuidedTour()}
-                          className="group inline-flex cursor-pointer items-center gap-1 font-semibold text-white underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a3a9a]"
-                        >
-                          Start Guided Tour
-                          <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
-                        </button>
-                      </p>
-                    </div>
-                    <ul className="flex flex-col gap-1.5 pt-1 lg:hidden">
-                      {["300%+ Pre-Stretch Yield", "Extreme Puncture Hold", "Factory Direct Pricing"].map(
-                        (label) => (
-                          <li key={label} className="inline-flex items-center gap-1.5 text-xs font-semibold text-white">
-                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
-                            {label}
-                          </li>
-                        )
-                      )}
-                    </ul>
-                  </div>
-                </motion.div>
             </motion.div>
           ) : index === 1 ? (
             <motion.div
