@@ -50,10 +50,11 @@ export function Hero() {
         <div className="relative z-10 flex h-full flex-col items-center px-5 pb-52 pt-8 text-center">
           <Headline className="font-teko text-5xl font-bold uppercase leading-[0.85] tracking-tight text-white" />
           <Link
-            href="/#inquiry-form"
-            className="mt-5 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-center text-sm font-bold uppercase tracking-wide text-white shadow-lg transition-colors hover:bg-blue-500"
+            href="/#product-catalog-section"
+            className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-blue-500/30 transition-all duration-200 hover:scale-105 hover:from-cyan-400 hover:to-blue-500"
           >
-            Contact Us Today for a Quote
+            Shop Bulk Now
+            <ArrowRight className="h-4 w-4" />
           </Link>
           <DeliveryLine className="mt-4 max-w-sm text-sm font-medium leading-snug text-gray-100" />
         </div>
