@@ -1,9 +1,5 @@
-import { MACHINE_FILM_WEIGHT_SPECS } from "@/lib/package-weight";
 import { isExcludedFifteenInchEightyGauge } from "@/lib/palletizing";
-import {
-  GENESIS_MACHINE_FALLBACK_PRODUCTS,
-  GENESIS_STANDARD_FALLBACK_PRODUCTS,
-} from "@/lib/products";
+import { OFFICIAL_MACHINE_FILM_SPECS } from "@/lib/products";
 import { validateCatalogSpec } from "@/lib/assistant/packaging-rules";
 import type { AssistantResult, FilmKind } from "@/lib/assistant/types";
 
@@ -40,23 +36,12 @@ const HAND_GAUGE_FOR_LOAD: Record<LoadProfile, number> = {
 };
 
 function catalogForGauge(gauge: number, lengthFeet?: number) {
-  const products = [...GENESIS_STANDARD_FALLBACK_PRODUCTS, ...GENESIS_MACHINE_FALLBACK_PRODUCTS];
-  const fromProducts = products
-    .filter((product) => Number(product.gauge) === gauge)
-    .filter((product) => lengthFeet == null || Number(product.length_feet) === lengthFeet)
-    .map((product) => ({
-      gauge: Number(product.gauge),
-      lengthFeet: Number(product.length_feet),
-      title: product.title,
-    }));
-  if (fromProducts.length > 0) return fromProducts;
-
-  return MACHINE_FILM_WEIGHT_SPECS.filter((row) => row.gauge === gauge)
-    .filter((row) => lengthFeet == null || row.length === lengthFeet)
-    .map((row) => ({
-      gauge: row.gauge,
-      lengthFeet: row.length,
-      title: `20" × ${row.gauge} GA × ${row.length.toLocaleString("en-US")} ft`,
+  return OFFICIAL_MACHINE_FILM_SPECS.filter((spec) => spec.gauge === gauge)
+    .filter((spec) => lengthFeet == null || spec.length === lengthFeet)
+    .map((spec) => ({
+      gauge: spec.gauge,
+      lengthFeet: spec.length,
+      title: `20" × ${spec.gauge} GA × ${spec.length.toLocaleString("en-US")} ft`,
     }));
 }
 

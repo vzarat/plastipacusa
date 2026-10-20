@@ -9,8 +9,7 @@ export {
   type PalletizingInput,
 } from "@/lib/palletizing";
 
-import type { PackageOption, ProductVariant, ProductWithVariants } from "@/types";
-import { CATALOG_SOLD_OUT } from "@/lib/catalog-availability";
+import type { ProductWithVariants } from "@/types";
 import { MACHINE_FILM_WEIGHT_SPECS, packageTotalWeightLbs } from "@/lib/package-weight";
 
 /** Remote fallback when a product row has no image_url. Never stored in /public. */
@@ -363,111 +362,6 @@ export type FeaturedSeriesLabel =
   | typeof SERIES_GENESIS_STANDARD
   | typeof SERIES_GENESIS_HP;
 
-function buildGenesisMachineProduct(input: {
-  id: number;
-  slug: string;
-  title: string;
-  gauge: number;
-  lengthFeet: number;
-  baseSku: string;
-  price1: number;
-  price20: number;
-  price40: number;
-  series: typeof SERIES_GENESIS_STANDARD | typeof SERIES_GENESIS_HP;
-}): ProductWithVariants {
-  const isHp = input.series === SERIES_GENESIS_HP;
-  const packageOptions: PackageOption[] = buildMachinePackageOptions({
-    baseSku: input.baseSku,
-    price1: input.price1,
-    price20: input.price20,
-    price40: input.price40,
-  }) as PackageOption[];
-
-  const weightSpec = MACHINE_FILM_WEIGHT_SPECS.find(
-    (row) => row.width === 20 && row.gauge === input.gauge && row.length === input.lengthFeet
-  );
-  const variants: ProductVariant[] = packageOptions.map((opt) => ({
-    id: `${input.baseSku}-${opt.rolls}-${isHp ? "hp" : "st"}`,
-    productId: input.id,
-    sku: opt.sku,
-    title: opt.label,
-    packageSize: opt.label,
-    rollsCount: opt.rolls,
-    boxesCount: 0,
-    rolls_count: opt.rolls,
-    boxes_count: 0,
-    widthInches: "20.00",
-    gauge: input.gauge,
-    lengthFeet: input.lengthFeet,
-    rollsPerBox: opt.rolls,
-    rollsPerPallet: 40,
-    weightLbs: weightSpec
-      ? String(opt.rolls === 40 ? weightSpec.full : opt.rolls === 20 ? weightSpec.half : weightSpec.roll)
-      : "0.00",
-    rollWeightLbs: weightSpec?.roll ?? 0,
-    boxWeightLbs: weightSpec?.roll ?? 0,
-    palletWeightLbs: weightSpec?.full ?? 0,
-    priceUsd: String(opt.price),
-    casePriceUsd: null,
-    palletPriceUsd: null,
-    stockStatus: "in_stock",
-    createdAt: new Date(),
-  }));
-
-  return {
-    id: input.id,
-    slug: input.slug,
-    title: input.title,
-    name: input.title,
-    brand: "GENESIS",
-    series: input.series,
-    description: isHp
-      ? "GENESIS High Performance machine film for high-throughput wrappers."
-      : "GENESIS Standard machine film for high-speed turntable pallet wrappers.",
-    shortDescription: isHp
-      ? '20" GENESIS High Performance — half pallet and full pallet.'
-      : '20" GENESIS Standard — half pallet and full pallet.',
-    application: "machine",
-    categorySlug: isHp ? "genesis-high-performance" : "genesis-standard",
-    categoryId: isHp
-      ? "genesis-high-performance"
-      : "b0000000-0000-0000-0000-000000000003",
-    filmType: "Cast Machine Stretch Film",
-    color: "Ultra Clear",
-    features: [
-      "Machine / automatic cast film",
-      "Half pallet (20 rolls) and full pallet (40 rolls)",
-      input.series,
-    ],
-    techSheetUrl: "/docs/plastipac-force-hand-film-specs.pdf",
-    imageUrl: MACHINE_FILM_IMAGE_URL,
-    images: [MACHINE_FILM_IMAGE_URL],
-    recommendedUsage: "High-speed turntable and rotary arm pallet wrappers",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    variants,
-    startingPrice: input.price20,
-    widthInches: 20,
-    width_inches: "20.00",
-    gauge: input.gauge,
-    length_feet: input.lengthFeet,
-    core_type: 'Standard 3" Core',
-    fullPalletRolls: 40,
-    palletLayers: 2,
-    rollsPerLayer: 20,
-    rollsPerBoxSpec: 1,
-    boxesPerFullPallet: 40,
-    palletizingSummary: "40 rolls / full pallet · 2 layers × 20 rolls",
-    palletizingFamily: '20" Automatic Machine Film',
-    partNumber: input.baseSku,
-    stockQuantity: 100,
-    isSoldOut: CATALOG_SOLD_OUT,
-    isActive: true,
-    packageOptions,
-  };
-}
-
-/** GENESIS High Performance — exactly these 4 SKUs. */
 /** Official Machine Film catalog — only these four width × gauge × length specs. */
 export const OFFICIAL_MACHINE_FILM_SPECS = [
   { width: 20, gauge: 51, length: 7000, slug: "stretch-film-20-x-51-ga-x-7000ft" },
@@ -509,111 +403,14 @@ export function isOfficialMachineFilmProduct(product: {
   return OFFICIAL_MACHINE_SPEC_KEYS.has(`${width}::${gauge}::${length}`);
 }
 
-export const GENESIS_MACHINE_FALLBACK_PRODUCTS: ProductWithVariants[] = [
-  buildGenesisMachineProduct({
-    id: 30517001,
-    slug: "stretch-film-20-x-51-ga-x-7000ft",
-    title: 'STRETCH FILM 20" X 51 GA X 7000FT',
-    gauge: 51,
-    lengthFeet: 7000,
-    baseSku: "GEN-205170",
-    price1: 185.0,
-    price20: 560.0,
-    price40: 1060.0,
-    series: SERIES_GENESIS_HP,
-  }),
-  buildGenesisMachineProduct({
-    id: 30519001,
-    slug: "stretch-film-20-x-51-ga-x-9000ft",
-    title: 'STRETCH FILM 20" X 51 GA X 9000FT',
-    gauge: 51,
-    lengthFeet: 9000,
-    baseSku: "GEN-205190",
-    price1: 230.0,
-    price20: 695.0,
-    price40: 1315.0,
-    series: SERIES_GENESIS_HP,
-  }),
-  buildGenesisMachineProduct({
-    id: 30705001,
-    slug: "stretch-film-20-x-70-ga-x-5000ft",
-    title: 'STRETCH FILM 20" X 70 GA X 5000FT',
-    gauge: 70,
-    lengthFeet: 5000,
-    baseSku: "GEN-207050",
-    price1: 224.51,
-    price20: 677.1,
-    price40: 1282.8,
-    series: SERIES_GENESIS_HP,
-  }),
-  buildGenesisMachineProduct({
-    id: 30805001,
-    slug: "stretch-film-20-x-80-ga-x-5000ft",
-    title: 'STRETCH FILM 20" X 80 GA X 5000FT',
-    gauge: 80,
-    lengthFeet: 5000,
-    baseSku: "GEN-208050",
-    price1: 256.58,
-    price20: 773.82,
-    price40: 1466.18,
-    series: SERIES_GENESIS_HP,
-  }),
-];
+/** Machine film cards come from Supabase only. These lists stay empty so no static card is rendered. */
+export const GENESIS_MACHINE_FALLBACK_PRODUCTS: ProductWithVariants[] = [];
 
-/** GENESIS Standard — the same four official machine specs. */
-export const GENESIS_STANDARD_FALLBACK_PRODUCTS: ProductWithVariants[] = [
-  buildGenesisMachineProduct({
-    id: 20517002,
-    slug: "stretch-film-20-x-51-ga-x-7000ft",
-    title: 'STRETCH FILM 20" X 51 GA X 7000FT',
-    gauge: 51,
-    lengthFeet: 7000,
-    baseSku: "GEN-205170",
-    price1: 185.0,
-    price20: 560.0,
-    price40: 1060.0,
-    series: SERIES_GENESIS_STANDARD,
-  }),
-  buildGenesisMachineProduct({
-    id: 20519002,
-    slug: "stretch-film-20-x-51-ga-x-9000ft",
-    title: 'STRETCH FILM 20" X 51 GA X 9000FT',
-    gauge: 51,
-    lengthFeet: 9000,
-    baseSku: "GEN-205190",
-    price1: 230.0,
-    price20: 695.0,
-    price40: 1315.0,
-    series: SERIES_GENESIS_STANDARD,
-  }),
-  buildGenesisMachineProduct({
-    id: 20705001,
-    slug: "stretch-film-20-x-70-ga-x-5000ft",
-    title: 'STRETCH FILM 20" X 70 GA X 5000FT',
-    gauge: 70,
-    lengthFeet: 5000,
-    baseSku: "GEN-207050",
-    price1: 224.51,
-    price20: 677.1,
-    price40: 1282.8,
-    series: SERIES_GENESIS_STANDARD,
-  }),
-  buildGenesisMachineProduct({
-    id: 20805002,
-    slug: "stretch-film-20-x-80-ga-x-5000ft",
-    title: 'STRETCH FILM 20" X 80 GA X 5000FT',
-    gauge: 80,
-    lengthFeet: 5000,
-    baseSku: "GEN-208050",
-    price1: 256.58,
-    price20: 773.82,
-    price40: 1466.18,
-    series: SERIES_GENESIS_STANDARD,
-  }),
-];
+/** Machine film is High Performance only. Standard no longer duplicates those four specs. */
+export const GENESIS_STANDARD_FALLBACK_PRODUCTS: ProductWithVariants[] = [];
 
-export const GENESIS_HP_SLUGS = new Set(
-  GENESIS_MACHINE_FALLBACK_PRODUCTS.map((p) => p.slug.toLowerCase())
+export const GENESIS_HP_SLUGS = new Set<string>(
+  OFFICIAL_MACHINE_FILM_SPECS.map((spec) => spec.slug)
 );
 
 export const GENESIS_STANDARD_SLUGS = new Set(
@@ -679,6 +476,35 @@ function seriesCatalogKey(product: { slug?: string | null; series?: string | nul
   return `${String(product.slug || "").toLowerCase()}::${String(product.series || "")}`;
 }
 
+function officialMachineSpecKey(product: {
+  slug?: string | null;
+  widthInches?: number | string | null;
+  width_inches?: number | string | null;
+  gauge?: number | string | null;
+  length_feet?: number | string | null;
+  lengthFeet?: number | string | null;
+}): string | null {
+  if (!isOfficialMachineFilmProduct(product)) return null;
+  const slug = String(product.slug || "").toLowerCase();
+  const fromSlug = OFFICIAL_MACHINE_FILM_SPECS.find((spec) => spec.slug === slug);
+  if (fromSlug) return `${fromSlug.width}::${fromSlug.gauge}::${fromSlug.length}`;
+  const width = Math.round(Number(product.widthInches ?? product.width_inches ?? 0));
+  const gauge = Math.round(Number(product.gauge ?? 0));
+  const length = Math.round(Number(product.length_feet ?? product.lengthFeet ?? 0));
+  return `${width}::${gauge}::${length}`;
+}
+
+function machineCatalogScore(product: ProductWithVariants): number {
+  const pricedVariants = (product.variants || []).filter(
+    (variant) => Number.parseFloat(String(variant.priceUsd || 0)) > 0
+  ).length;
+  return (
+    pricedVariants * 10 +
+    (product.packageOptions?.length || 0) +
+    (product.isActive === false ? -100 : 0)
+  );
+}
+
 /** Map categorySlug → exact featured series label. */
 export function seriesLabelFromCategorySlug(categorySlug?: string | null): FeaturedSeriesLabel | undefined {
   switch (String(categorySlug || "").toLowerCase()) {
@@ -696,7 +522,7 @@ export function seriesLabelFromCategorySlug(categorySlug?: string | null): Featu
   }
 }
 
-/** Ensure catalog includes both GENESIS series with exact `series` labels (no crossover). */
+/** One High Performance card per official machine spec. Hand film is left as-is. */
 export function ensureGenesisMachineProducts(
   products: ProductWithVariants[]
 ): ProductWithVariants[] {
@@ -748,67 +574,48 @@ export function ensureGenesisMachineProducts(
       !isOfficialGenesisStandardProduct({ ...product, series })
     ) {
       // Do not surface as GENESIS Standard — keep only if it belongs to HP allowlist
-      if (GENESIS_HP_SLUGS.has(slug)) {
+      if (GENESIS_HP_SLUGS.has(slug) || isOfficialMachineFilmProduct(product)) {
         series = SERIES_GENESIS_HP;
       } else {
         continue;
       }
     }
 
-    const withSeries: ProductWithVariants = {
-      ...product,
-      series,
-      categorySlug:
-        series === SERIES_GENESIS_STANDARD
-          ? "genesis-standard"
-          : series === SERIES_GENESIS_HP
-            ? "genesis-high-performance"
-            : product.categorySlug,
-    };
+    const specKey = isMachineRow ? officialMachineSpecKey(product) : null;
+    const withSeries: ProductWithVariants = specKey
+      ? {
+          ...product,
+          series: SERIES_GENESIS_HP,
+          application: "machine",
+          categorySlug: "genesis-high-performance",
+          imageUrl: MACHINE_FILM_IMAGE_URL,
+          images: [MACHINE_FILM_IMAGE_URL],
+        }
+      : {
+          ...product,
+          series,
+          categorySlug:
+            series === SERIES_GENESIS_STANDARD
+              ? "genesis-standard"
+              : series === SERIES_GENESIS_HP
+                ? "genesis-high-performance"
+                : product.categorySlug,
+        };
 
-    if (withSeries.series) {
+    if (specKey) {
+      const key = `machine:${specKey}`;
+      const existing = byKey.get(key);
+      byKey.set(
+        key,
+        existing && machineCatalogScore(existing) >= machineCatalogScore(withSeries)
+          ? existing
+          : withSeries
+      );
+    } else if (withSeries.series) {
       byKey.set(seriesCatalogKey(withSeries), withSeries);
     } else {
       byKey.set(`id:${withSeries.id}:${slug}`, withSeries);
     }
-  }
-
-  const mergeFallback = (fallback: ProductWithVariants) => {
-    const key = seriesCatalogKey(fallback);
-    const existing = byKey.get(key);
-    if (!existing) {
-      byKey.set(key, fallback);
-      return;
-    }
-    const existingHasPricing =
-      (existing.packageOptions?.length || 0) > 0 ||
-      (existing.variants || []).some(
-        (v) => Number.parseFloat(String(v.priceUsd || 0)) > 0
-      );
-    byKey.set(key, {
-      ...existing,
-      ...pickPricing(
-        fallback,
-        existing,
-        fallback.series === SERIES_GENESIS_HP
-          ? "genesis-high-performance"
-          : "genesis-standard"
-      ),
-      series: fallback.series,
-      packageOptions: fallback.packageOptions,
-      variants: fallback.variants,
-      startingPrice: fallback.startingPrice,
-    });
-    if (!existingHasPricing) {
-      byKey.set(key, { ...fallback, isSoldOut: existing.isSoldOut === true });
-    }
-  };
-
-  for (const fallback of GENESIS_MACHINE_FALLBACK_PRODUCTS) {
-    mergeFallback(fallback);
-  }
-  for (const fallback of GENESIS_STANDARD_FALLBACK_PRODUCTS) {
-    mergeFallback(fallback);
   }
 
   // Final purge: GENESIS Standard grid must be exactly the 4 official SKUs
@@ -832,36 +639,6 @@ export function ensureGenesisMachineProducts(
       isOfficialGenesisStandardProduct(product)
     );
   });
-}
-
-function pickPricing(
-  fallback: ProductWithVariants,
-  existing: ProductWithVariants,
-  forceSeries: "genesis-standard" | "genesis-high-performance"
-): Partial<ProductWithVariants> {
-  const seriesLabel =
-    forceSeries === "genesis-high-performance"
-      ? SERIES_GENESIS_HP
-      : SERIES_GENESIS_STANDARD;
-  return {
-    packageOptions: fallback.packageOptions,
-    variants: fallback.variants,
-    startingPrice: fallback.startingPrice ?? existing.startingPrice,
-    application: "machine",
-    series: seriesLabel,
-    categorySlug: forceSeries,
-    categoryId:
-      forceSeries === "genesis-high-performance"
-        ? "genesis-high-performance"
-        : "b0000000-0000-0000-0000-000000000003",
-    imageUrl: fallback.imageUrl,
-    images: fallback.images,
-    widthInches: existing.widthInches || fallback.widthInches,
-    width_inches: existing.width_inches || fallback.width_inches,
-    gauge: existing.gauge || fallback.gauge,
-    length_feet: existing.length_feet || fallback.length_feet,
-    brand: existing.brand || fallback.brand,
-  };
 }
 
 export function getGenesisMachineFallbackBySlug(

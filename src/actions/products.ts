@@ -35,13 +35,11 @@ import {
   MACHINE_FILM_IMAGE_URL,
   GENESIS_HP_SLUGS,
   GENESIS_STANDARD_SLUGS,
-  GENESIS_MACHINE_FALLBACK_PRODUCTS,
   SERIES_FORCE_ELITE,
   SERIES_FORCE_STANDARD,
   buildMachinePackageOptions,
   formatBoxRollLabel,
   ensureGenesisMachineProducts,
-  getGenesisMachineFallbackBySlug,
   isMachineFilm as detectMachineFilm,
   normalizeMachinePackageLabel,
   seriesLabelFromCategorySlug,
@@ -689,19 +687,13 @@ export async function getProductSlugs(): Promise<{ slug: string }[]> {
           slug: product.slug,
         }));
 
-      const existing = new Set(slugs.map((s) => s.slug.toLowerCase()));
-      for (const fallback of GENESIS_MACHINE_FALLBACK_PRODUCTS) {
-        if (!existing.has(fallback.slug.toLowerCase())) {
-          slugs.push({ slug: fallback.slug });
-        }
-      }
       return slugs;
     }
   } catch (err: any) {
     console.error("getProductSlugs Supabase query failed:", err?.message || err);
   }
 
-  return GENESIS_MACHINE_FALLBACK_PRODUCTS.map((p) => ({ slug: p.slug }));
+  return [];
 }
 
 type CatalogClient = Awaited<ReturnType<typeof createServerClient>>;
@@ -888,7 +880,7 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
     console.error("getProductBySlug encountered error:", error?.message || error);
   }
 
-  return getGenesisMachineFallbackBySlug(slug);
+  return null;
 }
 
 /**
