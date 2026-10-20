@@ -6,8 +6,6 @@ const SLIDE_BG =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_1%20(1).jpg";
 const SLIDE_ROLLS =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/STRETCH_SLIDE_1.png";
-const LOGO_SRC =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PLASTIPAC_USA_LOGO%202.svg";
 
 function Headline({ className }: { className: string }) {
   return (
@@ -49,18 +47,8 @@ export function Hero() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/75" />
 
-        <div className="relative z-10 flex h-full flex-col items-center px-5 pb-44 pt-8 text-center">
-          <div className="rounded-xl bg-white/95 px-3 py-2 shadow-lg">
-            <Image
-              src={LOGO_SRC}
-              alt="Plastipac USA — Expert manufacturer of stretch film"
-              width={220}
-              height={64}
-              priority
-              className="h-14 w-auto object-contain"
-            />
-          </div>
-          <Headline className="mt-5 font-teko text-5xl font-bold uppercase leading-none tracking-wide text-white" />
+        <div className="relative z-10 flex h-full flex-col items-center px-5 pb-40 pt-10 text-center">
+          <Headline className="font-teko text-5xl font-bold uppercase leading-[0.85] tracking-tight text-white" />
           <Link
             href="/#inquiry-form"
             className="mt-5 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-center text-sm font-bold uppercase tracking-wide text-white shadow-lg transition-colors hover:bg-blue-500"
@@ -77,15 +65,6 @@ export function Hero() {
           height={455}
           className="pointer-events-none absolute bottom-0 inset-x-0 z-10 mx-auto h-[38%] max-h-[38%] w-auto object-contain object-bottom"
         />
-        <div className="absolute inset-x-0 bottom-0 z-20 bg-black/80 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-white">
-          <a href="https://www.plastipacusa.com" className="hover:text-sky-200">
-            www.plastipacusa.com
-          </a>
-          <span className="px-2 text-white/50">|</span>
-          <a href="tel:+19564003683" className="hover:text-sky-200">
-            (956) 400 3683
-          </a>
-        </div>
       </div>
 
       <div className="relative mx-auto hidden h-[480px] w-full max-w-[1400px] overflow-hidden rounded-2xl md:block md:rounded-3xl lg:h-[520px]">
@@ -111,7 +90,7 @@ export function Hero() {
           <p className="inline-flex w-fit items-center rounded-full border border-blue-400/30 bg-blue-900/40 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
             Stretch Film Manufacturer
           </p>
-          <Headline className="mt-3 whitespace-nowrap font-teko text-5xl font-bold uppercase leading-none tracking-wide text-white md:text-6xl lg:text-7xl" />
+          <Headline className="mt-3 whitespace-nowrap font-teko text-5xl font-bold uppercase leading-[0.85] tracking-tight text-white md:text-6xl lg:text-7xl" />
           <DeliveryLine className="mt-3 max-w-md text-sm font-medium leading-snug text-gray-100 md:text-base" />
           <Link
             href="/#product-catalog-section"
