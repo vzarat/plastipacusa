@@ -201,7 +201,7 @@ function printRepoAudit() {
     ["stretch-film-20-x-51-ga-x-9000ft", 1577.71],
     ["stretch-film-20-x-60-ga-x-5000ft", 1058],
     ["stretch-film-20-x-70-ga-x-5000ft", 1228.17],
-    ["stretch-film-20-x-80-ga-x-5000ft", 1388.51],
+    ["stretch-film-20-x-80-ga-x-5000ft", 1288.51],
     ["stretch-film-20-x-60-ga-x-6000ft", null],
     ["stretch-film-20-x-70-ga-x-6000ft", null],
     ["stretch-film-20-x-80-ga-x-6000ft", null],

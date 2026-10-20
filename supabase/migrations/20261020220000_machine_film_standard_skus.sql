@@ -1,5 +1,6 @@
--- Machine film SKUs: HPFSF[WIDTH][GAUGE][LENGTH/100]-[HLP|FLP]
--- Renames genesis-machine-film-20-51-9000-20R to HPFSF205190-HLP, and the other
+-- Machine film SKUs: HPF-SF[WIDTH][GAUGE][LENGTH/100]-[HLP|FLP]
+-- Hyphen between HPF and SF. No hyphen between SF and the measurement.
+-- Renames HPFSF205190-HLP to HPF-SF205190-HLP, and the other
 -- official automatic tiers the same way.
 -- Run this whole file, from DO $$ through the final SELECT.
 -- Hand film is not changed.
@@ -63,6 +64,16 @@ BEGIN
     END IF;
 
     IF parsed IS NULL THEN
+      parsed := regexp_match(row_var.sku, 'hpf-?sf([0-9]{2})([0-9]{2})([0-9]{2})-(hlp|flp)', 'i');
+      IF parsed IS NOT NULL THEN
+        width_in := parsed[1]::int;
+        gauge_in := parsed[2]::int;
+        length_ft := parsed[3]::int * 100;
+        next_rolls := CASE WHEN lower(parsed[4]) = 'hlp' THEN 20 ELSE 40 END;
+      END IF;
+    END IF;
+
+    IF width_in IS NULL THEN
       parsed := regexp_match(row_var.sku, 'gen-([0-9]{2})([0-9]{2})([0-9]{2})-(20|40)r', 'i');
       IF parsed IS NOT NULL THEN
         width_in := parsed[1]::int;
@@ -107,7 +118,7 @@ BEGIN
     END IF;
 
     next_sku :=
-      'HPFSF'
+      'HPF-SF'
       || lpad(width_in::text, 2, '0')
       || lpad(gauge_in::text, 2, '0')
       || lpad((length_ft / 100)::text, 2, '0')
@@ -215,6 +226,7 @@ WHERE p.slug IN (
     'stretch-film-20-x-70-ga-x-5000ft',
     'stretch-film-20-x-80-ga-x-5000ft'
   )
+  OR v.sku ILIKE 'HPF-SF%'
   OR v.sku ILIKE 'HPFSF%'
   OR v.sku ILIKE 'genesis-machine-film-20-%'
   OR v.sku ILIKE 'FST-205%'

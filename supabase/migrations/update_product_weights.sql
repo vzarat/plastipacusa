@@ -116,7 +116,7 @@ FROM (
     ('stretch-film-20-x-51-ga-x-9000ft', 20::numeric, 51::numeric, 9000::numeric, 38.779312::numeric, 802.13::numeric, 1577.71::numeric),
     ('stretch-film-20-x-60-ga-x-5000ft', 20::numeric, 60::numeric, 5000::numeric, 25.90::numeric, 540.0::numeric, 1058.0::numeric),
     ('stretch-film-20-x-70-ga-x-5000ft', 20::numeric, 70::numeric, 5000::numeric, 30.049006::numeric, 627.19::numeric, 1228.17::numeric),
-    ('stretch-film-20-x-80-ga-x-5000ft', 20::numeric, 80::numeric, 5000::numeric, 34.06142::numeric, 707.28::numeric, 1388.51::numeric)
+    ('stretch-film-20-x-80-ga-x-5000ft', 20::numeric, 80::numeric, 5000::numeric, 34.06142::numeric, 707.28::numeric, 1288.51::numeric)
 ) AS spec(slug, width_in, gauge, length_ft, roll_lbs, half_lbs, pallet_lbs)
 WHERE p.slug = spec.slug
    OR (
@@ -137,7 +137,7 @@ JOIN (
     ('stretch-film-20-x-51-ga-x-9000ft', 20::numeric, 51::numeric, 9000::numeric, 38.779312::numeric, 802.13::numeric, 1577.71::numeric),
     ('stretch-film-20-x-60-ga-x-5000ft', 20::numeric, 60::numeric, 5000::numeric, 25.90::numeric, 540.0::numeric, 1058.0::numeric),
     ('stretch-film-20-x-70-ga-x-5000ft', 20::numeric, 70::numeric, 5000::numeric, 30.049006::numeric, 627.19::numeric, 1228.17::numeric),
-    ('stretch-film-20-x-80-ga-x-5000ft', 20::numeric, 80::numeric, 5000::numeric, 34.06142::numeric, 707.28::numeric, 1388.51::numeric)
+    ('stretch-film-20-x-80-ga-x-5000ft', 20::numeric, 80::numeric, 5000::numeric, 34.06142::numeric, 707.28::numeric, 1288.51::numeric)
 ) AS spec(slug, width_in, gauge, length_ft, roll_lbs, half_lbs, pallet_lbs)
   ON p.slug = spec.slug
   OR (
@@ -169,7 +169,7 @@ BEGIN
         ('stretch-film-20-x-51-ga-x-9000ft', 20::numeric, 51::numeric, 9000::numeric, 38.779312::numeric, 802.13::numeric, 1577.71::numeric),
         ('stretch-film-20-x-60-ga-x-5000ft', 20::numeric, 60::numeric, 5000::numeric, 25.90::numeric, 540.0::numeric, 1058.0::numeric),
         ('stretch-film-20-x-70-ga-x-5000ft', 20::numeric, 70::numeric, 5000::numeric, 30.049006::numeric, 627.19::numeric, 1228.17::numeric),
-        ('stretch-film-20-x-80-ga-x-5000ft', 20::numeric, 80::numeric, 5000::numeric, 34.06142::numeric, 707.28::numeric, 1388.51::numeric)
+        ('stretch-film-20-x-80-ga-x-5000ft', 20::numeric, 80::numeric, 5000::numeric, 34.06142::numeric, 707.28::numeric, 1288.51::numeric)
     ) AS spec(slug, width_in, gauge, length_ft, roll_lbs, half_lbs, pallet_lbs)
       ON p.slug = spec.slug
       OR (

@@ -279,7 +279,7 @@ describe("catalog shipment freight", () => {
       ["stretch-film-20-x-51-ga-x-9000ft", "machine", null, 38.779312, 1577.71, 20],
       ["stretch-film-20-x-60-ga-x-5000ft", "machine", null, 25.9, 1058, 20],
       ["stretch-film-20-x-70-ga-x-5000ft", "machine", null, 30.049006, 1228.17, 20],
-      ["stretch-film-20-x-80-ga-x-5000ft", "machine", null, 34.06142, 1388.51, 20],
+      ["stretch-film-20-x-80-ga-x-5000ft", "machine", null, 34.06142, 1288.51, 20],
       ["stretch-film-20-x-60-ga-x-6000ft", "machine", null, null, null, 20],
       ["stretch-film-20-x-70-ga-x-6000ft", "machine", null, null, null, 20],
       ["stretch-film-20-x-80-ga-x-6000ft", "machine", null, null, null, 20],

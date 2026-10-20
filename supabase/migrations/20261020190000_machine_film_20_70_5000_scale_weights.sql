@@ -1,7 +1,7 @@
 -- 20" x 70 GA x 5,000 ft machine film. Scale weights, not roll x count + 22.05 lb tare.
 -- Single roll (with core, no box): 30.049006 lbs
--- Half pallet, 20 rolls (HPFSF207050-HLP): 627.19 lbs, including pallet tare
--- Full pallet, 40 rolls (HPFSF207050-FLP): 1,228.17 lbs, including pallet tare
+-- Half pallet, 20 rolls (HPF-SF207050-HLP): 627.19 lbs, including pallet tare
+-- Full pallet, 40 rolls (HPF-SF207050-FLP): 1,228.17 lbs, including pallet tare
 -- Pallet size: 40" W x 48" L x 46" H
 -- Does not change hand film or the other machine-film specs.
 
@@ -54,7 +54,7 @@ SET
 FROM public.products AS p
 WHERE v.product_id = p.id
   AND (
-    v.sku IN ('HPFSF207050-HLP', 'HPFSF207050-FLP', 'FST-20705000-20R', 'FST-20705000-40R')
+    v.sku IN ('HPF-SF207050-HLP', 'HPF-SF207050-FLP', 'FST-20705000-20R', 'FST-20705000-40R')
     OR v.sku ILIKE '%207050%'
     OR (
       (
@@ -89,6 +89,6 @@ BEGIN
     END
     FROM public.products AS p
     WHERE v.product_id = p.id
-      AND v.sku IN ('HPFSF207050-HLP', 'HPFSF207050-FLP', 'FST-20705000-20R', 'FST-20705000-40R');
+      AND v.sku IN ('HPF-SF207050-HLP', 'HPF-SF207050-FLP', 'FST-20705000-20R', 'FST-20705000-40R');
   END IF;
 END $$;

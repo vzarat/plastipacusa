@@ -6,35 +6,35 @@ describe("machine film SKUs", () => {
   it("builds the four official pallet SKUs without a box suffix", () => {
     assert.equal(
       machineFilmTierSku({ widthInches: 20, gauge: 51, lengthFeet: 7000, rolls: 20 }),
-      "HPFSF205170-HLP"
+      "HPF-SF205170-HLP"
     );
     assert.equal(
       machineFilmTierSku({ widthInches: 20, gauge: 51, lengthFeet: 7000, rolls: 40 }),
-      "HPFSF205170-FLP"
+      "HPF-SF205170-FLP"
     );
     assert.equal(
       machineFilmTierSku({ widthInches: 20, gauge: 51, lengthFeet: 9000, rolls: 20 }),
-      "HPFSF205190-HLP"
+      "HPF-SF205190-HLP"
     );
     assert.equal(
       machineFilmTierSku({ widthInches: 20, gauge: 51, lengthFeet: 9000, rolls: 40 }),
-      "HPFSF205190-FLP"
+      "HPF-SF205190-FLP"
     );
     assert.equal(
       machineFilmTierSku({ widthInches: 20, gauge: 70, lengthFeet: 5000, rolls: 20 }),
-      "HPFSF207050-HLP"
+      "HPF-SF207050-HLP"
     );
     assert.equal(
       machineFilmTierSku({ widthInches: 20, gauge: 70, lengthFeet: 5000, rolls: 40 }),
-      "HPFSF207050-FLP"
+      "HPF-SF207050-FLP"
     );
     assert.equal(
       machineFilmTierSku({ widthInches: 20, gauge: 80, lengthFeet: 5000, rolls: 20 }),
-      "HPFSF208050-HLP"
+      "HPF-SF208050-HLP"
     );
     assert.equal(
       machineFilmTierSku({ widthInches: 20, gauge: 80, lengthFeet: 5000, rolls: 40 }),
-      "HPFSF208050-FLP"
+      "HPF-SF208050-FLP"
     );
   });
 

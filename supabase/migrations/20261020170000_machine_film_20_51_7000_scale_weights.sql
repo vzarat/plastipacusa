@@ -1,8 +1,8 @@
 -- 20" x 51 GA x 7,000 ft machine film. Scale weights, not roll x count + 22.05 lb tare.
 -- Single roll (with core, no box): 30.600162 lbs
 -- Pallet tare: 25.99352 lbs
--- Half pallet, 20 rolls (HPFSF205170-HLP): 638.00 lbs
--- Full pallet, 40 rolls (HPFSF205170-FLP): 1,250.01 lbs
+-- Half pallet, 20 rolls (HPF-SF205170-HLP): 638.00 lbs
+-- Full pallet, 40 rolls (HPF-SF205170-FLP): 1,250.01 lbs
 -- Does not change hand film or the other machine-film specs.
 
 ALTER TABLE public.products
@@ -37,8 +37,8 @@ FROM public.products AS p
 WHERE v.product_id = p.id
   AND (
     v.sku IN (
-      'HPFSF205170-HLP',
-      'HPFSF205170-FLP',
+      'HPF-SF205170-HLP',
+      'HPF-SF205170-FLP',
       'genesis-machine-film-20-51-7000-20R',
       'genesis-machine-film-20-51-7000-40R'
     )
@@ -79,8 +79,8 @@ BEGIN
     WHERE v.product_id = p.id
       AND (
         v.sku IN (
-          'HPFSF205170-HLP',
-          'HPFSF205170-FLP',
+          'HPF-SF205170-HLP',
+          'HPF-SF205170-FLP',
           'genesis-machine-film-20-51-7000-20R',
           'genesis-machine-film-20-51-7000-40R'
         )

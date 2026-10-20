@@ -1,4 +1,4 @@
-/** Machine film SKU: HPFSF[WIDTH][GAUGE][LENGTH/100]-[HLP|FLP]. Example: HPFSF205170-HLP. */
+/** Machine film SKU: HPF-SF[WIDTH][GAUGE][LENGTH/100]-[HLP|FLP]. Example: HPF-SF205170-HLP. */
 
 const OFFICIAL_MACHINE_SPECS = [
   { width: 20, gauge: 51, length: 7000 },
@@ -38,7 +38,7 @@ export function machineFilmBaseSku(
     Number(lengthFeet)
   );
   if (!measurement) return null;
-  return `HPFSF${measurement}`;
+  return `HPF-SF${measurement}`;
 }
 
 /** Half pallet is HLP (20 rolls). Full pallet is FLP (40 rolls). Rolls ship with no boxes. */

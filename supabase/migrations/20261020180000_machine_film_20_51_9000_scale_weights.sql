@@ -1,7 +1,7 @@
 -- 20" x 51 GA x 9,000 ft machine film. Scale weights, not roll x count + 22.05 lb tare.
 -- Single roll (with core, no box): 38.779312 lbs
--- Half pallet, 20 rolls (HPFSF205190-HLP): 802.13 lbs, including pallet tare
--- Full pallet, 40 rolls (HPFSF205190-FLP): 1,577.71 lbs, including pallet tare
+-- Half pallet, 20 rolls (HPF-SF205190-HLP): 802.13 lbs, including pallet tare
+-- Full pallet, 40 rolls (HPF-SF205190-FLP): 1,577.71 lbs, including pallet tare
 -- Every automatic / machine pallet is 40" W x 48" L x 46" H, half and full.
 -- Does not change hand film.
 
@@ -47,7 +47,7 @@ SET
 FROM public.products AS p
 WHERE v.product_id = p.id
   AND (
-    v.sku IN ('HPFSF205190-HLP', 'HPFSF205190-FLP', 'FST-20519000-20R', 'FST-20519000-40R')
+    v.sku IN ('HPF-SF205190-HLP', 'HPF-SF205190-FLP', 'FST-20519000-20R', 'FST-20519000-40R')
     OR (
       (
         p.slug = 'stretch-film-20-x-51-ga-x-9000ft'
@@ -106,7 +106,7 @@ BEGIN
     FROM public.products AS p
     WHERE v.product_id = p.id
       AND (
-        v.sku IN ('HPFSF205190-HLP', 'HPFSF205190-FLP', 'FST-20519000-20R', 'FST-20519000-40R')
+        v.sku IN ('HPF-SF205190-HLP', 'HPF-SF205190-FLP', 'FST-20519000-20R', 'FST-20519000-40R')
         OR (
           (
             p.slug = 'stretch-film-20-x-51-ga-x-9000ft'

@@ -1,7 +1,7 @@
 -- 20" x 80 GA x 5,000 ft machine film. Scale weights, not roll x count + 22.05 lb tare.
 -- Single roll (with core, no box): 34.06142 lbs
--- Half pallet, 20 rolls (HPFSF208050-HLP): 707.28 lbs, including pallet tare
--- Full pallet, 40 rolls (HPFSF208050-FLP): 1,388.51 lbs, including pallet tare
+-- Half pallet, 20 rolls (HPF-SF208050-HLP): 707.28 lbs, including pallet tare
+-- Full pallet, 40 rolls (HPF-SF208050-FLP): 1,288.51 lbs, including pallet tare
 -- Older codes FST-20805000-20R / GEN-208050-20R are matched for weights only.
 -- Pallet size: 40" W x 48" L x 46" H
 -- Does not change hand film or the other machine-film specs.
@@ -24,7 +24,7 @@ ALTER TABLE public.products
 UPDATE public.products AS p
 SET
   roll_weight_lbs = 34.06142,
-  pallet_weight_lbs = 1388.51,
+  pallet_weight_lbs = 1288.51,
   pallet_length_in = 48,
   pallet_width_in = 40,
   pallet_height_in = 46,
@@ -51,14 +51,14 @@ SET
   box_weight_lbs = NULL,
   pallet_weight_lbs = CASE
     WHEN v.sku ILIKE '%-HLP' OR v.sku ILIKE '%-20R' OR COALESCE(v.rolls_count, 0) = 20 THEN 707.28
-    ELSE 1388.51
+    ELSE 1288.51
   END
 FROM public.products AS p
 WHERE v.product_id = p.id
   AND (
     v.sku IN (
-      'HPFSF208050-HLP',
-      'HPFSF208050-FLP',
+      'HPF-SF208050-HLP',
+      'HPF-SF208050-FLP',
       'FST-20805000-20R',
       'FST-20805000-40R',
       'GEN-208050-20R',
@@ -96,13 +96,13 @@ BEGIN
     UPDATE public.product_variants AS v
     SET weight_lbs = CASE
       WHEN v.sku ILIKE '%-HLP' OR v.sku ILIKE '%-20R' OR COALESCE(v.rolls_count, 0) = 20 THEN 707.28
-      ELSE 1388.51
+      ELSE 1288.51
     END
     FROM public.products AS p
     WHERE v.product_id = p.id
       AND v.sku IN (
-        'HPFSF208050-HLP',
-        'HPFSF208050-FLP',
+        'HPF-SF208050-HLP',
+        'HPF-SF208050-FLP',
         'FST-20805000-20R',
         'FST-20805000-40R'
       );
