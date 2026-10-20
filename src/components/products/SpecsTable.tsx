@@ -21,6 +21,8 @@ import {
   handMatrixWeightLbs,
   machineHandlingUnit,
 } from "@/lib/shipping/hand-freight";
+import { handFilmTierSku } from "@/lib/hand-film-sku";
+import { machineFilmTierSku } from "@/lib/machine-film-sku";
 import { buildMachineFilmSelectorTiers, formatBoxRollLabel, isMachineFilm } from "@/lib/products";
 import {
   BOX_PRICE_PRESETS,
@@ -36,6 +38,8 @@ interface SpecsTableProps {
     application?: string | null;
     type?: string | null;
     categorySlug?: string | null;
+    series?: string | null;
+    partNumber?: string | null;
     slug?: string | null;
     name?: string | null;
     title?: string | null;
@@ -104,7 +108,25 @@ function handMatrixRows(
     return {
       ...(match || boxVariant || sample),
       id: match?.id || `hand-${tier.rolls}`,
-      sku: match?.sku || boxVariant?.sku || "",
+      sku:
+        handFilmTierSku({
+          categorySlug: product?.categorySlug,
+          series: product?.series,
+          partNumber: product?.partNumber,
+          title: product?.title || product?.name,
+          sku: match?.sku || boxVariant?.sku,
+          widthInches:
+            match?.widthInches ||
+            product?.widthInches ||
+            product?.width_inches ||
+            sample?.widthInches,
+          gauge: match?.gauge ?? product?.gauge ?? sample?.gauge,
+          lengthFeet: match?.lengthFeet ?? product?.lengthFeet ?? product?.length_feet ?? sample?.lengthFeet,
+          boxes: tier.boxes,
+        }) ||
+        match?.sku ||
+        boxVariant?.sku ||
+        "",
       title: formatBoxRollLabel(tier.boxes, tier.rolls),
       packageSize: formatBoxRollLabel(tier.boxes, tier.rolls),
       boxUnitPrice: unit,
@@ -252,7 +274,17 @@ function matrixRowView(
   return {
     key: String(variant.id || variant.sku || index),
     label: packageTierLabel(variant),
-    sku: variant.sku || "—",
+    sku:
+      (machine
+        ? machineFilmTierSku({
+            widthInches: variant.widthInches || product?.widthInches || product?.width_inches,
+            gauge: variant.gauge ?? product?.gauge,
+            lengthFeet: variant.lengthFeet ?? product?.lengthFeet ?? product?.length_feet,
+            rolls: rollCount,
+          })
+        : null) ||
+      variant.sku ||
+      "—",
     width: safeNumberDisplay(variant.widthInches, '"'),
     gauge: variant.gauge != null ? `${variant.gauge} Ga` : "—",
     length: safeLocaleNumber(variant.lengthFeet, " ft"),

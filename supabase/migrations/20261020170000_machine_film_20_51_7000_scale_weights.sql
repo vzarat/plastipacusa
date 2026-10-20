@@ -1,8 +1,8 @@
 -- 20" x 51 GA x 7,000 ft machine film. Scale weights, not roll x count + 22.05 lb tare.
 -- Single roll (with core, no box): 30.600162 lbs
 -- Pallet tare: 25.99352 lbs
--- Half pallet, 20 rolls (genesis-machine-film-20-51-7000-20R): 638.00 lbs
--- Full pallet, 40 rolls (genesis-machine-film-20-51-7000-40R): 1,250.01 lbs
+-- Half pallet, 20 rolls (HPFSF205170-HLP): 638.00 lbs
+-- Full pallet, 40 rolls (HPFSF205170-FLP): 1,250.01 lbs
 -- Does not change hand film or the other machine-film specs.
 
 ALTER TABLE public.products
@@ -30,13 +30,15 @@ SET
   roll_weight_lbs = 30.600162,
   box_weight_lbs = NULL,
   pallet_weight_lbs = CASE
-    WHEN v.sku ILIKE '%-20R' OR COALESCE(v.rolls_count, 0) = 20 THEN 638.00
+    WHEN v.sku ILIKE '%-HLP' OR v.sku ILIKE '%-20R' OR COALESCE(v.rolls_count, 0) = 20 THEN 638.00
     ELSE 1250.01
   END
 FROM public.products AS p
 WHERE v.product_id = p.id
   AND (
     v.sku IN (
+      'HPFSF205170-HLP',
+      'HPFSF205170-FLP',
       'genesis-machine-film-20-51-7000-20R',
       'genesis-machine-film-20-51-7000-40R'
     )
@@ -70,13 +72,15 @@ BEGIN
   ) THEN
     UPDATE public.product_variants AS v
     SET weight_lbs = CASE
-      WHEN v.sku ILIKE '%-20R' OR COALESCE(v.rolls_count, 0) = 20 THEN 638.00
+      WHEN v.sku ILIKE '%-HLP' OR v.sku ILIKE '%-20R' OR COALESCE(v.rolls_count, 0) = 20 THEN 638.00
       ELSE 1250.01
     END
     FROM public.products AS p
     WHERE v.product_id = p.id
       AND (
         v.sku IN (
+          'HPFSF205170-HLP',
+          'HPFSF205170-FLP',
           'genesis-machine-film-20-51-7000-20R',
           'genesis-machine-film-20-51-7000-40R'
         )

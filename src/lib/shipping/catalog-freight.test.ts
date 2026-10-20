@@ -91,7 +91,7 @@ describe("catalog freight", () => {
     assert.equal(layer.pieces[0]?.heightIn, 29.5);
   });
 
-  it("uses a 46 in full pallet and a 26 in half pallet for automatic film", () => {
+  it("uses a 46 in pallet for both automatic film tiers", () => {
     const fullRow = variant("auto-full", 1);
     fullRow.rolls_count = 40;
     fullRow.products = {
@@ -116,7 +116,7 @@ describe("catalog freight", () => {
       [halfRow],
       new Map()
     );
-    assert.equal(half.pieces[0]?.heightIn, 26);
+    assert.equal(half.pieces[0]?.heightIn, 46);
     assert.equal(half.pieces[0]?.weightLbs, 1120);
   });
 

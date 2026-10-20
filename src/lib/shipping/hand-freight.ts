@@ -78,16 +78,14 @@ export function handHandlingUnit(boxes: number): HandlingUnit {
   };
 }
 
-/** Machine stretch film. Footprint and stack are not the hand 48 x 48 pallet. */
-const MACHINE_PALLET_DECK_IN = 6;
+/** Every automatic film pallet, half or full, is 40" W x 48" L x 46" H including the wooden pallet. */
+export const MACHINE_PALLET_HEIGHT_IN = 46;
 
-export function machineHandlingUnit(rolls: number, widthInches: number): HandlingUnit {
-  const layers = rolls >= 40 ? 2 : 1;
-  const rollWidth = widthInches > 0 ? widthInches : 20;
+export function machineHandlingUnit(_rolls: number, _widthInches: number): HandlingUnit {
   return {
     lengthIn: 48,
     widthIn: 40,
-    heightIn: roundInches(layers * rollWidth + MACHINE_PALLET_DECK_IN),
+    heightIn: MACHINE_PALLET_HEIGHT_IN,
     quantity: 1,
     includesPalletTare: false,
     packaging: "pallet",

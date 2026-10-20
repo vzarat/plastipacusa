@@ -7,10 +7,10 @@ export const HAND_WOODEN_PALLET_LBS = 29.18;
 /** Official 20" automated machine film weights, including the wooden pallet on half and full pallets. */
 export const MACHINE_FILM_WEIGHT_SPECS = [
   { width: 20, gauge: 51, length: 7000, roll: 30.600162, half: 638, full: 1250.01, tare: 25.99352 },
-  { width: 20, gauge: 51, length: 9000, roll: 38.78, half: 797.7, full: 1573.3 },
+  { width: 20, gauge: 51, length: 9000, roll: 38.779312, half: 802.13, full: 1577.71 },
   { width: 20, gauge: 60, length: 5000, roll: 25.9, half: 540.0, full: 1058.0 },
-  { width: 20, gauge: 70, length: 5000, roll: 30.05, half: 623.1, full: 1224.1 },
-  { width: 20, gauge: 80, length: 5000, roll: 34.06, half: 703.3, full: 1384.5 },
+  { width: 20, gauge: 70, length: 5000, roll: 30.049006, half: 627.19, full: 1228.17 },
+  { width: 20, gauge: 80, length: 5000, roll: 34.06142, half: 707.28, full: 1388.51 },
 ] as const;
 
 export interface PackageWeightInput {

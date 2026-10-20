@@ -10,6 +10,7 @@ export {
 } from "@/lib/palletizing";
 
 import type { ProductWithVariants } from "@/types";
+import { machineFilmTierSku } from "@/lib/machine-film-sku";
 import { MACHINE_FILM_WEIGHT_SPECS, packageTotalWeightLbs } from "@/lib/package-weight";
 
 /** Remote fallback when a product row has no image_url. Never stored in /public. */
@@ -83,11 +84,20 @@ export function isMachineFilm(product: {
   );
 }
 
-/** Canonical machine film package tiers. Sold by the pallet, not by the roll. */
+/** Canonical machine film package tiers. Sold by the pallet, with no boxes. */
 export const MACHINE_PACKAGE_TIERS = [
-  { rolls: 20, label: "Half Pallet (20 Rolls)", suffix: "20R" },
-  { rolls: 40, label: "Full Pallet (40 Rolls)", suffix: "40R" },
+  { rolls: 20, label: "Half Pallet (20 Rolls)", suffix: "HLP" },
+  { rolls: 40, label: "Full Pallet (40 Rolls)", suffix: "FLP" },
 ] as const;
+
+function officialMachineTierSku(
+  width: number,
+  gauge: number,
+  length: number,
+  rolls: number
+): string | null {
+  return machineFilmTierSku({ widthInches: width, gauge, lengthFeet: length, rolls });
+}
 
 /** Canonical hand film full-pallet pack-out (3 layers × 64 rolls). */
 export const HAND_FULL_PALLET = {
@@ -185,6 +195,9 @@ export function buildMachinePackageOptions(input: {
   price1?: number | null;
   price20?: number | null;
   price40?: number | null;
+  widthInches?: number | string | null;
+  gauge?: number | string | null;
+  lengthFeet?: number | string | null;
 }): PackageOptionLike[] {
   const tiers: Array<{
     rolls: number;
@@ -204,7 +217,13 @@ export function buildMachinePackageOptions(input: {
     .map((tier) => ({
       rolls: tier.rolls,
       label: tier.label,
-      sku: `${input.baseSku}-${tier.suffix}`,
+      sku:
+        machineFilmTierSku({
+          widthInches: input.widthInches,
+          gauge: input.gauge,
+          lengthFeet: input.lengthFeet,
+          rolls: tier.rolls,
+        }) || `${input.baseSku}-${tier.suffix}`,
       price: Number(tier.price),
     }));
 }
@@ -320,7 +339,13 @@ export function buildMachineFilmSelectorTiers(product: any, variants?: any[] | n
       gauge,
       lengthFeet,
     });
-    const sku = String(storedTier?.sku || `${baseSku}-${tier.suffix}`);
+    const officialSku = officialMachineTierSku(
+      Math.round(Number(widthInches) || 0),
+      Math.round(gauge),
+      Math.round(lengthFeet),
+      tier.rolls
+    );
+    const sku = officialSku || String(storedTier?.sku || `${baseSku}-${tier.suffix}`);
     return {
       id: storedTier?.id || sku,
       sku,

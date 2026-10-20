@@ -22,6 +22,7 @@ import {
   formatBoxRollLabel,
   unitLabelForProduct,
 } from "@/lib/products";
+import { handFilmTierSku } from "@/lib/hand-film-sku";
 import { packageTotalWeightLbs } from "@/lib/package-weight";
 import { BOX_QTY_NOTE, HALF_PALLET_QTY_NOTE } from "@/lib/cart-quantity";
 import { houstonFridayPresetLabel } from "@/lib/shippingRules";
@@ -300,7 +301,21 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
       baseBoxPrice && tier.boxes > 1 && unit < baseBoxPrice
         ? Math.round(((baseBoxPrice - unit) / baseBoxPrice) * 100)
         : 0;
-    const sku = String(matched?.sku || `${baseSku}-${tier.boxes}BX`);
+    const sku = String(
+      handFilmTierSku({
+        categorySlug: product?.categorySlug,
+        series: product?.series,
+        partNumber: product?.partNumber || product?.part_number,
+        title: product?.title || product?.name,
+        sku: matched?.sku,
+        widthInches,
+        gauge,
+        lengthFeet,
+        boxes: tier.boxes,
+      }) ||
+        matched?.sku ||
+        `${baseSku}-${tier.boxes}BX`
+    );
     const houston = houstonFridayPresetLabel(catalogBoxes, catalogRolls);
     const gross = packageTotalWeightLbs({
       rolls: tier.rolls,

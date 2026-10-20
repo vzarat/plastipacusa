@@ -79,10 +79,10 @@ SET
 FROM (
   VALUES
     ('stretch-film-20-x-51-ga-x-7000ft', 20::numeric, 51::numeric, 7000::numeric, 30.600162::numeric, 1250.01::numeric),
-    ('stretch-film-20-x-51-ga-x-9000ft', 20::numeric, 51::numeric, 9000::numeric, 38.78::numeric, 1573.3::numeric),
+    ('stretch-film-20-x-51-ga-x-9000ft', 20::numeric, 51::numeric, 9000::numeric, 38.779312::numeric, 1577.71::numeric),
     ('stretch-film-20-x-60-ga-x-5000ft', 20::numeric, 60::numeric, 5000::numeric, 25.90::numeric, 1058.0::numeric),
-    ('stretch-film-20-x-70-ga-x-5000ft', 20::numeric, 70::numeric, 5000::numeric, 30.05::numeric, 1224.1::numeric),
-    ('stretch-film-20-x-80-ga-x-5000ft', 20::numeric, 80::numeric, 5000::numeric, 34.06::numeric, 1384.5::numeric)
+    ('stretch-film-20-x-70-ga-x-5000ft', 20::numeric, 70::numeric, 5000::numeric, 30.049006::numeric, 1228.17::numeric),
+    ('stretch-film-20-x-80-ga-x-5000ft', 20::numeric, 80::numeric, 5000::numeric, 34.06142::numeric, 1388.51::numeric)
 ) AS spec(slug, width_in, gauge, length_ft, roll_lbs, pallet_lbs)
 WHERE p.slug = spec.slug
    OR (
@@ -100,10 +100,10 @@ FROM public.products AS p
 JOIN (
   VALUES
     ('stretch-film-20-x-51-ga-x-7000ft', 20::numeric, 51::numeric, 7000::numeric, 30.600162::numeric, 1250.01::numeric),
-    ('stretch-film-20-x-51-ga-x-9000ft', 20::numeric, 51::numeric, 9000::numeric, 38.78::numeric, 1573.3::numeric),
+    ('stretch-film-20-x-51-ga-x-9000ft', 20::numeric, 51::numeric, 9000::numeric, 38.779312::numeric, 1577.71::numeric),
     ('stretch-film-20-x-60-ga-x-5000ft', 20::numeric, 60::numeric, 5000::numeric, 25.90::numeric, 1058.0::numeric),
-    ('stretch-film-20-x-70-ga-x-5000ft', 20::numeric, 70::numeric, 5000::numeric, 30.05::numeric, 1224.1::numeric),
-    ('stretch-film-20-x-80-ga-x-5000ft', 20::numeric, 80::numeric, 5000::numeric, 34.06::numeric, 1384.5::numeric)
+    ('stretch-film-20-x-70-ga-x-5000ft', 20::numeric, 70::numeric, 5000::numeric, 30.049006::numeric, 1228.17::numeric),
+    ('stretch-film-20-x-80-ga-x-5000ft', 20::numeric, 80::numeric, 5000::numeric, 34.06142::numeric, 1388.51::numeric)
 ) AS spec(slug, width_in, gauge, length_ft, roll_lbs, pallet_lbs)
   ON p.slug = spec.slug
   OR (

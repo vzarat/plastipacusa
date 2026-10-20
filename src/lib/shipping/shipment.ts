@@ -293,7 +293,7 @@ export function shipmentFreightFromCatalog(
         );
       }
       const machineTier = packageRolls === 40 ? "full" : "half";
-      const machineHeight = machineTier === "full" ? 46 : 26;
+      const machineHeight = 46;
       const palletEach =
         palletWeightLbs != null
           ? Math.round(machineTier === "full" ? palletWeightLbs : palletWeightLbs / 2)

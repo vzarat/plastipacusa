@@ -20,6 +20,8 @@ import {
   resolvePalletizingSpecs,
   usesCompact1880Pallets,
 } from "@/lib/palletizing";
+import { handFilmTierSku } from "@/lib/hand-film-sku";
+import { machineFilmTierSku } from "@/lib/machine-film-sku";
 import { packageTotalWeightLbs } from "@/lib/package-weight";
 import { CATALOG_SOLD_OUT } from "@/lib/catalog-availability";
 import {
@@ -115,7 +117,21 @@ function handBoxTierOptions(raw: any, baseSku: string, variants: any[] = []): Pa
         rolls: tier.rolls,
         boxes: tier.boxes,
         label: formatBoxRollLabel(tier.boxes, tier.rolls),
-        sku: String(match?.sku || `${baseSku}-${tier.boxes}BX`),
+        sku: String(
+          handFilmTierSku({
+            categorySlug: raw?.categorySlug || raw?.category_slug,
+            series: raw?.series,
+            partNumber: raw?.part_number || raw?.partNumber,
+            title: raw?.title || raw?.name,
+            sku: match?.sku,
+            widthInches: raw?.width_inches || raw?.widthInches || match?.widthInches,
+            gauge: raw?.gauge || match?.gauge,
+            lengthFeet: raw?.length_feet || raw?.lengthFeet || match?.lengthFeet,
+            boxes: tier.boxes,
+          }) ||
+            match?.sku ||
+            `${baseSku}-${tier.boxes}BX`
+        ),
         boxUnitPrice: unit,
         price: unit,
       },
@@ -521,6 +537,9 @@ function formatProduct(raw: any): ProductWithVariants {
         price1: price6Rolls ?? productBasePrice,
         price20: price20Rolls,
         price40: price40Rolls,
+        widthInches: resolvedWidth,
+        gauge: gaugeNum,
+        lengthFeet: lengthNum,
       });
     } else if (warehouseVariants.length > 0) {
       packageOptions = warehouseVariants
@@ -532,7 +551,13 @@ function formatProduct(raw: any): ProductWithVariants {
               rolls,
               String((v as any).title || v.packageSize || v.sku)
             ),
-            sku: v.sku,
+            sku:
+              machineFilmTierSku({
+                widthInches: resolvedWidth,
+                gauge: gaugeNum,
+                lengthFeet: lengthNum,
+                rolls,
+              }) || v.sku,
             price: parseFloat(v.priceUsd),
           };
         })
@@ -544,6 +569,9 @@ function formatProduct(raw: any): ProductWithVariants {
         price1: productBasePrice,
         price20: null,
         price40: null,
+        widthInches: resolvedWidth,
+        gauge: gaugeNum,
+        lengthFeet: lengthNum,
       });
     }
   } else {

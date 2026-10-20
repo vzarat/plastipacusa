@@ -51,7 +51,7 @@ async function seed() {
     await db.insert(productVariants).values([
       {
         productId: forceFilm60.id,
-        sku: "PP-FRC-1860-1B",
+        sku: "STD-SF186010-1B",
         packageSize: "1 BOX WITH 4 ROLLS",
         widthInches: "18.00",
         gauge: 60,
@@ -66,7 +66,7 @@ async function seed() {
       },
       {
         productId: forceFilm60.id,
-        sku: "PP-FRC-1860-16B",
+        sku: "STD-SF186010-16B",
         packageSize: "16 BOXES = 64 ROLLS",
         widthInches: "18.00",
         gauge: 60,
@@ -81,7 +81,7 @@ async function seed() {
       },
       {
         productId: forceFilm60.id,
-        sku: "PP-FRC-1860-32B",
+        sku: "STD-SF186010-32B",
         packageSize: "32 BOXES = 128 ROLLS (HALF PALLET)",
         widthInches: "18.00",
         gauge: 60,
@@ -96,7 +96,7 @@ async function seed() {
       },
       {
         productId: forceFilm60.id,
-        sku: "PP-FRC-1860-64B",
+        sku: "STD-SF186010-64B",
         packageSize: "48 BOXES = 192 ROLLS (FULL PALLET)",
         widthInches: "18.00",
         gauge: 60,
@@ -150,7 +150,7 @@ async function seed() {
     await db.insert(productVariants).values([
       {
         productId: forceFilm70.id,
-        sku: "PP-FRC-1870-1B",
+        sku: "STD-SF187010-1B",
         packageSize: "1 BOX WITH 4 ROLLS",
         widthInches: "18.00",
         gauge: 70,
@@ -165,7 +165,7 @@ async function seed() {
       },
       {
         productId: forceFilm70.id,
-        sku: "PP-FRC-1870-16B",
+        sku: "STD-SF187010-16B",
         packageSize: "16 BOXES = 64 ROLLS",
         widthInches: "18.00",
         gauge: 70,
@@ -180,7 +180,7 @@ async function seed() {
       },
       {
         productId: forceFilm70.id,
-        sku: "PP-FRC-1870-32B",
+        sku: "STD-SF187010-32B",
         packageSize: "32 BOXES = 128 ROLLS (HALF PALLET)",
         widthInches: "18.00",
         gauge: 70,
@@ -195,7 +195,7 @@ async function seed() {
       },
       {
         productId: forceFilm70.id,
-        sku: "PP-FRC-1870-64B",
+        sku: "STD-SF187010-64B",
         packageSize: "48 BOXES = 192 ROLLS (FULL PALLET)",
         widthInches: "18.00",
         gauge: 70,
@@ -249,7 +249,7 @@ async function seed() {
     await db.insert(productVariants).values([
       {
         productId: forceFilm80.id,
-        sku: "PP-FRC-1880-1B",
+        sku: "STD-SF188010-1B",
         packageSize: "1 BOX WITH 4 ROLLS",
         widthInches: "18.00",
         gauge: 80,
@@ -264,7 +264,7 @@ async function seed() {
       },
       {
         productId: forceFilm80.id,
-        sku: "PP-FRC-1880-16B",
+        sku: "STD-SF188010-16B",
         packageSize: "12 BOXES = 48 ROLLS (HALF PALLET)",
         widthInches: "18.00",
         gauge: 80,
@@ -279,7 +279,7 @@ async function seed() {
       },
       {
         productId: forceFilm80.id,
-        sku: "PP-FRC-1880-32B",
+        sku: "STD-SF188010-32B",
         packageSize: "24 BOXES = 96 ROLLS (FULL PALLET)",
         widthInches: "18.00",
         gauge: 80,
@@ -294,7 +294,7 @@ async function seed() {
       },
       {
         productId: forceFilm80.id,
-        sku: "PP-FRC-1880-64B",
+        sku: "STD-SF188010-64B",
         packageSize: "64 BOXES = 256 ROLLS",
         widthInches: "18.00",
         gauge: 80,
@@ -345,7 +345,7 @@ async function seed() {
     await db.insert(productVariants).values([
       {
         productId: forceFilm60_15.id,
-        sku: "PP-FRC-1860-15-1B",
+        sku: "STD-SF186015-1B",
         packageSize: "1 BOX WITH 4 ROLLS",
         widthInches: "18.00",
         gauge: 60,
@@ -360,7 +360,7 @@ async function seed() {
       },
       {
         productId: forceFilm60_15.id,
-        sku: "PP-FRC-1860-15-16B",
+        sku: "STD-SF186015-16B",
         packageSize: "16 BOXES = 64 ROLLS",
         widthInches: "18.00",
         gauge: 60,
@@ -375,7 +375,7 @@ async function seed() {
       },
       {
         productId: forceFilm60_15.id,
-        sku: "PP-FRC-1860-15-32B",
+        sku: "STD-SF186015-32B",
         packageSize: "32 BOXES = 128 ROLLS (HALF PALLET)",
         widthInches: "18.00",
         gauge: 60,
@@ -390,7 +390,7 @@ async function seed() {
       },
       {
         productId: forceFilm60_15.id,
-        sku: "PP-FRC-1860-15-64B",
+        sku: "STD-SF186015-64B",
         packageSize: "48 BOXES = 192 ROLLS (FULL PALLET)",
         widthInches: "18.00",
         gauge: 60,
@@ -441,7 +441,7 @@ async function seed() {
     await db.insert(productVariants).values([
       {
         productId: forceFilm70_15.id,
-        sku: "PP-FRC-1870-15-1B",
+        sku: "STD-SF187015-1B",
         packageSize: "1 BOX WITH 4 ROLLS",
         widthInches: "18.00",
         gauge: 70,
@@ -456,7 +456,7 @@ async function seed() {
       },
       {
         productId: forceFilm70_15.id,
-        sku: "PP-FRC-1870-15-16B",
+        sku: "STD-SF187015-16B",
         packageSize: "16 BOXES = 64 ROLLS",
         widthInches: "18.00",
         gauge: 70,
@@ -471,7 +471,7 @@ async function seed() {
       },
       {
         productId: forceFilm70_15.id,
-        sku: "PP-FRC-1870-15-32B",
+        sku: "STD-SF187015-32B",
         packageSize: "32 BOXES = 128 ROLLS (HALF PALLET)",
         widthInches: "18.00",
         gauge: 70,
@@ -486,7 +486,7 @@ async function seed() {
       },
       {
         productId: forceFilm70_15.id,
-        sku: "PP-FRC-1870-15-64B",
+        sku: "STD-SF187015-64B",
         packageSize: "48 BOXES = 192 ROLLS (FULL PALLET)",
         widthInches: "18.00",
         gauge: 70,
@@ -537,7 +537,7 @@ async function seed() {
     await db.insert(productVariants).values([
       {
         productId: forceFilm80_15.id,
-        sku: "PP-FRC-1880-15-1B",
+        sku: "STD-SF188015-1B",
         packageSize: "1 BOX WITH 4 ROLLS",
         widthInches: "18.00",
         gauge: 80,
@@ -552,7 +552,7 @@ async function seed() {
       },
       {
         productId: forceFilm80_15.id,
-        sku: "PP-FRC-1880-15-16B",
+        sku: "STD-SF188015-16B",
         packageSize: "12 BOXES = 48 ROLLS (HALF PALLET)",
         widthInches: "18.00",
         gauge: 80,
@@ -567,7 +567,7 @@ async function seed() {
       },
       {
         productId: forceFilm80_15.id,
-        sku: "PP-FRC-1880-15-32B",
+        sku: "STD-SF188015-32B",
         packageSize: "24 BOXES = 96 ROLLS (FULL PALLET)",
         widthInches: "18.00",
         gauge: 80,
@@ -582,7 +582,7 @@ async function seed() {
       },
       {
         productId: forceFilm80_15.id,
-        sku: "PP-FRC-1880-15-64B",
+        sku: "STD-SF188015-64B",
         packageSize: "64 BOXES = 256 ROLLS",
         widthInches: "18.00",
         gauge: 80,
