@@ -47,7 +47,7 @@ export function Hero() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/75" />
 
-        <div className="relative z-10 flex h-full flex-col items-center px-5 pb-40 pt-10 text-center">
+        <div className="relative z-10 flex h-full flex-col items-center px-5 pb-52 pt-8 text-center">
           <Headline className="font-teko text-5xl font-bold uppercase leading-[0.85] tracking-tight text-white" />
           <Link
             href="/#inquiry-form"
@@ -63,7 +63,7 @@ export function Hero() {
           alt=""
           width={559}
           height={455}
-          className="pointer-events-none absolute bottom-0 inset-x-0 z-10 mx-auto h-[38%] max-h-[38%] w-auto object-contain object-bottom"
+          className="pointer-events-none absolute bottom-0 inset-x-0 z-10 mx-auto h-[52%] max-h-[52%] w-auto object-contain object-bottom"
         />
       </div>
 
