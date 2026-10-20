@@ -270,7 +270,7 @@ export function ProductGallery({
 
       {/* Interactive Thumbnails Selector */}
       {galleryList.length > 1 && (
-        <div className={`hidden gap-3 md:grid max-md:hidden ${galleryList.length > 2 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+        <div className="hidden flex-wrap gap-2 md:flex">
           {galleryList.map((img, idx) => {
             const isActive = activeIndex === idx;
 
@@ -281,7 +281,7 @@ export function ProductGallery({
                 onClick={() => setActiveIndex(idx)}
                 onMouseEnter={() => setActiveIndex(idx)}
                 aria-label={`Select ${getImageLabel(idx)}`}
-                className={`relative aspect-square overflow-hidden rounded-2xl border bg-white transition-all duration-200 cursor-pointer ${
+                className={`relative h-[92px] w-[92px] overflow-hidden rounded-xl border bg-white transition-all duration-200 cursor-pointer ${
                   isActive
                     ? "border-sky-500 ring-2 ring-sky-500/20 shadow-md"
                     : "border-slate-200 opacity-75 hover:border-sky-300 hover:opacity-100"
@@ -291,8 +291,8 @@ export function ProductGallery({
                   src={img}
                   alt=""
                   fill
-                  sizes="180px"
-                  className="object-contain p-2"
+                  sizes="92px"
+                  className="object-contain p-1.5"
                 />
               </button>
             );
