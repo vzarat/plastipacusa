@@ -27,6 +27,36 @@ export interface PackageOptionLike {
 export const MACHINE_FILM_IMAGE_URL =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/AUTOMATIC_STRETCH_FILM.png";
 
+/** Manual stretch film gallery extras. The roll photo stays first. */
+export const HAND_FILM_BOX_IMAGE_URL =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PRODUCTOS/CAJA_MANUAL_PLASTIPAC.png";
+
+export const HAND_FILM_SPEC_SHEET_IMAGE_URL =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PRODUCTOS/FICHA%20TECNICA.png";
+
+function isManualRollPhoto(url: string): boolean {
+  const value = url.toLowerCase();
+  return (
+    value.length > 0 &&
+    !value.includes("caja_manual_plastipac") &&
+    !value.includes("ficha")
+  );
+}
+
+/**
+ * Hand stretch film gallery. `products.images` is a text[].
+ * Order is the stored roll photo, then the carton, then the technical sheet.
+ */
+export function manualFilmGallery(stored: unknown, fallbackRoll?: string | null): string[] {
+  const list = Array.isArray(stored) ? stored.map((item) => String(item || "").trim()) : [];
+  const fallback = String(fallbackRoll || "").trim();
+  const roll =
+    list.find((url) => isManualRollPhoto(url)) ||
+    (isManualRollPhoto(fallback) ? fallback : "") ||
+    STRETCH_FILM_PLACEHOLDER;
+  return [roll, HAND_FILM_BOX_IMAGE_URL, HAND_FILM_SPEC_SHEET_IMAGE_URL];
+}
+
 export const GENESIS_HP_LOGO_URL =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/GENESIS_HP.svg";
 

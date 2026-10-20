@@ -33,10 +33,10 @@ function freight(pieces: FreightPiece[], boxes: number): ShipmentFreight {
 
 describe("Warp carton versus pallet payload", () => {
   it("adds one wooden pallet to 16-, 32-, and 64-box tiers", () => {
-    assert.equal(handBoxHeightIn(15), 16.5);
+    assert.equal(handBoxHeightIn(15), 19.5);
     assert.equal(handBoxHeightIn(18), 19.5);
     const cartons = warpHandPieces({ boxes: 2, widthInches: 15, boxWeightLbs: 18, palletWeightLbs: 1175.74 });
-    assert.equal(cartons?.[0]?.heightIn, 16.5);
+    assert.equal(cartons?.[0]?.heightIn, 19.5);
     assert.equal(cartons?.[0]?.packaging, "box");
     assert.equal(cartons?.[0]?.weightLbs, 36);
     const quarter = warpHandPieces({ boxes: 16, widthInches: 15, boxWeightLbs: 18, palletWeightLbs: 1175.74 });

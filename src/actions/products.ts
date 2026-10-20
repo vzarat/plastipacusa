@@ -41,6 +41,7 @@ import {
   SERIES_FORCE_STANDARD,
   buildMachinePackageOptions,
   formatBoxRollLabel,
+  manualFilmGallery,
   ensureGenesisMachineProducts,
   isMachineFilm as detectMachineFilm,
   normalizeMachinePackageLabel,
@@ -604,25 +605,9 @@ function formatProduct(raw: any): ProductWithVariants {
 
   const title = String(raw.title || raw.name || "STRETCH FILM");
 
-  const defaultImage = isGenesis
-    ? MACHINE_FILM_IMAGE_URL
-    : "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png";
-
-  const rawImg = String(raw.image_url || raw.imageUrl || "");
-  const isHandFilmAsset = (url: string) =>
-    !url || /manual|hand[-_ ]?film|productos_plastipac/i.test(url);
-  const primaryImg =
-    isGenesis || isMachineProduct
-      ? MACHINE_FILM_IMAGE_URL
-      : rawImg || defaultImage;
-
-  const rawImages = Array.isArray(raw.images) && raw.images.length > 0 ? raw.images : [primaryImg];
-  const images =
-    isGenesis || isMachineProduct
-      ? [MACHINE_FILM_IMAGE_URL]
-      : rawImages.every((img: string) => isHandFilmAsset(String(img)))
-        ? [defaultImage]
-        : rawImages;
+  const handGallery = manualFilmGallery(raw.images, raw.image_url || raw.imageUrl);
+  const primaryImg = isGenesis || isMachineProduct ? MACHINE_FILM_IMAGE_URL : handGallery[0];
+  const images = isGenesis || isMachineProduct ? [MACHINE_FILM_IMAGE_URL] : handGallery;
 
   return {
     id: toNumericProductId(raw.id, slugStr),

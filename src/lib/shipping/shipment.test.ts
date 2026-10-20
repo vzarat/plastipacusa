@@ -380,7 +380,7 @@ describe("catalog shipment freight", () => {
     const one = quote(1);
     assert.equal(one.pieces[0]?.lengthIn, 11);
     assert.equal(one.pieces[0]?.widthIn, 11);
-    assert.equal(one.pieces[0]?.heightIn, 16.5);
+    assert.equal(one.pieces[0]?.heightIn, 19.5);
     assert.equal(one.pieces[0]?.weightLbs, 18);
     assert.equal(one.pieces[0]?.packaging, "box");
     const layer = quote(16);
@@ -397,7 +397,7 @@ describe("catalog shipment freight", () => {
     const sent = marketItemsFromPieces(one.pieces)[0];
     assert.equal(sent?.lengthIn, 11);
     assert.equal(sent?.widthIn, 11);
-    assert.equal(sent?.heightIn, 16.5);
+    assert.equal(sent?.heightIn, 19.5);
     assert.equal(sent?.weightLbsPerPallet, 18);
     const layerSent = marketItemsFromPieces(layer.pieces)[0];
     assert.equal(layerSent?.heightIn, 29.5);

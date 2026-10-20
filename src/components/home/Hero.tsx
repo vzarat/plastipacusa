@@ -95,16 +95,26 @@ function EfficiencySlide() {
         alt="Robopack stretch wrapping machine"
         width={900}
         height={900}
-        className="pointer-events-none absolute bottom-0 inset-x-0 z-10 mx-auto h-[46%] w-auto max-w-[88%] object-contain object-bottom md:inset-x-auto md:right-3 md:mx-0 md:h-[96%] md:max-h-[96%] md:max-w-[48%] lg:right-6"
+        className="pointer-events-none absolute z-10 w-auto object-contain object-bottom max-md:bottom-4 max-md:left-1/2 max-md:h-[34%] max-md:max-w-[72%] max-md:-translate-x-1/2 md:bottom-[25px] md:right-[180px] md:h-[90%] md:max-w-[42%]"
       />
 
-      <div className="relative z-20 flex h-full max-w-full flex-col items-start justify-start px-6 pb-6 pt-10 text-left md:max-w-[68%] md:justify-center md:py-8 md:pl-[110px] md:pr-8">
-        <h2 className="font-teko text-[64px] font-bold uppercase leading-[0.85] tracking-[-0.02em] text-white sm:text-[80px] lg:text-[100px]">
-          Increase
-          <span className="block">Packaging</span>
-          <span className="block">Efficiency</span>
+      <div className="relative z-20 flex h-full max-w-full flex-col items-start justify-start px-6 pb-[40%] pt-8 text-left md:max-w-[58%] md:justify-center md:pb-8 md:pl-[110px] md:pr-4 md:pt-6">
+        <h2 className="font-teko font-bold uppercase tracking-[-0.02em]">
+          <span className="block text-[42px] leading-[0.85] text-white sm:text-[56px] md:text-[68px]">
+            Increase Packaging
+          </span>
+          <span className="block bg-gradient-to-r from-cyan-300 to-blue-500 bg-clip-text text-[54px] leading-[0.85] text-transparent sm:text-[72px] md:text-[88px]">
+            Efficiency
+          </span>
         </h2>
-        <Link href="/#inquiry-form" className={`${CTA_CLASS} mt-6 md:mt-7`}>
+        <p className="mt-4 max-w-[440px] font-sans text-[15px] font-normal leading-snug text-gray-200">
+          At <strong className="font-bold text-white">Plastipac USA</strong>, we&apos;re all about
+          smarter packaging solutions to help your business work better!
+        </p>
+        <Link
+          href="/#inquiry-form"
+          className="mt-5 inline-flex w-fit items-center rounded-[2px] border border-sky-200/40 bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white"
+        >
           Contact Us Today!
         </Link>
       </div>

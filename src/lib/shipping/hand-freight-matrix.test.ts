@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 import {
   formatHandMatrixDimensions,
   formatHandMatrixWeight,
+  HAND_BOX_CM,
+  HAND_BOX_SKYDROPX_M,
   handMatrixDimensions,
   handMatrixWeightLbs,
   storedOneBoxDimensions,
@@ -20,8 +22,12 @@ describe("hand film specs matrix", () => {
       '11" W x 11" L x 16.5" H'
     );
     assert.equal(storedOneBoxDimensions(16, '11" W x 11" L x 16.5" H'), null);
-    assert.equal(formatHandMatrixDimensions(handMatrixDimensions(1, null, 15)), '11" W x 11" L x 16.5" H');
+    assert.equal(formatHandMatrixDimensions(handMatrixDimensions(1, null, 15)), '11" W x 11" L x 19.5" H');
     assert.equal(formatHandMatrixDimensions(handMatrixDimensions(1, null, 18)), '11" W x 11" L x 19.5" H');
+    assert.equal(HAND_BOX_SKYDROPX_M.widthM, 0.28);
+    assert.equal(HAND_BOX_SKYDROPX_M.lengthM, 0.28);
+    assert.equal(HAND_BOX_SKYDROPX_M.heightM, 0.5);
+    assert.deepEqual(HAND_BOX_CM, { widthCm: 27.94, lengthCm: 27.94, heightCm: 49.53 });
     assert.equal(formatHandMatrixDimensions(layer), '48" W x 48" L x 29.5" H');
     assert.equal(formatHandMatrixDimensions(half), '48" W x 48" L x 49.0" H');
     assert.equal(formatHandMatrixDimensions(full), '48" W x 48" L x 66.0" H');

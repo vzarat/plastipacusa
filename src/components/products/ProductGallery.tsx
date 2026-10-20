@@ -3,10 +3,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
-import { STRETCH_FILM_PLACEHOLDER } from "@/lib/products";
+import { manualFilmGallery, STRETCH_FILM_PLACEHOLDER } from "@/lib/products";
 import {
-  Box,
-  Layers,
   Eye,
   ZoomIn,
   X,
@@ -35,12 +33,13 @@ export function ProductGallery({
 }: ProductGalleryProps) {
   // Combine all images cleanly, ensuring at least one valid image
   const galleryList = React.useMemo(() => {
+    if (application === "hand") return manualFilmGallery(images, imageUrl);
     const list = images && images.length > 0 ? [...images] : [imageUrl || DEFAULT_IMAGE];
     if (!list.includes(imageUrl) && imageUrl) {
       list.unshift(imageUrl);
     }
     return Array.from(new Set(list.filter(Boolean)));
-  }, [images, imageUrl]);
+  }, [application, images, imageUrl]);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -58,6 +57,11 @@ export function ProductGallery({
 
   // Helper label for each thumbnail
   const getImageLabel = (index: number) => {
+    if (application === "hand") {
+      if (index === 0) return "Product Rolls";
+      if (index === 1) return "Case Packaging Box";
+      if (index === 2) return "Technical Data Sheet";
+    }
     if (index === 0) return "Product Rolls";
     if (index === 1) return "Case Packaging Box";
     return `View ${index + 1}`;
@@ -266,10 +270,9 @@ export function ProductGallery({
 
       {/* Interactive Thumbnails Selector */}
       {galleryList.length > 1 && (
-        <div className="hidden gap-3 md:grid md:grid-cols-2 max-md:hidden">
+        <div className={`hidden gap-3 md:grid max-md:hidden ${galleryList.length > 2 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
           {galleryList.map((img, idx) => {
             const isActive = activeIndex === idx;
-            const Icon = idx === 0 ? Layers : Box;
 
             return (
               <button
@@ -278,33 +281,19 @@ export function ProductGallery({
                 onClick={() => setActiveIndex(idx)}
                 onMouseEnter={() => setActiveIndex(idx)}
                 aria-label={`Select ${getImageLabel(idx)}`}
-                className={`relative rounded-2xl border p-2.5 bg-white transition-all duration-200 flex items-center gap-3 text-left cursor-pointer group ${
+                className={`relative aspect-square overflow-hidden rounded-2xl border bg-white transition-all duration-200 cursor-pointer ${
                   isActive
-                    ? "border-sky-500 ring-2 ring-sky-500/20 shadow-md bg-sky-50/50 scale-[1.02]"
-                    : "border-slate-200 hover:border-sky-300 hover:bg-slate-50 opacity-75 hover:opacity-100"
+                    ? "border-sky-500 ring-2 ring-sky-500/20 shadow-md"
+                    : "border-slate-200 opacity-75 hover:border-sky-300 hover:opacity-100"
                 }`}
               >
-                {/* Thumbnail Image */}
-                <div className="relative w-14 h-14 rounded-xl bg-slate-50 border border-slate-100 flex-shrink-0 overflow-hidden flex items-center justify-center">
-                  <Image
-                    src={img}
-                    alt={`${productName} thumbnail ${idx + 1}`}
-                    fill
-                    sizes="56px"
-                    className="object-contain p-1"
-                  />
-                </div>
-
-                {/* Text Description */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1 text-[10px] font-mono uppercase text-slate-400 font-bold">
-                    <Icon className="w-3 h-3 text-sky-600" />
-                    <span>View {idx + 1}</span>
-                  </div>
-                  <div className={`text-xs font-bold truncate mt-0.5 ${isActive ? "text-sky-900" : "text-slate-700"}`}>
-                    {getImageLabel(idx)}
-                  </div>
-                </div>
+                <Image
+                  src={img}
+                  alt=""
+                  fill
+                  sizes="180px"
+                  className="object-contain p-2"
+                />
               </button>
             );
           })}

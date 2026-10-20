@@ -109,11 +109,24 @@ function formatInches(value: number): string {
   return Number.isInteger(value) ? String(value) : String(roundInches(value));
 }
 
-/** 15 in film ships in a shorter carton. 18 in film uses the taller carton. */
-export function handBoxHeightIn(widthInches: number | null | undefined): number {
-  const width = Number(widthInches);
-  if (Number.isFinite(width) && width > 0 && width < 17) return 16.5;
-  return 19.5;
+/**
+ * Every manual carton is 11" W x 11" L x 19.5" H.
+ * Skydropx uses the rounded meters. The exact conversion is 27.94 cm x 27.94 cm x 49.53 cm.
+ */
+export const HAND_BOX_SKYDROPX_M = {
+  widthM: 0.28,
+  lengthM: 0.28,
+  heightM: 0.5,
+} as const;
+
+export const HAND_BOX_CM = {
+  widthCm: 27.94,
+  lengthCm: 27.94,
+  heightCm: 49.53,
+} as const;
+
+export function handBoxHeightIn(_widthInches?: number | null): number {
+  return HAND_LAYER_HEIGHT_IN;
 }
 
 export interface WarpHandPiece {
