@@ -112,7 +112,7 @@ SET
   pallet_weight_lbs = spec.pallet_lbs
 FROM (
   VALUES
-    ('stretch-film-20-x-51-ga-x-7000ft', 20::numeric, 51::numeric, 7000::numeric, 30.60::numeric, 634.1::numeric, 1246.1::numeric),
+    ('stretch-film-20-x-51-ga-x-7000ft', 20::numeric, 51::numeric, 7000::numeric, 30.600162::numeric, 638.00::numeric, 1250.01::numeric),
     ('stretch-film-20-x-51-ga-x-9000ft', 20::numeric, 51::numeric, 9000::numeric, 38.78::numeric, 797.7::numeric, 1573.3::numeric),
     ('stretch-film-20-x-60-ga-x-5000ft', 20::numeric, 60::numeric, 5000::numeric, 25.90::numeric, 540.0::numeric, 1058.0::numeric),
     ('stretch-film-20-x-70-ga-x-5000ft', 20::numeric, 70::numeric, 5000::numeric, 30.05::numeric, 623.1::numeric, 1224.1::numeric),
@@ -133,7 +133,7 @@ SET
 FROM public.products AS p
 JOIN (
   VALUES
-    ('stretch-film-20-x-51-ga-x-7000ft', 20::numeric, 51::numeric, 7000::numeric, 30.60::numeric, 634.1::numeric, 1246.1::numeric),
+    ('stretch-film-20-x-51-ga-x-7000ft', 20::numeric, 51::numeric, 7000::numeric, 30.600162::numeric, 638.00::numeric, 1250.01::numeric),
     ('stretch-film-20-x-51-ga-x-9000ft', 20::numeric, 51::numeric, 9000::numeric, 38.78::numeric, 797.7::numeric, 1573.3::numeric),
     ('stretch-film-20-x-60-ga-x-5000ft', 20::numeric, 60::numeric, 5000::numeric, 25.90::numeric, 540.0::numeric, 1058.0::numeric),
     ('stretch-film-20-x-70-ga-x-5000ft', 20::numeric, 70::numeric, 5000::numeric, 30.05::numeric, 623.1::numeric, 1224.1::numeric),
@@ -165,7 +165,7 @@ BEGIN
     FROM public.products AS p
     JOIN (
       VALUES
-        ('stretch-film-20-x-51-ga-x-7000ft', 20::numeric, 51::numeric, 7000::numeric, 30.60::numeric, 634.1::numeric, 1246.1::numeric),
+        ('stretch-film-20-x-51-ga-x-7000ft', 20::numeric, 51::numeric, 7000::numeric, 30.600162::numeric, 638.00::numeric, 1250.01::numeric),
         ('stretch-film-20-x-51-ga-x-9000ft', 20::numeric, 51::numeric, 9000::numeric, 38.78::numeric, 797.7::numeric, 1573.3::numeric),
         ('stretch-film-20-x-60-ga-x-5000ft', 20::numeric, 60::numeric, 5000::numeric, 25.90::numeric, 540.0::numeric, 1058.0::numeric),
         ('stretch-film-20-x-70-ga-x-5000ft', 20::numeric, 70::numeric, 5000::numeric, 30.05::numeric, 623.1::numeric, 1224.1::numeric),

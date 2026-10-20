@@ -78,7 +78,7 @@ describe("catalog shipment freight", () => {
     );
 
     assert.equal(freight.rolls, 20);
-    assert.equal(freight.weightLbs, 634.1);
+    assert.equal(freight.weightLbs, 638);
     assert.equal(
       freeRgvDelivery({
         postalCode: "78572",
@@ -275,7 +275,7 @@ describe("catalog shipment freight", () => {
       ["stretch-film-15-x-60-ga-x-1500ft", "hand", 25.13, 6.28, 1630.5, 15],
       ["stretch-film-15-x-70-ga-x-1500ft", "hand", 28.75, 7.19, 1862, 15],
       ["stretch-film-15-x-80-ga-x-1500ft", "hand", 32.36, 8.09, 2093.3, 15],
-      ["stretch-film-20-x-51-ga-x-7000ft", "machine", null, 30.6, 1246.1, "20"],
+      ["stretch-film-20-x-51-ga-x-7000ft", "machine", null, 30.600162, 1250.01, "20"],
       ["stretch-film-20-x-51-ga-x-9000ft", "machine", null, 38.78, 1573.3, 20],
       ["stretch-film-20-x-60-ga-x-5000ft", "machine", null, 25.9, 1058, 20],
       ["stretch-film-20-x-70-ga-x-5000ft", "machine", null, 30.05, 1224.1, 20],

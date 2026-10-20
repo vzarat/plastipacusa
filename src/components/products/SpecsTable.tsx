@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { packageTotalWeightLbs } from "@/lib/package-weight";
 import {
   formatFreightDimensions,
-  formatFreightWeightLabel,
   formatHandMatrixDimensions,
   formatHandMatrixWeight,
   handHandlingUnit,
@@ -169,13 +168,151 @@ function safeLocaleNumber(value: unknown, suffix = ""): string {
   return `${n.toLocaleString()}${suffix}`;
 }
 
+interface MatrixRowView {
+  key: string;
+  label: string;
+  sku: string;
+  width: string;
+  gauge: string;
+  length: string;
+  dimensions: string;
+  weight: string;
+  rolls: string;
+  price: React.ReactNode;
+  note: string | null;
+}
+
+function matrixRowView(
+  variant: ProductVariant,
+  index: number,
+  product: SpecsTableProps["product"],
+  machine: boolean
+): MatrixRowView {
+  const rolls =
+    (variant as { rolls_count?: number }).rolls_count ||
+    (variant as { rollsCount?: number }).rollsCount ||
+    variant.rollsPerBox;
+  const rollCount = Number(rolls) || 0;
+  const boxes = Number(variant.boxes_count ?? variant.boxesCount) || boxesForRolls(rollCount);
+  const gross = packageTotalWeightLbs({
+    rolls: rollCount,
+    boxes,
+    rollWeightLbs: variant.rollWeightLbs,
+    boxWeightLbs: variant.boxWeightLbs,
+    palletWeightLbs: variant.palletWeightLbs,
+    weightLbs: variant.weightLbs,
+    machine,
+    widthInches: variant.widthInches,
+    gauge: variant.gauge,
+    lengthFeet: variant.lengthFeet,
+  });
+  const matrixWeight = machine
+    ? null
+    : handMatrixWeightLbs(boxes, variant.boxWeightLbs ?? null, variant.palletWeightLbs ?? null);
+  const unit = machine
+    ? machineHandlingUnit(rollCount, Number(variant.widthInches) || 0)
+    : handHandlingUnit(boxes);
+  const storedDimensions = machine
+    ? null
+    : storedOneBoxDimensions(boxes, (variant as { dimensions?: string | null }).dimensions);
+  const matrixDimensions = machine
+    ? null
+    : handMatrixDimensions(
+        boxes,
+        product?.palletDimensions || product?.pallet_dimensions,
+        Number(variant.widthInches) || Number(product?.widthInches ?? product?.width_inches) || null
+      );
+  const weightLabel = machine
+    ? gross == null
+      ? "—"
+      : `${gross.toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })} lbs`
+    : formatHandMatrixWeight(matrixWeight);
+  const priceNode = machine ? (
+    Number(variant.priceUsd ?? (variant as { price?: number }).price) > 0 ? (
+      formatCurrency(variant.priceUsd ?? (variant as { price?: number }).price ?? 0)
+    ) : (
+      "—"
+    )
+  ) : Number((variant as { boxUnitPrice?: number }).boxUnitPrice) > 0 && boxes > 0 ? (
+    <span className="block whitespace-normal text-right">
+      <span className="block">
+        {formatCurrency(Number((variant as { boxUnitPrice?: number }).boxUnitPrice) * boxes)} USD
+      </span>
+      <span className="block text-xs font-semibold text-slate-500">
+        {formatCurrency((variant as { boxUnitPrice?: number }).boxUnitPrice)} USD / box
+      </span>
+    </span>
+  ) : (
+    "—"
+  );
+
+  return {
+    key: String(variant.id || variant.sku || index),
+    label: packageTierLabel(variant),
+    sku: variant.sku || "—",
+    width: safeNumberDisplay(variant.widthInches, '"'),
+    gauge: variant.gauge != null ? `${variant.gauge} Ga` : "—",
+    length: safeLocaleNumber(variant.lengthFeet, " ft"),
+    dimensions:
+      storedDimensions ||
+      (matrixDimensions ? formatHandMatrixDimensions(matrixDimensions) : formatFreightDimensions(unit)),
+    weight: weightLabel,
+    rolls: rollCount > 0 ? `${rollCount} rolls` : "—",
+    price: priceNode,
+    note: !machine && boxes >= 16 ? HAND_PALLET_WEIGHT_NOTE : null,
+  };
+}
+
+function MachineMatrixCards({ rows }: { rows: MatrixRowView[] }) {
+  return (
+    <div className="space-y-3 md:hidden">
+      {rows.map((row) => (
+        <article
+          key={row.key}
+          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <h4 className="text-sm font-bold text-slate-900">{row.label}</h4>
+            <p className="shrink-0 text-sm font-black text-slate-900">{row.price}</p>
+          </div>
+          <p className="mt-1 break-all font-mono text-[11px] font-bold leading-snug text-sky-700">
+            {row.sku}
+          </p>
+          <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+            {[
+              ["Width", row.width],
+              ["Gauge", row.gauge],
+              ["Length", row.length],
+              ["Rolls", row.rolls],
+              ["Weight", row.weight],
+              ["Dimensions", row.dimensions],
+            ].map(([label, value]) => (
+              <div key={label} className={label === "Dimensions" ? "col-span-2" : undefined}>
+                <dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {label}
+                </dt>
+                <dd className="mt-0.5 font-medium text-slate-800">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 export function SpecsTable({ variants, product }: SpecsTableProps) {
   const source = Array.isArray(variants) ? variants.filter(Boolean) : [];
-  const rows = isMachineFilm(product)
+  const machine = isMachineFilm(product);
+  const rows = machine
     ? (buildMachineFilmSelectorTiers(product, source) as unknown as ProductVariant[])
     : source.length > 0
       ? handMatrixRows(source, product)
       : source;
+  const views = rows.map((variant, index) => matrixRowView(variant, index, product, machine));
 
   return (
     <div className="space-y-4">
@@ -193,10 +330,61 @@ export function SpecsTable({ variants, product }: SpecsTableProps) {
         </Badge>
       </div>
 
-      {rows.length === 0 ? (
+      {views.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
           Package options are temporarily unavailable for this product.
         </div>
+      ) : machine ? (
+        <>
+          <MachineMatrixCards rows={views} />
+          <div className="hidden md:block">
+            <Table
+              containerClassName="overflow-hidden"
+              className="table-fixed"
+            >
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[16%] whitespace-normal px-3">Package</TableHead>
+                  <TableHead className="w-[22%] whitespace-normal px-3">SKU</TableHead>
+                  <TableHead className="w-[7%] whitespace-normal px-2">Width</TableHead>
+                  <TableHead className="w-[8%] whitespace-normal px-2">Gauge</TableHead>
+                  <TableHead className="w-[9%] whitespace-normal px-2">Length</TableHead>
+                  <TableHead className="w-[16%] whitespace-normal px-2">Dimensions</TableHead>
+                  <TableHead className="w-[10%] whitespace-normal px-2">Weight</TableHead>
+                  <TableHead className="w-[7%] whitespace-normal px-2">Rolls</TableHead>
+                  <TableHead className="w-[9%] whitespace-normal px-3 text-right">Price</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {views.map((row) => (
+                  <TableRow key={row.key} className="font-mono text-xs">
+                    <TableCell className="whitespace-normal px-3 py-3 font-sans font-bold text-slate-900">
+                      {row.label}
+                    </TableCell>
+                    <TableCell className="whitespace-normal break-all px-3 py-3 font-bold text-sky-700">
+                      {row.sku}
+                    </TableCell>
+                    <TableCell className="whitespace-normal px-2 py-3 text-slate-800">{row.width}</TableCell>
+                    <TableCell className="whitespace-normal px-2 py-3 text-slate-800">{row.gauge}</TableCell>
+                    <TableCell className="whitespace-normal px-2 py-3 text-slate-600">{row.length}</TableCell>
+                    <TableCell className="whitespace-normal px-2 py-3 font-sans text-slate-700">
+                      {row.dimensions}
+                    </TableCell>
+                    <TableCell className="whitespace-normal px-2 py-3 font-sans text-slate-600">
+                      {row.weight}
+                    </TableCell>
+                    <TableCell className="whitespace-normal px-2 py-3 font-sans text-slate-600">
+                      {row.rolls}
+                    </TableCell>
+                    <TableCell className="whitespace-normal px-3 py-3 text-right font-sans text-sm font-black text-slate-900">
+                      {row.price}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       ) : (
         <div className="w-full overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
           <Table>
@@ -214,107 +402,28 @@ export function SpecsTable({ variants, product }: SpecsTableProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((v, index) => {
-                const rolls =
-                  (v as any)?.rolls_count ||
-                  (v as any)?.rollsCount ||
-                  v?.rollsPerBox;
-                const boxes = Number(v?.boxes_count ?? v?.boxesCount) || boxesForRolls(Number(rolls) || 0);
-                const machine = isMachineFilm(product);
-                const gross = packageTotalWeightLbs({
-                  rolls: Number(rolls) || 0,
-                  boxes,
-                  rollWeightLbs: v?.rollWeightLbs,
-                  boxWeightLbs: v?.boxWeightLbs,
-                  palletWeightLbs: v?.palletWeightLbs,
-                  weightLbs: v?.weightLbs,
-                  machine,
-                  widthInches: v?.widthInches,
-                  gauge: v?.gauge,
-                  lengthFeet: v?.lengthFeet,
-                });
-                const matrixWeight = machine
-                  ? null
-                  : handMatrixWeightLbs(boxes, v?.boxWeightLbs ?? null, v?.palletWeightLbs ?? null);
-                const unit = machine
-                  ? machineHandlingUnit(Number(rolls) || 0, Number(v?.widthInches) || 0)
-                  : handHandlingUnit(boxes);
-                const storedDimensions = machine
-                  ? null
-                  : storedOneBoxDimensions(boxes, (v as { dimensions?: string | null }).dimensions);
-                const matrixDimensions = machine
-                  ? null
-                  : handMatrixDimensions(
-                      boxes,
-                      product?.palletDimensions || product?.pallet_dimensions,
-                      Number(v?.widthInches) || Number(product?.widthInches ?? product?.width_inches) || null
-                    );
-                const weightLabel = machine
-                  ? gross == null
-                    ? "—"
-                    : formatFreightWeightLabel(gross, unit)
-                  : formatHandMatrixWeight(matrixWeight);
-                return (
-                  <TableRow
-                    key={v?.id || v?.sku || index}
-                    className="hover:bg-sky-50/50 font-mono text-xs"
-                  >
-                    <TableCell className="font-bold text-slate-900 font-sans">
-                      <span className="block">{packageTierLabel(v)}</span>
-                      {!machine && boxes >= 16 ? (
-                        <span className="mt-1 block whitespace-normal text-[11px] font-medium text-slate-500">
-                          {HAND_PALLET_WEIGHT_NOTE}
-                        </span>
-                      ) : null}
-                    </TableCell>
-                    <TableCell className="text-sky-700 font-bold">
-                      {v?.sku || "—"}
-                    </TableCell>
-                    <TableCell className="text-slate-800">
-                      {safeNumberDisplay(v?.widthInches, '"')}
-                    </TableCell>
-                    <TableCell className="text-slate-800">
-                      {v?.gauge != null ? `${v.gauge} Ga` : "—"}
-                    </TableCell>
-                    <TableCell className="text-slate-600">
-                      {safeLocaleNumber(v?.lengthFeet, " ft")}
-                    </TableCell>
-                    <TableCell className="text-slate-700 font-sans">
-                      {storedDimensions ||
-                        (matrixDimensions ? formatHandMatrixDimensions(matrixDimensions) : formatFreightDimensions(unit))}
-                    </TableCell>
-                    <TableCell className="text-slate-600 font-sans">
-                      {weightLabel}
-                    </TableCell>
-                    <TableCell className="text-slate-600 font-sans font-medium">
-                      {rolls != null ? `${rolls} rolls` : "—"}
-                    </TableCell>
-                    <TableCell className="text-right font-sans font-black text-slate-900 text-sm">
-                      {machine ? (
-                        Number(v?.priceUsd ?? (v as { price?: number }).price) > 0 ? (
-                          formatCurrency(v?.priceUsd ?? (v as { price?: number }).price ?? 0)
-                        ) : (
-                          "—"
-                        )
-                      ) : Number((v as { boxUnitPrice?: number }).boxUnitPrice) > 0 && boxes > 0 ? (
-                        <span className="block whitespace-normal text-right">
-                          <span className="block">
-                            {formatCurrency(
-                              Number((v as { boxUnitPrice?: number }).boxUnitPrice) * boxes
-                            )}{" "}
-                            USD
-                          </span>
-                          <span className="block text-xs font-semibold text-slate-500">
-                            {formatCurrency((v as { boxUnitPrice?: number }).boxUnitPrice)} USD / box
-                          </span>
-                        </span>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {views.map((row) => (
+                <TableRow key={row.key} className="font-mono text-xs hover:bg-sky-50/50">
+                  <TableCell className="font-sans font-bold text-slate-900">
+                    <span className="block">{row.label}</span>
+                    {row.note ? (
+                      <span className="mt-1 block whitespace-normal text-[11px] font-medium text-slate-500">
+                        {row.note}
+                      </span>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="font-bold text-sky-700">{row.sku}</TableCell>
+                  <TableCell className="text-slate-800">{row.width}</TableCell>
+                  <TableCell className="text-slate-800">{row.gauge}</TableCell>
+                  <TableCell className="text-slate-600">{row.length}</TableCell>
+                  <TableCell className="font-sans text-slate-700">{row.dimensions}</TableCell>
+                  <TableCell className="font-sans text-slate-600">{row.weight}</TableCell>
+                  <TableCell className="font-sans font-medium text-slate-600">{row.rolls}</TableCell>
+                  <TableCell className="text-right font-sans text-sm font-black text-slate-900">
+                    {row.price}
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </div>

@@ -310,17 +310,20 @@ export function buildMachineFilmSelectorTiers(product: any, variants?: any[] | n
 
   return MACHINE_PACKAGE_TIERS.map((tier) => {
     const price = tier.rolls === 40 ? fullPrice : halfPrice;
+    const storedTier = sources.find((item) => sourceRolls(item) === tier.rolls);
     const weight = packageTotalWeightLbs({
       rolls: tier.rolls,
       machine: true,
       rollWeightLbs: rollWeight,
+      palletWeightLbs: storedTier?.palletWeightLbs ?? storedTier?.pallet_weight_lbs,
       widthInches,
       gauge,
       lengthFeet,
     });
+    const sku = String(storedTier?.sku || `${baseSku}-${tier.suffix}`);
     return {
-      id: `${baseSku}-${tier.suffix}`,
-      sku: `${baseSku}-${tier.suffix}`,
+      id: storedTier?.id || sku,
+      sku,
       tierKey: tier.rolls === 20 ? "fixed_half" : "full_pallet",
       title: tier.label,
       packageSize: tier.label,

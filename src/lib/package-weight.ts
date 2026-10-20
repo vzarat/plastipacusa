@@ -6,7 +6,7 @@ export const HAND_WOODEN_PALLET_LBS = 29.18;
 
 /** Official 20" automated machine film weights, including the wooden pallet on half and full pallets. */
 export const MACHINE_FILM_WEIGHT_SPECS = [
-  { width: 20, gauge: 51, length: 7000, roll: 30.6, half: 634.1, full: 1246.1 },
+  { width: 20, gauge: 51, length: 7000, roll: 30.600162, half: 638, full: 1250.01, tare: 25.99352 },
   { width: 20, gauge: 51, length: 9000, roll: 38.78, half: 797.7, full: 1573.3 },
   { width: 20, gauge: 60, length: 5000, roll: 25.9, half: 540.0, full: 1058.0 },
   { width: 20, gauge: 70, length: 5000, roll: 30.05, half: 623.1, full: 1224.1 },
@@ -39,16 +39,20 @@ function storedPackageWeight(value: unknown): number | null {
   return amount;
 }
 
-/** Same roll weight the spec matrix uses when the variant row has no roll_weight_lbs. */
-function machineSpecRollWeight(input: PackageWeightInput): number | null {
+function machineFilmSpec(input: PackageWeightInput) {
   const width = Math.round(positive(input.widthInches) ?? 0);
   const gauge = Math.round(positive(input.gauge) ?? 0);
   const length = Math.round(positive(input.lengthFeet) ?? 0);
   return (
     MACHINE_FILM_WEIGHT_SPECS.find(
       (spec) => spec.width === width && spec.gauge === gauge && spec.length === length
-    )?.roll ?? null
+    ) ?? null
   );
+}
+
+/** Same roll weight the spec matrix uses when the variant row has no roll_weight_lbs. */
+function machineSpecRollWeight(input: PackageWeightInput): number | null {
+  return machineFilmSpec(input)?.roll ?? null;
 }
 
 function roundLbs(amount: number, digits: number): number {
@@ -66,13 +70,17 @@ export function packageTotalWeightLbs(input: PackageWeightInput): number | null 
 
   if (input.machine) {
     const machineRoll = rollWeight ?? boxWeight;
+    const spec = machineFilmSpec(input);
+    if (rolls >= 40 && spec) return spec.full;
+    if (rolls === 20 && spec) return spec.half;
     if (rolls === 40) {
-      if (palletWeight != null) return roundLbs(palletWeight, 1);
+      if (palletWeight != null) return roundLbs(palletWeight, 2);
       if (machineRoll != null) return roundLbs(machineRoll * 40 + WOODEN_PALLET_LBS, 1);
     }
     if (rolls === 20 && machineRoll != null) {
       return roundLbs(machineRoll * 20 + WOODEN_PALLET_LBS, 1);
     }
+    if ((rolls === 1 || rolls === 0) && spec) return spec.roll;
     if (machineRoll != null) return roundLbs(machineRoll, 2);
     return storedPackageWeight(input.weightLbs);
   }

@@ -26,7 +26,7 @@ const films: Film[] = [
   ["stretch-film-15-x-60-ga-x-1500ft", "hand", 25.13, 1630.5, 15],
   ["stretch-film-15-x-70-ga-x-1500ft", "hand", 28.75, 1862, 15],
   ["stretch-film-15-x-80-ga-x-1500ft", "hand", 32.36, 2093.3, 15],
-  ["stretch-film-20-x-51-ga-x-7000ft", "machine", null, 1246.1, 20],
+  ["stretch-film-20-x-51-ga-x-7000ft", "machine", null, 1250.01, 20],
   ["stretch-film-20-x-51-ga-x-9000ft", "machine", null, 1573.3, 20],
   ["stretch-film-20-x-60-ga-x-5000ft", "machine", null, 1058, 20],
   ["stretch-film-20-x-70-ga-x-5000ft", "machine", null, 1224.1, 20],

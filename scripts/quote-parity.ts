@@ -197,7 +197,7 @@ function printRepoAudit() {
     }
   }
   const machine: Array<[string, number | null]> = [
-    ["stretch-film-20-x-51-ga-x-7000ft", 1246.1],
+    ["stretch-film-20-x-51-ga-x-7000ft", 1250.01],
     ["stretch-film-20-x-51-ga-x-9000ft", 1573.3],
     ["stretch-film-20-x-60-ga-x-5000ft", 1058],
     ["stretch-film-20-x-70-ga-x-5000ft", 1224.1],
