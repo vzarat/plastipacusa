@@ -27,7 +27,7 @@ export interface GaugeAdvice {
 
 const MACHINE_GAUGE_FOR_LOAD: Record<LoadProfile, number> = {
   light: 51,
-  standard: 60,
+  standard: 70,
   heavy: 70,
   sharp: 80,
 };
@@ -93,7 +93,7 @@ export function gaugeAdvice(input: GaugeAdviceInput): AssistantResult<GaugeAdvic
         input.load === "light"
           ? "A stable, uniform load can use the lighter 51 GA machine film."
           : input.load === "standard"
-            ? "Everyday pallet loads match the 60 GA machine film in the catalog."
+            ? "Everyday pallet loads match the 70 GA machine film in the catalog."
             : input.load === "heavy"
               ? "Heavier loads match the 70 GA machine film in the catalog."
               : "Sharp edges or abrasive loads match the 80 GA machine film in the catalog.",

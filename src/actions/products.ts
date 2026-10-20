@@ -583,15 +583,20 @@ function formatProduct(raw: any): ProductWithVariants {
     : "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png";
 
   const rawImg = String(raw.image_url || raw.imageUrl || "");
+  const isHandFilmAsset = (url: string) =>
+    !url || /manual|hand[-_ ]?film|productos_plastipac/i.test(url);
   const primaryImg =
-    isGenesis && (!rawImg || rawImg.includes("manual"))
-      ? defaultImage
+    isGenesis || isMachineProduct
+      ? MACHINE_FILM_IMAGE_URL
       : rawImg || defaultImage;
 
   const rawImages = Array.isArray(raw.images) && raw.images.length > 0 ? raw.images : [primaryImg];
-  const images = isGenesis && rawImages.every((img: string) => img.includes("manual"))
-    ? [defaultImage]
-    : rawImages;
+  const images =
+    isGenesis || isMachineProduct
+      ? [MACHINE_FILM_IMAGE_URL]
+      : rawImages.every((img: string) => isHandFilmAsset(String(img)))
+        ? [defaultImage]
+        : rawImages;
 
   return {
     id: toNumericProductId(raw.id, slugStr),

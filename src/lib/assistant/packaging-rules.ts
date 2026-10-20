@@ -6,7 +6,7 @@ import {
 
 export const HAND_BOX_MAX_QUANTITY = 15;
 export const MAX_PACKAGE_QUANTITY = 40;
-export const CATALOG_GAUGES = [51, 60, 70, 80] as const;
+export const CATALOG_GAUGES = [40, 51, 60, 70, 80] as const;
 export const MIN_LENGTH_FEET = 500;
 export const MAX_LENGTH_FEET = 12000;
 
@@ -159,7 +159,7 @@ export function validateCatalogSpec(input: {
   if (input.gauge != null) {
     const value = Number(input.gauge);
     if (!(CATALOG_GAUGES as readonly number[]).includes(value)) {
-      return { ok: false, error: "Gauge must be 51, 60, 70, or 80." };
+      return { ok: false, error: "Gauge must be 40, 51, 60, 70, or 80." };
     }
     gauge = value;
   }

@@ -10,8 +10,8 @@ import {
 
 export type CatalogAppFilter = "all" | "hand" | "machine";
 
-const GAUGE_OPTIONS = ["all", "40", "60", "70", "80"] as const;
-const LENGTH_OPTIONS = ["all", "1000", "1500", "5000", "6000"] as const;
+const GAUGE_OPTIONS = ["all", "40", "51", "60", "70", "80"] as const;
+const LENGTH_OPTIONS = ["all", "1000", "1500", "5000", "7000", "9000"] as const;
 const WIDTH_OPTIONS = ["all", "15", "18", "20", "30"] as const;
 
 const chipBase =

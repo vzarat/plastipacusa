@@ -468,41 +468,82 @@ function buildGenesisMachineProduct(input: {
 }
 
 /** GENESIS High Performance — exactly these 4 SKUs. */
+/** Official Machine Film catalog — only these four width × gauge × length specs. */
+export const OFFICIAL_MACHINE_FILM_SPECS = [
+  { width: 20, gauge: 51, length: 7000, slug: "stretch-film-20-x-51-ga-x-7000ft" },
+  { width: 20, gauge: 51, length: 9000, slug: "stretch-film-20-x-51-ga-x-9000ft" },
+  { width: 20, gauge: 70, length: 5000, slug: "stretch-film-20-x-70-ga-x-5000ft" },
+  { width: 20, gauge: 80, length: 5000, slug: "stretch-film-20-x-80-ga-x-5000ft" },
+] as const;
+
+const OFFICIAL_MACHINE_SLUGS = new Set<string>(
+  OFFICIAL_MACHINE_FILM_SPECS.map((spec) => spec.slug)
+);
+
+const OFFICIAL_MACHINE_SPEC_KEYS = new Set(
+  OFFICIAL_MACHINE_FILM_SPECS.map(
+    (spec) => `${spec.width}::${spec.gauge}::${spec.length}`
+  )
+);
+
+export function isOfficialMachineFilmProduct(product: {
+  slug?: string | null;
+  application?: string | null;
+  widthInches?: number | string | null;
+  width_inches?: number | string | null;
+  gauge?: number | string | null;
+  length_feet?: number | string | null;
+  lengthFeet?: number | string | null;
+}): boolean {
+  const slug = String(product.slug || "").toLowerCase();
+  if (OFFICIAL_MACHINE_SLUGS.has(slug)) return true;
+
+  const width = Math.round(Number(product.widthInches ?? product.width_inches ?? 0));
+  const gauge = Math.round(Number(product.gauge ?? 0));
+  const length = Math.round(
+    Number(product.length_feet ?? product.lengthFeet ?? 0)
+  );
+  if (!Number.isFinite(width) || !Number.isFinite(gauge) || !Number.isFinite(length)) {
+    return false;
+  }
+  return OFFICIAL_MACHINE_SPEC_KEYS.has(`${width}::${gauge}::${length}`);
+}
+
 export const GENESIS_MACHINE_FALLBACK_PRODUCTS: ProductWithVariants[] = [
   buildGenesisMachineProduct({
-    id: 30606001,
-    slug: "stretch-film-20-x-60-ga-x-6000ft",
-    title: 'STRETCH FILM 20" X 60 GA X 6000FT',
-    gauge: 60,
-    lengthFeet: 6000,
-    baseSku: "GEN-206060",
-    price1: 230.92,
-    price20: 696.44,
-    price40: 1319.56,
+    id: 30517001,
+    slug: "stretch-film-20-x-51-ga-x-7000ft",
+    title: 'STRETCH FILM 20" X 51 GA X 7000FT',
+    gauge: 51,
+    lengthFeet: 7000,
+    baseSku: "GEN-205170",
+    price1: 185.0,
+    price20: 560.0,
+    price40: 1060.0,
     series: SERIES_GENESIS_HP,
   }),
   buildGenesisMachineProduct({
-    id: 30706001,
-    slug: "stretch-film-20-x-70-ga-x-6000ft",
-    title: 'STRETCH FILM 20" X 70 GA X 6000FT',
+    id: 30519001,
+    slug: "stretch-film-20-x-51-ga-x-9000ft",
+    title: 'STRETCH FILM 20" X 51 GA X 9000FT',
+    gauge: 51,
+    lengthFeet: 9000,
+    baseSku: "GEN-205190",
+    price1: 230.0,
+    price20: 695.0,
+    price40: 1315.0,
+    series: SERIES_GENESIS_HP,
+  }),
+  buildGenesisMachineProduct({
+    id: 30705001,
+    slug: "stretch-film-20-x-70-ga-x-5000ft",
+    title: 'STRETCH FILM 20" X 70 GA X 5000FT',
     gauge: 70,
-    lengthFeet: 6000,
-    baseSku: "GEN-207060",
-    price1: 307.9,
-    price20: 928.58,
-    price40: 1759.42,
-    series: SERIES_GENESIS_HP,
-  }),
-  buildGenesisMachineProduct({
-    id: 30806001,
-    slug: "stretch-film-20-x-80-ga-x-6000ft",
-    title: 'STRETCH FILM 20" X 80 GA X 6000FT',
-    gauge: 80,
-    lengthFeet: 6000,
-    baseSku: "GEN-208060",
-    price1: 351.88,
-    price20: 1061.24,
-    price40: 2010.76,
+    lengthFeet: 5000,
+    baseSku: "GEN-207050",
+    price1: 224.51,
+    price20: 677.1,
+    price40: 1282.8,
     series: SERIES_GENESIS_HP,
   }),
   buildGenesisMachineProduct({
@@ -519,18 +560,30 @@ export const GENESIS_MACHINE_FALLBACK_PRODUCTS: ProductWithVariants[] = [
   }),
 ];
 
-/** GENESIS Standard — exactly these 4 SKUs. */
+/** GENESIS Standard — the same four official machine specs. */
 export const GENESIS_STANDARD_FALLBACK_PRODUCTS: ProductWithVariants[] = [
   buildGenesisMachineProduct({
-    id: 20605001,
-    slug: "stretch-film-20-x-60-ga-x-5000ft",
-    title: 'STRETCH FILM 20" X 60 GA X 5000FT',
-    gauge: 60,
-    lengthFeet: 5000,
-    baseSku: "GEN-206050",
-    price1: 192.44,
-    price20: 580.4,
-    price40: 1099.6,
+    id: 20517002,
+    slug: "stretch-film-20-x-51-ga-x-7000ft",
+    title: 'STRETCH FILM 20" X 51 GA X 7000FT',
+    gauge: 51,
+    lengthFeet: 7000,
+    baseSku: "GEN-205170",
+    price1: 185.0,
+    price20: 560.0,
+    price40: 1060.0,
+    series: SERIES_GENESIS_STANDARD,
+  }),
+  buildGenesisMachineProduct({
+    id: 20519002,
+    slug: "stretch-film-20-x-51-ga-x-9000ft",
+    title: 'STRETCH FILM 20" X 51 GA X 9000FT',
+    gauge: 51,
+    lengthFeet: 9000,
+    baseSku: "GEN-205190",
+    price1: 230.0,
+    price20: 695.0,
+    price40: 1315.0,
     series: SERIES_GENESIS_STANDARD,
   }),
   buildGenesisMachineProduct({
@@ -557,18 +610,6 @@ export const GENESIS_STANDARD_FALLBACK_PRODUCTS: ProductWithVariants[] = [
     price40: 1466.18,
     series: SERIES_GENESIS_STANDARD,
   }),
-  buildGenesisMachineProduct({
-    id: 20606002,
-    slug: "stretch-film-20-x-60-ga-x-6000ft",
-    title: 'STRETCH FILM 20" X 60 GA X 6000FT',
-    gauge: 60,
-    lengthFeet: 6000,
-    baseSku: "GEN-206060",
-    price1: 230.92,
-    price20: 696.44,
-    price40: 1319.56,
-    series: SERIES_GENESIS_STANDARD,
-  }),
 ];
 
 export const GENESIS_HP_SLUGS = new Set(
@@ -589,9 +630,9 @@ export const GENESIS_STANDARD_OFFICIAL_SPECS = GENESIS_STANDARD_FALLBACK_PRODUCT
   })
 );
 
-/** Titles / patterns that must never appear under GENESIS Standard. */
+/** Titles / patterns that must never appear under GENESIS (retired 20" machine SKUs). */
 const OBSOLETE_GENESIS_STANDARD_PATTERN =
-  /63\s*GA|70\s*GA\s*X\s*6000\s*FT\s*\(STANDARD\)|7[,.]?000\s*FT|80\s*GA\s*X\s*6000\s*FT\s*\(STANDARD\)|60\s*GA\s*X\s*6000\s*FT\s*\(STANDARD\)/i;
+  /20"?\s*X\s*60\s*GA|20"?\s*X\s*63\s*GA|20"?\s*X\s*\d+\s*GA\s*X\s*6000|6000\s*FT/i;
 
 function genesisStandardSpecKey(
   gauge?: number | null,
@@ -664,9 +705,21 @@ export function ensureGenesisMachineProducts(
   for (const product of products) {
     const title = String(product.title || product.name || "");
     const slug = String(product.slug || "").toLowerCase();
+    const isMachineRow =
+      product.application === "machine" ||
+      Math.round(Number(product.widthInches ?? product.width_inches ?? 0)) === 20 ||
+      slug.startsWith("stretch-film-20") ||
+      /genesis|machine|automatic/i.test(
+        `${product.categorySlug || ""} ${product.series || ""} ${title}`
+      );
+
+    // Drop retired machine SKUs; hand film passes through unchanged.
+    if (isMachineRow && !isOfficialMachineFilmProduct(product)) {
+      continue;
+    }
 
     // Drop obsolete / duplicate GENESIS Standard candidates before series assignment
-    if (OBSOLETE_GENESIS_STANDARD_PATTERN.test(title)) {
+    if (isMachineRow && OBSOLETE_GENESIS_STANDARD_PATTERN.test(title)) {
       continue;
     }
 
@@ -764,6 +817,15 @@ export function ensureGenesisMachineProducts(
   );
 
   return Array.from(byKey.values()).filter((product) => {
+    const isMachineRow =
+      product.application === "machine" ||
+      Math.round(Number(product.widthInches ?? product.width_inches ?? 0)) === 20 ||
+      String(product.slug || "")
+        .toLowerCase()
+        .startsWith("stretch-film-20");
+    if (isMachineRow && !isOfficialMachineFilmProduct(product)) {
+      return false;
+    }
     if (product.series !== SERIES_GENESIS_STANDARD) return true;
     return (
       officialStandardKeys.has(seriesCatalogKey(product)) &&
@@ -792,14 +854,8 @@ function pickPricing(
       forceSeries === "genesis-high-performance"
         ? "genesis-high-performance"
         : "b0000000-0000-0000-0000-000000000003",
-    imageUrl: existing.imageUrl?.includes("manual")
-      ? fallback.imageUrl
-      : existing.imageUrl || fallback.imageUrl,
-    images:
-      existing.images?.length &&
-      !existing.images.every((img) => img.includes("manual"))
-        ? existing.images
-        : fallback.images,
+    imageUrl: fallback.imageUrl,
+    images: fallback.images,
     widthInches: existing.widthInches || fallback.widthInches,
     width_inches: existing.width_inches || fallback.width_inches,
     gauge: existing.gauge || fallback.gauge,

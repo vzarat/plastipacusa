@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, ArrowRight, CheckCircle2, Box, Layers } from "lucide-react";
 import {
   GENESIS_HP_SLUGS,
+  MACHINE_FILM_IMAGE_URL,
   SERIES_GENESIS_HP,
   SERIES_GENESIS_STANDARD,
   STRETCH_FILM_PLACEHOLDER,
@@ -177,16 +178,13 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
     (a, b) => a.price - b.price
   )[0];
 
-  const AUTOMATIC_IMAGE =
-    "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/AUTOMATIC_STRETCH_FILM.png";
-
   const rawImage =
     (product?.images && product.images[0]) || product?.imageUrl;
 
   const primaryImage = imageFailed
     ? STRETCH_FILM_PLACEHOLDER
-    : isGenesis && (!rawImage || rawImage.includes("manual"))
-      ? AUTOMATIC_IMAGE
+    : isGenesis
+      ? MACHINE_FILM_IMAGE_URL
       : rawImage || STRETCH_FILM_PLACEHOLDER;
 
   const secondaryImage =
