@@ -3,8 +3,11 @@
  * Origin, markup, and the free-delivery minimum are constants here.
  */
 
-/** Warehouse zip and city. The street lives in origin.ts and is not shown at checkout. */
-export const WARP_ORIGIN_ZIP: string = "78507";
+/**
+ * Warehouse zip. 5801 George McVay Dr is in 78503.
+ * 78507 returns no Warp carriers for this lane.
+ */
+export const WARP_ORIGIN_ZIP: string = "78503";
 
 export const WARP_ORIGIN_CITY: string = "McAllen";
 

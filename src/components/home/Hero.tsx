@@ -9,6 +9,8 @@ const SLIDE_SDK_1 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_1.jpg";
 const SLIDE_SDK_2 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_2.jpg";
+const SLIDE_SDK_3 =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_3.jpg";
 const MOBIL_SLIDE =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/MOBIL_SLIDE.jpg";
 const EFFICIENCY_BG =
@@ -16,8 +18,14 @@ const EFFICIENCY_BG =
 const EFFICIENCY_MACHINE =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/ROBOPACK.png";
 
-const SLIDE_COUNT = 2;
+const MOBILE_SLIDE_COUNT = 2;
+const DESKTOP_SLIDE_COUNT = 3;
 const AUTO_MS = 7000;
+const SLIDE_LABELS = [
+  "Order bulk",
+  "Increase packaging efficiency",
+  "Quality you can count on",
+];
 
 const SLIDE_CTA_CLASS =
   "inline-flex w-fit items-center gap-[0.45cqw] rounded-[0.7cqw] bg-gradient-to-r from-cyan-500 to-blue-600 px-[1.15cqw] py-[0.55cqw] text-[1.05cqw] font-bold uppercase tracking-wide text-white shadow-md shadow-blue-500/30";
@@ -122,17 +130,50 @@ function EfficiencySlide() {
   );
 }
 
+function QualitySlide() {
+  return (
+    <div className="absolute inset-0">
+      <Image
+        src={SLIDE_SDK_3}
+        alt="Quality you can count on in every shipment. Our stretch film protects and holds every load."
+        fill
+        sizes="(max-width: 1400px) 100vw, 1400px"
+        className="hidden object-contain object-center md:block"
+      />
+      <div className="absolute left-[9.88%] top-[68.5%] z-20 hidden md:block">
+        <Link href="/#product-catalog-section" className={SLIDE_CTA_CLASS}>
+          Shop Now
+          <ArrowRight className="h-[1.05cqw] w-[1.05cqw]" />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export function Hero() {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [slideCount, setSlideCount] = useState(MOBILE_SLIDE_COUNT);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 768px)");
+    const apply = () => {
+      const nextCount = media.matches ? DESKTOP_SLIDE_COUNT : MOBILE_SLIDE_COUNT;
+      setSlideCount(nextCount);
+      setIndex((current) => (current >= nextCount ? 0 : current));
+    };
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
 
   useEffect(() => {
     if (paused) return;
     const timer = window.setInterval(() => {
-      setIndex((current) => (current + 1) % SLIDE_COUNT);
+      setIndex((current) => (current + 1) % slideCount);
     }, AUTO_MS);
     return () => window.clearInterval(timer);
-  }, [paused]);
+  }, [paused, slideCount]);
 
   return (
     <section
@@ -163,24 +204,33 @@ export function Hero() {
         >
           <EfficiencySlide />
         </div>
+        <div
+          className={`absolute inset-0 transition-opacity duration-500 ${
+            index === 2 ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+          aria-hidden={index !== 2}
+          inert={index !== 2}
+        >
+          <QualitySlide />
+        </div>
 
         <button
           type="button"
           aria-label="Previous slide"
           onClick={() =>
-            setIndex((current) => (current - 1 + SLIDE_COUNT) % SLIDE_COUNT)
+            setIndex((current) => (current - 1 + slideCount) % slideCount)
           }
           className="absolute inset-y-0 left-0 z-30 w-12 cursor-pointer bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-8px] focus-visible:outline-white md:w-16"
         />
         <button
           type="button"
           aria-label="Next slide"
-          onClick={() => setIndex((current) => (current + 1) % SLIDE_COUNT)}
+          onClick={() => setIndex((current) => (current + 1) % slideCount)}
           className="absolute inset-y-0 right-0 z-30 w-12 cursor-pointer bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-8px] focus-visible:outline-white md:w-16"
         />
 
         <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2">
-          {["Order bulk", "Increase packaging efficiency"].map((label, slide) => (
+          {SLIDE_LABELS.slice(0, slideCount).map((label, slide) => (
             <button
               key={label}
               type="button"

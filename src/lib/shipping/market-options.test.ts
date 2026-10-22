@@ -123,7 +123,7 @@ describe("market option carriers", () => {
       pickupDate: "2026-10-16",
       items,
     });
-    assert.equal(body.origin_zip, "78507");
+    assert.equal(body.origin_zip, "78503");
     assert.equal(body.origin_city, "McAllen");
     assert.equal(body.origin_street, "5801 George McVay Dr");
     assert.equal(body.destination_zip, "77002");

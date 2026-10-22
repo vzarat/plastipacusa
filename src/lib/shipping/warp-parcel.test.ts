@@ -76,7 +76,7 @@ describe("Warp carton versus pallet payload", () => {
       zipcode: string;
       address: { street: string; city: string; state: string; zipcode: string; country: string };
     };
-    assert.equal(pickup.zipcode, "78507");
+    assert.equal(pickup.zipcode, "78503");
     assert.equal(pickup.address.street, "5801 George McVay Dr");
     assert.equal(pickup.address.city, "McAllen");
     assert.equal(pickup.address.state, "TX");
