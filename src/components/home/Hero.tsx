@@ -5,14 +5,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 
-const SLIDE_BG =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_1%20(1).jpg";
 const SLIDE_SDK_1 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_1.jpg";
 const SLIDE_SDK_2 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_2.jpg";
-const SLIDE_ROLLS =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/STRETCH_SLIDE_1.png";
+const MOBIL_SLIDE =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/MOBIL_SLIDE.jpg";
 const EFFICIENCY_BG =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_2.jpg";
 const EFFICIENCY_MACHINE =
@@ -21,32 +19,11 @@ const EFFICIENCY_MACHINE =
 const SLIDE_COUNT = 2;
 const AUTO_MS = 7000;
 
-const CTA_CLASS =
-  "inline-flex w-fit items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-blue-500/30 transition-all duration-200 hover:scale-105 hover:from-cyan-400 hover:to-blue-500";
-
 const SLIDE_CTA_CLASS =
   "inline-flex w-fit items-center gap-[0.45cqw] rounded-[0.7cqw] bg-gradient-to-r from-cyan-500 to-blue-600 px-[1.15cqw] py-[0.55cqw] text-[1.05cqw] font-bold uppercase tracking-wide text-white shadow-md shadow-blue-500/30";
 
-function Headline({ className }: { className: string }) {
-  return (
-    <h1 className={className}>
-      Order Bulk,
-      <span className="block bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-        Save More
-      </span>
-      <span className="block">Wrap Better</span>
-    </h1>
-  );
-}
-
-function DeliveryLine({ className }: { className: string }) {
-  return (
-    <p className={className}>
-      <strong className="font-bold text-white">FREE DELIVERY</strong> in the area of{" "}
-      <strong className="font-bold text-white">the RGV</strong> with purchases of 20 boxes or more.
-    </p>
-  );
-}
+const MOBILE_CTA_CLASS =
+  "inline-flex w-fit items-center gap-[1.8cqw] whitespace-nowrap rounded-[3.2cqw] bg-gradient-to-r from-cyan-500 to-blue-600 px-[5.6cqw] py-[2.8cqw] text-[3.9cqw] font-bold uppercase tracking-wide text-white shadow-lg shadow-blue-500/30";
 
 function BulkSlide() {
   return (
@@ -69,32 +46,19 @@ function BulkSlide() {
         </Link>
       </div>
 
-      <div className="absolute inset-0 md:hidden">
-        <Image
-          src={SLIDE_BG}
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/75" />
-        <Image
-          src={SLIDE_ROLLS}
-          alt=""
-          width={559}
-          height={455}
-          priority
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-10 mx-auto h-[52%] max-h-[52%] w-auto object-contain object-bottom"
-        />
-        <div className="relative z-20 flex h-full flex-col items-center px-5 pb-52 pt-8 text-center">
-          <Headline className="font-teko text-5xl font-bold uppercase leading-[0.85] tracking-tight text-white" />
-          <Link href="/#product-catalog-section" className={`${CTA_CLASS} mt-5`}>
-            Shop Bulk Now
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-          <DeliveryLine className="mt-4 max-w-sm text-sm font-medium leading-snug text-gray-100" />
-        </div>
+      <Image
+        src={MOBIL_SLIDE}
+        alt="Order bulk, save more, wrap better. Free delivery in the RGV with purchases of 20 boxes or more."
+        fill
+        priority
+        sizes="100vw"
+        className="object-contain object-center md:hidden"
+      />
+      <div className="absolute left-1/2 top-[41.5%] z-20 -translate-x-1/2 md:hidden">
+        <Link href="/#product-catalog-section" className={MOBILE_CTA_CLASS}>
+          Shop Bulk Now
+          <ArrowRight className="h-[3.6cqw] w-[3.6cqw]" />
+        </Link>
       </div>
     </div>
   );
@@ -180,7 +144,7 @@ export function Hero() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="relative mx-auto h-[720px] min-h-[720px] w-full max-w-[1400px] overflow-hidden rounded-2xl [container-type:inline-size] md:aspect-[2560/800] md:h-auto md:min-h-0 md:rounded-3xl">
+      <div className="relative mx-auto aspect-[1080/1920] h-auto w-full max-w-[1400px] overflow-hidden rounded-2xl [container-type:inline-size] md:aspect-[2560/800] md:rounded-3xl">
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
             index === 0 ? "opacity-100" : "pointer-events-none opacity-0"
@@ -199,6 +163,21 @@ export function Hero() {
         >
           <EfficiencySlide />
         </div>
+
+        <button
+          type="button"
+          aria-label="Previous slide"
+          onClick={() =>
+            setIndex((current) => (current - 1 + SLIDE_COUNT) % SLIDE_COUNT)
+          }
+          className="absolute inset-y-0 left-0 z-30 w-12 cursor-pointer bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-8px] focus-visible:outline-white md:w-16"
+        />
+        <button
+          type="button"
+          aria-label="Next slide"
+          onClick={() => setIndex((current) => (current + 1) % SLIDE_COUNT)}
+          className="absolute inset-y-0 right-0 z-30 w-12 cursor-pointer bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-8px] focus-visible:outline-white md:w-16"
+        />
 
         <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2">
           {["Order bulk", "Increase packaging efficiency"].map((label, slide) => (
