@@ -59,7 +59,11 @@ export function clampCartQuantity(
   if (!Number.isFinite(quantity) || quantity < 1) {
     return { quantity: 1, notice: null };
   }
-  if ((kind === "half" || kind === "layer") && quantity > 1) {
+  if (
+    String(item.application || "").toLowerCase() !== "machine" &&
+    (kind === "half" || kind === "layer") &&
+    quantity > 1
+  ) {
     return { quantity: 1, notice: TIER_MAX_ONE_WARNING };
   }
   if (kind === "box" && quantity > HAND_BOX_MAX_QUANTITY) {
@@ -70,6 +74,7 @@ export function clampCartQuantity(
 
 export function cartQuantityNote(item: CartPackageInput, quantity: number): string | null {
   const kind = cartPackageKind(item);
+  if (String(item.application || "").toLowerCase() === "machine") return null;
   if (kind === "half") return HALF_PALLET_QTY_NOTE;
   if (kind === "layer") return LAYER_QTY_NOTE;
   if (kind === "box" && quantity >= HAND_BOX_MAX_QUANTITY) return BOX_QTY_NOTE;
@@ -78,6 +83,7 @@ export function cartQuantityNote(item: CartPackageInput, quantity: number): stri
 
 export function cartQuantityMax(item: CartPackageInput): number | undefined {
   const kind = cartPackageKind(item);
+  if (String(item.application || "").toLowerCase() === "machine") return undefined;
   if (kind === "half" || kind === "layer") return 1;
   if (kind === "box") return HAND_BOX_MAX_QUANTITY;
   return undefined;
@@ -85,6 +91,12 @@ export function cartQuantityMax(item: CartPackageInput): number | undefined {
 
 export function canIncreaseCartQuantity(item: CartPackageInput, quantity: number): boolean {
   const kind = cartPackageKind(item);
-  if ((kind === "half" || kind === "layer") && quantity >= 1) return false;
+  if (
+    String(item.application || "").toLowerCase() !== "machine" &&
+    (kind === "half" || kind === "layer") &&
+    quantity >= 1
+  ) {
+    return false;
+  }
   return true;
 }

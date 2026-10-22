@@ -23,6 +23,7 @@ import {
 } from "@/lib/shipping/hand-freight";
 import { handFilmTierSku } from "@/lib/hand-film-sku";
 import { machineFilmTierSku } from "@/lib/machine-film-sku";
+import { machineFilmPackagePrice, machineFilmPerRollPrice } from "@/lib/machine-film-pricing";
 import { buildMachineFilmSelectorTiers, formatBoxRollLabel, isMachineFilm } from "@/lib/products";
 import {
   BOX_PRICE_PRESETS,
@@ -252,9 +253,33 @@ function matrixRowView(
           maximumFractionDigits: 2,
         })} lbs`
     : formatHandMatrixWeight(matrixWeight);
+  const machinePerRoll = machine
+    ? machineFilmPerRollPrice({
+        widthInches: variant.widthInches || product?.widthInches || product?.width_inches,
+        gauge: variant.gauge ?? product?.gauge,
+        lengthFeet: variant.lengthFeet ?? product?.lengthFeet ?? product?.length_feet,
+        rolls: rollCount,
+      })
+    : null;
+  const machinePackage = machine
+    ? machineFilmPackagePrice({
+        widthInches: variant.widthInches || product?.widthInches || product?.width_inches,
+        gauge: variant.gauge ?? product?.gauge,
+        lengthFeet: variant.lengthFeet ?? product?.lengthFeet ?? product?.length_feet,
+        rolls: rollCount,
+      })
+    : null;
+  const storedMachinePrice = Number(variant.priceUsd ?? (variant as { price?: number }).price);
   const priceNode = machine ? (
-    Number(variant.priceUsd ?? (variant as { price?: number }).price) > 0 ? (
-      formatCurrency(variant.priceUsd ?? (variant as { price?: number }).price ?? 0)
+    (machinePackage ?? storedMachinePrice) > 0 ? (
+      <span className="block whitespace-normal text-right">
+        <span className="block">{formatCurrency(machinePackage ?? storedMachinePrice)} USD</span>
+        {machinePerRoll != null && (
+          <span className="block text-xs font-semibold text-slate-500">
+            {formatCurrency(machinePerRoll)} USD / roll
+          </span>
+        )}
+      </span>
     ) : (
       "—"
     )

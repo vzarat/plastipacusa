@@ -23,6 +23,9 @@ const NAV_LINKS = [
 interface MobileNavDrawerProps {
   open: boolean;
   onClose: () => void;
+  signedIn?: boolean;
+  isAdmin?: boolean;
+  onSignOut?: () => void;
 }
 
 function isLinkActive(id: string, pathname: string, hash: string) {
@@ -34,7 +37,13 @@ function isLinkActive(id: string, pathname: string, hash: string) {
   return false;
 }
 
-export function MobileNavDrawer({ open, onClose }: MobileNavDrawerProps) {
+export function MobileNavDrawer({
+  open,
+  onClose,
+  signedIn = false,
+  isAdmin = false,
+  onSignOut,
+}: MobileNavDrawerProps) {
   const pathname = usePathname();
   const openAssist = useAssistStore((state) => state.setOpen);
   const [hash, setHash] = useState("");
@@ -72,7 +81,7 @@ export function MobileNavDrawer({ open, onClose }: MobileNavDrawerProps) {
 
   return createPortal(
     <div
-      className={`md:hidden ${open ? "pointer-events-auto" : "pointer-events-none"}`}
+      className={`lg:hidden ${open ? "pointer-events-auto" : "pointer-events-none"}`}
       aria-hidden={!open}
     >
       <div
@@ -111,7 +120,7 @@ export function MobileNavDrawer({ open, onClose }: MobileNavDrawerProps) {
             </button>
           </div>
 
-          <nav className="mt-8 flex flex-col gap-1" aria-label="Mobile">
+          <nav className="mt-8 flex flex-col gap-1" aria-label="Primary">
             {NAV_LINKS.map((link) => {
               const active = isLinkActive(link.id, pathname, hash);
               return (
@@ -133,6 +142,31 @@ export function MobileNavDrawer({ open, onClose }: MobileNavDrawerProps) {
         </div>
 
         <div className="flex flex-col gap-3 pt-6">
+          {signedIn ? (
+            <>
+              <Button asChild variant="outline" className="h-11 w-full text-sm">
+                <Link href={isAdmin ? "/admin" : "/dashboard"} onClick={onClose}>
+                  {isAdmin ? "Admin" : "Dashboard"}
+                </Link>
+              </Button>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onSignOut?.();
+                }}
+                className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-rose-200 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+              >
+                Sign Out
+              </button>
+            </>
+          ) : (
+            <Button asChild variant="outline" className="h-11 w-full text-sm">
+              <Link href="/login" onClick={onClose}>
+                Log In
+              </Link>
+            </Button>
+          )}
           <Button asChild variant="gradient" className="h-11 w-full text-sm">
             <Link href="/#inquiry-form" onClick={onClose}>
               Request Quote

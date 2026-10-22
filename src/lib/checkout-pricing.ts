@@ -1,4 +1,5 @@
 import { getCartDiscountAmount } from "@/lib/coupons";
+import { machineFilmPackagePriceBySku } from "@/lib/machine-film-pricing";
 import { boxTierPricesFromVariants, repriceHandCartLine, roundMoney } from "@/lib/pricing";
 import { calculateOrderTotal, type CheckoutTotals } from "@/lib/sales-tax";
 import type { AppliedCoupon } from "@/types/coupon";
@@ -135,7 +136,9 @@ export function catalogCheckoutLines(
       const productSlug = String(product?.slug || "");
 
       if (application === "machine") {
-        const unitPrice = roundMoney(Number(variant.price) || 0);
+        const unitPrice = roundMoney(
+          machineFilmPackagePriceBySku(sku) ?? (Number(variant.price) || 0)
+        );
         if (!(unitPrice > 0)) throw new Error(`Catalog price missing for ${sku}.`);
         return {
           sku,

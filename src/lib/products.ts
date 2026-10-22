@@ -11,6 +11,7 @@ export {
 
 import type { ProductWithVariants } from "@/types";
 import { machineFilmTierSku } from "@/lib/machine-film-sku";
+import { machineFilmPackagePrice, machineFilmPerRollPrice } from "@/lib/machine-film-pricing";
 import { MACHINE_FILM_WEIGHT_SPECS, packageTotalWeightLbs } from "@/lib/package-weight";
 
 /** Remote fallback when a product row has no image_url. Never stored in /public. */
@@ -354,11 +355,30 @@ export function buildMachineFilmSelectorTiers(product: any, variants?: any[] | n
         ? roundTierMoney(halfPerRoll * MACHINE_FULL_PALLET_UNIT_RATE)
         : 0;
   const fullPrice = fullPerRoll > 0 ? roundTierMoney(fullPerRoll * 40) : 0;
+  const officialHalf = machineFilmPerRollPrice({
+    widthInches,
+    gauge,
+    lengthFeet,
+    rolls: 20,
+  });
+  const officialFull = machineFilmPerRollPrice({
+    widthInches,
+    gauge,
+    lengthFeet,
+    rolls: 40,
+  });
+  const pricedHalfPerRoll = officialHalf ?? halfPerRoll;
+  const pricedFullPerRoll = officialFull ?? fullPerRoll;
+  const pricedHalf = officialHalf != null ? machineFilmPackagePrice({ widthInches, gauge, lengthFeet, rolls: 20 }) ?? 0 : halfPrice;
+  const pricedFull = officialFull != null ? machineFilmPackagePrice({ widthInches, gauge, lengthFeet, rolls: 40 }) ?? 0 : fullPrice;
   const fullPalletSavingsPerRoll =
-    halfPerRoll > 0 && fullPerRoll > 0 ? roundTierMoney(halfPerRoll - fullPerRoll) : 0;
+    pricedHalfPerRoll > 0 && pricedFullPerRoll > 0
+      ? roundTierMoney(pricedHalfPerRoll - pricedFullPerRoll)
+      : 0;
 
   return MACHINE_PACKAGE_TIERS.map((tier) => {
-    const price = tier.rolls === 40 ? fullPrice : halfPrice;
+    const price = tier.rolls === 40 ? pricedFull : pricedHalf;
+    const perRollPrice = tier.rolls === 40 ? pricedFullPerRoll : pricedHalfPerRoll;
     const storedTier = sources.find((item) => sourceRolls(item) === tier.rolls);
     const weight = packageTotalWeightLbs({
       rolls: tier.rolls,
@@ -388,6 +408,7 @@ export function buildMachineFilmSelectorTiers(product: any, variants?: any[] | n
           ? [`Save $${fullPalletSavingsPerRoll.toFixed(2)} / roll`]
           : [],
       price,
+      perRollPrice,
       priceUsd: price > 0 ? price.toFixed(2) : "",
       rolls: tier.rolls,
       rolls_count: tier.rolls,

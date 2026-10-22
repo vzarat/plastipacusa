@@ -719,7 +719,8 @@ export function VariantSelector({
       ? totalForBoxes(discountedBoxUnit, packageBoxes)
       : 0;
   const baseUnitPriceRaw = listPackageUnit;
-  const quantityLocked = isHalfPalletTier || isLayerTier;
+  const machineRollStep = isMachineFilm ? (packageRolls >= 40 ? 40 : 20) : 0;
+  const quantityLocked = !isMachineFilm && (isHalfPalletTier || isLayerTier);
   const isBoxTier = isSingleUnitTier && !isMachineFilm;
   const quantityMax = quantityLocked ? 1 : isBoxTier ? 15 : undefined;
   const effectiveQuantity = quantityLocked
@@ -732,14 +733,14 @@ export function VariantSelector({
     ? Number((unitPrice * effectiveQuantity).toFixed(2))
     : totalForBoxes(discountedBoxUnit, lineBoxes);
   const hasActiveDiscount = Boolean(appliedDiscount && baseUnitPriceRaw > 0);
-  const quantityNoun = isLayerTier
-    ? "Layers"
-    : isHalfPalletTier
-      ? "Half Pallets"
-      : isFullPalletTier
-        ? "Full Pallets"
-        : isMachineFilm
-          ? "Rolls"
+  const quantityNoun = isMachineFilm
+    ? "Rolls"
+    : isLayerTier
+      ? "Layers"
+      : isHalfPalletTier
+        ? "Half Pallets"
+        : isFullPalletTier
+          ? "Full Pallets"
           : "Boxes";
   const quantitySingular =
     quantityNoun === "Full Pallets"
@@ -751,11 +752,12 @@ export function VariantSelector({
           : quantityNoun === "Rolls"
             ? "roll"
             : "box";
-  const incrementNote = isFullPalletTier
-    ? isMachineFilm
-      ? "Each step adds 1 full pallet (40 rolls)."
-      : `Each step adds 1 full pallet (${packageBoxes} boxes).`
-    : null;
+  const incrementNote = isMachineFilm
+    ? `Sold by the roll. Minimum ${machineRollStep} rolls. Each step adds ${machineRollStep} rolls.`
+    : isFullPalletTier
+      ? `Each step adds 1 full pallet (${packageBoxes} boxes).`
+      : null;
+  const displayedQuantity = isMachineFilm ? effectiveQuantity * machineRollStep : effectiveQuantity;
 
   const selectedTierIdentity = `${tierKey}:${selectedVariant?.id || selectedVariant?.sku || ""}`;
 
@@ -778,6 +780,14 @@ export function VariantSelector({
   const handleQuantityInput = (raw: string) => {
     const next = Math.floor(Number(raw));
     if (!Number.isFinite(next)) return;
+    if (isMachineFilm) {
+      const step = packageRolls >= 40 ? 40 : 20;
+      const rolls = Math.floor(Number(raw));
+      if (!Number.isFinite(rolls)) return;
+      setQuantity(Math.max(1, Math.round(rolls / step)));
+      setTierHint(null);
+      return;
+    }
     if (quantityLocked) {
       setQuantity(1);
       return;
@@ -941,6 +951,14 @@ export function VariantSelector({
                 </span>
                 {unitPrice > 0 && (
                   <span className="text-sm font-bold text-slate-500">USD</span>
+                )}
+                {Number((selectedVariant as { perRollPrice?: number })?.perRollPrice) > 0 && (
+                  <span className="basis-full text-sm font-semibold text-slate-500">
+                    {formatCurrency(
+                      Number((selectedVariant as { perRollPrice?: number }).perRollPrice)
+                    )}{" "}
+                    USD / roll
+                  </span>
                 )}
               </>
             ) : (
@@ -1121,8 +1139,12 @@ export function VariantSelector({
                         </p>
                         {price > 0 && pricedUnitCount > 0 && (
                           <p className="mt-0.5 whitespace-nowrap text-xs text-slate-500">
-                            {formatCurrency(price / pricedUnitCount)} USD /{" "}
-                            {unitLabel.toLowerCase()}
+                            {formatCurrency(
+                              Number(variant?.perRollPrice) > 0
+                                ? Number(variant.perRollPrice)
+                                : price / pricedUnitCount
+                            )}{" "}
+                            USD / roll
                           </p>
                         )}
                       </>
@@ -1241,7 +1263,11 @@ export function VariantSelector({
                 type="button"
                 onClick={handleQuantityDecrease}
                 disabled={effectiveQuantity <= 1 || quantityLocked}
-                aria-label={`Remove 1 ${quantitySingular}`}
+                aria-label={
+                  isMachineFilm
+                    ? `Remove ${machineRollStep} rolls`
+                    : `Remove 1 ${quantitySingular}`
+                }
                 className="h-8 w-8 shrink-0 flex items-center justify-center text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 font-bold disabled:opacity-40 disabled:pointer-events-none disabled:hover:bg-transparent"
               >
                 -
@@ -1249,10 +1275,11 @@ export function VariantSelector({
               <input
                 type="number"
                 inputMode="numeric"
-                min={1}
+                min={isMachineFilm ? machineRollStep : 1}
                 max={quantityMax}
+                step={isMachineFilm ? machineRollStep : 1}
                 readOnly={quantityLocked}
-                value={effectiveQuantity}
+                value={displayedQuantity}
                 onChange={(event) => handleQuantityInput(event.target.value)}
                 aria-live="polite"
                 aria-label={`Quantity of ${quantitySingular}`}
@@ -1262,13 +1289,15 @@ export function VariantSelector({
                 type="button"
                 onClick={handleQuantityIncrease}
                 disabled={quantityLocked}
-                aria-label={`Add 1 ${quantitySingular}`}
+                aria-label={
+                  isMachineFilm ? `Add ${machineRollStep} rolls` : `Add 1 ${quantitySingular}`
+                }
                 className="h-8 w-8 shrink-0 flex items-center justify-center text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 font-bold disabled:opacity-40 disabled:pointer-events-none disabled:hover:bg-transparent"
               >
                 +
               </button>
             </div>
-            {isHalfPalletTier && (
+            {isHalfPalletTier && !isMachineFilm && (
               <p className="max-w-[220px] text-[10px] font-medium leading-snug text-amber-800">
                 {HALF_PALLET_QTY_NOTE}
               </p>
