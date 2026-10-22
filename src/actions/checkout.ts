@@ -12,6 +12,7 @@ import {
 } from "@/lib/checkout-pricing";
 import { mapCouponToApplied } from "@/lib/coupons";
 import { catalogSkuCandidates, customerLineDescription } from "@/lib/catalog-sku";
+import { palletStockShortage, soldOutCheckoutMessage, trackedPalletStock } from "@/lib/pallet-stock";
 import {
   decidePaymentAttempt,
   paymentIdempotencyKey,
@@ -111,7 +112,22 @@ async function loadCatalogLines(
   const siblings = siblingRows.map((row) =>
     toCatalogCheckoutVariant(row, productsById.get(String(row.product_id || row.productId || "")) || null)
   );
-  return catalogCheckoutLines(requested, variants, siblings);
+  const lines = catalogCheckoutLines(requested, variants, siblings);
+  const onHand = new Map<string, number | null>();
+  const availability = new Map<string, { stock: number | null; soldOut: boolean }>();
+  for (const [id, product] of productsById) {
+    const stock = trackedPalletStock(product.stock_quantity ?? product.stock_qty);
+    onHand.set(id, stock);
+    availability.set(id, {
+      stock,
+      soldOut: product.is_sold_out === true || product.isSoldOut === true,
+    });
+  }
+  const unavailable = soldOutCheckoutMessage(lines, availability);
+  if (unavailable) throw new Error(unavailable);
+  const shortage = palletStockShortage(lines, onHand);
+  if (shortage) throw new Error(shortage);
+  return lines;
 }
 
 function publicOrderError(message: string): string {
@@ -503,6 +519,7 @@ export async function createPaymentIntent(
         productName: line.productName,
         quantity: line.quantity,
         boxes: line.boxes,
+        pallets: line.pallets,
         unitPrice: line.unitPrice,
         totalPrice: line.totalPrice,
       })),

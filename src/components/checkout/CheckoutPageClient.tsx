@@ -38,6 +38,7 @@ import {
   type CheckoutShippingAddress,
 } from "@/lib/shipping-address";
 import { blocksCardStep } from "@/lib/shipping/quote-window";
+import { trackInitiateCheckout } from "@/lib/meta-pixel";
 
 const EXPIRED_QUOTE = "This shipping quote expired. Review the updated price before paying.";
 
@@ -75,6 +76,7 @@ function CheckoutPageInner({ taxExempt }: { taxExempt: boolean }) {
     () => useCartStore.persist.hasHydrated()
   );
   const emptyCartRedirected = useRef(false);
+  const checkoutTracked = useRef(false);
   const {
     selectedAddress,
     setSelectedAddress,
@@ -117,6 +119,16 @@ function CheckoutPageInner({ taxExempt }: { taxExempt: boolean }) {
       setCartReady(true);
     });
   }, []);
+
+  useEffect(() => {
+    if (!cartReady || checkoutTracked.current || items.length === 0) return;
+    checkoutTracked.current = true;
+    trackInitiateCheckout({
+      cartSubtotal: getSubtotal(),
+      currency: "USD",
+      itemsCount: items.reduce((count, item) => count + item.quantity, 0),
+    });
+  }, [cartReady, items, getSubtotal]);
 
   useEffect(() => {
     if (!cartReady || authChecking || !isAuthenticated) return;

@@ -1,6 +1,7 @@
 import { getCartDiscountAmount } from "@/lib/coupons";
 import { catalogSkuCandidates, canonicalCatalogSku } from "@/lib/catalog-sku";
 import { machineFilmPackagePriceBySku } from "@/lib/machine-film-pricing";
+import { fullPalletsForPackage } from "@/lib/pallet-stock";
 import { boxTierPricesFromVariants, repriceHandCartLine, roundMoney } from "@/lib/pricing";
 import { calculateOrderTotal, type CheckoutTotals } from "@/lib/sales-tax";
 import type { AppliedCoupon } from "@/types/coupon";
@@ -15,6 +16,7 @@ export interface CatalogCheckoutVariant {
   sku: string | null;
   price: number | null;
   boxes_count: number | null;
+  rolls_count?: number | null;
   product_id?: string | null;
   products?: {
     slug?: string | null;
@@ -22,18 +24,22 @@ export interface CatalogCheckoutVariant {
     name?: string | null;
     width_inches?: number | string | null;
     gauge?: number | string | null;
+    length_feet?: number | string | null;
   } | null;
 }
 
 export interface PricedCheckoutLine {
   sku: string;
   quantity: number;
+  productId: string;
   productName: string;
   productSlug: string;
   application: "hand" | "machine";
   totalBoxes: number;
-  /** Catalog boxes_count times quantity. Settlement subtracts this from products.stock_quantity. */
+  /** Catalog boxes_count times quantity. Shipping still uses boxes. */
   boxes: number;
+  /** Full pallets consumed from products.stock_quantity. Loose boxes and half pallets are 0. */
+  pallets: number;
   unitPrice: number;
   totalPrice: number;
   boxUnitPrice: number | null;
@@ -80,6 +86,7 @@ export function toCatalogCheckoutVariant(
     sku: textOf(row.sku),
     price: positiveMoney(row.price, row.price_usd, row.priceUsd),
     boxes_count: inferredBoxes(row),
+    rolls_count: Math.floor(Number(row.rolls_count ?? row.rollsCount) || 0) || null,
     product_id: textOf(row.product_id, row.productId) || null,
     products: {
       slug: textOf(product?.slug),
@@ -87,6 +94,7 @@ export function toCatalogCheckoutVariant(
       name: textOf(product?.name, product?.title, product?.storefront_title) || null,
       width_inches: (product?.width_inches ?? product?.widthInches ?? null) as number | string | null,
       gauge: (product?.gauge ?? null) as number | string | null,
+      length_feet: (product?.length_feet ?? product?.lengthFeet ?? null) as number | string | null,
     },
   };
 }
@@ -95,6 +103,15 @@ function productOf(variant: CatalogCheckoutVariant) {
   const products = variant.products as CatalogCheckoutVariant["products"] | CatalogCheckoutVariant["products"][] | null;
   if (Array.isArray(products)) return products[0] || null;
   return products || null;
+}
+
+function packageRolls(variant: CatalogCheckoutVariant): number {
+  const stored = Math.floor(Number(variant.rolls_count) || 0);
+  if (stored > 0) return stored;
+  const sku = String(variant.sku || "").trim().toUpperCase();
+  if (sku.endsWith("-FLP") || sku.endsWith("40R")) return 40;
+  if (sku.endsWith("-HLP") || sku.endsWith("20R")) return 20;
+  return 0;
 }
 
 function catalogVariantForSku(
@@ -155,6 +172,18 @@ export function catalogCheckoutLines(
       const gauge = Math.round(Number(product?.gauge) || 0);
       const productName = String(product?.name || sku);
       const productSlug = String(product?.slug || "");
+      const productId = textOf(variant.product_id);
+      const pallets = fullPalletsForPackage({
+        application,
+        boxesPerPackage: presetBoxes,
+        rollsPerPackage: packageRolls(variant),
+        quantity,
+        widthInches: product?.width_inches,
+        gauge: product?.gauge,
+        lengthFeet: product?.length_feet,
+        slug: productSlug,
+        name: productName,
+      });
 
       if (application === "machine") {
         const unitPrice = roundMoney(
@@ -164,11 +193,13 @@ export function catalogCheckoutLines(
         return {
           sku: catalogSku,
           quantity,
+          productId,
           productName,
           productSlug,
           application,
           totalBoxes: presetBoxes,
           boxes,
+          pallets,
           unitPrice,
           totalPrice: roundMoney(unitPrice * quantity),
           boxUnitPrice: null,
@@ -195,11 +226,13 @@ export function catalogCheckoutLines(
       return {
         sku: catalogSku,
         quantity,
+        productId,
         productName,
         productSlug,
         application,
         totalBoxes: presetBoxes,
         boxes,
+        pallets,
         unitPrice: repriced.unitPrice,
         totalPrice: repriced.totalPrice,
         boxUnitPrice: repriced.boxUnitPrice ?? null,

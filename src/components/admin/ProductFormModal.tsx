@@ -171,7 +171,9 @@ function productToForm(product: AdminProduct): ProductFormValues {
       raw
     ),
     stockQuantity: numberOrNull(raw.stockQuantity, raw.stock_quantity, raw.stock_qty) ?? 0,
-    isSoldOut: Boolean(raw.isSoldOut ?? raw.is_sold_out ?? false),
+    isSoldOut:
+      (numberOrNull(raw.stockQuantity, raw.stock_quantity, raw.stock_qty) ?? 0) <= 0 ||
+      Boolean(raw.isSoldOut ?? raw.is_sold_out ?? false),
     application,
     categorySlug,
     imageUrl: textValue(raw.imageUrl, raw.image_url),
@@ -207,7 +209,7 @@ const EMPTY_FORM: ProductFormValues = {
   price40Rolls: PACKAGE_TIER_DEFAULTS.price40Rolls,
   packageTiers: defaultPackageTiers(""),
   stockQuantity: 0,
-  isSoldOut: false,
+  isSoldOut: true,
   application: getApplicationForCategory(DEFAULT_CATEGORY_SLUG),
   categorySlug: DEFAULT_CATEGORY_SLUG,
   imageUrl: "",
@@ -504,15 +506,30 @@ export function ProductFormModal({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 mb-1.5" htmlFor="stock-pallets">
                 {t("admin.stockQty")}
               </label>
               <Input
+                id="stock-pallets"
                 type="number"
-                min="0"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                placeholder="5"
                 value={form.stockQuantity}
-                onChange={(e) => setForm((p) => ({ ...p, stockQuantity: Number(e.target.value) || 0 }))}
+                onChange={(e) => {
+                  const stockQuantity = Math.max(0, Math.floor(Number(e.target.value) || 0));
+                  setForm((current) => ({
+                    ...current,
+                    stockQuantity,
+                    isSoldOut:
+                      stockQuantity === 0 ? true : current.stockQuantity === 0 ? false : current.isSoldOut,
+                  }));
+                }}
               />
+              <p className="mt-1.5 text-[11px] leading-snug text-slate-500">
+                {t("admin.stockPalletsHint")}
+              </p>
             </div>
 
             <div>
@@ -674,7 +691,12 @@ export function ProductFormModal({
                   type="radio"
                   name="availability"
                   checked={!form.isSoldOut}
-                  onChange={() => setForm((p) => ({ ...p, isSoldOut: false }))}
+                  onChange={() =>
+                    setForm((current) => ({
+                      ...current,
+                      isSoldOut: current.stockQuantity <= 0,
+                    }))
+                  }
                   className="h-4 w-4 text-emerald-600"
                 />
                 <span className="text-sm font-semibold text-slate-800">

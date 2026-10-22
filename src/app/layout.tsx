@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import { LanguageProvider } from "@/context/LanguageContext";
 import ClientPWAProvider from "@/components/providers/ClientPWAProvider";
 import { OnboardingTourWrapper } from "@/components/onboarding/OnboardingTourWrapper";
+import { MetaPixel } from "@/components/analytics/MetaPixel";
 
 const SUPABASE_ORIGIN = "https://ahvmjptomjjnqjylofpa.supabase.co";
 
@@ -139,6 +140,7 @@ export default function RootLayout({
         className={`${inter.className} min-h-screen bg-slate-50/50 text-slate-900 antialiased selection:bg-sky-500 selection:text-white`}
       >
         <LanguageProvider>
+          <MetaPixel />
           <ClientPWAProvider />
           {children}
           <CartDrawer />

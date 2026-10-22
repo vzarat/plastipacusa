@@ -37,6 +37,7 @@ import {
 } from "@/lib/cart-quantity";
 import { calculateOrderTotal } from "@/lib/sales-tax";
 import { createClient } from "@/lib/supabase/client";
+import { trackAddToCart } from "@/lib/meta-pixel";
 
 export function CartDrawer() {
   const router = useRouter();
@@ -300,7 +301,15 @@ export function CartDrawer() {
                     />
                     <button
                       type="button"
-                      onClick={() => increaseQuantity(item.id)}
+                      onClick={() => {
+                        increaseQuantity(item.id);
+                        trackAddToCart({
+                          sku: item.sku,
+                          price: item.unitPrice,
+                          currency: "USD",
+                          quantity: 1,
+                        });
+                      }}
                       disabled={!canIncreaseCartQuantity(item, item.quantity)}
                       className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                     >

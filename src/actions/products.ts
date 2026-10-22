@@ -24,6 +24,7 @@ import { handFilmTierSku } from "@/lib/hand-film-sku";
 import { machineFilmTierSku } from "@/lib/machine-film-sku";
 import { packageTotalWeightLbs } from "@/lib/package-weight";
 import { CATALOG_SOLD_OUT } from "@/lib/catalog-availability";
+import { trackedPalletStock } from "@/lib/pallet-stock";
 import {
   BOX_PRICE_PRESETS,
   getDisplayPrice,
@@ -658,8 +659,12 @@ function formatProduct(raw: any): ProductWithVariants {
     palletDimensions: String(raw.pallet_dimensions || raw.palletDimensions || ""),
     pallet_dimensions: String(raw.pallet_dimensions || raw.palletDimensions || ""),
     partNumber: raw.part_number || raw.partNumber || null,
-    stockQuantity: Number(raw.stock_quantity ?? raw.stockQuantity ?? 0),
-    isSoldOut: CATALOG_SOLD_OUT || raw.is_sold_out === true || raw.isSoldOut === true,
+    stockQuantity: trackedPalletStock(raw.stock_quantity ?? raw.stockQuantity) ?? 0,
+    isSoldOut:
+      CATALOG_SOLD_OUT ||
+      raw.is_sold_out === true ||
+      raw.isSoldOut === true ||
+      trackedPalletStock(raw.stock_quantity ?? raw.stockQuantity) === 0,
     isActive: raw.is_active === undefined && raw.isActive === undefined ? true : Boolean(raw.is_active ?? raw.isActive),
     storefrontTitle: raw.storefront_title || raw.storefrontTitle || null,
     priceCase: raw.price_case === null || raw.price_case === undefined ? null : Number(raw.price_case),
@@ -946,6 +951,8 @@ function firstText(...values: unknown[]): string {
 }
 
 function readSoldOut(raw: any): boolean {
+  const stock = trackedPalletStock(raw.stock_quantity ?? raw.stock_qty ?? raw.stockQuantity);
+  if (stock === 0) return true;
   if (raw.is_sold_out !== null && raw.is_sold_out !== undefined) return Boolean(raw.is_sold_out);
   if (raw.isSoldOut !== null && raw.isSoldOut !== undefined) return Boolean(raw.isSoldOut);
   if (typeof raw.in_stock === "boolean") return !raw.in_stock;
@@ -1223,7 +1230,7 @@ async function syncBaseVariant(
     patch.price = Number(values.priceUsd);
   }
   if (values.stockQuantity !== undefined && values.stockQuantity !== null) {
-    patch.stock_quantity = Number(values.stockQuantity);
+    patch.stock_quantity = Math.max(0, Math.floor(Number(values.stockQuantity) || 0));
   }
   if (Object.keys(patch).length > 0) {
     await supabase.from("product_variants").update(patch).eq("id", base.id);
@@ -1520,8 +1527,11 @@ export async function createProduct(values: ProductFormValues) {
       price_20_rolls: values.price20Rolls ?? PACKAGE_TIER_DEFAULTS.price20Rolls,
       price_40_rolls: values.price40Rolls ?? PACKAGE_TIER_DEFAULTS.price40Rolls,
       ...boxPriceColumnPatch(values.packageTiers),
-      stock_quantity: values.stockQuantity ?? 0,
-      is_sold_out: values.isSoldOut ?? false,
+      stock_quantity: Math.max(0, Math.floor(Number(values.stockQuantity) || 0)),
+      is_sold_out:
+        Math.max(0, Math.floor(Number(values.stockQuantity) || 0)) === 0
+          ? true
+          : Boolean(values.isSoldOut),
       is_active: values.isActive ?? true,
       image_url: values.imageUrl || values.images?.[0] || "",
       images: values.images || [],
@@ -1615,10 +1625,14 @@ export async function updateProduct(id: string, values: Partial<ProductFormValue
     if (values.price40Rolls !== undefined) updatePayload.price_40_rolls = values.price40Rolls;
     Object.assign(updatePayload, boxPriceColumnPatch(values.packageTiers));
     if (values.stockQuantity !== undefined && values.stockQuantity !== null) {
-      updatePayload.stock_quantity = values.stockQuantity;
-      updatePayload.stock_qty = values.stockQuantity;
+      const palletStock = Math.max(0, Math.floor(Number(values.stockQuantity) || 0));
+      updatePayload.stock_quantity = palletStock;
+      updatePayload.stock_qty = palletStock;
+      if (palletStock === 0) updatePayload.is_sold_out = true;
     }
-    if (values.isSoldOut !== undefined) updatePayload.is_sold_out = values.isSoldOut;
+    if (values.isSoldOut !== undefined && updatePayload.is_sold_out !== true) {
+      updatePayload.is_sold_out = values.isSoldOut;
+    }
     if (values.isActive !== undefined) updatePayload.is_active = values.isActive;
     if (values.categorySlug !== undefined) {
       const categoryId = categoryIdForSlug(values.categorySlug);

@@ -14,6 +14,7 @@ import {
   readCheckoutShipping,
   toOrderShippingAddress,
 } from "@/lib/shipping-address";
+import { trackPurchase } from "@/lib/meta-pixel";
 
 export default function CheckoutSuccessPage() {
   const searchParams = useSearchParams();
@@ -139,6 +140,24 @@ export default function CheckoutSuccessPage() {
           return;
         }
 
+        const purchaseOrderId = result.orderId || paymentIntentId;
+        const purchaseKey = `meta-purchase:${purchaseOrderId}`;
+        if (!sessionStorage.getItem(purchaseKey)) {
+          sessionStorage.setItem(purchaseKey, "1");
+          trackPurchase({
+            orderId: purchaseOrderId,
+            total:
+              chargedTotal > 0
+                ? chargedTotal
+                : Number(getDiscountedTotal().toFixed(2)),
+            currency: "USD",
+            items: snapshotItems.map((item) => ({
+              sku: item.sku,
+              quantity: item.quantity,
+              price: item.unitPrice,
+            })),
+          });
+        }
         clearCart();
         clearCheckoutShipping();
         setConfirmedTotal(

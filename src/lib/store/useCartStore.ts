@@ -3,20 +3,37 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { CartItem } from "@/types";
 import type { AppliedCoupon } from "@/types/coupon";
 import { canonicalCatalogSku, catalogSkusMatch } from "@/lib/catalog-sku";
+import { trackAddToCart } from "@/lib/meta-pixel";
 import { totalsFromCartLines, type PricedCheckoutLine } from "@/lib/checkout-pricing";
+import { fullPalletsForPackage } from "@/lib/pallet-stock";
 import { clampCartQuantity, type CartPackageInput } from "@/lib/cart-quantity";
 import { boxTierPricesFromVariants, repriceHandCartLine, totalForBoxes } from "@/lib/pricing";
 import { toast } from "sonner";
 
 function pricedLineFromCart(item: CartItem): PricedCheckoutLine {
+  const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
+  const application = item.application === "machine" ? "machine" : "hand";
+  const boxesPerPackage = Math.floor(Number(item.totalBoxes) || 0);
   return {
     sku: item.sku,
     quantity: item.quantity,
+    productId: String(item.productId || ""),
     productName: item.productName,
     productSlug: item.productSlug,
-    application: item.application === "machine" ? "machine" : "hand",
-    totalBoxes: Math.floor(Number(item.totalBoxes) || 0),
-    boxes: Math.floor(Number(item.totalBoxes) || 0) * Math.max(1, Math.floor(Number(item.quantity) || 1)),
+    application,
+    totalBoxes: boxesPerPackage,
+    boxes: boxesPerPackage * quantity,
+    pallets: fullPalletsForPackage({
+      application,
+      boxesPerPackage,
+      rollsPerPackage: machinePackageRolls(item),
+      quantity,
+      widthInches: item.widthInches,
+      gauge: item.gauge,
+      lengthFeet: item.lengthFeet,
+      slug: item.productSlug,
+      name: item.productName,
+    }),
     unitPrice: item.unitPrice,
     totalPrice: item.totalPrice,
     boxUnitPrice: item.boxUnitPrice ?? null,
@@ -168,6 +185,15 @@ export const useCartStore = create<CartState>()(
             totalPrice: priced.totalPrice,
           };
           set({ items: updatedItems, isDrawerOpen: true });
+          const added = newQty - existingItem.quantity;
+          if (added > 0) {
+            trackAddToCart({
+              sku: existingItem.sku,
+              price: priced.unitPrice,
+              currency: "USD",
+              quantity: added,
+            });
+          }
         } else {
           const clamped = applyPackageQuantity(itemData, itemData.quantity);
           notifyQuantityLimit(clamped.notice);
@@ -184,6 +210,14 @@ export const useCartStore = create<CartState>()(
             totalPrice: priced.totalPrice,
           };
           set({ items: [...currentItems, newItem], isDrawerOpen: true });
+          if (quantity > 0) {
+            trackAddToCart({
+              sku: newItem.sku,
+              price: priced.unitPrice,
+              currency: "USD",
+              quantity,
+            });
+          }
         }
       },
 

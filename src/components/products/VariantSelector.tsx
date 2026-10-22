@@ -826,6 +826,13 @@ export function VariantSelector({
   };
 
   const isSoldOut = product?.isSoldOut === true;
+  const palletCount = Math.floor(Number(product?.stockQuantity) || 0);
+  const palletLabel =
+    !isSoldOut && palletCount > 0
+      ? palletCount === 1
+        ? t("products.onePalletAvailable")
+        : t("products.palletsAvailable").replace("{count}", String(palletCount))
+      : null;
 
   const handleAddToCart = () => {
     if (isSoldOut) return;
@@ -998,7 +1005,7 @@ export function VariantSelector({
             variant={isSoldOut ? "secondary" : "success"}
             className="text-xs font-semibold px-3 py-1"
           >
-            ● {isSoldOut ? t("products.soldOut") : t("products.inStock")}
+            ● {isSoldOut ? t("products.soldOut") : palletLabel || t("products.inStock")}
           </Badge>
         </div>
       </div>

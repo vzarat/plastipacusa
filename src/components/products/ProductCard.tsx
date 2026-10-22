@@ -214,6 +214,13 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
     availableTiers.push("Pallet");
   }
   const isSoldOut = Boolean(product.isSoldOut);
+  const palletCount = Math.floor(Number(product.stockQuantity) || 0);
+  const palletLabel =
+    !isSoldOut && palletCount > 0
+      ? palletCount === 1
+        ? t("products.onePalletAvailable")
+        : t("products.palletsAvailable").replace("{count}", String(palletCount))
+      : null;
   const variant64 = (product.variants || []).find(
     (variant) => Number(variant.boxes_count ?? variant.boxesCount) === HAND_FULL_PALLET_BOXES
   );
@@ -292,6 +299,9 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             </span>
           )}
         </div>
+        {palletLabel ? (
+          <p className="mt-1 text-[11px] font-semibold text-emerald-700">{palletLabel}</p>
+        ) : null}
         {handQuote?.fullPallet ? (
           <p className="mt-1 text-[11px] font-semibold text-slate-500">
             {HAND_CATALOG_PALLET_LABEL}
@@ -410,7 +420,9 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               </div>
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className={`w-3.5 h-3.5 ${catStyles.iconColor} flex-shrink-0`} />
-                <span>{isSoldOut ? t("products.soldOut") : t("products.readyToShip")}</span>
+                <span>
+                  {isSoldOut ? t("products.soldOut") : palletLabel || t("products.readyToShip")}
+                </span>
               </div>
             </div>
           </div>
