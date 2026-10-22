@@ -7,8 +7,10 @@ import { ArrowRight } from "lucide-react";
 
 const SLIDE_BG =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_1%20(1).jpg";
-const SLIDE_SDK =
+const SLIDE_SDK_1 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_1.jpg";
+const SLIDE_SDK_2 =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_2.jpg";
 const SLIDE_ROLLS =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/STRETCH_SLIDE_1.png";
 const EFFICIENCY_BG =
@@ -21,6 +23,9 @@ const AUTO_MS = 7000;
 
 const CTA_CLASS =
   "inline-flex w-fit items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-blue-500/30 transition-all duration-200 hover:scale-105 hover:from-cyan-400 hover:to-blue-500";
+
+const SLIDE_CTA_CLASS =
+  "inline-flex w-fit items-center gap-[0.45cqw] rounded-[0.7cqw] bg-gradient-to-r from-cyan-500 to-blue-600 px-[1.15cqw] py-[0.55cqw] text-[1.05cqw] font-bold uppercase tracking-wide text-white shadow-md shadow-blue-500/30";
 
 function Headline({ className }: { className: string }) {
   return (
@@ -47,7 +52,7 @@ function BulkSlide() {
   return (
     <div className="absolute inset-0">
       <Image
-        src={SLIDE_SDK}
+        src={SLIDE_SDK_1}
         alt="Order bulk, save more, wrap better. Free delivery in the RGV with purchases of 20 boxes or more."
         fill
         priority
@@ -57,7 +62,7 @@ function BulkSlide() {
       <div className="absolute left-[9.84%] top-[77%] z-20 hidden md:block">
         <Link
           href="/#product-catalog-section"
-          className="inline-flex w-fit items-center gap-[0.45cqw] rounded-[0.7cqw] bg-gradient-to-r from-cyan-500 to-blue-600 px-[1.15cqw] py-[0.55cqw] text-[1.05cqw] font-bold uppercase tracking-wide text-white shadow-md shadow-blue-500/30"
+          className={SLIDE_CTA_CLASS}
         >
           Shop Bulk Now
           <ArrowRight className="h-[1.05cqw] w-[1.05cqw]" />
@@ -99,41 +104,55 @@ function EfficiencySlide() {
   return (
     <div className="absolute inset-0">
       <Image
-        src={EFFICIENCY_BG}
-        alt=""
+        src={SLIDE_SDK_2}
+        alt="Increase packaging efficiency. At Plastipac USA, we're all about smarter packaging solutions to help your business work better."
         fill
         sizes="(max-width: 1400px) 100vw, 1400px"
-        className="object-cover object-center"
+        className="hidden object-contain object-center md:block"
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/20 to-black/75 md:bg-gradient-to-r md:from-black/75 md:via-black/35 md:to-transparent" />
-
-      <Image
-        src={EFFICIENCY_MACHINE}
-        alt="Robopack stretch wrapping machine"
-        width={900}
-        height={900}
-        className="pointer-events-none absolute z-10 w-auto object-contain object-bottom max-md:bottom-14 max-md:left-1/2 max-md:h-[46%] max-md:max-w-[96%] max-md:-translate-x-1/2 md:bottom-[25px] md:right-[180px] md:h-[90%] md:max-w-[42%]"
-      />
-
-      <div className="relative z-20 flex h-full max-w-full flex-col items-start justify-start px-8 pb-60 pt-8 text-left md:max-w-[58%] md:justify-center md:pb-8 md:pl-[110px] md:pr-4 md:pt-6">
-        <h2 className="font-teko font-bold uppercase tracking-[-0.02em]">
-          <span className="block text-[42px] leading-[0.85] text-white sm:text-[56px] md:text-[68px]">
-            Increase Packaging
-          </span>
-          <span className="block bg-gradient-to-r from-cyan-300 to-blue-500 bg-clip-text text-[54px] leading-[0.85] text-transparent sm:text-[72px] md:text-[88px]">
-            Efficiency
-          </span>
-        </h2>
-        <p className="mt-4 max-w-[440px] font-sans text-[15px] font-normal leading-snug text-gray-200">
-          At <strong className="font-bold text-white">Plastipac USA</strong>, we&apos;re all about
-          smarter packaging solutions to help your business work better!
-        </p>
-        <Link
-          href="/#inquiry-form"
-          className="mt-5 inline-flex w-fit items-center rounded-xl border border-sky-200/40 bg-gradient-to-r from-[#00b2e3] to-[#2563eb] px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white md:rounded-[2px]"
-        >
+      <div className="absolute left-[9.88%] top-[79.5%] z-20 hidden md:block">
+        <Link href="/#inquiry-form" className={SLIDE_CTA_CLASS}>
           Contact Us Today!
+          <ArrowRight className="h-[1.05cqw] w-[1.05cqw]" />
         </Link>
+      </div>
+
+      <div className="absolute inset-0 md:hidden">
+        <Image
+          src={EFFICIENCY_BG}
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/20 to-black/75" />
+        <Image
+          src={EFFICIENCY_MACHINE}
+          alt="Robopack stretch wrapping machine"
+          width={900}
+          height={900}
+          className="pointer-events-none absolute bottom-14 left-1/2 z-10 h-[46%] max-w-[96%] -translate-x-1/2 object-contain object-bottom"
+        />
+        <div className="relative z-20 flex h-full max-w-full flex-col items-start justify-start px-8 pb-60 pt-8 text-left">
+          <h2 className="font-teko font-bold uppercase tracking-[-0.02em]">
+            <span className="block text-[42px] leading-[0.85] text-white sm:text-[56px]">
+              Increase Packaging
+            </span>
+            <span className="block bg-gradient-to-r from-cyan-300 to-blue-500 bg-clip-text text-[54px] leading-[0.85] text-transparent sm:text-[72px]">
+              Efficiency
+            </span>
+          </h2>
+          <p className="mt-4 max-w-[440px] font-sans text-[15px] font-normal leading-snug text-gray-200">
+            At <strong className="font-bold text-white">Plastipac USA</strong>, we&apos;re all about
+            smarter packaging solutions to help your business work better!
+          </p>
+          <Link
+            href="/#inquiry-form"
+            className="mt-5 inline-flex w-fit items-center rounded-xl border border-sky-200/40 bg-gradient-to-r from-[#00b2e3] to-[#2563eb] px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white"
+          >
+            Contact Us Today!
+          </Link>
+        </div>
       </div>
     </div>
   );
