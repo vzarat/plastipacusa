@@ -57,8 +57,8 @@ export function CategoryShowcase({
           </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          {PRODUCT_CATEGORIES.map((cat: CategoryItem) => {
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+          {PRODUCT_CATEGORIES.filter((cat) => cat.slug !== "genesis-standard").map((cat: CategoryItem) => {
             const isActive = currentCategory === cat.slug;
 
             return (

@@ -30,8 +30,7 @@ export function CategoryShowcaseSkeleton() {
           <Skeleton className="w-72 sm:w-96 h-10 rounded-xl mx-auto" />
           <Skeleton className="w-full max-w-lg h-4 rounded-md mx-auto" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <CategoryCardSkeleton />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <CategoryCardSkeleton />
           <CategoryCardSkeleton />
           <CategoryCardSkeleton />

@@ -13,8 +13,6 @@ import {
   SERIES_FORCE_ELITE,
   SERIES_FORCE_STANDARD,
   SERIES_GENESIS_HP,
-  SERIES_GENESIS_STANDARD,
-  isOfficialGenesisStandardProduct,
   sortProductsByDimensions,
 } from "@/lib/products";
 
@@ -43,12 +41,6 @@ const CATEGORY_PILLS: CategoryPill[] = [
     series: SERIES_FORCE_ELITE,
     label: "FORCE Elite",
     color: "#f59e0b",
-  },
-  {
-    slug: "genesis-standard",
-    series: SERIES_GENESIS_STANDARD,
-    label: "GENESIS Standard",
-    color: "#dc2626",
   },
   {
     slug: "genesis-high-performance",
@@ -110,13 +102,7 @@ export function FeaturedProductSection({ products }: FeaturedProductSectionProps
     if (!products || products.length === 0) return [];
     const scoped = !activePill.series
       ? dedupeBySlug(products)
-      : products.filter((p) => {
-          if (p.series !== activePill.series) return false;
-          if (activePill.series === SERIES_GENESIS_STANDARD) {
-            return isOfficialGenesisStandardProduct(p);
-          }
-          return true;
-        });
+      : products.filter((p) => p.series === activePill.series);
     return sortProductsByDimensions(scoped);
   }, [products, activePill.series]);
 

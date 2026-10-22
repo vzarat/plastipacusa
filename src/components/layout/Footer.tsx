@@ -38,10 +38,6 @@ const PRODUCT_LINE_LINKS = [
     href: "/products?category=force-elite",
   },
   {
-    labelKey: "footer.lineGenesisStandard" as const,
-    href: "/products?category=genesis-standard",
-  },
-  {
     labelKey: "footer.lineGenesisHp" as const,
     href: "/products?category=genesis-high-performance",
   },

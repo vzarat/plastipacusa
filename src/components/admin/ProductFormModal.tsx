@@ -656,7 +656,7 @@ export function ProductFormModal({
                 }
                 className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 cursor-pointer"
               >
-                {PRODUCT_CATEGORIES.map((c) => (
+                {PRODUCT_CATEGORIES.filter((c) => c.slug !== "genesis-standard").map((c) => (
                   <option key={c.slug} value={c.slug}>
                     {c.name}
                   </option>

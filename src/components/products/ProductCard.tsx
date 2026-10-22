@@ -457,15 +457,17 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               </p>
             ) : null}
           </div>
-          <span className="hidden rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500 md:inline">
-            {isGenesis
-              ? "Machine Roll"
-              : cheapestPackage?.rolls
-              ? `${cheapestPackage.rolls} Rolls`
-              : primaryVariant?.rollsPerBox
-              ? `${primaryVariant.rollsPerBox} Rolls / Box`
-              : "Package"}
-          </span>
+          {handQuote?.fullPallet ? null : (
+            <span className="hidden rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500 md:inline">
+              {isGenesis
+                ? "Machine Roll"
+                : cheapestPackage?.rolls
+                ? `${cheapestPackage.rolls} Rolls`
+                : primaryVariant?.rollsPerBox
+                ? `${primaryVariant.rollsPerBox} Rolls / Box`
+                : "Package"}
+            </span>
+          )}
         </div>
 
         {/* High-Conversion "BUY NOW" Button */}
