@@ -172,6 +172,54 @@ describe("shared checkout pricing", () => {
     assert.equal(priced.lines[0].totalPrice, 28.21);
   });
 
+  it("prices saved standard and machine SKUs from the current catalog codes", () => {
+    const standard = totalsFromCatalog(
+      [{ sku: "FST-188010-64B", quantity: 1 }],
+      [
+        {
+          sku: "STD-SF188010-64B",
+          price: 21.2,
+          boxes_count: 64,
+          product_id: "std-18",
+          products: {
+            application: "hand",
+            name: 'STRETCH FILM 18" x 80 GA x 1000 FT',
+            slug: "stretch-film-18",
+            width_inches: 18,
+            gauge: 80,
+          },
+        },
+      ],
+      null,
+      0
+    );
+    assert.equal(standard.lines[0].sku, "STD-SF188010-64B");
+    assert.equal(standard.lines[0].totalPrice, 1356.8);
+
+    const machine = totalsFromCatalog(
+      [{ sku: "HPFSF205170-HLP", quantity: 1 }],
+      [
+        {
+          sku: "HPF-SF205170-HLP",
+          price: 1016.8,
+          boxes_count: 0,
+          product_id: "machine-20",
+          products: {
+            application: "machine",
+            name: 'STRETCH FILM 20" x 51 GA x 7000 FT',
+            slug: "stretch-film-20",
+            width_inches: 20,
+            gauge: 51,
+          },
+        },
+      ],
+      null,
+      0
+    );
+    assert.equal(machine.lines[0].sku, "HPF-SF205170-HLP");
+    assert.equal(machine.lines[0].unitPrice, 1016.8);
+  });
+
   it("rejects an invalid or expired coupon", () => {
     const now = Date.parse("2026-10-15T00:00:00Z");
     assert.equal(

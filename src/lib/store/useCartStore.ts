@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { CartItem } from "@/types";
 import type { AppliedCoupon } from "@/types/coupon";
+import { canonicalCatalogSku, catalogSkusMatch } from "@/lib/catalog-sku";
 import { totalsFromCartLines, type PricedCheckoutLine } from "@/lib/checkout-pricing";
 import { clampCartQuantity, type CartPackageInput } from "@/lib/cart-quantity";
 import { boxTierPricesFromVariants, repriceHandCartLine, totalForBoxes } from "@/lib/pricing";
@@ -35,6 +36,27 @@ function applyPackageQuantity<T extends CartPackageInput>(
   requested: number
 ): { quantity: number; notice: string | null } {
   return clampCartQuantity(item, requested);
+}
+
+function catalogSkuForItem(
+  sku: string,
+  products: Array<{
+    packageOptions?: Array<{ sku?: string }>;
+    variants?: Array<{ sku?: string }>;
+  }>
+): string {
+  const canonical = canonicalCatalogSku(sku);
+  for (const product of products) {
+    const skus = [
+      ...(product.packageOptions || []).map((option) => String(option.sku || "")),
+      ...(product.variants || []).map((variant) => String(variant.sku || "")),
+    ].filter(Boolean);
+    const exact = skus.find((value) => value.toUpperCase() === canonical);
+    if (exact) return exact;
+    const alias = skus.find((value) => catalogSkusMatch(sku, value));
+    if (alias) return alias;
+  }
+  return canonical && canonical !== sku ? canonical : sku;
 }
 
 function notifyQuantityLimit(notice: string | null) {
@@ -238,16 +260,26 @@ export const useCartStore = create<CartState>()(
         set((state) => {
           let changed = false;
           const items = state.items.map((item) => {
-            if (item.application !== "machine") {
-              const next = repriceHandCartLine(item, boxPricesBySlug.get(item.productSlug));
-              if (next !== item) changed = true;
+            const currentSku = catalogSkuForItem(item.sku, products);
+            const nextItem =
+              currentSku && currentSku !== item.sku
+                ? {
+                    ...item,
+                    sku: currentSku,
+                    variantId: String(item.variantId) === item.sku ? currentSku : item.variantId,
+                  }
+                : item;
+            if (nextItem !== item) changed = true;
+            if (nextItem.application !== "machine") {
+              const next = repriceHandCartLine(nextItem, boxPricesBySlug.get(nextItem.productSlug));
+              if (next !== nextItem) changed = true;
               return next;
             }
-            const nextPrice = priceBySku.get(item.sku);
-            if (nextPrice == null || nextPrice === item.unitPrice) return item;
+            const nextPrice = priceBySku.get(nextItem.sku);
+            if (nextPrice == null || nextPrice === nextItem.unitPrice) return nextItem;
             changed = true;
             return {
-              ...item,
+              ...nextItem,
               unitPrice: nextPrice,
               totalPrice: Number((nextPrice * item.quantity).toFixed(2)),
             };
@@ -313,12 +345,21 @@ export const useCartStore = create<CartState>()(
       onRehydrateStorage: () => (state) => {
         if (!state?.items?.length) return;
         const items = state.items.map((item) => {
-          const clamped = applyPackageQuantity(item, item.quantity);
-          if (clamped.quantity === item.quantity) return item;
-          const packageRolls = machinePackageRolls(item);
-          const priced = lineMoney(item, clamped.quantity);
+          const sku = canonicalCatalogSku(item.sku);
+          const renamed =
+            sku && sku !== item.sku
+              ? {
+                  ...item,
+                  sku,
+                  variantId: String(item.variantId) === item.sku ? sku : item.variantId,
+                }
+              : item;
+          const clamped = applyPackageQuantity(renamed, renamed.quantity);
+          if (clamped.quantity === renamed.quantity) return renamed;
+          const packageRolls = machinePackageRolls(renamed);
+          const priced = lineMoney(renamed, clamped.quantity);
           return {
-            ...item,
+            ...renamed,
             quantity: clamped.quantity,
             totalRolls:
               packageRolls > 0 ? packageRolls * clamped.quantity : item.totalRolls,

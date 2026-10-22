@@ -11,7 +11,7 @@ import {
   type PricedCheckoutLine,
 } from "@/lib/checkout-pricing";
 import { mapCouponToApplied } from "@/lib/coupons";
-import { handFilmSkuAliases } from "@/lib/hand-film-sku";
+import { catalogSkuCandidates, customerLineDescription } from "@/lib/catalog-sku";
 import {
   decidePaymentAttempt,
   paymentIdempotencyKey,
@@ -74,7 +74,7 @@ async function loadCatalogLines(
   requested: Array<{ sku: string; quantity: number }>
 ): Promise<PricedCheckoutLine[]> {
   const skus = [
-    ...new Set(requested.flatMap((line) => handFilmSkuAliases(line.sku))),
+    ...new Set(requested.flatMap((line) => catalogSkuCandidates(line.sku))),
   ];
   const { data, error } = await supabase.from("product_variants").select("*").in("sku", skus);
   if (error || !data) {
@@ -673,7 +673,17 @@ export async function createPaymentIntent(
           options.shipping?.fullName || options.customerName || ""
         ),
         company_name: String(options.companyName || ""),
-        items_summary: String(options.itemsSummary || "").slice(0, 450),
+        items_summary: (
+          priced.lines
+            .map(
+              (line) =>
+                `${line.quantity}× ${customerLineDescription({
+                  productName: line.productName,
+                  sku: line.sku,
+                })}`
+            )
+            .join("; ") || String(options.itemsSummary || "")
+        ).slice(0, 450),
         subtotal: priced.subtotal.toFixed(2),
         discount_amount: priced.discount.toFixed(2),
         shipping_amount: priced.shipping.toFixed(2),

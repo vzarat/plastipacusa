@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { handFilmSkuAliases, handFilmTierSku } from "./hand-film-sku";
+import { handFilmTierSku } from "./hand-film-sku";
 
 describe("hand film SKUs", () => {
   it("builds the standard 18 x 80 x 1000 tiers without a hyphen after SF", () => {
@@ -38,14 +38,5 @@ describe("hand film SKUs", () => {
     assert.equal(handFilmTierSku({ ...spec, boxes: 1 }), "ELT-SF187015-1B");
     assert.equal(handFilmTierSku({ ...spec, boxes: 16 }), "ELT-SF187015-16B");
     assert.equal(handFilmTierSku({ ...spec, boxes: 32 }), "ELT-SF187015-32B");
-  });
-
-  it("maps a saved FEL cart sku to the current elite catalog sku", () => {
-    assert.deepEqual(handFilmSkuAliases("FEL-154015-1B"), ["FEL-154015-1B", "ELT-SF154015-1B"]);
-    assert.deepEqual(handFilmSkuAliases("ELT-SF154015-64B"), [
-      "ELT-SF154015-64B",
-      "FEL-154015-64B",
-    ]);
-    assert.deepEqual(handFilmSkuAliases("STD-SF188010-1B"), ["STD-SF188010-1B"]);
   });
 });

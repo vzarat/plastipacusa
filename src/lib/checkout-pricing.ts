@@ -1,5 +1,5 @@
 import { getCartDiscountAmount } from "@/lib/coupons";
-import { handFilmSkuAliases } from "@/lib/hand-film-sku";
+import { catalogSkuCandidates, canonicalCatalogSku } from "@/lib/catalog-sku";
 import { machineFilmPackagePriceBySku } from "@/lib/machine-film-pricing";
 import { boxTierPricesFromVariants, repriceHandCartLine, roundMoney } from "@/lib/pricing";
 import { calculateOrderTotal, type CheckoutTotals } from "@/lib/sales-tax";
@@ -101,9 +101,14 @@ function catalogVariantForSku(
   sku: string,
   bySku: Map<string, CatalogCheckoutVariant>
 ): CatalogCheckoutVariant | undefined {
-  const matches = handFilmSkuAliases(sku)
+  const matches = catalogSkuCandidates(sku)
     .map((alias) => bySku.get(alias.toUpperCase()))
     .filter((row): row is CatalogCheckoutVariant => Boolean(row));
+  const canonical = canonicalCatalogSku(sku);
+  const official = matches.find(
+    (row) => String(row.sku || "").trim().toUpperCase() === canonical && Number(row.price) > 0
+  );
+  if (official) return official;
   const exactKey = sku.trim().toUpperCase();
   const exact = matches.find((row) => String(row.sku || "").trim().toUpperCase() === exactKey);
   if (exact && Number(exact.price) > 0) return exact;

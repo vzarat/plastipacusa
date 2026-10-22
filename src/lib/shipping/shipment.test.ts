@@ -195,6 +195,44 @@ describe("catalog shipment freight", () => {
     assert.ok(freight.weightLbs > 0);
   });
 
+  it("uses the renamed catalog row when the cart still has the previous SKU", () => {
+    const freight = shipmentFreightFromCatalog(
+      [
+        {
+          sku: "FEL-154015-1B",
+          productSlug: "force-hand-film-15-40-1500",
+          quantity: 1,
+          application: "hand",
+        },
+      ],
+      [
+        {
+          sku: "ELT-SF154015-1B",
+          rolls_count: 4,
+          boxes_count: 1,
+          roll_weight_lbs: 4.5,
+          box_weight_lbs: 18,
+          pallet_weight_lbs: 1181.18,
+          products: {
+            slug: "force-hand-film-15-40-1500",
+            application: "hand",
+            roll_weight_lbs: 4.5,
+            pallet_weight_lbs: 1181.18,
+            pallet_dimensions: null,
+            rolls_per_box: 4,
+            width_inches: 15,
+            gauge: 40,
+            length_feet: 1500,
+          },
+        },
+      ],
+      new Map()
+    );
+    assert.equal(freight.pieces[0]?.packaging, "box");
+    assert.equal(freight.pieces[0]?.weightLbs, 18);
+    assert.equal(freight.pieces[0]?.quantity, 1);
+  });
+
   it("sends the spec-matrix gross weight, including a tier that only has a sibling box weight", () => {
     const matrix = (boxes: number, rolls: number) =>
       packageTotalWeightLbs({

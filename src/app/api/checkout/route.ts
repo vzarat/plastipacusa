@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { createServerClient } from "@/lib/supabase/server";
 import { getAppBaseUrl } from "@/lib/email";
 import { calculateOrderTotal, profileIsTaxExempt } from "@/lib/sales-tax";
+import { canonicalCatalogSku } from "@/lib/catalog-sku";
 import { clampCartQuantity } from "@/lib/cart-quantity";
 
 interface CheckoutLineItemInput {
@@ -150,7 +151,7 @@ export async function POST(request: NextRequest) {
         const unit = Number(item.unitPrice || 0);
         const adjustedUnitCents = Math.max(1, toCents(unit * discountFactor));
         const descriptionParts = [
-          item.sku ? `SKU ${item.sku}` : null,
+          item.sku ? `SKU ${canonicalCatalogSku(item.sku)}` : null,
           item.widthInches && item.gauge && item.lengthFeet
             ? `${item.widthInches}" × ${item.gauge} Ga × ${item.lengthFeet} ft`
             : null,
@@ -165,7 +166,7 @@ export async function POST(request: NextRequest) {
               name: String(item.productName || "Plastipac Product").slice(0, 120),
               description: descriptionParts.join(" · ") || undefined,
               metadata: {
-                sku: String(item.sku || ""),
+                sku: canonicalCatalogSku(String(item.sku || "")),
                 product_slug: String(item.productSlug || ""),
               },
             },

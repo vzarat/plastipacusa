@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { customerLineDescription } from "@/lib/catalog-sku";
 import Stripe from "stripe";
 import {
   createServiceRoleClient,
@@ -98,7 +99,10 @@ function mapOrderItems(rawItems: unknown, fallbackTotal: number): InvoicePdfItem
       item?.name ||
       "Stretch Film";
     return {
-      description: String(name),
+      description: customerLineDescription({
+        productName: name,
+        sku: item?.sku,
+      }),
       quantity,
       unitPrice,
       total,
@@ -883,7 +887,10 @@ async function notifyPaidPaymentIntent(
     items
       .map(
         (item) =>
-          `${item.quantity || 1}× ${item.productName || item.name || "Product"}`
+          `${item.quantity || 1}× ${customerLineDescription({
+            productName: item.productName || item.name || "Product",
+            sku: item.sku,
+          })}`
       )
       .join("; ") ||
     String(meta.items_summary || "Plastipac Order");

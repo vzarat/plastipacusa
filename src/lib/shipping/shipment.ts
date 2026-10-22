@@ -1,3 +1,4 @@
+import { catalogSkuCandidates, canonicalCatalogSku, catalogSkusMatch } from "@/lib/catalog-sku";
 import { createServerClient } from "@/lib/supabase/server";
 import { packageTotalWeightLbs } from "@/lib/package-weight";
 import { groupLinesBySku } from "@/lib/shipping/catalog-freight";
@@ -86,7 +87,11 @@ export async function buildShipmentFreight(
   }
 
   const supabase = await createServerClient();
-  const skus = [...new Set(requested.map((line) => String(line.sku || "").trim()).filter(Boolean))];
+  const skus = [
+    ...new Set(
+      requested.flatMap((line) => catalogSkuCandidates(String(line.sku || ""))).filter(Boolean)
+    ),
+  ];
   const slugs = [
     ...new Set(requested.map((line) => String(line.productSlug || "").trim()).filter(Boolean)),
   ];
@@ -171,6 +176,18 @@ export async function buildShipmentFreight(
   return shipmentFreightFromCatalog(requested, rows, productsBySlug);
 }
 
+function freightVariantFor(lineSku: string | null | undefined, rows: FreightVariant[]): FreightVariant | undefined {
+  const requested = String(lineSku || "").trim();
+  if (!requested) return undefined;
+  const matches = rows.filter((item) => item.sku && catalogSkusMatch(requested, item.sku));
+  const canonical = canonicalCatalogSku(requested);
+  return (
+    matches.find((item) => String(item.sku).trim().toUpperCase() === canonical) ||
+    matches.find((item) => String(item.sku).trim().toUpperCase() === requested.toUpperCase()) ||
+    matches[0]
+  );
+}
+
 /** Catalog weights win. A positive line.weightLbs is the spec-matrix gross for one package when the catalog row has none. */
 export function shipmentFreightFromCatalog(
   lines: ShippingQuoteLine[],
@@ -193,7 +210,7 @@ export function shipmentFreightFromCatalog(
 
   for (const line of requested) {
     const quantity = Math.max(1, Math.round(Number(line.quantity) || 1));
-    const row = rows.find((item) => item.sku && item.sku === line.sku);
+    const row = freightVariantFor(line.sku, rows);
     const product =
       productOf(row) || productsBySlug.get(String(line.productSlug || "")) || null;
     const packageRolls = positive(row?.rolls_count) ?? positive(line.totalRolls) ?? 0;

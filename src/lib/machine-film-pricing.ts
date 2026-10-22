@@ -1,3 +1,5 @@
+import { canonicalCatalogSku } from "@/lib/catalog-sku";
+
 /**
  * Automatic 20" film is sold by the roll. There are no boxes.
  * Half pallet is 20 rolls. Full pallet is 40 rolls.
@@ -52,9 +54,6 @@ const PACKAGE_PRICE_BY_SKU: Record<string, number> = {
 };
 
 export function machineFilmPackagePriceBySku(sku: string | null | undefined): number | null {
-  const key = String(sku || "")
-    .trim()
-    .toUpperCase()
-    .replace(/^HPFSF/, "HPF-SF");
+  const key = canonicalCatalogSku(String(sku || ""));
   return PACKAGE_PRICE_BY_SKU[key] ?? null;
 }

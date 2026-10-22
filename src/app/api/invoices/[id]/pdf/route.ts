@@ -1,3 +1,4 @@
+import { customerLineDescription } from "@/lib/catalog-sku";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { presentPackageLabel } from "@/lib/products";
@@ -47,7 +48,10 @@ function mapOrderItems(rawItems: unknown, fallbackTotal: number): InvoicePdfItem
       rolls: item?.rollsPerBox,
       application: item?.application,
     });
-    const description = `${name}${dims}${packageSize ? ` (${packageSize})` : ""}`.trim();
+    const description = customerLineDescription({
+      productName: `${name}${dims}${packageSize ? ` (${packageSize})` : ""}`.trim(),
+      sku: item?.sku,
+    });
 
     return {
       description,

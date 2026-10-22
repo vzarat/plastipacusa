@@ -19,6 +19,7 @@ import {
 } from "@/lib/invoice-pdf";
 import { fetchOrderConfirmationTemplate } from "@/lib/email-template-store";
 import { buildOrderConfirmationHtml } from "@/lib/order-confirmation-email";
+import { customerLineDescription } from "@/lib/catalog-sku";
 import { calculateOrderTotal, roundMoney } from "@/lib/sales-tax";
 
 async function insertOrderDroppingUnknownColumns(
@@ -466,7 +467,10 @@ export async function createOrderFromCheckout(
     try {
       const orderItems = (payload.items as any[]).map((item: any) => ({
         quantity: Number(item.quantity || 1),
-        productName: item.productName || item.name || "Plastipac Product",
+        productName: customerLineDescription({
+          productName: item.productName || item.name || "Plastipac Product",
+          sku: item.sku,
+        }),
         linePrice:
           Number(item.totalPrice ?? item.unitPrice ?? 0) *
           Number(item.quantity || 1),

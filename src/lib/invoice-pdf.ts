@@ -148,6 +148,17 @@ function drawUsFlag(
   lines.push("Q");
 }
 
+/** Keep the product name when the current SKU does not fit on the invoice row. */
+function pdfLineDescription(description: string): string {
+  if (description.length <= 48) return description;
+  const split = description.lastIndexOf(" · ");
+  if (split > 0) {
+    const name = description.slice(0, split);
+    if (name.length <= 48) return name;
+  }
+  return `${description.slice(0, 45)}...`;
+}
+
 function buildContentStream(data: InvoicePdfData): string {
   const lines: string[] = [];
   const hasLogo = Boolean(data.logo && data.logo.width > 0 && data.logo.height > 0);
@@ -290,10 +301,7 @@ function buildContentStream(data: InvoicePdfData): string {
       lines.push("f");
     }
     lines.push("0.06 0.09 0.16 rg");
-    const desc =
-      item.description.length > 48
-        ? `${item.description.slice(0, 45)}...`
-        : item.description;
+    const desc = pdfLineDescription(item.description);
     pushText(50, y, desc, { font: "F1", size: 9 });
     pushText(320, y, String(item.quantity || 0), { font: "F1", size: 9 });
     pushText(370, y, money(item.unitPrice), { font: "F1", size: 9 });
