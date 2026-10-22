@@ -92,3 +92,23 @@ export function handFilmTierSku(
   if (!base || !suffix) return null;
   return `${base}-${suffix}`;
 }
+
+/**
+ * Carts saved before the elite rename still send FEL-154015-1B.
+ * The catalog row is ELT-SF154015-1B. Both keys are returned so checkout can find the price.
+ */
+export function handFilmSkuAliases(sku: string): string[] {
+  const original = sku.trim();
+  const text = original.toUpperCase();
+  const keys = new Set<string>();
+  if (original) keys.add(original);
+  if (text) keys.add(text);
+
+  const legacy = text.match(/^FEL-(\d{6})-(1|16|32|64)B$/);
+  if (legacy) keys.add(`ELT-SF${legacy[1]}-${legacy[2]}B`);
+
+  const current = text.match(/^ELT-SF(\d{6})-(1|16|32|64)B$/);
+  if (current) keys.add(`FEL-${current[1]}-${current[2]}B`);
+
+  return [...keys];
+}

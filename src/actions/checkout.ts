@@ -11,6 +11,7 @@ import {
   type PricedCheckoutLine,
 } from "@/lib/checkout-pricing";
 import { mapCouponToApplied } from "@/lib/coupons";
+import { handFilmSkuAliases } from "@/lib/hand-film-sku";
 import {
   decidePaymentAttempt,
   paymentIdempotencyKey,
@@ -72,7 +73,9 @@ async function loadCatalogLines(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
   requested: Array<{ sku: string; quantity: number }>
 ): Promise<PricedCheckoutLine[]> {
-  const skus = [...new Set(requested.map((line) => line.sku))];
+  const skus = [
+    ...new Set(requested.flatMap((line) => handFilmSkuAliases(line.sku))),
+  ];
   const { data, error } = await supabase.from("product_variants").select("*").in("sku", skus);
   if (error || !data) {
     console.error("[checkout] catalog variants", error?.message || "empty result");

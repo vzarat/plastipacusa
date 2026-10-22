@@ -1,4 +1,5 @@
 import { getCartDiscountAmount } from "@/lib/coupons";
+import { handFilmSkuAliases } from "@/lib/hand-film-sku";
 import { machineFilmPackagePriceBySku } from "@/lib/machine-film-pricing";
 import { boxTierPricesFromVariants, repriceHandCartLine, roundMoney } from "@/lib/pricing";
 import { calculateOrderTotal, type CheckoutTotals } from "@/lib/sales-tax";
@@ -96,17 +97,31 @@ function productOf(variant: CatalogCheckoutVariant) {
   return products || null;
 }
 
+function catalogVariantForSku(
+  sku: string,
+  bySku: Map<string, CatalogCheckoutVariant>
+): CatalogCheckoutVariant | undefined {
+  const matches = handFilmSkuAliases(sku)
+    .map((alias) => bySku.get(alias.toUpperCase()))
+    .filter((row): row is CatalogCheckoutVariant => Boolean(row));
+  const exactKey = sku.trim().toUpperCase();
+  const exact = matches.find((row) => String(row.sku || "").trim().toUpperCase() === exactKey);
+  if (exact && Number(exact.price) > 0) return exact;
+  return matches.find((row) => Number(row.price) > 0) || exact || matches[0];
+}
+
 /** Prices come from catalog variants. Request fields other than sku and quantity are ignored. */
 export function catalogCheckoutLines(
   requested: CatalogCheckoutRequest[],
   variants: CatalogCheckoutVariant[],
   siblings: CatalogCheckoutVariant[] = variants
 ): PricedCheckoutLine[] {
-  const bySku = new Map(
-    variants
-      .filter((row) => String(row.sku || "").trim())
-      .map((row) => [String(row.sku).trim(), row])
-  );
+  const bySku = new Map<string, CatalogCheckoutVariant>();
+  for (const row of variants) {
+    const key = String(row.sku || "").trim().toUpperCase();
+    if (!key || bySku.has(key)) continue;
+    bySku.set(key, row);
+  }
   const siblingsByProduct = new Map<string, CatalogCheckoutVariant[]>();
   for (const row of siblings) {
     const productId = String(row.product_id || "");
@@ -120,10 +135,11 @@ export function catalogCheckoutLines(
     .filter((line) => Number(line.quantity) > 0 && String(line.sku || "").trim())
     .map((line) => {
       const sku = String(line.sku).trim();
-      const variant = bySku.get(sku);
+      const variant = catalogVariantForSku(sku, bySku);
       if (!variant) {
         throw new Error(`Catalog price missing for ${sku}.`);
       }
+      const catalogSku = textOf(variant.sku) || sku;
       const product = productOf(variant);
       const application =
         String(product?.application || "").toLowerCase() === "machine" ? "machine" : "hand";
@@ -137,11 +153,11 @@ export function catalogCheckoutLines(
 
       if (application === "machine") {
         const unitPrice = roundMoney(
-          machineFilmPackagePriceBySku(sku) ?? (Number(variant.price) || 0)
+          machineFilmPackagePriceBySku(catalogSku) ?? (Number(variant.price) || 0)
         );
         if (!(unitPrice > 0)) throw new Error(`Catalog price missing for ${sku}.`);
         return {
-          sku,
+          sku: catalogSku,
           quantity,
           productName,
           productSlug,
@@ -172,7 +188,7 @@ export function catalogCheckoutLines(
       );
       if (!(repriced.totalPrice > 0)) throw new Error(`Catalog price missing for ${sku}.`);
       return {
-        sku,
+        sku: catalogSku,
         quantity,
         productName,
         productSlug,

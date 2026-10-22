@@ -125,6 +125,53 @@ describe("shared checkout pricing", () => {
     assert.equal(totalsFromCatalog([{ sku: "H-64", quantity: 1 }], hand, null, 0).lines[0].boxUnitPrice, 21.2);
   });
 
+  it("prices a saved FEL cart from the current ELT-SF catalog rows", () => {
+    const film = {
+      application: "hand",
+      name: 'STRETCH FILM 15" x 40 GA x 1500 FT',
+      slug: "force-hand-film-15-40-1500",
+      width_inches: 15,
+      gauge: 40,
+    };
+    const variants = [
+      { sku: "ELT-SF154015-1B", price: 28.21, boxes_count: 1, product_id: "film-15", products: film },
+      { sku: "ELT-SF154015-16B", price: 25.65, boxes_count: 16, product_id: "film-15", products: film },
+      { sku: "ELT-SF154015-32B", price: 23.32, boxes_count: 32, product_id: "film-15", products: film },
+      { sku: "ELT-SF154015-64B", price: 21.2, boxes_count: 64, product_id: "film-15", products: film },
+    ];
+    const priced = totalsFromCatalog(
+      [
+        { sku: "FEL-154015-1B", quantity: 1 },
+        { sku: "FEL-154015-64B", quantity: 1 },
+      ],
+      variants,
+      null,
+      0
+    );
+    assert.equal(priced.lines[0].sku, "ELT-SF154015-1B");
+    assert.equal(priced.lines[0].boxUnitPrice, 28.21);
+    assert.equal(priced.lines[0].totalPrice, 28.21);
+    assert.equal(priced.lines[1].sku, "ELT-SF154015-64B");
+    assert.equal(priced.lines[1].boxUnitPrice, 21.2);
+    assert.equal(priced.lines[1].totalPrice, 1356.8);
+    assert.equal(priced.subtotal, 1385.01);
+  });
+
+  it("uses the priced elite row when an old FEL row has no price", () => {
+    const film = { application: "hand", name: "Film", slug: "film", width_inches: 15, gauge: 40 };
+    const priced = totalsFromCatalog(
+      [{ sku: "FEL-154015-1B", quantity: 1 }],
+      [
+        { sku: "FEL-154015-1B", price: null, boxes_count: 1, product_id: "film-15", products: film },
+        { sku: "ELT-SF154015-1B", price: 28.21, boxes_count: 1, product_id: "film-15", products: film },
+      ],
+      null,
+      0
+    );
+    assert.equal(priced.lines[0].sku, "ELT-SF154015-1B");
+    assert.equal(priced.lines[0].totalPrice, 28.21);
+  });
+
   it("rejects an invalid or expired coupon", () => {
     const now = Date.parse("2026-10-15T00:00:00Z");
     assert.equal(

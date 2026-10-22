@@ -164,7 +164,9 @@ export function boxTierPricesFromVariants(variants: unknown): BoxTierPrices {
       )
     : [];
   const priceFor = (boxes: number) => {
-    const match = records.find((variant) => variantBoxCount(variant) === boxes);
+    const match = records.find(
+      (variant) => variantBoxCount(variant) === boxes && perBoxPriceFromVariant(variant) != null
+    );
     return match ? perBoxPriceFromVariant(match) : null;
   };
   return {

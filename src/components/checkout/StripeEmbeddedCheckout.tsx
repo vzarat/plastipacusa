@@ -362,8 +362,11 @@ export function StripeEmbeddedCheckout({
       if (cancelled) return;
 
       if (!result.success || !result.clientSecret) {
-        setInitError(result.error || "Unable to initialize Stripe payment.");
-        setInitErrorDetail(result.errorDetail || result.error || "Unable to initialize Stripe payment.");
+        const message = result.error || "Unable to initialize Stripe payment.";
+        setInitError(message);
+        setInitErrorDetail(
+          result.errorDetail && result.errorDetail !== message ? result.errorDetail : null
+        );
         setShowInitError(false);
         setIsPreparing(false);
         return;
