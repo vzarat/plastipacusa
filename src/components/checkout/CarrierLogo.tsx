@@ -19,6 +19,7 @@ const CARRIER_LOGO_FILES: Record<string, string> = {
   forward: "Fordward logo.svg",
   "forward-air": "Fordward logo.svg",
   rl: "R+L_Carriers_logo.svg",
+  saia: "Saia_logo.svg",
   southwestern: "southwest logo.gif",
   unis: "UNIS.jpg",
   vocar: "VOCAR.png",
@@ -54,6 +55,7 @@ export function carrierLogoSlug(carrierKey: string | undefined, name: string): s
   if (compact.includes("AVERITT")) return "averitt";
   if (compact.includes("ABF")) return "abf";
   if (compact.includes("R+L") || compact.startsWith("RL")) return "rl";
+  if (compact.includes("SAIA")) return "saia";
   if (compact.includes("FORWARD")) return compact.includes("AIR") ? "forward-air" : "forward";
   if (compact.includes("SOUTHWEST")) return "southwestern";
   if (compact.includes("VOCAR")) return "vocar";

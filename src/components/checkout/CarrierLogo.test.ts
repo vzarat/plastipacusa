@@ -29,8 +29,11 @@ describe("carrier logo storage paths", () => {
     assert.equal(carrierShowsEconomyBadge("fedex-priority", "FedEx Freight Priority"), false);
   });
 
-  it("sends unmapped carriers straight to carrier.svg", () => {
-    assert.deepEqual(carrierLogoSources("saia", "Saia"), [`${BASE}/carrier.svg`]);
+  it("uses the Saia logo, and unmapped carriers stay on carrier.svg", () => {
+    assert.deepEqual(carrierLogoSources("saia", "Saia"), [
+      `${BASE}/${encodeURI("Saia_logo.svg")}`,
+      `${BASE}/carrier.svg`,
+    ]);
     assert.deepEqual(carrierLogoSources(undefined, "Free Local Delivery (Plastipac Fleet)"), [
       `${BASE}/carrier.svg`,
     ]);
