@@ -9,7 +9,7 @@ export type DeliveryMethodId =
   | "houston-friday"
   | "san-antonio-tuesday";
 
-export const SHIP_FROM_LOCATION = "Mission, TX";
+export const SHIP_FROM_LOCATION = "McAllen, TX";
 
 export const WAREHOUSE_ORIGIN = SHIP_FROM_LOCATION;
 

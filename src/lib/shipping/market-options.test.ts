@@ -118,11 +118,17 @@ describe("market option carriers", () => {
     assert.equal(items[0]?.lengthIn, 48.1);
     assert.equal(items[0]?.heightIn, 19.5);
     const body = marketOptionsBody({
-      originZip: "78572",
       destinationZip: "77002",
+      destination: { street: "200 Commerce St", city: "Houston", state: "TX" },
       pickupDate: "2026-10-16",
       items,
     });
+    assert.equal(body.origin_zip, "78507");
+    assert.equal(body.origin_city, "McAllen");
+    assert.equal(body.origin_street, "5801 George McVay Dr");
+    assert.equal(body.destination_zip, "77002");
+    assert.equal(body.destination_street, "200 Commerce St");
+    assert.equal(body.destination_city, "Houston");
     assert.equal("items" in body, false);
     assert.equal(body.weight_lbs_per_pallet, 101);
     assert.throws(

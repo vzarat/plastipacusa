@@ -12,6 +12,7 @@ import {
 import { isRioGrandeValley } from "@/lib/shipping-method";
 import { buildShipmentFreight, ShipmentDataError } from "@/lib/shipping/shipment";
 import type { ShippingQuoteLine } from "@/lib/shipping/types";
+import type { WarpDestinationAddress } from "@/lib/shipping/origin";
 import { quoteWarpFreight } from "@/lib/shipping/warp";
 import type { ShipmentFreight, ShippingOption } from "@/lib/shipping/types";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
@@ -350,7 +351,8 @@ export async function storeQuotedOptions(
 
 export async function getCachedWarpOptions(
   zip: string,
-  freight: ShipmentFreight
+  freight: ShipmentFreight,
+  destination?: WarpDestinationAddress
 ): Promise<ShippingOption[]> {
   const key = freightCacheKey(zip, freight, "freights");
   const cached = responseCache.get(key);
@@ -360,8 +362,8 @@ export async function getCachedWarpOptions(
   }
   const options = keepPayableOptions(
     await quoteWarpFreight({
-      originZip: WARP_ORIGIN_ZIP,
       destinationZip: zip,
+      destination,
       freight,
     })
   );

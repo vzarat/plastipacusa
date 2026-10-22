@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { SHIPPING_MARKUP_PERCENT } from "@/lib/shipping/config";
+import { warpOriginLane, type WarpDestinationAddress } from "@/lib/shipping/origin";
 import { nextBusinessPickupDate } from "@/lib/shipping/dates";
 import { redactSecrets } from "@/lib/shipping/diagnostics";
 import { ShipmentDataError } from "@/lib/shipping/shipment-error";
@@ -216,14 +217,14 @@ function sameSize(left: MarketFreightItem, right: MarketFreightItem): boolean {
 }
 
 export function marketOptionsBody(input: {
-  originZip: string;
+  originZip?: string;
   destinationZip: string;
+  destination?: WarpDestinationAddress;
   pickupDate: string;
   items: MarketFreightItem[];
 }): Record<string, string | number | Array<Record<string, number>>> {
   const lane = {
-    origin_zip: input.originZip,
-    destination_zip: input.destinationZip,
+    ...warpOriginLane(input.destinationZip, input.destination),
     pickup_date: input.pickupDate,
   };
   const [first, ...rest] = input.items;
@@ -386,8 +387,9 @@ export { featuredCarrierOptions, type FeaturedOption } from "@/lib/shipping/feat
 
 export async function fetchLtlMarketOptions(input: {
   apiKey: string;
-  originZip: string;
+  originZip?: string;
   destinationZip: string;
+  destination?: WarpDestinationAddress;
   pickupDate: string;
   items?: MarketFreightItem[];
   pallets?: number;
@@ -423,8 +425,8 @@ export async function fetchLtlMarketOptions(input: {
         ]);
   const requestBody = JSON.stringify({
     ...marketOptionsBody({
-      originZip: input.originZip,
       destinationZip: input.destinationZip,
+      destination: input.destination,
       pickupDate: input.pickupDate,
       items,
     }),

@@ -1,4 +1,5 @@
-import { SHIPPING_MARKUP_PERCENT, WARP_ORIGIN_ZIP, getWarpConfig } from "@/lib/shipping/config";
+import { SHIPPING_MARKUP_PERCENT, getWarpConfig } from "@/lib/shipping/config";
+import { warpDeliveryInfo, warpPickupInfo, type WarpDestinationAddress } from "@/lib/shipping/origin";
 import { redactSecrets } from "@/lib/shipping/diagnostics";
 import type { FreightPiece, ShipmentFreight, ShippingOption } from "@/lib/shipping/types";
 
@@ -100,8 +101,9 @@ export function warpListItem(piece: FreightPiece): {
 
 export function warpFreightQuoteBody(input: {
   pickupDate: string;
-  originZip: string;
+  originZip?: string;
   destinationZip: string;
+  destination?: WarpDestinationAddress;
   freight: ShipmentFreight;
   shipmentType: "PARCEL" | "LTL" | "FTL";
   vehicleCode?: string;
@@ -122,8 +124,8 @@ export function warpFreightQuoteBody(input: {
       ];
   return {
     pickupDate: input.pickupDate,
-    pickupInfo: { zipcode: input.originZip },
-    deliveryInfo: { zipcode: input.destinationZip },
+    pickupInfo: warpPickupInfo(),
+    deliveryInfo: warpDeliveryInfo(input.destinationZip, input.destination),
     shipmentType: input.shipmentType,
     ...(input.vehicleCode ? { vehicleType: { code: input.vehicleCode } } : {}),
     listItems: pieces.map((piece) => warpListItem(piece)),
@@ -147,8 +149,8 @@ function applyMarkup(amount: number): number {
 async function quoteVehicle(input: {
   baseUrl: string;
   apiKey: string;
-  originZip: string;
   destinationZip: string;
+  destination?: WarpDestinationAddress;
   freight: ShipmentFreight;
   vehicle: (typeof VEHICLES)[number];
 }): Promise<ShippingOption | null> {
@@ -165,8 +167,8 @@ async function quoteVehicle(input: {
       body: JSON.stringify(
         warpFreightQuoteBody({
           pickupDate: nextPickupDate(),
-          originZip: input.originZip,
           destinationZip: input.destinationZip,
+          destination: input.destination,
           freight: input.freight,
           shipmentType: input.vehicle.shipmentType as "LTL" | "FTL",
           vehicleCode: input.vehicle.code,
@@ -230,8 +232,9 @@ async function quoteVehicle(input: {
 
 /** One Warp quote with shipmentType PARCEL and one carton per box. */
 export async function quoteWarpParcel(input: {
-  originZip: string;
+  originZip?: string;
   destinationZip: string;
+  destination?: WarpDestinationAddress;
   freight: ShipmentFreight;
 }): Promise<ShippingOption | null> {
   const { baseUrl, apiKey } = getWarpConfig();
@@ -248,8 +251,8 @@ export async function quoteWarpParcel(input: {
       body: JSON.stringify(
         warpFreightQuoteBody({
           pickupDate: nextPickupDate(),
-          originZip: input.originZip,
           destinationZip: input.destinationZip,
+          destination: input.destination,
           freight: input.freight,
           shipmentType: "PARCEL",
         })
@@ -303,8 +306,9 @@ export async function quoteWarpParcel(input: {
 }
 
 export async function quoteWarpFreight(input: {
-  originZip: string;
+  originZip?: string;
   destinationZip: string;
+  destination?: WarpDestinationAddress;
   freight: ShipmentFreight;
 }): Promise<ShippingOption[]> {
   const { baseUrl, apiKey } = getWarpConfig();
@@ -314,8 +318,8 @@ export async function quoteWarpFreight(input: {
         const option = await quoteVehicle({
           baseUrl,
           apiKey,
-          originZip: input.originZip,
           destinationZip: input.destinationZip,
+          destination: input.destination,
           freight: input.freight,
           vehicle,
         });
@@ -395,8 +399,8 @@ export async function probeWarpConnection(
       signal: controller.signal,
       body: JSON.stringify({
         pickupDate: nextPickupDate(),
-        pickupInfo: { zipcode: WARP_ORIGIN_ZIP },
-        deliveryInfo: { zipcode: "77002" },
+        pickupInfo: warpPickupInfo(),
+        deliveryInfo: warpDeliveryInfo("77002"),
         shipmentType: vehicle.shipmentType,
         vehicleType: { code: vehicle.code },
         listItems: [

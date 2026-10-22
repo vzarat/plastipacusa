@@ -267,6 +267,7 @@ export function CheckoutShippingMethodStep({
           signal: controller.signal,
           body: JSON.stringify({
             postalCode: zip,
+            street: address.streetAddress,
             city: address.city,
             state: address.state,
             lines,
@@ -368,6 +369,7 @@ export function CheckoutShippingMethodStep({
         signal: controller.signal,
         body: JSON.stringify({
           postalCode: zip,
+          street: address.streetAddress,
           city: address.city,
           state: address.state,
           lines: shippingQuoteLines(items),

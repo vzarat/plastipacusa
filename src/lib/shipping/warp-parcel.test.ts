@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { FreightPiece, ShipmentFreight } from "./types";
 import { handBoxHeightIn, warpHandPieces } from "./hand-freight";
+import { SHIP_FROM_LOCATION } from "@/lib/shipping-method";
 import { usesWarpParcel, warpFreightQuoteBody } from "./warp";
 
 function carton(quantity: number, weightLbs: number): FreightPiece {
@@ -62,11 +63,29 @@ describe("Warp carton versus pallet payload", () => {
     assert.equal(usesWarpParcel(shipment), true);
     const body = warpFreightQuoteBody({
       pickupDate: "2026-10-19",
-      originZip: "78572",
       destinationZip: "75207",
+      destination: { street: "100 Main St", city: "Dallas", state: "TX" },
       freight: shipment,
       shipmentType: "PARCEL",
     });
+    const pickup = body.pickupInfo as {
+      zipcode: string;
+      address: { street: string; city: string; state: string; zipcode: string; country: string };
+    };
+    const delivery = body.deliveryInfo as {
+      zipcode: string;
+      address: { street: string; city: string; state: string; zipcode: string; country: string };
+    };
+    assert.equal(pickup.zipcode, "78507");
+    assert.equal(pickup.address.street, "5801 George McVay Dr");
+    assert.equal(pickup.address.city, "McAllen");
+    assert.equal(pickup.address.state, "TX");
+    assert.equal(pickup.address.country, "US");
+    assert.equal(delivery.zipcode, "75207");
+    assert.equal(delivery.address.street, "100 Main St");
+    assert.equal(delivery.address.city, "Dallas");
+    assert.equal(SHIP_FROM_LOCATION, "McAllen, TX");
+    assert.equal(SHIP_FROM_LOCATION.includes("George McVay"), false);
     assert.equal(body.shipmentType, "PARCEL");
     assert.equal("vehicleType" in body, false);
     const item = (body.listItems as Array<Record<string, unknown>>)[0];

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient, isServiceRoleConfigured } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
-import { WARP_ORIGIN_ZIP, getWarpConfig, shippingDebugVisible } from "@/lib/shipping/config";
+import { getWarpConfig, shippingDebugVisible } from "@/lib/shipping/config";
 import { buildQuoteFailure, shippingRequestId } from "@/lib/shipping/diagnostics";
 import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
 import {
@@ -247,6 +247,7 @@ async function consumeShippingQuoteLimit(headers: Headers): Promise<{ status: Qu
 export async function POST(request: Request) {
   let body: {
     postalCode?: string;
+    street?: string;
     city?: string;
     state?: string;
     lines?: ShippingQuoteLine[];
@@ -293,6 +294,7 @@ export async function POST(request: Request) {
 async function quoteForSignedInUser(request: Request) {
   let body: {
     postalCode?: string;
+    street?: string;
     city?: string;
     state?: string;
     lines?: ShippingQuoteLine[];
@@ -371,12 +373,17 @@ async function quoteForSignedInUser(request: Request) {
     const fridayRoute = fridayRule ? houstonFridayOption(zip, fridayRule.label) : null;
 
     const destinationZip = zip;
+    const destination = {
+      street: body.street,
+      city: body.city,
+      state: body.state,
+    };
 
     if (usesWarpParcel(freight)) {
       try {
         const parcel = await quoteWarpParcel({
-          originZip: WARP_ORIGIN_ZIP,
           destinationZip,
+          destination,
           freight,
         });
         if (parcel) {
@@ -415,14 +422,14 @@ async function quoteForSignedInUser(request: Request) {
           const config = getWarpConfig();
           return fetchLtlMarketOptions({
             apiKey: config.apiKey,
-            originZip: WARP_ORIGIN_ZIP,
             destinationZip,
+            destination,
             pickupDate: nextBusinessPickupDate(),
             items: marketItemsFromPieces(freight.pieces),
             timeoutMs: 45_000,
           });
         })(),
-        getCachedWarpOptions(destinationZip, freight),
+        getCachedWarpOptions(destinationZip, freight, destination),
       ]);
 
       const marketNote = marketResult.status === "fulfilled" ? marketResult.value.note : null;

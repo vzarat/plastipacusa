@@ -3,10 +3,10 @@
  * Origin, markup, and the free-delivery minimum are constants here.
  */
 
-/** Warehouse already shown on checkout as Mission, TX. */
-export const WARP_ORIGIN_ZIP: string = "78572";
+/** Warehouse zip and city. The street lives in origin.ts and is not shown at checkout. */
+export const WARP_ORIGIN_ZIP: string = "78507";
 
-export const WARP_ORIGIN_CITY: string = "Mission";
+export const WARP_ORIGIN_CITY: string = "McAllen";
 
 export const WARP_ORIGIN_STATE: string = "TX";
 
