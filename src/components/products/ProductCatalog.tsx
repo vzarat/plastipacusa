@@ -30,6 +30,7 @@ import {
   SERIES_GENESIS_HP,
   SERIES_GENESIS_STANDARD,
   isMachineFilm,
+  compareInStockFirst,
   sortProductsByDimensions,
 } from "@/lib/products";
 import { handCatalogUnitPrice } from "@/lib/pricing";
@@ -512,21 +513,15 @@ export function ProductCatalog({
       });
 
     const ordered = sortProductsByDimensions(filtered);
-    if (selectedSort === "price") {
-      return [...ordered].sort((a, b) => listPrice(a) - listPrice(b));
+    if (selectedSort === "price" || selectedSort === "best-selling") {
+      return [...ordered].sort(compareInStockFirst((a, b) => listPrice(a) - listPrice(b)));
     }
     if (selectedSort === "featured") {
-      return [...ordered].sort((a, b) => {
-        const featuredDelta = Number(isFeaturedProduct(b)) - Number(isFeaturedProduct(a));
-        return featuredDelta;
-      });
-    }
-    if (selectedSort === "best-selling") {
-      return [...ordered].sort((a, b) => {
-        const availability = Number(Boolean(a.isSoldOut)) - Number(Boolean(b.isSoldOut));
-        if (availability !== 0) return availability;
-        return listPrice(a) - listPrice(b);
-      });
+      return [...ordered].sort(
+        compareInStockFirst(
+          (a, b) => Number(isFeaturedProduct(b)) - Number(isFeaturedProduct(a))
+        )
+      );
     }
     return ordered;
   }, [

@@ -784,7 +784,36 @@ export type DimensionSortableProduct = {
     gauge?: number | string | null;
     lengthFeet?: number | string | null;
   }> | null;
+  isSoldOut?: boolean | null;
+  is_sold_out?: boolean | null;
+  isAvailable?: boolean | null;
+  is_available?: boolean | null;
+  stockQuantity?: number | null;
+  stock_quantity?: number | null;
+  stock_qty?: number | null;
 };
+
+/** In stock when the product is not sold out and still has pallet stock. Untracked stock stays available. */
+export function isCatalogInStock(product: DimensionSortableProduct): boolean {
+  if (product.isSoldOut === true || product.is_sold_out === true) return false;
+  if (product.isAvailable === false || product.is_available === false) return false;
+  const raw = product.stockQuantity ?? product.stock_quantity ?? product.stock_qty;
+  if (raw == null || String(raw).trim() === "") return true;
+  const stock = Number(raw);
+  if (!Number.isFinite(stock)) return true;
+  return stock > 0;
+}
+
+/** Keep a secondary ordering inside the in-stock group and again inside the sold-out group. */
+export function compareInStockFirst<T extends DimensionSortableProduct>(
+  compare: (left: T, right: T) => number
+): (left: T, right: T) => number {
+  return (left, right) => {
+    const stockDelta = Number(!isCatalogInStock(left)) - Number(!isCatalogInStock(right));
+    if (stockDelta !== 0) return stockDelta;
+    return compare(left, right);
+  };
+}
 
 function toPositiveNumber(value: unknown): number {
   if (typeof value === "number") {
@@ -865,19 +894,21 @@ export function getProductSortDimensions(product: DimensionSortableProduct): {
 }
 
 /**
- * Sort products ascending by Width → Gauge → Roll Length (FT).
- * Example: 15"×60×1000 → 15"×60×1500 → 15"×70×1000 → 18"×60×1000 → 20"×60×5000
+ * In-stock products first, then ascending Width → Gauge → Roll Length (FT).
+ * Example: 15"×60×1000 → 15"×60×1500 → 18"×60×1000, with sold-out films after that sequence.
  */
 export function sortProductsByDimensions<T extends DimensionSortableProduct>(
   products: T[]
 ): T[] {
-  return [...products].sort((a, b) => {
-    const da = getProductSortDimensions(a);
-    const db = getProductSortDimensions(b);
+  return [...products].sort(
+    compareInStockFirst((a, b) => {
+      const da = getProductSortDimensions(a);
+      const db = getProductSortDimensions(b);
 
-    if (da.width !== db.width) return da.width - db.width;
-    if (da.gauge !== db.gauge) return da.gauge - db.gauge;
-    return da.lengthFeet - db.lengthFeet;
-  });
+      if (da.width !== db.width) return da.width - db.width;
+      if (da.gauge !== db.gauge) return da.gauge - db.gauge;
+      return da.lengthFeet - db.lengthFeet;
+    })
+  );
 }
 
