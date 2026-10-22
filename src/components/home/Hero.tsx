@@ -95,10 +95,10 @@ function EfficiencySlide() {
         alt="Robopack stretch wrapping machine"
         width={900}
         height={900}
-        className="pointer-events-none absolute z-10 w-auto object-contain object-bottom max-md:bottom-4 max-md:left-1/2 max-md:h-[34%] max-md:max-w-[72%] max-md:-translate-x-1/2 md:bottom-[25px] md:right-[180px] md:h-[90%] md:max-w-[42%]"
+        className="pointer-events-none absolute z-10 w-auto object-contain object-bottom max-md:bottom-14 max-md:left-1/2 max-md:h-[46%] max-md:max-w-[96%] max-md:-translate-x-1/2 md:bottom-[25px] md:right-[180px] md:h-[90%] md:max-w-[42%]"
       />
 
-      <div className="relative z-20 flex h-full max-w-full flex-col items-start justify-start px-6 pb-[40%] pt-8 text-left md:max-w-[58%] md:justify-center md:pb-8 md:pl-[110px] md:pr-4 md:pt-6">
+      <div className="relative z-20 flex h-full max-w-full flex-col items-start justify-start px-8 pb-60 pt-8 text-left md:max-w-[58%] md:justify-center md:pb-8 md:pl-[110px] md:pr-4 md:pt-6">
         <h2 className="font-teko font-bold uppercase tracking-[-0.02em]">
           <span className="block text-[42px] leading-[0.85] text-white sm:text-[56px] md:text-[68px]">
             Increase Packaging
@@ -113,7 +113,7 @@ function EfficiencySlide() {
         </p>
         <Link
           href="/#inquiry-form"
-          className="mt-5 inline-flex w-fit items-center rounded-[2px] border border-sky-200/40 bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white"
+          className="mt-5 inline-flex w-fit items-center rounded-xl border border-sky-200/40 bg-gradient-to-r from-[#00b2e3] to-[#2563eb] px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white md:rounded-[2px]"
         >
           Contact Us Today!
         </Link>
@@ -144,7 +144,7 @@ export function Hero() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="relative mx-auto h-[580px] min-h-[580px] w-full max-w-[1400px] overflow-hidden rounded-2xl md:h-[480px] md:min-h-0 md:rounded-3xl lg:h-[520px]">
+      <div className="relative mx-auto h-[720px] min-h-[720px] w-full max-w-[1400px] overflow-hidden rounded-2xl md:h-[480px] md:min-h-0 md:rounded-3xl lg:h-[520px]">
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
             index === 0 ? "opacity-100" : "pointer-events-none opacity-0"
