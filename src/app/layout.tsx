@@ -7,6 +7,7 @@ import { LanguageProvider } from "@/context/LanguageContext";
 import ClientPWAProvider from "@/components/providers/ClientPWAProvider";
 import { OnboardingTourWrapper } from "@/components/onboarding/OnboardingTourWrapper";
 import { MetaPixel } from "@/components/analytics/MetaPixel";
+import { metaPixelId, metaPixelSnippet } from "@/lib/meta-pixel";
 
 const SUPABASE_ORIGIN = "https://ahvmjptomjjnqjylofpa.supabase.co";
 
@@ -128,6 +129,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pixelId = metaPixelId();
+
   return (
     <html lang="en" className={`scroll-smooth ${inter.variable} ${teko.variable}`}>
       <head>
@@ -140,12 +143,29 @@ export default function RootLayout({
 
         {/* Occasional remote imagery host from next/image remotePatterns */}
         <link rel="dns-prefetch" href="https://images.unsplash.com" />
+
+        {pixelId ? (
+          <script dangerouslySetInnerHTML={{ __html: metaPixelSnippet(pixelId) }} />
+        ) : null}
       </head>
       <body
         className={`${inter.className} min-h-screen bg-slate-50/50 text-slate-900 antialiased selection:bg-sky-500 selection:text-white`}
       >
         <LanguageProvider>
           <MetaPixel />
+          {pixelId ? (
+            <noscript>
+              {/* Meta's required fallback. next/image cannot emit this 1×1 tracking pixel. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                height="1"
+                width="1"
+                style={{ display: "none" }}
+                src={`https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1`}
+                alt=""
+              />
+            </noscript>
+          ) : null}
           <ClientPWAProvider />
           {children}
           <CartDrawer />

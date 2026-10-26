@@ -3,12 +3,14 @@ import { describe, it } from "node:test";
 import { addToCartParams, metaPixelId, purchaseParams } from "./meta-pixel";
 
 describe("meta pixel", () => {
-  it("stays off when the pixel id is missing", () => {
+  it("uses the Meta pixel id from the official snippet", () => {
     const previous = process.env.NEXT_PUBLIC_META_PIXEL_ID;
     delete process.env.NEXT_PUBLIC_META_PIXEL_ID;
-    assert.equal(metaPixelId(), null);
+    assert.equal(metaPixelId(), "1740638949795559");
     process.env.NEXT_PUBLIC_META_PIXEL_ID = "not-a-pixel";
-    assert.equal(metaPixelId(), null);
+    assert.equal(metaPixelId(), "1740638949795559");
+    process.env.NEXT_PUBLIC_META_PIXEL_ID = "1234567890";
+    assert.equal(metaPixelId(), "1234567890");
     if (previous === undefined) delete process.env.NEXT_PUBLIC_META_PIXEL_ID;
     else process.env.NEXT_PUBLIC_META_PIXEL_ID = previous;
   });

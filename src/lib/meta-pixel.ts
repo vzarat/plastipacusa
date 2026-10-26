@@ -1,4 +1,6 @@
-/** Meta Pixel. Stays quiet when NEXT_PUBLIC_META_PIXEL_ID is unset. */
+/** Meta Pixel. The public id comes from Meta; a valid NEXT_PUBLIC_META_PIXEL_ID overrides it. */
+
+export const META_PIXEL_ID = "1740638949795559";
 
 export interface MetaPixelItem {
   sku: string;
@@ -23,10 +25,25 @@ declare global {
   }
 }
 
-/** Meta pixel ids are numeric. Anything else is treated as not configured. */
+/** Meta pixel ids are numeric. A valid env id wins; otherwise the Meta snippet id is used. */
 export function metaPixelId(): string | null {
   const raw = String(process.env.NEXT_PUBLIC_META_PIXEL_ID || "").trim();
-  return /^\d{5,20}$/.test(raw) ? raw : null;
+  if (/^\d{5,20}$/.test(raw)) return raw;
+  return META_PIXEL_ID;
+}
+
+/** Official base snippet. The first PageView is inside this script. */
+export function metaPixelSnippet(pixelId: string): string {
+  return `!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '${pixelId}');
+fbq('track', 'PageView');`;
 }
 
 function track(event: string, params?: Record<string, unknown>) {
