@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import { LanguageProvider } from "@/context/LanguageContext";
 import ClientPWAProvider from "@/components/providers/ClientPWAProvider";
 import { OnboardingTourWrapper } from "@/components/onboarding/OnboardingTourWrapper";
+import { Analytics } from "@vercel/analytics/next";
 import { MetaPixel } from "@/components/analytics/MetaPixel";
 import { metaPixelId, metaPixelSnippet } from "@/lib/meta-pixel";
 
@@ -173,6 +174,7 @@ export default function RootLayout({
           <OnboardingTourWrapper />
           <Toaster closeButton position="top-right" richColors />
         </LanguageProvider>
+        <Analytics />
       </body>
     </html>
   );
