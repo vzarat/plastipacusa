@@ -73,28 +73,28 @@ function configStep(message: string): "env" | "apiKey" {
 }
 
 function requestMessage(httpStatus: number): string {
-  if (httpStatus === 401 || httpStatus === 403) return "Credenciales inválidas o sin permiso.";
-  if (httpStatus >= 500) return "Error del servicio de WARP.";
-  if (httpStatus >= 400) return "Petición inválida.";
-  return "Conexión con WARP correcta.";
+  if (httpStatus === 401 || httpStatus === 403) return "Invalid credentials or permission denied.";
+  if (httpStatus >= 500) return "The WARP service returned an error.";
+  if (httpStatus >= 400) return "Invalid request.";
+  return "WARP connection succeeded.";
 }
 
 function quoteBodyProblem(raw: string): string | null {
   let parsed: WarpQuoteBody;
   try {
     const value: unknown = JSON.parse(raw);
-    if (!value || typeof value !== "object") return "WARP respondió sin una cotización válida.";
+    if (!value || typeof value !== "object") return "WARP did not return a valid quote.";
     parsed = value as WarpQuoteBody;
   } catch {
-    return "WARP respondió sin una cotización válida.";
+    return "WARP did not return a valid quote.";
   }
   if (parsed.status && parsed.status !== "ACCEPT") {
-    return "WARP respondió sin una cotización válida.";
+    return "WARP did not return a valid quote.";
   }
   const amount = Number(parsed.price?.amount);
   const quoteId = String(parsed.quote_id || "");
   if (!quoteId || !Number.isFinite(amount) || amount <= 0) {
-    return "WARP respondió sin una cotización válida.";
+    return "WARP did not return a valid quote.";
   }
   return null;
 }
@@ -108,7 +108,7 @@ export async function POST(): Promise<NextResponse> {
       env: null,
       step: "auth",
       httpStatus: session.user ? 403 : 401,
-      message: "No autorizado. Inicia sesión como administrador.",
+      message: "Not authorized. Sign in as an administrator.",
     });
   }
 
@@ -119,7 +119,7 @@ export async function POST(): Promise<NextResponse> {
         started,
         env: null,
         step: "env",
-        message: `WARP_ENV no está definida o tiene un valor inválido. Valores permitidos: staging, production. Valor recibido: ${JSON.stringify(received ?? null)}`,
+        message: `WARP_ENV is missing or invalid. Allowed values: staging, production. Received: ${JSON.stringify(received ?? null)}`,
       });
     }
     const env: WarpEnvName = received;
@@ -130,7 +130,7 @@ export async function POST(): Promise<NextResponse> {
         started,
         env,
         step: "apiKey",
-        message: `Falta la variable de entorno ${keyName}.`,
+        message: `Missing environment variable ${keyName}.`,
       });
     }
 
@@ -163,8 +163,8 @@ export async function POST(): Promise<NextResponse> {
         env,
         step: "request",
         message: aborted
-          ? "Tiempo de espera agotado al contactar a WARP (10 s)."
-          : "Error de red al contactar a WARP.",
+          ? "The WARP request timed out (10 s)."
+          : "Network error while contacting WARP.",
         details: error instanceof Error ? error.message : "request failed",
       });
     }
@@ -198,7 +198,7 @@ export async function POST(): Promise<NextResponse> {
       env,
       step: "request",
       status: httpStatus,
-      message: "Conexión con WARP correcta.",
+      message: "WARP connection succeeded.",
       details: maskSecrets(details).slice(0, 1000),
       durationMs: Date.now() - started,
       checkedAt: new Date().toISOString(),

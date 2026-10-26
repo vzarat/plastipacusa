@@ -3,15 +3,24 @@ import { describe, it } from "node:test";
 import { compareInStockFirst, sortProductsByDimensions } from "./products";
 
 describe("catalog stock sort", () => {
-  it("keeps width, gauge, and length order inside the in-stock and sold-out groups", () => {
-    const sorted = sortProductsByDimensions([
-      { slug: "sold-15", width: 15, gauge: 40, lengthFeet: 1500, isSoldOut: true },
-      { slug: "in-18", width: 18, gauge: 80, lengthFeet: 1000, stockQuantity: 4 },
-      { slug: "in-15-long", width: 15, gauge: 40, lengthFeet: 1500, stock_qty: 2 },
-      { slug: "in-15", width: 15, gauge: 40, lengthFeet: 1000, is_available: true, stockQuantity: 1 },
-      { slug: "empty", width: 18, gauge: 60, lengthFeet: 1500, stock_qty: 0 },
-    ]);
+  const films = [
+    { slug: "sold-15", width: 15, gauge: 40, lengthFeet: 1500, isSoldOut: true },
+    { slug: "in-18", width: 18, gauge: 80, lengthFeet: 1000, stockQuantity: 4 },
+    { slug: "in-15-long", width: 15, gauge: 40, lengthFeet: 1500, stock_qty: 2 },
+    { slug: "in-15", width: 15, gauge: 40, lengthFeet: 1000, is_available: true, stockQuantity: 1 },
+    { slug: "empty", width: 18, gauge: 60, lengthFeet: 1500, stock_qty: 0 },
+  ];
 
+  it("keeps dimension order on the category page even when a film is sold out", () => {
+    const sorted = sortProductsByDimensions(films);
+    assert.deepEqual(
+      sorted.map((product) => product.slug),
+      ["in-15", "sold-15", "in-15-long", "empty", "in-18"]
+    );
+  });
+
+  it("puts in-stock films first in the product catalog and keeps dimension order inside each group", () => {
+    const sorted = [...sortProductsByDimensions(films)].sort(compareInStockFirst(() => 0));
     assert.deepEqual(
       sorted.map((product) => product.slug),
       ["in-15", "in-15-long", "in-18", "sold-15", "empty"]

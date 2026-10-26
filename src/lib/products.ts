@@ -894,21 +894,20 @@ export function getProductSortDimensions(product: DimensionSortableProduct): {
 }
 
 /**
- * In-stock products first, then ascending Width → Gauge → Roll Length (FT).
- * Example: 15"×60×1000 → 15"×60×1500 → 18"×60×1000, with sold-out films after that sequence.
+ * Ascending Width → Gauge → Roll Length (FT).
+ * Example: 15"×60×1000 → 15"×60×1500 → 18"×60×1000.
+ * Stock does not change this order. The product catalog applies that separately.
  */
 export function sortProductsByDimensions<T extends DimensionSortableProduct>(
   products: T[]
 ): T[] {
-  return [...products].sort(
-    compareInStockFirst((a, b) => {
-      const da = getProductSortDimensions(a);
-      const db = getProductSortDimensions(b);
+  return [...products].sort((a, b) => {
+    const da = getProductSortDimensions(a);
+    const db = getProductSortDimensions(b);
 
-      if (da.width !== db.width) return da.width - db.width;
-      if (da.gauge !== db.gauge) return da.gauge - db.gauge;
-      return da.lengthFeet - db.lengthFeet;
-    })
-  );
+    if (da.width !== db.width) return da.width - db.width;
+    if (da.gauge !== db.gauge) return da.gauge - db.gauge;
+    return da.lengthFeet - db.lengthFeet;
+  });
 }
 

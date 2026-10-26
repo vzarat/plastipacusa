@@ -19,9 +19,9 @@ interface WarpTestResponse {
 }
 
 const SUGGESTIONS: Record<Exclude<WarpTestStep, "auth">, string> = {
-  env: "Revisa WARP_ENV en Vercel y haz Redeploy.",
-  apiKey: "Revisa el nombre de la variable y que esté marcada en el ambiente correcto (Production/Preview).",
-  request: "Revisa que la llave corresponda al ambiente.",
+  env: "Check WARP_ENV in Vercel, then redeploy.",
+  apiKey: "Check the variable name and that it is set for the right environment (Production/Preview).",
+  request: "Check that the key matches this environment.",
 };
 
 function isWarpTestResponse(value: unknown): value is WarpTestResponse {
@@ -52,7 +52,7 @@ export function WarpIntegrationCard() {
         ok: false,
         env: null,
         step: "request",
-        message: "La comprobación no devolvió un resultado válido.",
+        message: "The check did not return a valid result.",
         durationMs: 0,
         checkedAt: new Date().toISOString(),
       });
@@ -91,7 +91,7 @@ export function WarpIntegrationCard() {
           <div>
             <h2 className="text-sm font-black text-slate-900">WARP Shipping</h2>
             <p className="text-[11px] text-slate-500">
-              Ambiente: {result?.env ?? "sin comprobar"}
+              Environment: {result?.env ?? "not checked"}
             </p>
           </div>
         </div>
@@ -103,7 +103,7 @@ export function WarpIntegrationCard() {
           className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-60"
         >
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-          Comprobar conexión
+          Check connection
         </Button>
       </div>
 
@@ -111,14 +111,14 @@ export function WarpIntegrationCard() {
         <div className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
           <span className="inline-flex items-center gap-1.5">
             <CheckCircle2 className="h-3.5 w-3.5" />
-            {result.message} Ambiente {result.env}. Tiempo {result.durationMs} ms.
+            {result.message} Environment {result.env}. Time {result.durationMs} ms.
           </span>
         </div>
       ) : null}
 
       {result && !result.ok && result.step === "auth" ? (
         <div className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800">
-          No autorizado. Inicia sesión como administrador.
+          Not authorized. Sign in as an administrator.
         </div>
       ) : null}
 
@@ -126,13 +126,13 @@ export function WarpIntegrationCard() {
         <div className="space-y-2 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-800">
           <p className="font-semibold">{result.message}</p>
           <p>
-            Paso: {result.step}
+            Step: {result.step}
             {result.status !== undefined ? ` · HTTP ${result.status}` : ""}
           </p>
           <p>{SUGGESTIONS[result.step]}</p>
           {result.details ? (
             <details className="rounded-lg border border-rose-200 bg-white px-2 py-1.5">
-              <summary className="cursor-pointer font-bold text-rose-900">Ver detalle técnico</summary>
+              <summary className="cursor-pointer font-bold text-rose-900">View technical details</summary>
               <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all text-[11px] text-slate-700">
                 {result.details}
               </pre>
@@ -142,7 +142,7 @@ export function WarpIntegrationCard() {
                 className="mt-2 inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-bold text-slate-700"
               >
                 <Copy className="h-3 w-3" />
-                {copied ? "Copiado" : "Copiar error"}
+                {copied ? "Copied" : "Copy error"}
               </button>
             </details>
           ) : (
@@ -152,14 +152,14 @@ export function WarpIntegrationCard() {
               className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-2 py-1 text-[11px] font-bold text-rose-900"
             >
               <Copy className="h-3 w-3" />
-              {copied ? "Copiado" : "Copiar error"}
+              {copied ? "Copied" : "Copy error"}
             </button>
           )}
         </div>
       ) : null}
 
       <p className="text-[11px] text-slate-500">
-        {checkedLabel ? `Última comprobación: ${checkedLabel}` : "Sin comprobaciones todavía."}
+        {checkedLabel ? `Last check: ${checkedLabel}` : "No checks yet."}
       </p>
     </div>
   );

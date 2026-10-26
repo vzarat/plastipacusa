@@ -1376,7 +1376,7 @@ export async function testAdminDatabaseConnection(): Promise<
 
     return { ok: true, products: count ?? 0, variants: variantsCount ?? 0 };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Sin conexión";
+    const message = err instanceof Error ? err.message : "No connection";
     return { ok: false, error: message };
   }
 }
@@ -1740,7 +1740,7 @@ export async function toggleProductSoldOut(id: string, isSoldOut: boolean) {
       console.error("toggleProductSoldOut error:", error);
       return {
         success: false,
-        error: "No se pudo actualizar el inventario. Inténtalo de nuevo.",
+        error: "Stock could not be updated. Please try again.",
       };
     }
 
@@ -1750,7 +1750,7 @@ export async function toggleProductSoldOut(id: string, isSoldOut: boolean) {
     console.error("toggleProductSoldOut error:", err);
     return {
       success: false,
-      error: "No se pudo actualizar el inventario. Inténtalo de nuevo.",
+      error: "Stock could not be updated. Please try again.",
     };
   }
 }

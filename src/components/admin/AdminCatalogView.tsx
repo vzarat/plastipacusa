@@ -221,11 +221,11 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
       const result = await testAdminDatabaseConnection();
       if (!result.ok) throw new Error(result.error);
       toast.success(
-        `Conectado a Supabase: ${result.products} productos y ${result.variants} variantes en la BD.`
+        `Connected to Supabase: ${result.products} products and ${result.variants} variants.`
       );
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Sin conexión";
-      toast.error(`Error de conexión a Supabase: ${message}`);
+      const message = err instanceof Error ? err.message : "No connection";
+      toast.error(`Supabase connection failed: ${message}`);
     } finally {
       setIsTestingConnection(false);
     }
@@ -283,7 +283,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
             item.id === product.id ? { ...item, isSoldOut: product.isSoldOut } : item
           )
         );
-        notify(result.error || "No se pudo actualizar el inventario.");
+        notify(result.error || "Stock could not be updated.");
         return;
       }
       toast.success(nextSoldOut ? t("admin.soldOut") : t("admin.inStock"));

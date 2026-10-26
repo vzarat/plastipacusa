@@ -78,11 +78,11 @@ export function AvatarUpload({
       }
 
       onAvatarChange?.(publicUrl);
-      toast.success("Avatar actualizado correctamente");
+      toast.success("Avatar updated.");
     } catch (error: any) {
       toast.error(
         error?.message ||
-          "No se pudo actualizar el avatar. Verifica que el bucket de almacenamiento exista."
+          "The avatar could not be updated. Check that the storage bucket exists."
       );
     } finally {
       setIsUploading(false);

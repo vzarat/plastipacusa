@@ -523,7 +523,7 @@ export function ProductCatalog({
         )
       );
     }
-    return ordered;
+    return [...ordered].sort(compareInStockFirst(() => 0));
   }, [
     allProducts,
     selectedCategory,

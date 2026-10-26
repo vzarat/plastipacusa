@@ -57,7 +57,7 @@ function LoginForm() {
         },
       });
     } catch {
-      toast.error("No se pudo iniciar sesión con Google. Por favor intenta de nuevo.");
+      toast.error("Google sign-in failed. Please try again.");
     }
   };
 
@@ -98,7 +98,7 @@ function LoginForm() {
 
         window.location.replace(target);
       } else {
-        toast.error("No se pudo iniciar sesión. Por favor intenta de nuevo.");
+        toast.error("Sign-in failed. Please try again.");
       }
     });
   };
