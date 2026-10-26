@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import type { MouseEvent, TouchEvent } from "react";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PromoCodeInput } from "@/components/cart/PromoCodeInput";
@@ -15,6 +17,10 @@ import {
   cartQuantityMax,
   cartQuantityNote,
 } from "@/lib/cart-quantity";
+
+function isolateCardAction(event: MouseEvent | TouchEvent) {
+  event.stopPropagation();
+}
 
 function specBadges(item: CartItem): string[] {
   const badges: string[] = [];
@@ -38,6 +44,7 @@ export function CheckoutCartStep({
   checkoutEmail,
   onProceed,
 }: CheckoutCartStepProps) {
+  const router = useRouter();
   const items = useCartStore((state) => state.items);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const increaseQuantity = useCartStore((state) => state.increaseQuantity);
@@ -74,10 +81,26 @@ export function CheckoutCartStep({
         <ul className="space-y-4">
           {items.map((item) => {
             const badges = specBadges(item);
+            const productHref = item.productSlug ? `/products/${item.productSlug}` : "";
             return (
               <li
                 key={item.id}
-                className="flex gap-4 rounded-2xl border border-slate-200 bg-white p-4"
+                role={productHref ? "link" : undefined}
+                tabIndex={productHref ? 0 : undefined}
+                onClick={() => {
+                  if (productHref) router.push(productHref);
+                }}
+                onKeyDown={(event) => {
+                  if (!productHref || event.target !== event.currentTarget) return;
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  event.preventDefault();
+                  router.push(productHref);
+                }}
+                className={`flex gap-4 rounded-2xl border border-slate-200 bg-white p-4 transition-colors duration-200 ${
+                  productHref
+                    ? "cursor-pointer hover:border-sky-300 hover:bg-sky-50/60"
+                    : ""
+                }`}
               >
                 <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50">
                   {item.productImage ? (
@@ -116,7 +139,11 @@ export function CheckoutCartStep({
                     </div>
                     <button
                       type="button"
-                      onClick={() => removeItem(item.id)}
+                      onClick={(event) => {
+                        isolateCardAction(event);
+                        removeItem(item.id);
+                      }}
+                      onTouchEnd={isolateCardAction}
                       className="flex h-12 w-12 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 md:h-auto md:w-auto md:p-1.5"
                       aria-label={`Remove ${item.productName}`}
                     >
@@ -141,7 +168,11 @@ export function CheckoutCartStep({
                     <div className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1">
                       <button
                         type="button"
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        onClick={(event) => {
+                          isolateCardAction(event);
+                          updateQuantity(item.id, item.quantity - 1);
+                        }}
+                        onTouchEnd={isolateCardAction}
                         className="flex h-12 w-12 items-center justify-center rounded-lg text-slate-600 hover:bg-white md:h-7 md:w-7"
                         aria-label="Decrease quantity"
                       >
@@ -153,6 +184,8 @@ export function CheckoutCartStep({
                         min={1}
                         max={cartQuantityMax(item)}
                         value={item.quantity}
+                        onClick={isolateCardAction}
+                        onTouchEnd={isolateCardAction}
                         onChange={(event) => {
                           const next = Math.floor(Number(event.target.value));
                           if (!Number.isFinite(next)) return;
@@ -163,9 +196,16 @@ export function CheckoutCartStep({
                       />
                       <button
                         type="button"
-                        onClick={() => increaseQuantity(item.id)}
-                        disabled={!canIncreaseCartQuantity(item, item.quantity)}
-                        className="flex h-12 w-12 items-center justify-center rounded-lg text-slate-600 hover:bg-white md:h-7 md:w-7 disabled:opacity-40 disabled:pointer-events-none"
+                        onClick={(event) => {
+                          isolateCardAction(event);
+                          if (!canIncreaseCartQuantity(item, item.quantity)) return;
+                          increaseQuantity(item.id);
+                        }}
+                        onTouchEnd={isolateCardAction}
+                        aria-disabled={!canIncreaseCartQuantity(item, item.quantity)}
+                        className={`flex h-12 w-12 items-center justify-center rounded-lg text-slate-600 hover:bg-white md:h-7 md:w-7 ${
+                          canIncreaseCartQuantity(item, item.quantity) ? "" : "opacity-40"
+                        }`}
                         aria-label="Increase quantity"
                       >
                         <Plus className="h-3.5 w-3.5" />
