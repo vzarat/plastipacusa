@@ -21,6 +21,11 @@ import {
 } from "@/lib/shipping/quote-window";
 import type { ShippingOption } from "@/lib/shipping/types";
 import { evalShippingEligibility } from "@/lib/shippingRules";
+import {
+  formatFridayDeliveryDate,
+  FRIDAY_FREE_DELIVERY_LABEL,
+  nextFridayDeliveryIso,
+} from "@/lib/shipping/friday-delivery";
 
 function shippingQuoteLines(
   items: Array<{
@@ -598,7 +603,19 @@ export function CheckoutShippingMethodStep({
           <div role="radiogroup" aria-label="Delivery method" className="space-y-3">
             {cards.visible.map((method) => {
               const selected = selectedShippingOption?.id === method.id;
-              const title = method.carrierName || method.serviceName;
+              const scheduledFriday =
+                method.id === "rgv-local" || method.id === "houston-friday"
+                  ? nextFridayDeliveryIso()
+                  : null;
+              const methodForSelection = scheduledFriday
+                ? {
+                    ...method,
+                    serviceName: FRIDAY_FREE_DELIVERY_LABEL,
+                    deliveryDate: scheduledFriday,
+                    description: `Plastipac fleet delivery on ${formatFridayDeliveryDate(scheduledFriday)}.`,
+                  }
+                : method;
+              const title = methodForSelection.carrierName || methodForSelection.serviceName;
               return (
                 <label
                   key={method.id}
@@ -618,8 +635,8 @@ export function CheckoutShippingMethodStep({
                       requoteLockRef.current = null;
                       setPriceUpdated(null);
                       setRequoteFailed(false);
-                      setSelectedShippingOption(method);
-                      setDeliveryMethod(deliveryMethodForOption(method));
+                      setSelectedShippingOption(methodForSelection);
+                      setDeliveryMethod(deliveryMethodForOption(methodForSelection));
                     }}
                     className="mt-1 h-4 w-4 text-sky-600 focus:ring-sky-500"
                   />
@@ -656,13 +673,35 @@ export function CheckoutShippingMethodStep({
                               Fastest
                             </span>
                           )}
+                          {(method.id === "rgv-local" || method.id === "houston-friday") && (
+                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                              Free shipping
+                            </span>
+                          )}
                         </span>
                       </span>
                       <span className="text-sm font-black text-slate-900">
                         {method.price > 0 ? formatCurrency(method.price) : "$0.00"}
                       </span>
                     </span>
-                    <span className="mt-1 block text-xs text-slate-500">{method.description}</span>
+                    <span className="mt-1 block text-xs text-slate-500">{methodForSelection.description}</span>
+                    {scheduledFriday ? (
+                      <label className="mt-2 block" onClick={(event) => event.stopPropagation()}>
+                        <span className="block text-[10px] font-bold uppercase tracking-wide text-emerald-800">
+                          Delivery date
+                        </span>
+                        <select
+                          aria-label="Friday delivery date"
+                          value={scheduledFriday}
+                          onChange={() => undefined}
+                          className="mt-1 h-10 w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm font-semibold text-slate-900"
+                        >
+                          <option value={scheduledFriday}>
+                            {formatFridayDeliveryDate(scheduledFriday)}
+                          </option>
+                        </select>
+                      </label>
+                    ) : null}
                     <span className="mt-1 block text-xs font-semibold text-slate-600">
                       {method.transitDays === 1
                         ? "1 business day"

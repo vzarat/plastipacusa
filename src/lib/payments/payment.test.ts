@@ -238,6 +238,15 @@ describe("shared checkout pricing", () => {
       ),
       "This promo code is inactive."
     );
+    assert.equal(
+      couponBlockReason(
+        { is_active: true, expires_at: null, max_uses: 1, used_count: 1 },
+        "buyer@example.com",
+        now,
+        1
+      ),
+      null
+    );
   });
 });
 

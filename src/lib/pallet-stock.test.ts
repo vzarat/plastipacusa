@@ -30,7 +30,7 @@ describe("pallet stock", () => {
         gauge: 40,
         lengthFeet: 1500,
       }),
-      0
+      0.0625
     );
     assert.equal(
       fullPalletsForPackage({ application: "machine", rollsPerPackage: 40, quantity: 3 }),
@@ -38,7 +38,7 @@ describe("pallet stock", () => {
     );
     assert.equal(
       fullPalletsForPackage({ application: "machine", rollsPerPackage: 20, quantity: 1 }),
-      0
+      0.5
     );
     assert.equal(
       fullPalletsForPackage({
@@ -51,13 +51,37 @@ describe("pallet stock", () => {
       }),
       1
     );
+    assert.equal(
+      fullPalletsForPackage({
+        application: "hand",
+        boxesPerPackage: 64,
+        quantity: 1,
+        widthInches: 18,
+        gauge: 60,
+        lengthFeet: 1500,
+      }),
+      1
+    );
+    assert.equal(
+      fullPalletsForPackage({
+        application: "hand",
+        boxesPerPackage: 16,
+        quantity: 1,
+        widthInches: 18,
+        gauge: 60,
+        lengthFeet: 1500,
+      }),
+      0.25
+    );
   });
 
   it("reads a stored pallet count and ignores a loose box line", () => {
     assert.equal(orderLinePallets({ pallets: 2, boxes: 128, quantity: 2 }), 2);
+    assert.equal(orderLinePallets({ pallets: 0.5, boxes: 32, quantity: 1 }), 0.5);
     assert.equal(orderLinePallets({ boxes: 32, quantity: 2 }), 0);
     assert.equal(orderLinePallets({ boxes: 128, quantity: 2 }), 2);
     assert.equal(palletAvailabilityLabel(1), "1 Pallet Available");
+    assert.equal(palletAvailabilityLabel(0.5), "0.5 Pallets Available");
     assert.equal(palletAvailabilityLabel(5), "5 Pallets Available");
   });
 
@@ -76,6 +100,13 @@ describe("pallet stock", () => {
     assert.equal(
       palletStockShortage([{ productId: "film", productName: "STRETCH FILM 15", pallets: 0 }], stock),
       null
+    );
+    assert.equal(
+      palletStockShortage(
+        [{ productId: "film", productName: "STRETCH FILM 15", pallets: 0.5 }],
+        new Map([["film", 0.25]])
+      ),
+      "Only 0.25 pallets are available for STRETCH FILM 15."
     );
     assert.equal(
       soldOutCheckoutMessage(

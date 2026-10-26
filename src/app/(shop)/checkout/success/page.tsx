@@ -29,6 +29,7 @@ export default function CheckoutSuccessPage() {
   const [orderId, setOrderId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [confirmedTotal, setConfirmedTotal] = useState<number | null>(null);
+  const [fridayDelivery, setFridayDelivery] = useState<string | null>(null);
   const hasTriggeredToast = useRef(false);
   const hasFinalized = useRef(false);
 
@@ -163,6 +164,7 @@ export default function CheckoutSuccessPage() {
         setConfirmedTotal(
           chargedTotal > 0 ? chargedTotal : Number(getDiscountedTotal().toFixed(2))
         );
+        setFridayDelivery(verification.paymentIntent.fridayDeliveryDate);
         const confirmedOrderId = result.orderId || paymentIntentId;
         setOrderId(confirmedOrderId);
         if (confirmedOrderId && params.get("order_id") !== confirmedOrderId) {
@@ -250,6 +252,12 @@ export default function CheckoutSuccessPage() {
                   {formatCurrency(total)}
                 </span>
               </div>
+              {fridayDelivery ? (
+                <div className="mt-3 flex items-center justify-between gap-4 text-sm">
+                  <span className="text-slate-600">Friday delivery</span>
+                  <span className="text-right font-bold text-slate-900">{fridayDelivery}</span>
+                </div>
+              ) : null}
             </div>
 
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">

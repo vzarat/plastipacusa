@@ -31,6 +31,7 @@ export interface InvoicePdfData {
   items: InvoicePdfItem[];
   totalUsd: number;
   logo?: InvoiceLogoImage | null;
+  deliveryDate?: string;
 }
 
 export const PLASTIPAC_LOGO_SVG_URL =
@@ -240,11 +241,12 @@ function buildContentStream(data: InvoicePdfData): string {
     size: 14,
   });
 
+  const deliveryLine = data.deliveryDate ? 16 : 0;
   lines.push("0.95 0.97 0.99 rg");
-  lines.push("40 573 532 75 re");
+  lines.push(`40 ${573 - deliveryLine} 532 ${75 + deliveryLine} re`);
   lines.push("f");
   lines.push("0.80 0.86 0.92 RG");
-  lines.push("40 573 532 75 re");
+  lines.push(`40 ${573 - deliveryLine} 532 ${75 + deliveryLine} re`);
   lines.push("S");
 
   lines.push("0.06 0.09 0.16 rg");
@@ -270,8 +272,12 @@ function buildContentStream(data: InvoicePdfData): string {
   if (data.customerEmail) {
     pushText(340, 582, data.customerEmail, { font: "F1", size: 9 });
   }
+  if (data.deliveryDate) {
+    pushText(50, 566, "Friday delivery:", { font: "F1", size: 9 });
+    pushText(140, 566, data.deliveryDate, { font: "F2", size: 10 });
+  }
 
-  const tableTop = 543;
+  const tableTop = 543 - deliveryLine;
   lines.push("0.086 0.467 0.722 rg");
   lines.push(`40 ${tableTop - 18} 532 22 re`);
   lines.push("f");

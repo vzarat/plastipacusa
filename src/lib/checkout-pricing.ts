@@ -322,16 +322,18 @@ export function couponBlockReason(
     bound_email?: string | null;
   },
   email: string | null,
-  now = Date.now()
+  now = Date.now(),
+  reservedUses = 0
 ): string | null {
   if (!row.is_active) return "This promo code is inactive.";
   if (row.expires_at && new Date(row.expires_at).getTime() < now) {
     return "This promo code has expired.";
   }
+  const uses = Number(row.used_count || 0) - Math.max(0, Math.floor(reservedUses));
   if (
     row.max_uses !== null &&
     row.max_uses !== undefined &&
-    Number(row.used_count || 0) >= Number(row.max_uses)
+    uses >= Number(row.max_uses)
   ) {
     return "This promo code has reached its usage limit.";
   }

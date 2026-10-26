@@ -13,6 +13,7 @@ import {
 import { mapCouponToApplied } from "@/lib/coupons";
 import { catalogSkuCandidates, customerLineDescription } from "@/lib/catalog-sku";
 import { palletStockShortage, soldOutCheckoutMessage, trackedPalletStock } from "@/lib/pallet-stock";
+import { releaseCheckoutHolds, syncCheckoutHolds } from "@/lib/payments/checkout-holds";
 import {
   decidePaymentAttempt,
   paymentIdempotencyKey,
@@ -23,6 +24,10 @@ import {
 } from "@/lib/payments/intent-attempt";
 import { createServiceRoleClient, isServiceRoleConfigured } from "@/lib/supabase/admin";
 import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
+import {
+  FRIDAY_FREE_DELIVERY_LABEL,
+  nextFridayDeliveryIso,
+} from "@/lib/shipping/friday-delivery";
 import { resolveShippingCharge } from "@/lib/shipping/quote-cache";
 import { evalShippingEligibility, RGV_FREE_DELIVERY_LABEL } from "@/lib/shippingRules";
 import { buildShipmentFreight } from "@/lib/shipping/shipment";
@@ -257,7 +262,23 @@ export async function createPaymentIntent(
       if (couponError || !couponRow) {
         return { success: false, error: "Promo code not found." };
       }
-      const blocked = couponBlockReason(couponRow, sessionEmail);
+      let reservedUses = 0;
+      const pendingCoupon = await supabase
+        .from("orders")
+        .select("coupon_id, coupon_hold")
+        .eq("user_id", userId)
+        .eq("status", "pending_payment")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (
+        !pendingCoupon.error &&
+        pendingCoupon.data?.coupon_hold === true &&
+        String(pendingCoupon.data.coupon_id || "") === String(couponRow.id || "")
+      ) {
+        reservedUses = 1;
+      }
+      const blocked = couponBlockReason(couponRow, sessionEmail, Date.now(), reservedUses);
       if (blocked) return { success: false, error: blocked };
       coupon = mapCouponToApplied(couponRow);
       couponId = coupon.id;
@@ -466,14 +487,23 @@ export async function createPaymentIntent(
         }
       }
       if (cleanup === "cancel_then_delete" || cleanup === "delete") {
+        await releaseCheckoutHolds(admin, String(stale.id));
         await admin.from("orders").delete().eq("id", stale.id).eq("status", "pending_payment");
       }
     }
 
+    const fridayDeliveryDate =
+      shippingOption?.id === "rgv-local" || shippingOption?.id === "houston-friday"
+        ? nextFridayDeliveryIso()
+        : null;
+    if (fridayDeliveryDate && shippingOption) {
+      shippingOption.serviceName = FRIDAY_FREE_DELIVERY_LABEL;
+    }
     const fingerprint = [
       requested.map((line) => `${line.sku}:${line.quantity}`).join(","),
       shippingOption?.destinationZip || "",
       shippingOption?.id || "",
+      fridayDeliveryDate || "",
       String(normalizedAmount),
       couponCode,
     ].join("|");
@@ -488,6 +518,7 @@ export async function createPaymentIntent(
       country: options.shipping?.country || "US",
       email: customerEmail || null,
       checkout_fingerprint: fingerprint,
+      friday_delivery_date: fridayDeliveryDate,
     };
     const orderPayload: Record<string, unknown> = {
       user_id: userId,
@@ -621,6 +652,8 @@ export async function createPaymentIntent(
       cartChanged,
     });
     if (decision.type === "keep") {
+      const heldError = await syncCheckoutHolds(admin, pendingId, pricedLines);
+      if (heldError) return { success: false, error: heldError };
       const kept = await stripe.paymentIntents.retrieve(decision.paymentIntentId);
       if (!kept.client_secret) {
         return { success: false, error: "Stripe payment intent failed — missing client secret." };
@@ -706,6 +739,7 @@ export async function createPaymentIntent(
         shipping_amount: priced.shipping.toFixed(2),
         shipping_cost: priced.shipping.toFixed(2),
         shipping_method: String(shippingOption?.serviceName || options.shippingMethod || "").slice(0, 80),
+        friday_delivery_date: fridayDeliveryDate || "",
         shipping_provider: String(shippingOption?.provider || "").slice(0, 40),
         shipping_mode: String(shippingOption?.mode || "").slice(0, 40),
         shipping_service: String(shippingOption?.serviceName || "").slice(0, 80),
@@ -724,6 +758,9 @@ export async function createPaymentIntent(
         order_id: pendingId,
       },
     };
+
+    const heldError = await syncCheckoutHolds(admin, pendingId, pricedLines);
+    if (heldError) return { success: false, error: heldError };
 
     let paymentIntent;
     if (decision.type === "update") {

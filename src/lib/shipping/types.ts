@@ -24,6 +24,8 @@ export interface ShippingOption {
   serviceLevel?: string;
   /** Warp amount before SHIPPING_MARKUP_PERCENT. Customer price stays on `price`. */
   carrierPrice?: number;
+  /** YYYY-MM-DD Friday for Houston / RGV company delivery. */
+  deliveryDate?: string | null;
 }
 
 export interface FreightPiece {

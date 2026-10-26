@@ -8,7 +8,6 @@ import { AdminOrder, updateOrderStatus, type PaymentReviewItem } from "@/actions
 import { AdminProduct } from "@/types/product";
 import { UserProfile } from "@/actions/auth";
 import { useLanguage } from "@/context/LanguageContext";
-import { LanguageToggle } from "@/components/common/LanguageToggle";
 import { AdminSidebar, AdminTabKey } from "./AdminSidebar";
 import type { CustomerRecord } from "./AdminCustomersView";
 import {
@@ -163,7 +162,6 @@ export function AdminOrdersClient({
         </div>
 
         <div className="flex items-center gap-2">
-          <LanguageToggle showIcon={false} />
           <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs uppercase shadow-xs">
             {profile.fullName?.charAt(0) || profile.email?.charAt(0) || "A"}
           </div>
@@ -214,8 +212,6 @@ export function AdminOrdersClient({
               <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
               <span>{t("nav.products")}</span>
             </Link>
-
-            <LanguageToggle />
           </div>
         </header>
 

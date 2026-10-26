@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { FolderOpen, Menu, ShieldCheck } from "lucide-react";
 import { UserProfile } from "@/actions/auth";
 import type { CustomerDossier } from "@/actions/customers";
-import { LanguageToggle } from "@/components/common/LanguageToggle";
 import { AdminSidebar, AdminTabKey } from "@/components/admin/AdminSidebar";
 import { AdminCustomerDossierView } from "@/components/admin/AdminCustomerDossierView";
 
@@ -76,7 +75,6 @@ export function AdminCustomerDossierClient({
               <ShieldCheck className="w-3 h-3" />
               Admin
             </span>
-            <LanguageToggle />
           </div>
         </header>
 

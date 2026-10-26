@@ -10,6 +10,7 @@ import { useCartStore } from "@/lib/store/useCartStore";
 import { countCartBoxes } from "@/lib/shipping-method";
 import { labelForShippingMethod } from "@/lib/shippingRules";
 import { formatCurrency } from "@/lib/utils";
+import { formatFridayDeliveryDate, nextFridayDeliveryIso } from "@/lib/shipping/friday-delivery";
 import type { CheckoutShippingAddress } from "@/lib/shipping-address";
 
 interface CheckoutPaymentStepProps {
@@ -38,17 +39,24 @@ export function CheckoutPaymentStep({
   onServerTotal,
 }: CheckoutPaymentStepProps) {
   const items = useCartStore((state) => state.items);
-  const { selectedAddress, deliveryMethod } = useCheckoutState();
+  const { selectedAddress, deliveryMethod, selectedShippingOption } = useCheckoutState();
   const boxCount = countCartBoxes(items);
   const cartRolls = items.reduce((total, item) => total + (Number(item.totalRolls) || 0), 0);
-  const shippingLabel = labelForShippingMethod(
-    deliveryMethod,
-    selectedAddress?.postalCode || shipping.postalCode,
-    selectedAddress?.city || shipping.city,
-    selectedAddress?.state || shipping.state,
-    boxCount,
-    cartRolls
-  );
+  const shippingLabel =
+    selectedShippingOption?.serviceName ||
+    labelForShippingMethod(
+      deliveryMethod,
+      selectedAddress?.postalCode || shipping.postalCode,
+      selectedAddress?.city || shipping.city,
+      selectedAddress?.state || shipping.state,
+      boxCount,
+      cartRolls
+    );
+  const fridayIso =
+    selectedShippingOption?.id === "rgv-local" || selectedShippingOption?.id === "houston-friday"
+      ? nextFridayDeliveryIso()
+      : null;
+  const fridayDelivery = fridayIso ? formatFridayDeliveryDate(fridayIso) : null;
   return (
     <div className="space-y-6">
       <div>
@@ -107,6 +115,11 @@ export function CheckoutPaymentStep({
           <p className="mt-2 text-sm font-bold text-slate-900">
             {shippingLabel}
           </p>
+          {fridayDelivery ? (
+            <p className="mt-1 text-sm font-semibold text-emerald-800">
+              {fridayDelivery}
+            </p>
+          ) : null}
           <p className="mt-1 text-sm text-slate-600">
             {shippingAmount > 0 ? formatCurrency(shippingAmount) : "FREE"}
           </p>

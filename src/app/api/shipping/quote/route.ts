@@ -5,11 +5,11 @@ import { getWarpConfig, shippingDebugVisible } from "@/lib/shipping/config";
 import { buildQuoteFailure, shippingRequestId } from "@/lib/shipping/diagnostics";
 import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
 import {
-  evalShippingEligibility,
-  HOUSTON_FRIDAY_LABEL,
-  HOUSTON_FRIDAY_NOTE,
-  RGV_FREE_DELIVERY_LABEL,
-} from "@/lib/shippingRules";
+  formatFridayDeliveryDate,
+  FRIDAY_FREE_DELIVERY_LABEL,
+  nextFridayDeliveryIso,
+} from "@/lib/shipping/friday-delivery";
+import { evalShippingEligibility } from "@/lib/shippingRules";
 import {
   fetchLtlMarketOptions,
   hideTruckloadForSmallShipment,
@@ -75,31 +75,19 @@ function zipCode(value: unknown): string | null {
   return match ? match[0] : null;
 }
 
-function houstonFridayOption(zip: string, label: string): ShippingOption {
+function scheduledFridayOption(id: "houston-friday" | "rgv-local", zip: string): ShippingOption {
+  const deliveryDate = nextFridayDeliveryIso();
   return {
-    id: "houston-friday",
+    id,
     provider: "plastipac",
     mode: "local",
-    serviceName: label || HOUSTON_FRIDAY_LABEL,
-    description: HOUSTON_FRIDAY_NOTE,
+    serviceName: FRIDAY_FREE_DELIVERY_LABEL,
+    description: `Plastipac fleet delivery on ${formatFridayDeliveryDate(deliveryDate)}.`,
     price: 0,
     transitDays: 1,
     expiresAt: null,
     destinationZip: zip,
-  };
-}
-
-function freeLocalOption(zip: string): ShippingOption {
-  return {
-    id: "rgv-local",
-    provider: "plastipac",
-    mode: "local",
-    serviceName: RGV_FREE_DELIVERY_LABEL,
-    description: "Plastipac fleet delivery for Rio Grande Valley orders of 16 boxes (64 rolls) or more.",
-    price: 0,
-    transitDays: 1,
-    expiresAt: null,
-    destinationZip: zip,
+    deliveryDate,
   };
 }
 
@@ -361,7 +349,7 @@ async function quoteForSignedInUser(request: Request) {
       state: body.state,
       rolls: freight.rolls,
     }).eligible
-      ? freeLocalOption(zip)
+      ? scheduledFridayOption("rgv-local", zip)
       : null;
     const fridayRule = evalShippingEligibility(
       zip,
@@ -370,7 +358,7 @@ async function quoteForSignedInUser(request: Request) {
       freight.boxes,
       freight.rolls
     ).options.find((option) => option.id === "houston-friday");
-    const fridayRoute = fridayRule ? houstonFridayOption(zip, fridayRule.label) : null;
+    const fridayRoute = fridayRule ? scheduledFridayOption("houston-friday", zip) : null;
 
     const destinationZip = zip;
     const destination = {
@@ -514,7 +502,7 @@ async function quoteForSignedInUser(request: Request) {
         state: body.state,
         rolls: error.rolls,
       }).eligible
-        ? freeLocalOption(zip)
+        ? scheduledFridayOption("rgv-local", zip)
         : null;
     const freight =
       error instanceof ShipmentDataError

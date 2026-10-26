@@ -20,7 +20,6 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { LanguageToggle } from "@/components/common/LanguageToggle";
 import { MobileNavDrawer } from "@/components/layout/MobileNavDrawer";
 import { useAssistStore } from "@/lib/store/useAssistStore";
 
@@ -510,7 +509,6 @@ export function Navbar() {
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap xl:gap-3">
-            <LanguageToggle />
             {accountMenu(false)}
             <span className="xl:hidden">{assistButton(true)}</span>
             <span className="hidden xl:inline-flex">{assistButton(false)}</span>

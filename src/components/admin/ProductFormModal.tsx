@@ -29,6 +29,7 @@ import {
 } from "@/types/product";
 import { PRODUCT_CATEGORIES, categorySlugFromRecord, getApplicationForCategory } from "@/data/categories";
 import { readBoxTierPrices } from "@/lib/pricing";
+import { roundPalletStock } from "@/lib/pallet-stock";
 import { useLanguage } from "@/context/LanguageContext";
 
 interface ProductFormModalProps {
@@ -512,13 +513,13 @@ export function ProductFormModal({
               <Input
                 id="stock-pallets"
                 type="number"
-                inputMode="numeric"
+                inputMode="decimal"
                 min={0}
-                step={1}
+                step="any"
                 placeholder="5"
                 value={form.stockQuantity}
                 onChange={(e) => {
-                  const stockQuantity = Math.max(0, Math.floor(Number(e.target.value) || 0));
+                  const stockQuantity = roundPalletStock(e.target.value);
                   setForm((current) => ({
                     ...current,
                     stockQuantity,

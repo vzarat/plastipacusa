@@ -23,6 +23,7 @@ import {
   getDisplayPrice,
   handCatalogQuote,
 } from "@/lib/pricing";
+import { palletAvailabilityLabel } from "@/lib/pallet-stock";
 import { useCartStore } from "@/lib/store/useCartStore";
 interface ProductCardProps {
   product: ProductWithVariants;
@@ -214,13 +215,8 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
     availableTiers.push("Pallet");
   }
   const isSoldOut = Boolean(product.isSoldOut);
-  const palletCount = Math.floor(Number(product.stockQuantity) || 0);
-  const palletLabel =
-    !isSoldOut && palletCount > 0
-      ? palletCount === 1
-        ? t("products.onePalletAvailable")
-        : t("products.palletsAvailable").replace("{count}", String(palletCount))
-      : null;
+  const palletCount = Number(product.stockQuantity) || 0;
+  const palletLabel = !isSoldOut && palletCount > 0 ? palletAvailabilityLabel(palletCount) : null;
   const variant64 = (product.variants || []).find(
     (variant) => Number(variant.boxes_count ?? variant.boxesCount) === HAND_FULL_PALLET_BOXES
   );
@@ -243,7 +239,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
     comparePrice !== null &&
     comparePrice > primaryPrice;
   const productHref = `/products/${product?.slug || "stretch-film-18-x-60-ga-x-1000ft"}`;
-  const statusBadge = isSoldOut ? "SOLD OUT" : showCompare ? "HOT DEAL" : "FREE SHIPPING";
+  const statusBadge = isSoldOut ? "SOLD OUT" : showCompare ? "HOT DEAL" : null;
 
   const volumeTierLabel =
     !isGenesis && handQuote != null
@@ -268,11 +264,13 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             className="object-contain p-2"
             onError={() => setImageFailed(true)}
           />
-          <span className={`absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white ${
-            isSoldOut ? "bg-slate-500" : "bg-red-600"
-          }`}>
-            {statusBadge}
-          </span>
+          {statusBadge ? (
+            <span className={`absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white ${
+              isSoldOut ? "bg-slate-500" : "bg-red-600"
+            }`}>
+              {statusBadge}
+            </span>
+          ) : null}
         </div>
       </div>
       <div className="flex min-w-0 w-[65%] flex-col">

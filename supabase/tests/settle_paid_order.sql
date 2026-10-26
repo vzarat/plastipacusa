@@ -1,6 +1,6 @@
 -- Run in the Supabase SQL editor after 20261022140000_pallet_stock_settlement.sql.
 -- The transaction rolls back, so the fixture rows are not kept.
--- products.stock_quantity is full pallets. A 16-box line stores pallets = 0 and does not deduct.
+-- products.stock_quantity is full pallets. A half pallet stores pallets = 0.5 and deducts that share.
 
 begin;
 
@@ -10,8 +10,9 @@ declare
   v_coupon_id uuid;
   v_order_id public.orders.id%type;
   v_short_order_id public.orders.id%type;
+  v_held_order_id public.orders.id%type;
   v_sku text;
-  v_stock integer;
+  v_stock numeric;
   v_uses integer;
   v_status text;
   v_paid text;
@@ -61,9 +62,9 @@ begin
       ),
       jsonb_build_object(
         'sku', v_sku,
-        'quantity', 2,
+        'quantity', 1,
         'boxes', 32,
-        'pallets', 0
+        'pallets', 0.5
       )
     ),
     80, 80
@@ -77,8 +78,8 @@ begin
   select used_count into v_uses from public.coupons where id = v_coupon_id;
   select status, payment_status into v_status, v_paid from public.orders where id = v_order_id;
 
-  if v_stock is distinct from 3 then
-    raise exception 'Expected stock 3 after subtracting 2 pallets twice as a no-op, got %', v_stock;
+  if v_stock is distinct from 2.5 then
+    raise exception 'Expected stock 2.5 after subtracting 2.5 pallets twice as a no-op, got %', v_stock;
   end if;
   select is_sold_out into v_sold from public.products where id = v_product_id;
   if v_sold is distinct from false then
@@ -129,6 +130,27 @@ begin
   end if;
   if v_uses is distinct from 1 then
     raise exception 'Coupon must stay at 1, got %', v_uses;
+  end if;
+
+  update public.products set stock_quantity = 3, is_sold_out = false where id = v_product_id;
+  insert into public.orders (
+    status, payment_status, booking_status, items, total, total_amount,
+    stock_hold, stock_hold_snapshot
+  ) values (
+    'pending_payment',
+    'pending',
+    'needs_booking',
+    jsonb_build_array(jsonb_build_object('sku', v_sku, 'quantity', 1, 'boxes', 64, 'pallets', 1)),
+    40, 40,
+    true,
+    jsonb_build_array(jsonb_build_object('sku', v_sku, 'pallets', 1))
+  )
+  returning id into v_held_order_id;
+
+  perform public.settle_paid_order(v_held_order_id::text);
+  select stock_quantity into v_stock from public.products where id = v_product_id;
+  if v_stock is distinct from 3 then
+    raise exception 'A checkout hold must not subtract pallets again, got %', v_stock;
   end if;
 end;
 $$;

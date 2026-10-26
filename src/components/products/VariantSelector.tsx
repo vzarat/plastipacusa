@@ -13,6 +13,7 @@ import { DirectCheckoutButton } from "@/components/checkout/DirectCheckoutButton
 import { ProductDiscountInput } from "@/components/products/ProductDiscountInput";
 import type { AppliedDiscount } from "@/types/discount";
 import { applyDiscountToPrice, formatDiscountAppliedBadge } from "@/lib/discounts";
+import { palletAvailabilityLabel } from "@/lib/pallet-stock";
 import { usesCompact1880Pallets } from "@/lib/palletizing";
 import {
   HAND_FULL_PALLET,
@@ -826,13 +827,8 @@ export function VariantSelector({
   };
 
   const isSoldOut = product?.isSoldOut === true;
-  const palletCount = Math.floor(Number(product?.stockQuantity) || 0);
-  const palletLabel =
-    !isSoldOut && palletCount > 0
-      ? palletCount === 1
-        ? t("products.onePalletAvailable")
-        : t("products.palletsAvailable").replace("{count}", String(palletCount))
-      : null;
+  const palletCount = Number(product?.stockQuantity) || 0;
+  const palletLabel = !isSoldOut && palletCount > 0 ? palletAvailabilityLabel(palletCount) : null;
 
   const handleAddToCart = () => {
     if (isSoldOut) return;

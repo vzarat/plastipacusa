@@ -534,7 +534,7 @@ function CheckoutPageInner({ taxExempt }: { taxExempt: boolean }) {
               </div>
               {step === 4 && taxExemptRequested && (
                 <p className="text-xs font-semibold text-emerald-700">
-                  Tax exemption requested. Tax remains until verification.
+                  Sales tax stays on this order until the exemption is verified.
                 </p>
               )}
               {step === 4 && (
@@ -595,7 +595,11 @@ function CheckoutPageInner({ taxExempt }: { taxExempt: boolean }) {
             onClick={continueCheckout}
             disabled={mobileActionDisabled}
           >
-            {step === 4 ? "Place Order" : "Proceed to Checkout"}
+            {step === 4
+              ? "Pay with Stripe"
+              : step === 3
+                ? "Continue to Payment"
+                : "Continue to Shipping"}
           </Button>
         </div>
       </div>

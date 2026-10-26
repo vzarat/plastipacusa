@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Menu, ShieldCheck } from "lucide-react";
 import { UserProfile } from "@/actions/auth";
-import { LanguageToggle } from "@/components/common/LanguageToggle";
 import { AdminSidebar, AdminTabKey } from "@/components/admin/AdminSidebar";
 import { AdminDiscountsView } from "@/components/admin/AdminDiscountsView";
 
@@ -57,7 +56,6 @@ export function AdminDiscountsClient({ profile }: AdminDiscountsClientProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            <LanguageToggle />
             <Link
               href="/admin"
               className="text-xs font-bold text-slate-600 hover:text-blue-700 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50"

@@ -41,7 +41,6 @@ import {
   Loader2,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
-import { LanguageToggle } from "@/components/common/LanguageToggle";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { DashboardMobileChrome } from "@/components/dashboard/DashboardMobileChrome";
 import { AvatarUpload } from "@/components/dashboard/AvatarUpload";
@@ -803,9 +802,6 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
             </div>
 
             <NotificationBell pending={backupPasswordPending} />
-
-            {/* Language Switcher */}
-            <LanguageToggle />
 
             {/* Cart Trigger */}
             <button

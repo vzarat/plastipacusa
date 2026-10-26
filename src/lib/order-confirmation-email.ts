@@ -87,6 +87,7 @@ export interface OrderConfirmationContent {
   };
   orderDate?: string;
   lineItems?: OrderConfirmationLineItem[];
+  fridayDeliveryDate?: string;
 }
 
 export function escapeHtml(value: string): string {
@@ -265,6 +266,12 @@ export function buildOrderConfirmationHtml(
          <p style="margin:0;color:${template.textColor};font-size:14px;line-height:1.55;white-space:pre-line;">${escapeHtml(content.shippingAddressSummary)}</p>`
       : `<p style="margin:0;color:${template.mutedColor};font-size:14px;line-height:1.55;">Shipping address will be confirmed by our logistics team.</p>`;
 
+  const fridayBlock = content.fridayDeliveryDate
+    ? `<p style="margin:14px 0 0;color:${template.mutedColor};font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Friday delivery</p>
+       <p style="margin:4px 0 0;color:${template.textColor};font-size:14px;line-height:1.5;font-weight:700;">${escapeHtml(content.fridayDeliveryDate)}</p>
+       <p style="margin:2px 0 0;color:${template.mutedColor};font-size:13px;line-height:1.5;">Houston / RGV Friday Free Delivery (Scheduled). Shipping cost $0.00.</p>`
+    : "";
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -364,6 +371,7 @@ export function buildOrderConfirmationHtml(
                 <tr>
                   <td style="padding:16px 18px;font-family:Arial,Helvetica,sans-serif;">
                     ${shippingBlock}
+                    ${fridayBlock}
                   </td>
                 </tr>
               </table>
@@ -434,6 +442,9 @@ export function buildOrderConfirmationHtml(
       : content.shippingAddressSummary
         ? `SHIPPING ADDRESS\n${content.shippingAddressSummary}`
         : null,
+    content.fridayDeliveryDate
+      ? `FRIDAY DELIVERY\n${content.fridayDeliveryDate}\nHouston / RGV Friday Free Delivery (Scheduled). Shipping cost $0.00.`
+      : null,
     "",
     "Support:",
     template.footerSalesEmail,
@@ -472,6 +483,7 @@ export const SAMPLE_ORDER_CONTENT: OrderConfirmationContent = {
     postalCode: "78501",
     phone: "+1 (956) 555-0142",
   },
+  fridayDeliveryDate: "Friday, October 30, 2026",
   lineItems: [
     {
       description: 'FORCE Hand Film 18" × 80 Ga × 1500 ft',

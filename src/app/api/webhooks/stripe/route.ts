@@ -24,9 +24,20 @@ import {
   verifyWebhookSignature,
 } from "@/lib/payments/settle-payment";
 import { runIdempotentSideEffect, stripeEventSideEffect } from "@/lib/payments/webhook-events";
+import { formatFridayDeliveryDate, readFridayDeliveryIso } from "@/lib/shipping/friday-delivery";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function fridayDeliveryCopy(
+  address: Record<string, unknown> | null | undefined,
+  metadata?: { friday_delivery_date?: string | null } | null
+): string | undefined {
+  const iso = readFridayDeliveryIso(
+    address?.friday_delivery_date || metadata?.friday_delivery_date
+  );
+  return iso ? formatFridayDeliveryDate(iso) : undefined;
+}
 
 /** Display + audit label required for cleared Stripe checkouts */
 const PAID_CLEARED_LABEL = "Paid & Cleared";
@@ -412,6 +423,7 @@ async function generateOrderSummaryPdf(order: OrderRow): Promise<Uint8Array> {
     items: mapOrderItems(order.items, totalUsd),
     totalUsd,
     logo,
+    deliveryDate: fridayDeliveryCopy(order.shipping_address),
   });
 
   // Best-effort archive to Supabase Storage (non-fatal if bucket missing).
@@ -459,6 +471,7 @@ async function dispatchAdminPoEmail(payload: {
   itemCount?: number;
   itemsSummary?: string;
   orderDate?: string;
+  fridayDeliveryDate?: string;
 }) {
   try {
     const result = await notifyAdminPurchaseOrder(payload);
@@ -684,6 +697,7 @@ async function handleCheckoutSessionCompleted(
         (session.created || Date.now() / 1000) * 1000
       ).toISOString(),
       lineItems: emailLineItems,
+      fridayDeliveryDate: fridayDeliveryCopy(order.shipping_address, session.metadata),
       pdfBytes,
     });
   } catch (emailErr: unknown) {
@@ -711,6 +725,7 @@ async function handleCheckoutSessionCompleted(
       orderDate: new Date(
         (session.created || Date.now() / 1000) * 1000
       ).toISOString(),
+      fridayDeliveryDate: fridayDeliveryCopy(order.shipping_address, session.metadata),
     });
   } catch (adminEmailErr: unknown) {
     const message =
@@ -921,6 +936,7 @@ async function notifyPaidPaymentIntent(
     },
     orderDate: order.created_at || new Date().toISOString(),
     lineItems: mapOrderItems(items, totalAmount),
+    fridayDeliveryDate: fridayDeliveryCopy(address, meta),
     pdfBytes,
   });
   await dispatchAdminPoEmail({
@@ -936,6 +952,7 @@ async function notifyPaidPaymentIntent(
     itemCount: items.length || 1,
     itemsSummary,
     orderDate: order.created_at || new Date().toISOString(),
+    fridayDeliveryDate: fridayDeliveryCopy(address, meta),
   });
 }
 

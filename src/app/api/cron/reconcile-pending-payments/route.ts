@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
+import { releaseCheckoutHolds } from "@/lib/payments/checkout-holds";
 import { cronAuthorized, planAbandonedCleanup } from "@/lib/payments/intent-attempt";
 import { createServiceRoleClient, isServiceRoleConfigured } from "@/lib/supabase/admin";
 
@@ -76,6 +77,7 @@ export async function GET(request: NextRequest) {
       }
     }
     if (action === "cancel_then_delete" || action === "delete") {
+      await releaseCheckoutHolds(admin, String(row.id));
       const removed = await admin.from("orders").delete().eq("id", row.id).eq("status", "pending_payment");
       if (!removed.error) deleted += 1;
     }

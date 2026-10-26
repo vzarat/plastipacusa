@@ -36,8 +36,8 @@ export function paymentMismatchReason(input: {
 }
 
 /**
- * products.stock_quantity is full pallets. The quantity argument is the line's pallet count.
- * A loose box or a half pallet passes 0 and is not a shortage. NULL stock is untracked.
+ * products.stock_quantity is full pallets, including a fraction for loose boxes and half pallets.
+ * NULL stock is untracked.
  * A shortage keeps status paid and sets payment_review. Status payment_review is only for an unpaid order.
  */
 /** Null stock is not tracked. A short count is flagged and is not decremented below zero. */
