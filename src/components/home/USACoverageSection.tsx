@@ -23,6 +23,7 @@ import {
   RGV_BADGE,
   RGV_DESCRIPTION,
 } from "@/components/common/CoverageStateTooltip";
+import { CarrierPartners } from "@/components/home/CarrierPartners";
 
 const HUB_FILL = "#2563EB";
 const HUB_HOVER = "#1D4ED8";
@@ -243,6 +244,7 @@ export function USACoverageSection() {
           </aside>
         </div>
       </div>
+      <CarrierPartners />
     </section>
   );
 }

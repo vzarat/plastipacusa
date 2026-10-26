@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, Factory, ArrowRight, Truck, PhoneCall, Target } from "lucide-react";
+import { CarrierPartners } from "@/components/home/CarrierPartners";
 
 const USACoverageMap = dynamic(
   () =>
@@ -73,6 +74,9 @@ export default function AboutPage() {
 
         {/* Interactive USA Coverage Map */}
         <USACoverageMap />
+        <div className="-mx-4 sm:-mx-6 lg:-mx-8">
+          <CarrierPartners />
+        </div>
 
         {/* Mission & Values Callout Box */}
         <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 via-sky-50/40 to-blue-50/30 p-8 sm:p-12 space-y-6">
