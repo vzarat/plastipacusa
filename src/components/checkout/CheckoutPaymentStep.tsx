@@ -10,7 +10,11 @@ import { useCartStore } from "@/lib/store/useCartStore";
 import { countCartBoxes } from "@/lib/shipping-method";
 import { labelForShippingMethod } from "@/lib/shippingRules";
 import { formatCurrency } from "@/lib/utils";
-import { formatFridayDeliveryDate, nextFridayDeliveryIso } from "@/lib/shipping/friday-delivery";
+import {
+  formatFridayDeliveryDate,
+  fridayTransitLabel,
+  resolveFridayDeliveryIso,
+} from "@/lib/shipping/friday-delivery";
 import type { CheckoutShippingAddress } from "@/lib/shipping-address";
 
 interface CheckoutPaymentStepProps {
@@ -54,7 +58,7 @@ export function CheckoutPaymentStep({
     );
   const fridayIso =
     selectedShippingOption?.id === "rgv-local" || selectedShippingOption?.id === "houston-friday"
-      ? nextFridayDeliveryIso()
+      ? resolveFridayDeliveryIso(selectedShippingOption.deliveryDate)
       : null;
   const fridayDelivery = fridayIso ? formatFridayDeliveryDate(fridayIso) : null;
   return (
@@ -115,9 +119,12 @@ export function CheckoutPaymentStep({
           <p className="mt-2 text-sm font-bold text-slate-900">
             {shippingLabel}
           </p>
-          {fridayDelivery ? (
+          {fridayDelivery && fridayIso ? (
             <p className="mt-1 text-sm font-semibold text-emerald-800">
               {fridayDelivery}
+              <span className="mt-0.5 block text-xs font-semibold text-slate-600">
+                {fridayTransitLabel(fridayIso)}
+              </span>
             </p>
           ) : null}
           <p className="mt-1 text-sm text-slate-600">

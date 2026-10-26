@@ -2,14 +2,27 @@
 
 import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
 import { scheduleFromTransitDays } from "@/lib/shipping/dates";
+import {
+  formatFridayDeliveryDate,
+  fridayTransitLabel,
+  resolveFridayDeliveryIso,
+} from "@/lib/shipping/friday-delivery";
 import { SHIP_FROM_LOCATION } from "@/lib/shipping-method";
 
 /** Read-only ship-from and delivery window for the order summary. */
 export function ShipmentOriginSummary() {
   const { selectedShippingOption } = useCheckoutState();
-  const schedule = selectedShippingOption
-    ? scheduleFromTransitDays(selectedShippingOption.transitDays)
-    : null;
+  const fridayIso =
+    selectedShippingOption?.id === "rgv-local" || selectedShippingOption?.id === "houston-friday"
+      ? resolveFridayDeliveryIso(selectedShippingOption.deliveryDate)
+      : null;
+  const schedule =
+    !fridayIso && selectedShippingOption
+      ? scheduleFromTransitDays(selectedShippingOption.transitDays)
+      : null;
+  const deliveryLabel = fridayIso
+    ? `${formatFridayDeliveryDate(fridayIso)} · ${fridayTransitLabel(fridayIso)}`
+    : schedule?.deliveryLabel;
 
   return (
     <div className="mt-6 rounded-2xl border border-slate-200 bg-white px-4 py-3.5">
@@ -24,7 +37,7 @@ export function ShipmentOriginSummary() {
         </div>
         <div>
           <dt className="font-semibold text-slate-900">
-            Estimated Delivery: {schedule?.deliveryLabel || "Select a delivery method"}
+            Estimated Delivery: {deliveryLabel || "Select a delivery method"}
           </dt>
         </div>
       </dl>

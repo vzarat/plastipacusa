@@ -26,8 +26,8 @@ import {
 import { createServiceRoleClient, isServiceRoleConfigured } from "@/lib/supabase/admin";
 import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
 import {
-  FRIDAY_FREE_DELIVERY_LABEL,
-  nextFridayDeliveryIso,
+  fridaySelectionFields,
+  resolveFridayDeliveryIso,
 } from "@/lib/shipping/friday-delivery";
 import { resolveShippingCharge } from "@/lib/shipping/quote-cache";
 import { evalShippingEligibility, RGV_FREE_DELIVERY_LABEL } from "@/lib/shippingRules";
@@ -52,6 +52,7 @@ export interface CreatePaymentIntentOptions {
   shippingAmount?: number;
   couponCode?: string;
   shippingQuoteId?: string;
+  fridayDeliveryDate?: string;
   shippingMethod?: string;
   shippingAddressId?: string;
   taxExemptRequested?: boolean;
@@ -501,10 +502,12 @@ export async function createPaymentIntent(
 
     const fridayDeliveryDate =
       shippingOption?.id === "rgv-local" || shippingOption?.id === "houston-friday"
-        ? nextFridayDeliveryIso()
+        ? resolveFridayDeliveryIso(options.fridayDeliveryDate)
         : null;
     if (fridayDeliveryDate && shippingOption) {
-      shippingOption.serviceName = FRIDAY_FREE_DELIVERY_LABEL;
+      const scheduled = fridaySelectionFields(fridayDeliveryDate);
+      shippingOption.serviceName = scheduled.serviceName;
+      shippingOption.transitDays = scheduled.transitDays;
     }
     const fingerprint = [
       requested.map((line) => `${line.sku}:${line.quantity}`).join(","),

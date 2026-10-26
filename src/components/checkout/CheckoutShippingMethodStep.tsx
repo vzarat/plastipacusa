@@ -23,9 +23,16 @@ import type { ShippingOption } from "@/lib/shipping/types";
 import { evalShippingEligibility } from "@/lib/shippingRules";
 import {
   formatFridayDeliveryDate,
-  FRIDAY_FREE_DELIVERY_LABEL,
-  nextFridayDeliveryIso,
+  fridayDeliverySlots,
+  fridaySelectionFields,
+  fridayTransitLabel,
+  resolveFridayDeliveryIso,
 } from "@/lib/shipping/friday-delivery";
+
+function withFridaySelection(option: ShippingOption, requested?: string | null): ShippingOption {
+  if (option.id !== "rgv-local" && option.id !== "houston-friday") return option;
+  return { ...option, ...fridaySelectionFields(resolveFridayDeliveryIso(requested ?? option.deliveryDate)) };
+}
 
 function shippingQuoteLines(
   items: Array<{
@@ -330,8 +337,9 @@ export function CheckoutShippingMethodStep({
         setMessage(payload.message || null);
         const cheapest = [...quoted].sort((a, b) => a.price - b.price)[0] || null;
         const selected = local || cheapest;
-        setSelectedShippingOption(selected);
-        setDeliveryMethod(selected ? deliveryMethodForOption(selected) : "ground");
+        const stamped = selected ? withFridaySelection(selected) : null;
+        setSelectedShippingOption(stamped);
+        setDeliveryMethod(stamped ? deliveryMethodForOption(stamped) : "ground");
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") return;
         if (requestId !== requestRef.current) return;
@@ -413,7 +421,7 @@ export function CheckoutShippingMethodStep({
       }
       autoCountRef.current = manual ? 0 : autoCountRef.current + 1;
       if (manual) requoteLockRef.current = null;
-      setSelectedShippingOption(next);
+      setSelectedShippingOption(withFridaySelection(next, selected?.deliveryDate));
       setDeliveryMethod(deliveryMethodForOption(next));
       setPriceUpdated(decision.priceUpdated ? next.price : null);
     } catch (error) {
@@ -603,17 +611,15 @@ export function CheckoutShippingMethodStep({
           <div role="radiogroup" aria-label="Delivery method" className="space-y-3">
             {cards.visible.map((method) => {
               const selected = selectedShippingOption?.id === method.id;
-              const scheduledFriday =
-                method.id === "rgv-local" || method.id === "houston-friday"
-                  ? nextFridayDeliveryIso()
-                  : null;
-              const methodForSelection = scheduledFriday
-                ? {
-                    ...method,
-                    serviceName: FRIDAY_FREE_DELIVERY_LABEL,
-                    deliveryDate: scheduledFriday,
-                    description: `Plastipac fleet delivery on ${formatFridayDeliveryDate(scheduledFriday)}.`,
-                  }
+              const fridaySlots =
+                method.id === "rgv-local" || method.id === "houston-friday" ? fridayDeliverySlots() : null;
+              const chosenFriday = fridaySlots
+                ? resolveFridayDeliveryIso(
+                    selected ? selectedShippingOption?.deliveryDate : fridaySlots[0]
+                  )
+                : null;
+              const methodForSelection = chosenFriday
+                ? { ...method, ...fridaySelectionFields(chosenFriday) }
                 : method;
               const title = methodForSelection.carrierName || methodForSelection.serviceName;
               return (
@@ -685,27 +691,40 @@ export function CheckoutShippingMethodStep({
                       </span>
                     </span>
                     <span className="mt-1 block text-xs text-slate-500">{methodForSelection.description}</span>
-                    {scheduledFriday ? (
-                      <label className="mt-2 block" onClick={(event) => event.stopPropagation()}>
+                    {fridaySlots && chosenFriday ? (
+                      <label
+                        className="mt-2 block"
+                        onClick={(event) => event.stopPropagation()}
+                        onMouseDown={(event) => event.stopPropagation()}
+                      >
                         <span className="block text-[10px] font-bold uppercase tracking-wide text-emerald-800">
                           Delivery date
                         </span>
                         <select
                           aria-label="Friday delivery date"
-                          value={scheduledFriday}
-                          onChange={() => undefined}
+                          value={chosenFriday}
+                          onChange={(event) => {
+                            event.stopPropagation();
+                            const stamped = withFridaySelection(method, event.target.value);
+                            setSelectedShippingOption(stamped);
+                            setDeliveryMethod(deliveryMethodForOption(stamped));
+                          }}
                           className="mt-1 h-10 w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm font-semibold text-slate-900"
                         >
-                          <option value={scheduledFriday}>
-                            {formatFridayDeliveryDate(scheduledFriday)}
-                          </option>
+                          {fridaySlots.map((iso) => (
+                            <option key={iso} value={iso}>
+                              {formatFridayDeliveryDate(iso)}
+                            </option>
+                          ))}
                         </select>
                       </label>
                     ) : null}
                     <span className="mt-1 block text-xs font-semibold text-slate-600">
-                      {method.transitDays === 1
-                        ? "1 business day"
-                        : `${method.transitDays} business days`}
+                      {chosenFriday
+                        ? fridayTransitLabel(chosenFriday)
+                        : method.transitDays === 1
+                          ? "1 business day"
+                          : `${method.transitDays} business days`}
                     </span>
                   </span>
                 </label>

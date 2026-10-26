@@ -63,6 +63,56 @@ export function nextFridayDeliveryIso(now = new Date()): string {
   return friday.toISOString().slice(0, 10);
 }
 
+function addIsoDays(iso: string, days: number): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!match) return iso;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]) + days, 12));
+  return date.toISOString().slice(0, 10);
+}
+
+/** The next two Fridays the fleet can deliver. The calendar day is America/Chicago. */
+export function fridayDeliverySlots(now = new Date()): [string, string] {
+  const first = nextFridayDeliveryIso(now);
+  return [first, addIsoDays(first, 7)];
+}
+
+/** Keep a customer choice only when it is one of the two open Fridays. */
+export function resolveFridayDeliveryIso(requested: unknown, now = new Date()): string {
+  const slots = fridayDeliverySlots(now);
+  const iso = readFridayDeliveryIso(requested);
+  return iso && slots.includes(iso) ? iso : slots[0];
+}
+
+/** Business days after the Chicago order date, through the selected Friday. */
+export function businessDaysUntilDelivery(iso: string, now = new Date()): number {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!match) return 0;
+  const start = chicagoCalendar(now);
+  const startUtc = Date.UTC(start.year, start.month - 1, start.day);
+  const endUtc = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  let count = 0;
+  for (let cursor = startUtc + 86_400_000; cursor <= endUtc; cursor += 86_400_000) {
+    const weekday = new Date(cursor).getUTCDay();
+    if (weekday !== 0 && weekday !== 6) count += 1;
+  }
+  return count;
+}
+
+export function fridayTransitLabel(iso: string, now = new Date()): string {
+  const days = businessDaysUntilDelivery(iso, now);
+  const noun = days === 1 ? "business day" : "business days";
+  return `${days} ${noun} until delivery`;
+}
+
+export function fridaySelectionFields(iso: string, now = new Date()) {
+  return {
+    serviceName: FRIDAY_FREE_DELIVERY_LABEL,
+    deliveryDate: iso,
+    description: `Plastipac fleet delivery on ${formatFridayDeliveryDate(iso)}.`,
+    transitDays: businessDaysUntilDelivery(iso, now),
+  };
+}
+
 export function formatFridayDeliveryDate(iso: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   if (!match) return iso;

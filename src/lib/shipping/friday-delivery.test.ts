@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  businessDaysUntilDelivery,
   formatFridayDeliveryDate,
+  fridayDeliverySlots,
   fridayFreeDeliveryRegion,
+  fridayTransitLabel,
   nextFridayDeliveryIso,
+  resolveFridayDeliveryIso,
 } from "./friday-delivery";
 
 describe("Friday free delivery", () => {
@@ -36,5 +40,20 @@ describe("Friday free delivery", () => {
     assert.equal(nextFridayDeliveryIso(new Date("2026-10-31T17:00:00Z")), "2026-11-06");
     assert.equal(nextFridayDeliveryIso(new Date("2026-11-01T18:00:00Z")), "2026-11-06");
     assert.equal(formatFridayDeliveryDate("2026-11-06"), "Friday, November 6, 2026");
+  });
+
+  it("offers the next two Fridays and counts business days until the selected one", () => {
+    const monday = new Date("2026-10-26T20:00:00Z");
+    assert.deepEqual(fridayDeliverySlots(monday), ["2026-10-30", "2026-11-06"]);
+    assert.equal(businessDaysUntilDelivery("2026-10-30", monday), 4);
+    assert.equal(businessDaysUntilDelivery("2026-11-06", monday), 9);
+    assert.equal(fridayTransitLabel("2026-10-30", monday), "4 business days until delivery");
+
+    const thursday = new Date("2026-10-29T15:00:00Z");
+    assert.deepEqual(fridayDeliverySlots(thursday), ["2026-11-06", "2026-11-13"]);
+    assert.equal(businessDaysUntilDelivery("2026-11-06", thursday), 6);
+    assert.equal(resolveFridayDeliveryIso("2026-10-30", thursday), "2026-11-06");
+    assert.equal(resolveFridayDeliveryIso("2026-11-13", thursday), "2026-11-13");
+    assert.equal(resolveFridayDeliveryIso("2026-12-25", thursday), "2026-11-06");
   });
 });

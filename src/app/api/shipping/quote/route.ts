@@ -4,11 +4,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { getWarpConfig, shippingDebugVisible } from "@/lib/shipping/config";
 import { buildQuoteFailure, shippingRequestId } from "@/lib/shipping/diagnostics";
 import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
-import {
-  formatFridayDeliveryDate,
-  FRIDAY_FREE_DELIVERY_LABEL,
-  nextFridayDeliveryIso,
-} from "@/lib/shipping/friday-delivery";
+import { fridaySelectionFields, nextFridayDeliveryIso } from "@/lib/shipping/friday-delivery";
 import { evalShippingEligibility } from "@/lib/shippingRules";
 import {
   fetchLtlMarketOptions,
@@ -76,18 +72,14 @@ function zipCode(value: unknown): string | null {
 }
 
 function scheduledFridayOption(id: "houston-friday" | "rgv-local", zip: string): ShippingOption {
-  const deliveryDate = nextFridayDeliveryIso();
   return {
     id,
     provider: "plastipac",
     mode: "local",
-    serviceName: FRIDAY_FREE_DELIVERY_LABEL,
-    description: `Plastipac fleet delivery on ${formatFridayDeliveryDate(deliveryDate)}.`,
     price: 0,
-    transitDays: 1,
     expiresAt: null,
     destinationZip: zip,
-    deliveryDate,
+    ...fridaySelectionFields(nextFridayDeliveryIso()),
   };
 }
 
