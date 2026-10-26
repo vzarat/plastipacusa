@@ -111,6 +111,11 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "Plastipac",
   },
+  verification: {
+    other: {
+      "facebook-domain-verification": "6acvmeypgj4fmj6048ztrj86o121ou",
+    },
+  },
 };
 
 export const viewport: Viewport = {

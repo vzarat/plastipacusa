@@ -1,5 +1,4 @@
 import Image from "next/image";
-import BorderGlow from "@/components/ui/BorderGlow";
 import DriftWall from "@/components/ui/DriftWall";
 
 const CARRIER_LOGO_BASE =
@@ -69,41 +68,22 @@ export function CarrierPartners() {
           />
         </div>
 
-        <div className="lg:hidden">
-          <BorderGlow
-            className="w-full"
-            edgeSensitivity={30}
-            glowColor="40 80 80"
-            backgroundColor="#f8fafc"
-            borderRadius={28}
-            glowRadius={32}
-            glowIntensity={1}
-            coneSpread={25}
-            animated={false}
-            colors={["#c084fc", "#f472b6", "#38bdf8"]}
-          >
-          <ul className="grid w-full grid-cols-2 gap-3 p-4 sm:grid-cols-3 sm:p-5">
-            {CARRIER_PARTNERS.map((carrier, index) => (
-              <li
-                key={carrier.name}
-                className="animate-carrier-logo-in"
-                style={{ animationDelay: `${index * 70}ms` }}
-              >
-                <div className="flex h-20 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                  <Image
-                    src={carrier.src}
-                    alt={`${carrier.name} logo`}
-                    width={160}
-                    height={40}
-                    sizes="160px"
-                    className="h-10 w-auto max-w-full object-contain"
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
-          </BorderGlow>
-        </div>
+        <ul className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 lg:hidden">
+          {CARRIER_PARTNERS.map((carrier) => (
+            <li key={carrier.name}>
+              <div className="flex h-20 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                <Image
+                  src={carrier.src}
+                  alt={`${carrier.name} logo`}
+                  width={160}
+                  height={40}
+                  sizes="160px"
+                  className="h-10 w-auto max-w-full object-contain"
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );
