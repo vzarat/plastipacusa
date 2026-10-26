@@ -26,6 +26,10 @@ import {
 } from "@/lib/pricing";
 import { palletAvailabilityLabel } from "@/lib/pallet-stock";
 import { useCartStore } from "@/lib/store/useCartStore";
+function isolateCardAction(event: React.MouseEvent | React.TouchEvent) {
+  event.stopPropagation();
+}
+
 interface ProductCardProps {
   product: ProductWithVariants;
   priority?: boolean;
@@ -240,6 +244,15 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
     comparePrice !== null &&
     comparePrice > primaryPrice;
   const productHref = `/products/${product?.slug || "stretch-film-18-x-60-ga-x-1000ft"}`;
+  const openProduct = () => {
+    router.push(productHref);
+  };
+  const onCardKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.target !== event.currentTarget) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    openProduct();
+  };
   const statusBadge = isSoldOut ? "SOLD OUT" : showCompare ? "HOT DEAL" : null;
 
   const volumeTierLabel =
@@ -253,7 +266,13 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
 
   return (
     <>
-    <article className="flex w-full gap-3 bg-white py-3 md:hidden">
+    <article
+      role="link"
+      tabIndex={0}
+      onClick={openProduct}
+      onKeyDown={onCardKeyDown}
+      className="flex w-full cursor-pointer gap-3 bg-white py-3 transition-colors duration-200 hover:bg-slate-50 md:hidden"
+    >
       <div className="relative w-[35%] shrink-0">
         <div className="relative aspect-square overflow-hidden bg-slate-50">
           <Image
@@ -276,7 +295,9 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
       </div>
       <div className="flex min-w-0 w-[65%] flex-col">
         <h3 className="line-clamp-2 text-sm font-bold leading-snug text-slate-900">
-          <Link href={productHref}>{title}</Link>
+          <Link href={productHref} onClick={isolateCardAction}>
+            {title}
+          </Link>
         </h3>
         {specLine && (
           <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">
@@ -314,7 +335,11 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           ) : handQuote?.fullPallet ? (
             <button
               type="button"
-              onClick={() => addFullPallet(false)}
+              onClick={(event) => {
+                isolateCardAction(event);
+                addFullPallet(false);
+              }}
+              onTouchEnd={isolateCardAction}
               className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-bold text-white active:scale-95"
             >
               Add
@@ -322,6 +347,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           ) : (
             <Link
               href={productHref}
+              onClick={isolateCardAction}
               className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-bold text-white active:scale-95"
             >
               Add
@@ -330,7 +356,13 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         </div>
       </div>
     </article>
-    <div className="group hidden h-full flex-col justify-between overflow-hidden rounded-3xl border border-slate-200/90 bg-white transition-all duration-300 hover:border-sky-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-500/10 card-hover-effect md:flex">
+    <div
+      role="link"
+      tabIndex={0}
+      onClick={openProduct}
+      onKeyDown={onCardKeyDown}
+      className="group hidden h-full cursor-pointer flex-col justify-between overflow-hidden rounded-3xl border border-slate-200/90 bg-white transition-all duration-300 hover:border-sky-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-500/10 card-hover-effect md:flex"
+    >
       <div>
         {/* 1. Clean Product Image Area (Completely free of floating dark pills and text overlays) */}
         <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden border-b border-slate-100 bg-slate-50/50 md:aspect-[4/3]">
@@ -393,7 +425,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
                 : "FORCE • Industrial Cast Series"}
             </span>
             <h3 className={`mt-0 line-clamp-2 text-xs font-extrabold leading-snug text-slate-900 transition-colors md:mt-1 md:min-h-[3rem] md:text-base ${catStyles.hoverTitleColor}`}>
-              <Link href={`/products/${product?.slug || "stretch-film-18-x-60-ga-x-1000ft"}`}>
+              <Link href={productHref} onClick={isolateCardAction}>
                 {title}
               </Link>
             </h3>
@@ -474,6 +506,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           <button
             type="button"
             disabled
+            onClick={isolateCardAction}
             className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-slate-200 px-3 py-2 text-xs font-extrabold text-slate-500 md:px-4 md:py-3 md:text-sm"
           >
             {t("products.soldOut")}
@@ -482,14 +515,22 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           <>
             <button
               type="button"
-              onClick={() => addFullPallet(false)}
+              onClick={(event) => {
+                isolateCardAction(event);
+                addFullPallet(false);
+              }}
+              onTouchEnd={isolateCardAction}
               className="flex w-full items-center justify-center rounded-xl bg-sky-600 px-3 py-2 text-xs font-bold text-white active:scale-95 md:hidden"
             >
               Add
             </button>
             <button
               type="button"
-              onClick={() => addFullPallet(true)}
+              onClick={(event) => {
+                isolateCardAction(event);
+                addFullPallet(true);
+              }}
+              onTouchEnd={isolateCardAction}
               className="group/btn hidden w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 px-4 py-3 text-sm font-extrabold text-white shadow-md shadow-sky-500/20 hover:opacity-95 active:scale-[0.99] md:flex"
             >
               <ShoppingCart className="h-4 w-4 text-white" />
@@ -500,6 +541,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         ) : (
           <Link
             href={productHref}
+            onClick={isolateCardAction}
             className="group/btn flex w-full items-center justify-center gap-1.5 rounded-xl bg-sky-600 px-3 py-2 text-xs font-bold text-white transition-transform active:scale-95 md:gap-2 md:bg-gradient-to-r md:from-sky-500 md:via-sky-600 md:to-blue-700 md:px-4 md:py-3 md:text-sm md:font-extrabold md:shadow-md md:shadow-sky-500/20 md:hover:opacity-95 md:active:scale-[0.99]"
           >
             <ShoppingCart className="hidden h-4 w-4 text-white md:block" />
