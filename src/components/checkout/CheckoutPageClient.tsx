@@ -39,6 +39,7 @@ import {
 } from "@/lib/shipping-address";
 import { blocksCardStep } from "@/lib/shipping/quote-window";
 import { trackInitiateCheckout } from "@/lib/meta-pixel";
+import { applyMetaCheckoutQuery } from "@/lib/apply-meta-checkout";
 
 const EXPIRED_QUOTE = "This shipping quote expired. Review the updated price before paying.";
 
@@ -77,6 +78,7 @@ function CheckoutPageInner({ taxExempt }: { taxExempt: boolean }) {
   );
   const emptyCartRedirected = useRef(false);
   const checkoutTracked = useRef(false);
+  const metaCheckoutStarted = useRef(false);
   const {
     selectedAddress,
     setSelectedAddress,
@@ -131,7 +133,18 @@ function CheckoutPageInner({ taxExempt }: { taxExempt: boolean }) {
   }, [cartReady, items, getSubtotal]);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const products = params.get("products");
+    if (!products || metaCheckoutStarted.current) return;
+    metaCheckoutStarted.current = true;
+    void applyMetaCheckoutQuery(products, params.get("coupon")).then((ok) => {
+      router.replace(ok ? "/checkout" : "/catalog");
+    });
+  }, [router]);
+
+  useEffect(() => {
     if (!cartReady || authChecking || !isAuthenticated) return;
+    if (new URLSearchParams(window.location.search).get("products")) return;
     if (items.length > 0 || emptyCartRedirected.current) return;
     emptyCartRedirected.current = true;
     toast("Your cart is empty.");

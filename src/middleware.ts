@@ -46,6 +46,15 @@ export async function middleware(request: NextRequest) {
     pathname === "/checkout" ||
     pathname.startsWith("/checkout/");
 
+  if (pathname === "/checkout" && request.nextUrl.searchParams.has("products")) {
+    const next = new URL("/meta-checkout", request.url);
+    const products = request.nextUrl.searchParams.get("products");
+    const coupon = request.nextUrl.searchParams.get("coupon");
+    if (products) next.searchParams.set("products", products);
+    if (coupon) next.searchParams.set("coupon", coupon);
+    return NextResponse.redirect(next);
+  }
+
   if (isProtectedRoute && (error || !user)) {
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("redirect", pathname + search);
