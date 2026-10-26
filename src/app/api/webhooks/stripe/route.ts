@@ -25,7 +25,7 @@ import {
   verifyWebhookSignature,
 } from "@/lib/payments/settle-payment";
 import { runIdempotentSideEffect, stripeEventSideEffect } from "@/lib/payments/webhook-events";
-import { formatFridayDeliveryDate, readFridayDeliveryIso } from "@/lib/shipping/friday-delivery";
+import { formatFridayDeliveryDate, fridayDeliveryTitleForAddress, readFridayDeliveryIso } from "@/lib/shipping/friday-delivery";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -473,6 +473,7 @@ async function dispatchAdminPoEmail(payload: {
   itemsSummary?: string;
   orderDate?: string;
   fridayDeliveryDate?: string;
+  fridayDeliveryService?: string;
 }) {
   try {
     const result = await notifyAdminPurchaseOrder(payload);
@@ -699,6 +700,7 @@ async function handleCheckoutSessionCompleted(
       ).toISOString(),
       lineItems: emailLineItems,
       fridayDeliveryDate: fridayDeliveryCopy(order.shipping_address, session.metadata),
+      fridayDeliveryService: fridayDeliveryTitleForAddress(structuredShipping) || undefined,
       pdfBytes,
     });
   } catch (emailErr: unknown) {
@@ -727,6 +729,8 @@ async function handleCheckoutSessionCompleted(
         (session.created || Date.now() / 1000) * 1000
       ).toISOString(),
       fridayDeliveryDate: fridayDeliveryCopy(order.shipping_address, session.metadata),
+      fridayDeliveryService:
+        fridayDeliveryTitleForAddress(structuredShipping) || undefined,
     });
   } catch (adminEmailErr: unknown) {
     const message =
@@ -938,6 +942,12 @@ async function notifyPaidPaymentIntent(
     orderDate: order.created_at || new Date().toISOString(),
     lineItems: mapOrderItems(items, totalAmount),
     fridayDeliveryDate: fridayDeliveryCopy(address, meta),
+    fridayDeliveryService:
+      fridayDeliveryTitleForAddress({
+        city: String(address.city || ""),
+        state: String(address.state || ""),
+        postalCode: String(address.postal_code || ""),
+      }) || undefined,
     pdfBytes,
   });
   await dispatchAdminPoEmail({
@@ -954,6 +964,12 @@ async function notifyPaidPaymentIntent(
     itemsSummary,
     orderDate: order.created_at || new Date().toISOString(),
     fridayDeliveryDate: fridayDeliveryCopy(address, meta),
+    fridayDeliveryService:
+      fridayDeliveryTitleForAddress({
+        city: String(address.city || ""),
+        state: String(address.state || ""),
+        postalCode: String(address.postal_code || ""),
+      }) || undefined,
   });
 }
 

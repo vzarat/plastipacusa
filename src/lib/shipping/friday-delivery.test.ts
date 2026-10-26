@@ -4,13 +4,28 @@ import {
   businessDaysUntilDelivery,
   formatFridayDeliveryDate,
   fridayDeliverySlots,
+  fridayDeliveryTitle,
   fridayFreeDeliveryRegion,
+  fridayRegionFromOptionId,
+  fridayRegionTag,
   fridayTransitLabel,
   nextFridayDeliveryIso,
   resolveFridayDeliveryIso,
 } from "./friday-delivery";
 
 describe("Friday free delivery", () => {
+  it("names Houston and RGV delivery separately", () => {
+    assert.equal(
+      fridayDeliveryTitle("houston"),
+      "Houston Friday Free Delivery (Scheduled)"
+    );
+    assert.equal(fridayDeliveryTitle("rgv"), "RGV Friday Free Delivery (Scheduled)");
+    assert.equal(fridayRegionTag("houston"), "Houston");
+    assert.equal(fridayRegionTag("rgv"), "RGV");
+    assert.equal(fridayRegionFromOptionId("houston-friday"), "houston");
+    assert.equal(fridayRegionFromOptionId("rgv-local"), "rgv");
+  });
+
   it("detects Houston and the Rio Grande Valley", () => {
     assert.equal(
       fridayFreeDeliveryRegion({ city: "Houston", state: "TX", postalCode: "77002" }),

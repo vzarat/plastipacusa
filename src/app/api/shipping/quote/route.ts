@@ -72,6 +72,7 @@ function zipCode(value: unknown): string | null {
 }
 
 function scheduledFridayOption(id: "houston-friday" | "rgv-local", zip: string): ShippingOption {
+  const region = id === "houston-friday" ? "houston" : "rgv";
   return {
     id,
     provider: "plastipac",
@@ -79,7 +80,7 @@ function scheduledFridayOption(id: "houston-friday" | "rgv-local", zip: string):
     price: 0,
     expiresAt: null,
     destinationZip: zip,
-    ...fridaySelectionFields(nextFridayDeliveryIso()),
+    ...fridaySelectionFields(nextFridayDeliveryIso(), region),
   };
 }
 

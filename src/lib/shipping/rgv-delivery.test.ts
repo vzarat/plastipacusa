@@ -44,19 +44,48 @@ describe("free RGV delivery", () => {
 
   it("normalizes Texas and city spelling", () => {
     const spelled = freeRgvDelivery({
-      postalCode: "00000",
-      city: "  PEÑITAS  ",
+      postalCode: "78516",
+      city: "  ALAMO  ",
       state: "Texas",
       rolls: 64,
     });
     const abbreviated = freeRgvDelivery({
-      postalCode: "78572",
+      postalCode: "78501",
       city: "mcallen",
       state: " tx ",
       rolls: 64,
     });
     assert.equal(spelled.eligible, true);
     assert.equal(abbreviated.eligible, true);
+  });
+
+  it("accepts only the seven active RGV cities", () => {
+    for (const city of ["Alamo", "McAllen", "Mission", "Hidalgo", "Edinburg", "Mercedes", "Weslaco"]) {
+      assert.equal(
+        freeRgvDelivery({ postalCode: "78501", city, state: "TX", rolls: 64 }).eligible,
+        true,
+        city
+      );
+    }
+  });
+
+  it("does not treat Brownsville, Harlingen, or other Valley ZIPs as RGV delivery", () => {
+    assert.equal(
+      freeRgvDelivery({ postalCode: "78521", city: "Brownsville", state: "TX", rolls: 64 }).inValley,
+      false
+    );
+    assert.equal(
+      freeRgvDelivery({ postalCode: "78550", city: "Harlingen", state: "TX", rolls: 64 }).eligible,
+      false
+    );
+    assert.equal(
+      freeRgvDelivery({ postalCode: "78577", city: "Pharr", state: "TX", rolls: 64 }).inValley,
+      false
+    );
+    assert.equal(
+      freeRgvDelivery({ postalCode: "78572", city: "Penitas", state: "Texas", rolls: 64 }).eligible,
+      false
+    );
   });
 
   it("includes a Texas 78572 shipment of 64 rolls", () => {

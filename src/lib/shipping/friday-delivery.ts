@@ -1,6 +1,27 @@
 import { isHoustonArea, isRioGrandeValley } from "@/lib/shipping-method";
 
-export const FRIDAY_FREE_DELIVERY_LABEL = "Houston / RGV Friday Free Delivery (Scheduled)";
+export type FridayDeliveryRegion = "houston" | "rgv";
+
+export function fridayDeliveryTitle(region: FridayDeliveryRegion): string {
+  return region === "houston"
+    ? "Houston Friday Free Delivery (Scheduled)"
+    : "RGV Friday Free Delivery (Scheduled)";
+}
+
+export function fridayRegionTag(region: FridayDeliveryRegion): "Houston" | "RGV" {
+  return region === "houston" ? "Houston" : "RGV";
+}
+
+export function fridayRegionFromOptionId(id: string | null | undefined): FridayDeliveryRegion | null {
+  if (id === "houston-friday") return "houston";
+  if (id === "rgv-local") return "rgv";
+  return null;
+}
+
+export function fridayDeliveryTitleForAddress(address: FridayDeliveryAddress): string | null {
+  const region = fridayFreeDeliveryRegion(address);
+  return region ? fridayDeliveryTitle(region) : null;
+}
 
 const WEEKDAY_INDEX: Record<string, number> = {
   Sun: 0,
@@ -104,9 +125,13 @@ export function fridayTransitLabel(iso: string, now = new Date()): string {
   return `${days} ${noun} until delivery`;
 }
 
-export function fridaySelectionFields(iso: string, now = new Date()) {
+export function fridaySelectionFields(
+  iso: string,
+  region: FridayDeliveryRegion,
+  now = new Date()
+) {
   return {
-    serviceName: FRIDAY_FREE_DELIVERY_LABEL,
+    serviceName: fridayDeliveryTitle(region),
     deliveryDate: iso,
     description: `Plastipac fleet delivery on ${formatFridayDeliveryDate(iso)}.`,
     transitDays: businessDaysUntilDelivery(iso, now),

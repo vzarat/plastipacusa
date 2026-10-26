@@ -24,14 +24,19 @@ import { evalShippingEligibility } from "@/lib/shippingRules";
 import {
   formatFridayDeliveryDate,
   fridayDeliverySlots,
+  fridayRegionFromOptionId,
   fridaySelectionFields,
   fridayTransitLabel,
   resolveFridayDeliveryIso,
 } from "@/lib/shipping/friday-delivery";
 
 function withFridaySelection(option: ShippingOption, requested?: string | null): ShippingOption {
-  if (option.id !== "rgv-local" && option.id !== "houston-friday") return option;
-  return { ...option, ...fridaySelectionFields(resolveFridayDeliveryIso(requested ?? option.deliveryDate)) };
+  const region = fridayRegionFromOptionId(option.id);
+  if (!region) return option;
+  return {
+    ...option,
+    ...fridaySelectionFields(resolveFridayDeliveryIso(requested ?? option.deliveryDate), region),
+  };
 }
 
 function shippingQuoteLines(
@@ -619,7 +624,7 @@ export function CheckoutShippingMethodStep({
                   )
                 : null;
               const methodForSelection = chosenFriday
-                ? { ...method, ...fridaySelectionFields(chosenFriday) }
+                ? withFridaySelection(method, chosenFriday)
                 : method;
               const title = methodForSelection.carrierName || methodForSelection.serviceName;
               return (

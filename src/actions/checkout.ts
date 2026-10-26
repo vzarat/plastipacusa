@@ -26,6 +26,8 @@ import {
 import { createServiceRoleClient, isServiceRoleConfigured } from "@/lib/supabase/admin";
 import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
 import {
+  fridayRegionFromOptionId,
+  fridayRegionTag,
   fridaySelectionFields,
   resolveFridayDeliveryIso,
 } from "@/lib/shipping/friday-delivery";
@@ -500,12 +502,12 @@ export async function createPaymentIntent(
       }
     }
 
-    const fridayDeliveryDate =
-      shippingOption?.id === "rgv-local" || shippingOption?.id === "houston-friday"
-        ? resolveFridayDeliveryIso(options.fridayDeliveryDate)
-        : null;
-    if (fridayDeliveryDate && shippingOption) {
-      const scheduled = fridaySelectionFields(fridayDeliveryDate);
+    const fridayRegion = fridayRegionFromOptionId(shippingOption?.id);
+    const fridayDeliveryDate = fridayRegion
+      ? resolveFridayDeliveryIso(options.fridayDeliveryDate)
+      : null;
+    if (fridayDeliveryDate && fridayRegion && shippingOption) {
+      const scheduled = fridaySelectionFields(fridayDeliveryDate, fridayRegion);
       shippingOption.serviceName = scheduled.serviceName;
       shippingOption.transitDays = scheduled.transitDays;
     }
@@ -529,6 +531,7 @@ export async function createPaymentIntent(
       email: customerEmail || null,
       checkout_fingerprint: fingerprint,
       friday_delivery_date: fridayDeliveryDate,
+      friday_delivery_region: fridayRegion ? fridayRegionTag(fridayRegion) : null,
     };
     const orderPayload: Record<string, unknown> = {
       user_id: userId,
@@ -751,6 +754,7 @@ export async function createPaymentIntent(
         shipping_cost: priced.shipping.toFixed(2),
         shipping_method: String(shippingOption?.serviceName || options.shippingMethod || "").slice(0, 80),
         friday_delivery_date: fridayDeliveryDate || "",
+        friday_delivery_region: fridayRegion ? fridayRegionTag(fridayRegion) : "",
         shipping_provider: String(shippingOption?.provider || "").slice(0, 40),
         shipping_mode: String(shippingOption?.mode || "").slice(0, 40),
         shipping_service: String(shippingOption?.serviceName || "").slice(0, 80),

@@ -239,6 +239,7 @@ export interface PurchaseOrderNotifyInput {
   itemsSummary?: string;
   orderDate?: string;
   fridayDeliveryDate?: string;
+  fridayDeliveryService?: string;
 }
 
 /**
@@ -274,6 +275,7 @@ export async function notifyAdminPurchaseOrder(
       ? `Shipping State: ${payload.shippingState}`
       : null,
     payload.shippingCity ? `Shipping City: ${payload.shippingCity}` : null,
+    payload.fridayDeliveryService || null,
     payload.fridayDeliveryDate ? `Friday delivery: ${payload.fridayDeliveryDate}` : null,
     payload.shippingAddressSummary || payload.shippingPhone
       ? [
@@ -321,6 +323,7 @@ export interface OrderConfirmationEmailInput {
   orderDate?: string;
   lineItems?: import("@/lib/order-confirmation-email").OrderConfirmationLineItem[];
   fridayDeliveryDate?: string;
+  fridayDeliveryService?: string;
   pdfBytes: Uint8Array;
 }
 
@@ -365,6 +368,7 @@ export async function sendOrderConfirmationEmail(
       orderDate: payload.orderDate,
       lineItems: payload.lineItems,
       fridayDeliveryDate: payload.fridayDeliveryDate,
+      fridayDeliveryService: payload.fridayDeliveryService,
     });
 
     const pdfFilename = `Order_${payload.orderId.replace(/[^a-zA-Z0-9._-]+/g, "-")}.pdf`;

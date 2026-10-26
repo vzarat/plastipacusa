@@ -18,7 +18,11 @@ import {
   generateInvoicePdf,
 } from "@/lib/invoice-pdf";
 import { fetchOrderConfirmationTemplate } from "@/lib/email-template-store";
-import { formatFridayDeliveryDate, readFridayDeliveryIso } from "@/lib/shipping/friday-delivery";
+import {
+  formatFridayDeliveryDate,
+  fridayDeliveryTitleForAddress,
+  readFridayDeliveryIso,
+} from "@/lib/shipping/friday-delivery";
 import { buildOrderConfirmationHtml } from "@/lib/order-confirmation-email";
 import { customerLineDescription } from "@/lib/catalog-sku";
 import { calculateOrderTotal, roundMoney } from "@/lib/sales-tax";
@@ -513,6 +517,13 @@ export async function createOrderFromCheckout(
         .join("\n");
       const fridayIso = readFridayDeliveryIso(shippingAddress.friday_delivery_date);
       const fridayDeliveryDate = fridayIso ? formatFridayDeliveryDate(fridayIso) : undefined;
+      const fridayDeliveryService = fridayDeliveryDate
+        ? fridayDeliveryTitleForAddress({
+            city: shippingCity,
+            state: shippingState,
+            postalCode: shippingAddress.postal_code,
+          }) || undefined
+        : undefined;
       const itemsSummary = orderItems
         .map(
           (item: { quantity: number; productName: string }) =>
@@ -541,6 +552,7 @@ export async function createOrderFromCheckout(
         },
         orderDate,
         fridayDeliveryDate,
+        fridayDeliveryService,
         lineItems: orderItems.map((item) => ({
           description: item.productName,
           quantity: item.quantity,
@@ -605,6 +617,7 @@ export async function createOrderFromCheckout(
               },
               orderDate,
               fridayDeliveryDate,
+              fridayDeliveryService,
               lineItems: orderItems.map((item) => ({
                 description: item.productName,
                 quantity: item.quantity,
@@ -636,6 +649,7 @@ export async function createOrderFromCheckout(
           itemsSummary,
           orderDate,
           fridayDeliveryDate,
+          fridayDeliveryService,
         }),
       ]);
     } catch (emailError) {
