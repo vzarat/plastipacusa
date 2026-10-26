@@ -646,7 +646,15 @@ export function CheckoutShippingMethodStep({
                     }}
                     className="mt-1 h-4 w-4 text-sky-600 focus:ring-sky-500"
                   />
-                  <CarrierLogo carrierKey={method.carrierKey} name={title} serviceLevel={method.serviceLevel} />
+                  <CarrierLogo
+                    carrierKey={
+                      method.id === "rgv-local" || method.id === "houston-friday"
+                        ? "plastipac"
+                        : method.carrierKey
+                    }
+                    name={title}
+                    serviceLevel={method.serviceLevel}
+                  />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-start justify-between gap-3">
                       <span>

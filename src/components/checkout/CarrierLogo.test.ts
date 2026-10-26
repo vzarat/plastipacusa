@@ -34,8 +34,20 @@ describe("carrier logo storage paths", () => {
       `${BASE}/${encodeURI("Saia_logo.svg")}`,
       `${BASE}/carrier.svg`,
     ]);
-    assert.deepEqual(carrierLogoSources(undefined, "Free Local Delivery (Plastipac Fleet)"), [
+    assert.deepEqual(carrierLogoSources(undefined, "Unknown Freight"), [
       `${BASE}/carrier.svg`,
     ]);
+  });
+
+  it("uses the Plastipac delivery mark for Houston and RGV Friday delivery", () => {
+    const plastipac = `${BASE}/${encodeURI("PLASTIPAC_DELIVERY.svg")}`;
+    assert.equal(
+      carrierLogoSources("plastipac", "Houston / RGV Friday Free Delivery (Scheduled)")[0],
+      plastipac
+    );
+    assert.equal(
+      carrierLogoSources(undefined, "Houston / RGV Friday Free Delivery (Scheduled)")[0],
+      plastipac
+    );
   });
 });

@@ -23,6 +23,7 @@ const CARRIER_LOGO_FILES: Record<string, string> = {
   southwestern: "southwest logo.gif",
   unis: "UNIS.jpg",
   vocar: "VOCAR.png",
+  plastipac: "PLASTIPAC_DELIVERY.svg",
   warp: "epub_Warp-logo_webp_png.webp",
   "warp-technology": "epub_Warp-logo_webp_png.webp",
   xpo: "XPO,_Inc_.svg",
@@ -59,6 +60,7 @@ export function carrierLogoSlug(carrierKey: string | undefined, name: string): s
   if (compact.includes("FORWARD")) return compact.includes("AIR") ? "forward-air" : "forward";
   if (compact.includes("SOUTHWEST")) return "southwestern";
   if (compact.includes("VOCAR")) return "vocar";
+  if (compact.includes("PLASTIPAC") || compact.includes("FRIDAY FREE DELIVERY")) return "plastipac";
   if (compact.includes("CCFS")) return "ccfs";
   if (compact.includes("UNIS")) return "unis";
   if (compact.includes("WARP")) return "warp";
@@ -106,7 +108,7 @@ export function CarrierLogo({
       <span
         aria-hidden
         title={name}
-        className="mt-0.5 flex h-9 w-14 shrink-0 items-center justify-center rounded-md bg-slate-100 text-[10px] font-black tracking-tight text-slate-700"
+        className="mt-0.5 flex h-11 w-16 shrink-0 items-center justify-center rounded-md bg-slate-100 text-[10px] font-black tracking-tight text-slate-700"
       >
         LTL
       </span>
@@ -116,12 +118,12 @@ export function CarrierLogo({
   return (
     <span
       title={name}
-      className="relative mt-0.5 flex h-9 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white px-1"
+      className="relative mt-0.5 flex h-11 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white px-1.5"
     >
       <img
         src={src}
         alt=""
-        className="h-7 w-12 object-contain"
+        className="h-8 w-14 object-contain"
         onError={() => setStep((current) => (current + 1 < sources.length ? current + 1 : sources.length))}
       />
       {economy ? (
