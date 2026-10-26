@@ -60,9 +60,10 @@ async function getProductWriteClient() {
 }
 
 function revalidateProductPaths(slug?: string) {
+  revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/admin/products");
-  revalidatePath("/products");
+  revalidatePath("/products", "layout");
   if (slug) revalidatePath(`/products/${slug}`);
 }
 
@@ -659,11 +660,20 @@ function formatProduct(raw: any): ProductWithVariants {
     palletDimensions: String(raw.pallet_dimensions || raw.palletDimensions || ""),
     pallet_dimensions: String(raw.pallet_dimensions || raw.palletDimensions || ""),
     partNumber: raw.part_number || raw.partNumber || null,
-    stockQuantity: trackedPalletStock(raw.stock_quantity ?? raw.stock_qty ?? raw.stockQuantity) ?? 0,
+    stockQuantity:
+      trackedPalletStock(raw.stock_quantity ?? raw.stock_qty ?? raw.stockQuantity) ?? undefined,
+    isAvailable:
+      raw.is_available === false || raw.isAvailable === false
+        ? false
+        : raw.is_available === true || raw.isAvailable === true
+          ? true
+          : undefined,
     isSoldOut:
       CATALOG_SOLD_OUT ||
       raw.is_sold_out === true ||
       raw.isSoldOut === true ||
+      raw.is_available === false ||
+      raw.isAvailable === false ||
       trackedPalletStock(raw.stock_quantity ?? raw.stock_qty ?? raw.stockQuantity) === 0,
     isActive: raw.is_active === undefined && raw.isActive === undefined ? true : Boolean(raw.is_active ?? raw.isActive),
     storefrontTitle: raw.storefront_title || raw.storefrontTitle || null,

@@ -21,6 +21,7 @@ import {
   isMachineFilm as detectMachineFilm,
   normalizeMachinePackageLabel,
   formatBoxRollLabel,
+  isCatalogInStock,
   unitLabelForProduct,
 } from "@/lib/products";
 import { handFilmTierSku } from "@/lib/hand-film-sku";
@@ -826,7 +827,11 @@ export function VariantSelector({
     setTierHint(null);
   };
 
-  const isSoldOut = product?.isSoldOut === true;
+  const isSoldOut = !isCatalogInStock({
+    isSoldOut: product?.isSoldOut,
+    isAvailable: (product as { isAvailable?: boolean | null } | null | undefined)?.isAvailable,
+    stockQuantity: product?.stockQuantity,
+  });
   const palletCount = Number(product?.stockQuantity) || 0;
   const palletLabel = !isSoldOut && palletCount > 0 ? palletAvailabilityLabel(palletCount) : null;
 

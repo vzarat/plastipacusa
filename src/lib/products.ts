@@ -804,6 +804,22 @@ export function isCatalogInStock(product: DimensionSortableProduct): boolean {
   return stock > 0;
 }
 
+/** Available products first, then sold out. Each group keeps the secondary order. */
+export function sortCatalogByAvailability<T extends DimensionSortableProduct>(
+  products: T[],
+  compare: (left: T, right: T) => number
+): T[] {
+  const available: T[] = [];
+  const soldOut: T[] = [];
+  for (const product of products) {
+    if (isCatalogInStock(product)) available.push(product);
+    else soldOut.push(product);
+  }
+  available.sort(compare);
+  soldOut.sort(compare);
+  return [...available, ...soldOut];
+}
+
 /** Keep a secondary ordering inside the in-stock group and again inside the sold-out group. */
 export function compareInStockFirst<T extends DimensionSortableProduct>(
   compare: (left: T, right: T) => number

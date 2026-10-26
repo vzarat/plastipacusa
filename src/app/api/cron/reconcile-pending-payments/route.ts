@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import Stripe from "stripe";
 import { releaseCheckoutHolds } from "@/lib/payments/checkout-holds";
 import { cronAuthorized, planAbandonedCleanup } from "@/lib/payments/intent-attempt";
@@ -81,6 +82,11 @@ export async function GET(request: NextRequest) {
       const removed = await admin.from("orders").delete().eq("id", row.id).eq("status", "pending_payment");
       if (!removed.error) deleted += 1;
     }
+  }
+
+  if (deleted > 0) {
+    revalidatePath("/");
+    revalidatePath("/products", "layout");
   }
 
   return NextResponse.json({ flagged, deleted });

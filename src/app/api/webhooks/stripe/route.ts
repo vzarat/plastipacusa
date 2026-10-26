@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { customerLineDescription } from "@/lib/catalog-sku";
 import Stripe from "stripe";
 import {
@@ -1076,6 +1077,8 @@ async function handlePaymentIntentSucceeded(
       applyPaidEffects: async () => {
         const rpc = await supabase.rpc("settle_paid_order", { p_order_id: String(order!.id) });
         if (rpc.error) return "failed";
+        revalidatePath("/");
+        revalidatePath("/products", "layout");
         return "done";
       },
       sendConfirmation: async () => {

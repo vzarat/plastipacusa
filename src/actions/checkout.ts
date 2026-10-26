@@ -1,6 +1,7 @@
 "use server";
 
 import Stripe from "stripe";
+import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
 import { CATALOG_SOLD_OUT } from "@/lib/catalog-availability";
 import {
@@ -33,6 +34,11 @@ import { evalShippingEligibility, RGV_FREE_DELIVERY_LABEL } from "@/lib/shipping
 import { buildShipmentFreight } from "@/lib/shipping/shipment";
 import { profileIsTaxExempt } from "@/lib/sales-tax";
 import type { ShippingQuoteLine } from "@/lib/shipping/types";
+
+function refreshCatalogStock() {
+  revalidatePath("/");
+  revalidatePath("/products", "layout");
+}
 
 export interface CreatePaymentIntentOptions {
   customerEmail?: string;
@@ -125,7 +131,7 @@ async function loadCatalogLines(
     onHand.set(id, stock);
     availability.set(id, {
       stock,
-      soldOut: product.is_sold_out === true || product.isSoldOut === true,
+      soldOut: product.is_sold_out === true || product.isSoldOut === true || stock === 0,
     });
   }
   const unavailable = soldOutCheckoutMessage(lines, availability);
@@ -488,6 +494,7 @@ export async function createPaymentIntent(
       }
       if (cleanup === "cancel_then_delete" || cleanup === "delete") {
         await releaseCheckoutHolds(admin, String(stale.id));
+        refreshCatalogStock();
         await admin.from("orders").delete().eq("id", stale.id).eq("status", "pending_payment");
       }
     }
@@ -654,6 +661,7 @@ export async function createPaymentIntent(
     if (decision.type === "keep") {
       const heldError = await syncCheckoutHolds(admin, pendingId, pricedLines);
       if (heldError) return { success: false, error: heldError };
+      refreshCatalogStock();
       const kept = await stripe.paymentIntents.retrieve(decision.paymentIntentId);
       if (!kept.client_secret) {
         return { success: false, error: "Stripe payment intent failed — missing client secret." };
@@ -761,6 +769,7 @@ export async function createPaymentIntent(
 
     const heldError = await syncCheckoutHolds(admin, pendingId, pricedLines);
     if (heldError) return { success: false, error: heldError };
+    refreshCatalogStock();
 
     let paymentIntent;
     if (decision.type === "update") {

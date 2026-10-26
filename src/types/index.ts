@@ -88,7 +88,8 @@ export interface ProductWithVariants
   palletizingFamily?: string;
   partNumber?: string | null;
   priceUsd?: number | null;
-  stockQuantity?: number;
+  stockQuantity?: number | null;
+  isAvailable?: boolean | null;
   isSoldOut: boolean;
   isActive?: boolean;
   storefrontTitle?: string | null;

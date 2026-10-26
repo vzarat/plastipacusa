@@ -15,6 +15,7 @@ import {
   SERIES_GENESIS_HP,
   SERIES_GENESIS_STANDARD,
   STRETCH_FILM_PLACEHOLDER,
+  isCatalogInStock,
 } from "@/lib/products";
 import {
   HAND_CATALOG_PALLET_LABEL,
@@ -214,7 +215,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   if (product.pricePallet !== null && product.pricePallet !== undefined) {
     availableTiers.push("Pallet");
   }
-  const isSoldOut = Boolean(product.isSoldOut);
+  const isSoldOut = !isCatalogInStock(product);
   const palletCount = Number(product.stockQuantity) || 0;
   const palletLabel = !isSoldOut && palletCount > 0 ? palletAvailabilityLabel(palletCount) : null;
   const variant64 = (product.variants || []).find(

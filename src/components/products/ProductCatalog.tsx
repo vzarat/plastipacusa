@@ -23,6 +23,7 @@ import {
 } from "@/components/products/MobileFilterBar";
 import { ProductCatalogToolbar } from "@/components/products/ProductCatalogToolbar";
 import { useLanguage } from "@/context/LanguageContext";
+import { getProducts } from "@/actions/products";
 import type { ProductWithVariants } from "@/types";
 import {
   SERIES_FORCE_ELITE,
@@ -30,8 +31,8 @@ import {
   SERIES_GENESIS_HP,
   SERIES_GENESIS_STANDARD,
   isMachineFilm,
-  compareInStockFirst,
-  sortProductsByDimensions,
+  getProductSortDimensions,
+  sortCatalogByAvailability,
 } from "@/lib/products";
 import { handCatalogUnitPrice } from "@/lib/pricing";
 
@@ -90,6 +91,15 @@ function listPrice(product: ProductWithVariants): number {
     .filter((value) => Number.isFinite(value) && value > 0);
   if (prices.length > 0) return Math.min(...prices);
   return Number.POSITIVE_INFINITY;
+}
+
+function compareCatalogDimensions(a: ProductWithVariants, b: ProductWithVariants): number {
+  const left = getProductSortDimensions(a);
+  const right = getProductSortDimensions(b);
+  if (left.width !== right.width) return left.width - right.width;
+  if (left.gauge !== right.gauge) return left.gauge - right.gauge;
+  if (left.lengthFeet !== right.lengthFeet) return left.lengthFeet - right.lengthFeet;
+  return listPrice(a) - listPrice(b);
 }
 
 function catalogNumber(value: unknown): number | null {
@@ -351,6 +361,7 @@ export function ProductCatalog({
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [currentPage, setCurrentPage] = useState(Math.max(1, initialPage));
   const [selectedSort, setSelectedSort] = useState<CatalogSort | "all">("all");
+  const [catalogProducts, setCatalogProducts] = useState(allProducts);
   const gridTopRef = useRef<HTMLDivElement>(null);
   const lastPushedKeyRef = useRef(
     catalogStateKey({
@@ -447,10 +458,29 @@ export function ProductCatalog({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to URL changes
   }, [searchParams]);
 
+  useEffect(() => {
+    setCatalogProducts(allProducts);
+  }, [allProducts]);
+
+  useEffect(() => {
+    const refresh = () => {
+      getProducts("all")
+        .then((products) => {
+          if (products?.length) setCatalogProducts(products);
+        })
+        .catch(() => undefined);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
   const filteredProducts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
 
-    const filtered = allProducts
+    const filtered = catalogProducts
       .filter(excludeFiftyGauge)
       .map((p) => ({
         ...p,
@@ -512,20 +542,20 @@ export function ProductCatalog({
         return true;
       });
 
-    const ordered = sortProductsByDimensions(filtered);
-    if (selectedSort === "price" || selectedSort === "best-selling") {
-      return [...ordered].sort(compareInStockFirst((a, b) => listPrice(a) - listPrice(b)));
-    }
-    if (selectedSort === "featured") {
-      return [...ordered].sort(
-        compareInStockFirst(
-          (a, b) => Number(isFeaturedProduct(b)) - Number(isFeaturedProduct(a))
-        )
-      );
-    }
-    return [...ordered].sort(compareInStockFirst(() => 0));
+    const ordered = sortCatalogByAvailability(filtered, (a, b) => {
+      if (selectedSort === "price" || selectedSort === "best-selling") {
+        const priceDelta = listPrice(a) - listPrice(b);
+        if (priceDelta !== 0) return priceDelta;
+      }
+      if (selectedSort === "featured") {
+        const featuredDelta = Number(isFeaturedProduct(b)) - Number(isFeaturedProduct(a));
+        if (featuredDelta !== 0) return featuredDelta;
+      }
+      return compareCatalogDimensions(a, b);
+    });
+    return ordered;
   }, [
-    allProducts,
+    catalogProducts,
     selectedCategory,
     selectedAppType,
     selectedWidth,

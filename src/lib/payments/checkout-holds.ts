@@ -45,7 +45,7 @@ async function readAvailability(admin: SupabaseClient, lines: HoldLine[]): Promi
     onHand.set(id, stock);
     availability.set(id, {
       stock,
-      soldOut: row.is_sold_out === true,
+      soldOut: row.is_sold_out === true || stock === 0,
     });
   }
   return soldOutCheckoutMessage(lines, availability) || palletStockShortage(lines, onHand);
