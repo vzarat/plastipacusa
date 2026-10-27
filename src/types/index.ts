@@ -87,6 +87,8 @@ export interface ProductWithVariants
   palletizingSummary?: string;
   palletizingFamily?: string;
   partNumber?: string | null;
+  /** Original database id. The storefront `id` is numeric and can differ. */
+  sourceId?: string;
   priceUsd?: number | null;
   stockQuantity?: number | null;
   isAvailable?: boolean | null;

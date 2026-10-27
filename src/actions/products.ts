@@ -613,6 +613,7 @@ function formatProduct(raw: any): ProductWithVariants {
 
   return {
     id: toNumericProductId(raw.id, slugStr),
+    sourceId: raw.id == null || raw.id === "" ? undefined : String(raw.id),
     slug: String(raw.slug),
     title,
     name: title,

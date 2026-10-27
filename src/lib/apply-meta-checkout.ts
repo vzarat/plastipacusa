@@ -3,6 +3,7 @@
 import { applyCouponCode } from "@/actions/coupons";
 import { resolveMetaCartLines } from "@/actions/meta-checkout";
 import { parseMetaProducts } from "@/lib/meta-checkout";
+import { clearMetaCheckoutQuery, rememberMetaCheckoutQuery } from "@/lib/meta-checkout-storage";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { toast } from "sonner";
 
@@ -12,6 +13,7 @@ export async function applyMetaCheckoutQuery(
   couponParam: string | null
 ): Promise<boolean> {
   if (!parseMetaProducts(productsParam)) return false;
+  rememberMetaCheckoutQuery(String(productsParam), couponParam);
   if (!useCartStore.persist.hasHydrated()) {
     await useCartStore.persist.rehydrate();
   }
@@ -34,5 +36,7 @@ export async function applyMetaCheckoutQuery(
       toast.error(applied.error || "Promo code could not be applied.");
     }
   }
-  return useCartStore.getState().items.length > 0;
+  const saved = useCartStore.getState().items.length > 0;
+  if (saved) clearMetaCheckoutQuery();
+  return saved;
 }

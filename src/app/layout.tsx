@@ -9,6 +9,7 @@ import { OnboardingTourWrapper } from "@/components/onboarding/OnboardingTourWra
 import { Analytics } from "@vercel/analytics/next";
 import { MetaPixel } from "@/components/analytics/MetaPixel";
 import { metaPixelId, metaPixelSnippet } from "@/lib/meta-pixel";
+import { META_CHECKOUT_BOOTSTRAP_SCRIPT } from "@/lib/meta-checkout-storage";
 
 const SUPABASE_ORIGIN = "https://ahvmjptomjjnqjylofpa.supabase.co";
 
@@ -144,6 +145,8 @@ export default function RootLayout({
 
         {/* Occasional remote imagery host from next/image remotePatterns */}
         <link rel="dns-prefetch" href="https://images.unsplash.com" />
+
+        <script dangerouslySetInnerHTML={{ __html: META_CHECKOUT_BOOTSTRAP_SCRIPT }} />
 
         {pixelId ? (
           <script dangerouslySetInnerHTML={{ __html: metaPixelSnippet(pixelId) }} />

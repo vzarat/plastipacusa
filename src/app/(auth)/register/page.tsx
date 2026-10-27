@@ -156,7 +156,7 @@ function RegisterForm() {
             <span>{successMsg}</span>
             <div className="mt-2.5">
               <Link
-                href="/login"
+                href={`/login?redirect=${encodeURIComponent(redirectTarget)}`}
                 className="inline-flex items-center gap-1 font-bold text-emerald-800 underline hover:text-emerald-950"
               >
                 Proceed to Sign In →

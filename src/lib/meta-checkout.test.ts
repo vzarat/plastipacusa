@@ -62,10 +62,40 @@ describe("meta checkout url", () => {
     assert.equal(lines?.[0].productSlug, handFilm.slug);
   });
 
-  it("rejects a request when any sku is unknown or sold out", () => {
-    const unknown = parseMetaProducts("ELT-SF154015-1B:1,NO-SUCH:1");
-    assert.equal(buildMetaCartLines(unknown || [], [handFilm]), null);
+  it("matches a commerce title when Meta does not send a catalog sku", () => {
+    const requested = parseMetaProducts("MASTERPLAT ROBOPAC:1");
+    assert.ok(requested);
+    const lines = buildMetaCartLines(requested, [
+      {
+        ...handFilm,
+        id: "robopac-1",
+        slug: "masterplat-robopac",
+        title: "MASTERPLAT ROBOPAC",
+        name: "MASTERPLAT ROBOPAC",
+      },
+    ]);
+    assert.equal(lines?.[0].sku, "ELT-SF154015-1B");
+    assert.equal(lines?.[0].productSlug, "masterplat-robopac");
+    assert.equal(lines?.[0].quantity, 1);
+  });
+
+  it("parses a percent-encoded Meta products parameter", () => {
+    const parsed = parseMetaProducts("MASTERPLAT+ROBOPAC%3A1%2CELT-SF154015-64B%3A1");
+    assert.deepEqual(
+      parsed?.map((line) => [line.sku, line.quantity]),
+      [
+        ["MASTERPLAT ROBOPAC", 1],
+        ["ELT-SF154015-64B", 1],
+      ]
+    );
+  });
+
+  it("keeps the products that match and still accepts a sold-out catalog row", () => {
+    const mixed = parseMetaProducts("ELT-SF154015-1B:1,NO-SUCH:1");
+    const lines = buildMetaCartLines(mixed || [], [handFilm]);
+    assert.equal(lines?.length, 1);
+    assert.equal(lines?.[0].sku, "ELT-SF154015-1B");
     const soldOut = parseMetaProducts("ELT-SF154015-1B:1");
-    assert.equal(buildMetaCartLines(soldOut || [], [{ ...handFilm, isSoldOut: true }]), null);
+    assert.equal(buildMetaCartLines(soldOut || [], [{ ...handFilm, isSoldOut: true }])?.[0].sku, "ELT-SF154015-1B");
   });
 });

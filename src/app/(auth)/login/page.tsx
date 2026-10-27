@@ -86,12 +86,12 @@ function LoginForm() {
         const explicitRedirect = searchParams.get("redirect");
         let target = res.role === "admin" ? "/admin" : "/dashboard";
 
-        if (explicitRedirect) {
+        if (explicitRedirect?.startsWith("/checkout")) {
+          target = explicitRedirect;
+        } else if (explicitRedirect) {
           if (res.role === "admin") {
-            // Admin only honors admin redirects, otherwise goes directly to /admin
             target = explicitRedirect.startsWith("/admin") ? explicitRedirect : "/admin";
           } else {
-            // Client never routes to /admin
             target = !explicitRedirect.startsWith("/admin") ? explicitRedirect : "/dashboard";
           }
         }

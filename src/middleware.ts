@@ -1,6 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { META_CHECKOUT_COOKIE, serializeMetaCheckout } from "@/lib/meta-checkout-storage";
+
+function rememberMetaCheckout(response: NextResponse, products: string | null, coupon: string | null) {
+  if (!products) return response;
+  response.cookies.set(META_CHECKOUT_COOKIE, serializeMetaCheckout(products, coupon), {
+    path: "/",
+    maxAge: 60 * 60 * 24,
+    sameSite: "lax",
+  });
+  return response;
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
@@ -52,16 +63,24 @@ export async function middleware(request: NextRequest) {
     const coupon = request.nextUrl.searchParams.get("coupon");
     if (products) next.searchParams.set("products", products);
     if (coupon) next.searchParams.set("coupon", coupon);
-    return NextResponse.redirect(next);
+    return rememberMetaCheckout(NextResponse.redirect(next), products, coupon);
   }
 
   if (isProtectedRoute && (error || !user)) {
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("redirect", pathname + search);
-    return NextResponse.redirect(redirectUrl);
+    return rememberMetaCheckout(
+      NextResponse.redirect(redirectUrl),
+      request.nextUrl.searchParams.get("products"),
+      request.nextUrl.searchParams.get("coupon")
+    );
   }
 
-  return response;
+  return rememberMetaCheckout(
+    response,
+    request.nextUrl.searchParams.get("products"),
+    request.nextUrl.searchParams.get("coupon")
+  );
 }
 
 export const config = {

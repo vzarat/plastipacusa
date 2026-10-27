@@ -40,6 +40,8 @@ import {
 import { blocksCardStep } from "@/lib/shipping/quote-window";
 import { trackInitiateCheckout } from "@/lib/meta-pixel";
 import { applyMetaCheckoutQuery } from "@/lib/apply-meta-checkout";
+import { parseMetaProducts } from "@/lib/meta-checkout";
+import { checkoutLoginPath, readMetaCheckoutQuery, rememberMetaCheckoutQuery } from "@/lib/meta-checkout-storage";
 
 const EXPIRED_QUOTE = "This shipping quote expired. Review the updated price before paying.";
 
@@ -78,7 +80,7 @@ function CheckoutPageInner({ taxExempt }: { taxExempt: boolean }) {
   );
   const emptyCartRedirected = useRef(false);
   const checkoutTracked = useRef(false);
-  const metaCheckoutStarted = useRef(false);
+  const [metaReady, setMetaReady] = useState(false);
   const {
     selectedAddress,
     setSelectedAddress,
@@ -133,28 +135,47 @@ function CheckoutPageInner({ taxExempt }: { taxExempt: boolean }) {
   }, [cartReady, items, getSubtotal]);
 
   useEffect(() => {
+    let cancelled = false;
     const params = new URLSearchParams(window.location.search);
-    const products = params.get("products");
-    if (!products || metaCheckoutStarted.current) return;
-    metaCheckoutStarted.current = true;
-    void applyMetaCheckoutQuery(products, params.get("coupon")).then((ok) => {
-      router.replace(ok ? "/checkout" : "/catalog");
+    const urlProducts = params.get("products");
+    if (urlProducts && !parseMetaProducts(urlProducts)) {
+      useCartStore.getState().closeDrawer();
+      router.replace("/catalog");
+      return;
+    }
+    if (urlProducts) rememberMetaCheckoutQuery(urlProducts, params.get("coupon"));
+    const pending = readMetaCheckoutQuery();
+    if (!pending) {
+      setMetaReady(true);
+      return;
+    }
+    void applyMetaCheckoutQuery(pending.products, pending.coupon).then((ok) => {
+      if (cancelled) return;
+      setMetaReady(true);
+      if (ok) router.replace("/checkout");
     });
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   useEffect(() => {
-    if (!cartReady || authChecking || !isAuthenticated) return;
+    if (!cartReady || !metaReady || authChecking || !isAuthenticated) return;
     if (new URLSearchParams(window.location.search).get("products")) return;
+    if (readMetaCheckoutQuery()) return;
     if (items.length > 0 || emptyCartRedirected.current) return;
     emptyCartRedirected.current = true;
     toast("Your cart is empty.");
     router.replace("/products");
-  }, [authChecking, cartReady, isAuthenticated, items.length, router]);
+  }, [authChecking, cartReady, isAuthenticated, items.length, metaReady, router]);
 
   useEffect(() => {
     let cancelled = false;
 
     const verifySession = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const products = params.get("products");
+      if (products) rememberMetaCheckoutQuery(products, params.get("coupon"));
       setAuthChecking(true);
       try {
         const supabase = createClient();
@@ -171,7 +192,7 @@ function CheckoutPageInner({ taxExempt }: { taxExempt: boolean }) {
           }
         } else {
           setIsAuthenticated(false);
-          router.replace("/login?redirect=/checkout");
+          router.replace(checkoutLoginPath());
         }
       } catch {
         if (!cancelled) setIsAuthenticated(false);
@@ -285,7 +306,7 @@ function CheckoutPageInner({ taxExempt }: { taxExempt: boolean }) {
       const { data, error } = await supabase.auth.refreshSession();
       if (error || !data.session) {
         setIsSessionExpired(false);
-        router.replace("/login?redirect=/checkout");
+        router.replace(checkoutLoginPath());
         return;
       }
       if (data.session.user.email) {
@@ -295,7 +316,7 @@ function CheckoutPageInner({ taxExempt }: { taxExempt: boolean }) {
       router.replace("/checkout?step=cart");
     } catch {
       setIsSessionExpired(false);
-      router.replace("/login?redirect=/checkout");
+      router.replace(checkoutLoginPath());
     } finally {
       setRestartingCheckout(false);
     }
@@ -359,6 +380,14 @@ function CheckoutPageInner({ taxExempt }: { taxExempt: boolean }) {
     (step === 3 &&
       (!selectedShippingOption || blocksCardStep(selectedShippingOption.expiresAt, quoteNow))) ||
     (step === 4 && !agreedToPolicies);
+
+  if (!cartReady || !metaReady) {
+    return (
+      <main className="flex min-h-[50vh] items-center justify-center px-6">
+        <p className="text-sm font-semibold text-slate-500">Preparing your checkout…</p>
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto max-w-6xl px-4 pb-24 pt-8 sm:px-6 sm:pt-10 md:pb-10">
