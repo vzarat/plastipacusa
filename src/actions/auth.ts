@@ -53,17 +53,33 @@ export async function signIn({
 }) {
   try {
     const supabase = await createServerClient();
+    const emailAddress = String(email || "").trim().toLowerCase();
 
-    if (!email || !password) {
+    if (!emailAddress || !password) {
       return { success: false, error: "Please enter both work email and password." };
     }
 
+    // A leftover recovery session sends its token with the next password grant.
+    try {
+      await supabase.auth.signOut({ scope: "local" });
+    } catch {
+      // No recovery session to clear.
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
+      email: emailAddress,
       password,
     });
 
     if (error || !data.session) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[auth] signInWithPassword", {
+          code: error?.code || null,
+          status: error?.status || null,
+          name: error?.name || null,
+          message: error?.message || "No session returned",
+        });
+      }
       return {
         success: false,
         error: error?.message || "Invalid email or password. Please check your credentials.",
@@ -281,6 +297,25 @@ export async function signUp({
       success: false,
       error: err?.message || "An unexpected error occurred during account creation.",
     };
+  }
+}
+
+/** Drop a password-recovery session, including httpOnly auth cookies. */
+export async function clearRecoverySession() {
+  const cookieStore = await cookies();
+  try {
+    const supabase = await createServerClient();
+    await supabase.auth.signOut({ scope: "local" });
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      const detail = error instanceof Error ? error.message : "signOut failed";
+      console.error("[auth] clearRecoverySession", detail);
+    }
+  }
+  for (const cookie of cookieStore.getAll()) {
+    if (cookie.name === ACCESS_COOKIE || cookie.name === REFRESH_COOKIE || cookie.name.startsWith("sb-")) {
+      cookieStore.delete(cookie.name);
+    }
   }
 }
 

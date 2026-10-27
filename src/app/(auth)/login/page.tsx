@@ -78,13 +78,14 @@ function LoginForm() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email || !password) {
+    const address = email.trim().toLowerCase();
+    if (!address || !password) {
       toast.error("Please enter your work email and password.");
       return;
     }
 
     startTransition(async () => {
-      const res = await signIn({ email, password });
+      const res = await signIn({ email: address, password });
       if (res.success) {
         // Full refresh to ensure server components read updated cookies
         const explicitRedirect = searchParams.get("redirect");
@@ -102,6 +103,9 @@ function LoginForm() {
 
         window.location.replace(target);
       } else {
+        if (process.env.NODE_ENV !== "production") {
+          console.error("[auth] sign-in failed", res.error || "unknown");
+        }
         toast.error("Sign-in failed. Please try again.");
       }
     });

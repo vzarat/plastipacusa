@@ -2,9 +2,10 @@
 
 import React, { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2, Lock } from "lucide-react";
+import { clearRecoverySession } from "@/actions/auth";
 import { createClient } from "@/lib/supabase/client";
 
 const MIN_PASSWORD = 6;
@@ -22,7 +23,6 @@ function safeContinuePath(value: string | null): string | null {
 }
 
 function UpdatePasswordForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const continuePath = safeContinuePath(searchParams.get("redirect"));
   const [ready, setReady] = useState(false);
@@ -98,15 +98,13 @@ function UpdatePasswordForm() {
         return;
       }
 
-      if (continuePath) {
-        toast.success("Password updated.");
-        router.replace(continuePath);
-        return;
-      }
-
       await supabase.auth.signOut();
+      await clearRecoverySession();
       toast.success("Password updated. Sign in with your new password.");
-      router.replace("/login?reset=success");
+      const loginUrl = continuePath
+        ? `/login?reset=success&redirect=${encodeURIComponent(continuePath)}`
+        : "/login?reset=success";
+      window.location.assign(loginUrl);
     } catch {
       setErrorMsg("Could not update the password.");
     } finally {
