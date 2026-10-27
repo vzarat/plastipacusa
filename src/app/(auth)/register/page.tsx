@@ -150,14 +150,13 @@ function RegisterForm() {
               Registration Successful
             </strong>
             <span>{successMsg}</span>
-            <div className="mt-2.5">
-              <Link
-                href={`/login?redirect=${encodeURIComponent(redirectTarget)}`}
-                className="inline-flex items-center gap-1 font-bold text-emerald-800 underline hover:text-emerald-950"
-              >
-                Proceed to Sign In →
-              </Link>
-            </div>
+            <Link
+              href={redirectTarget.startsWith("/") ? redirectTarget : "/dashboard"}
+              className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-950"
+            >
+              Go to Dashboard
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
         </div>
       )}
@@ -403,29 +402,33 @@ function RegisterForm() {
         </form>
       )}
 
-      <div className="relative border-t border-slate-100">
-        <span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-          Or continue with
-        </span>
-      </div>
+      {!successMsg && (
+        <>
+          <div className="relative border-t border-slate-100">
+            <span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+              Or continue with
+            </span>
+          </div>
 
-      <GoogleSignInButton onClick={handleGoogleSignIn} />
+          <GoogleSignInButton onClick={handleGoogleSignIn} />
 
-      <div className="relative border-t border-slate-100">
-        <span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-          Already Registered?
-        </span>
-      </div>
+          <div className="relative border-t border-slate-100">
+            <span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+              Already Registered?
+            </span>
+          </div>
 
-      <div className="text-center">
-        <Link
-          href={`/login${redirectTarget !== "/dashboard" ? `?redirect=${encodeURIComponent(redirectTarget)}` : ""}`}
-          className="inline-flex items-center justify-center gap-1.5 w-full py-3 px-4 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-50/70 hover:bg-slate-100/70 text-slate-800 text-xs font-bold transition-all"
-        >
-          <span>Sign In to Existing Account</span>
-          <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
-        </Link>
-      </div>
+          <div className="text-center">
+            <Link
+              href={`/login${redirectTarget !== "/dashboard" ? `?redirect=${encodeURIComponent(redirectTarget)}` : ""}`}
+              className="inline-flex items-center justify-center gap-1.5 w-full py-3 px-4 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-50/70 hover:bg-slate-100/70 text-slate-800 text-xs font-bold transition-all"
+            >
+              <span>Sign In to Existing Account</span>
+              <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
+            </Link>
+          </div>
+        </>
+      )}
 
       <div className="pt-1 flex items-center justify-center gap-1.5 text-[11px] text-slate-400 font-medium">
         <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />

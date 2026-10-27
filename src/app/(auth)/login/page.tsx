@@ -66,6 +66,10 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isPending, startTransition] = useTransition();
+  const passwordReset = searchParams.get("reset") === "success";
+  const forgotHref = `/forgot-password${
+    redirectTarget !== "/dashboard" ? `?redirect=${encodeURIComponent(redirectTarget)}` : ""
+  }`;
 
   useEffect(() => {
     // OAuth code exchange is handled server-side in /auth/callback/route.ts.
@@ -118,6 +122,12 @@ function LoginForm() {
           Access your factory direct pricing, recurring orders, and shipping tracking.
         </p>
       </div>
+
+      {passwordReset && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-medium text-emerald-900">
+          Your password was updated. Sign in with the new one.
+        </div>
+      )}
 
       {hasAuthError && !dismissAuthError && (
         <div className="p-4 rounded-2xl border border-rose-200 bg-rose-50 shadow-sm animate-fade-in-up">
@@ -227,7 +237,7 @@ function LoginForm() {
         </div>
 
         {/* Remember Me */}
-        <div className="flex items-center justify-between pt-1">
+        <div className="flex items-center justify-between gap-3 pt-1">
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <input
               type="checkbox"
@@ -237,6 +247,12 @@ function LoginForm() {
             />
             <span className="text-xs font-medium text-slate-600">Remember this device</span>
           </label>
+          <Link
+            href={forgotHref}
+            className="text-xs font-bold text-blue-700 underline-offset-2 hover:underline"
+          >
+            Forgot password?
+          </Link>
         </div>
 
         {/* Submit Button */}
