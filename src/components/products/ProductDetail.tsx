@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { catalogContentId, trackViewContent } from "@/lib/meta-pixel";
+import { trackViewContent } from "@/lib/meta-pixel";
 import { ProductWithVariants, ProductVariant } from "@/types";
 import { VariantSelector } from "@/components/products/VariantSelector";
 import { buildMachineFilmSelectorTiers, isMachineFilm } from "@/lib/products";
@@ -107,35 +107,27 @@ export function ProductDetail({ product }: ProductDetailProps) {
     setSelectedVariant(initialVariant);
   }, [initialVariant]);
 
-  const viewedSku = useRef("");
+  const viewedProductId = useRef("");
   useEffect(() => {
     if (!product) return;
-    const source = {
-      sku: selectedVariant?.sku,
-      partNumber: product.partNumber,
-      application: product.application,
-      categorySlug: product.categorySlug,
-      series: product.series,
-      title: product.title,
-      name: product.name || product.title,
-      widthInches: selectedVariant?.widthInches ?? product.widthInches ?? product.width_inches,
-      gauge: selectedVariant?.gauge ?? product.gauge,
-      lengthFeet: selectedVariant?.lengthFeet ?? product.length_feet,
-      boxes: selectedVariant?.boxes ?? selectedVariant?.boxes_count ?? selectedVariant?.boxesCount,
-      rolls: selectedVariant?.rolls_count ?? selectedVariant?.rollsCount ?? selectedVariant?.rollsPerBox,
-    };
-    const contentId = catalogContentId(source);
-    if (!contentId || viewedSku.current === contentId) return;
-    viewedSku.current = contentId;
-    const price = Number(selectedVariant?.boxUnitPrice ?? selectedVariant?.price ?? product.startingPrice) || 0;
+    const productKey = String(product.id || product.slug || "");
+    if (!productKey || viewedProductId.current === productKey) return;
+    const sku = String(initialVariant?.sku || "").trim();
+    if (!sku) return;
+    viewedProductId.current = productKey;
+    const boxes = Number(initialVariant?.boxes ?? initialVariant?.boxes_count ?? initialVariant?.boxesCount) || 0;
+    const boxUnit = Number(initialVariant?.boxUnitPrice) || 0;
+    const packagePrice = Number(initialVariant?.price) || Number(product.startingPrice) || 0;
+    const value =
+      boxes > 1 && boxUnit > 0 ? Math.round(boxUnit * boxes * 100) / 100 : Math.round(packagePrice * 100) / 100;
     trackViewContent({
-      ...source,
-      sku: contentId,
-      price,
+      sku,
+      price: value,
       currency: "USD",
       name: product.title || product.name || "",
+      eventID: `ViewContent:${productKey}:${sku}`,
     });
-  }, [product, selectedVariant]);
+  }, [product, initialVariant]);
 
   if (!product) {
     return (

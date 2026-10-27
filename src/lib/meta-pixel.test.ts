@@ -24,11 +24,12 @@ describe("meta pixel", () => {
 
   it("builds the standard add-to-cart and purchase payloads", () => {
     assert.deepEqual(
-      addToCartParams({ sku: "ELT-SF154015-1B", price: 28.21, currency: "USD", quantity: 1 }),
+      addToCartParams({ sku: "STD-SF188010-1B", price: 28.21, currency: "USD", quantity: 1, name: "18 inch film" }),
       {
-        content_ids: ["ELT-SF154015-1B"],
+        content_ids: ["STD-SF188010-1B"],
         content_type: "product",
-        contents: [{ id: "ELT-SF154015-1B", quantity: 1, item_price: 28.21 }],
+        content_name: "18 inch film",
+        contents: [{ id: "STD-SF188010-1B", quantity: 1 }],
         currency: "USD",
         value: 28.21,
       }
@@ -48,82 +49,36 @@ describe("meta pixel", () => {
     assert.deepEqual(purchase.content_ids, ["ELT-SF154015-1B", "ELT-SF154015-64B"]);
   });
 
-  it("maps legacy catalog codes to the unified sku before the pixel payload", () => {
-    assert.equal(catalogContentId("FEL-154015-1B"), "ELT-SF154015-1B");
-    assert.equal(catalogContentId("HPFSF205170-HLP"), "HPF-SF205170-HLP");
-    assert.equal(catalogContentId("product-uuid"), "");
+  it("keeps the variant sku exactly and omits a database id", () => {
+    assert.equal(catalogContentId("STD-SF188010-1B"), "STD-SF188010-1B");
+    assert.equal(catalogContentId("FEL-154015-1B"), "FEL-154015-1B");
     const databaseId = "3f1c2a90-7b6e-4d11-9a2c-1b8e5d44a012";
     assert.equal(catalogContentId(databaseId), "");
-    assert.equal(
-      catalogContentId({
-        sku: databaseId,
-        title: "FORCE Elite",
-        application: "hand",
-        widthInches: 15,
-        gauge: 40,
-        lengthFeet: 1500,
-        boxes: 1,
-      }),
-      "ELT-SF154015-1B"
-    );
-    const viewedFromId = viewContentParams({
-      sku: databaseId,
-      name: "FORCE Elite",
-      price: 28.21,
-      title: "FORCE Elite",
-      application: "hand",
-      widthInches: 15,
-      gauge: 40,
-      lengthFeet: 1500,
-      boxes: 1,
-    });
-    assert.deepEqual(viewedFromId.content_ids, ["ELT-SF154015-1B"]);
-    assert.equal(viewedFromId.content_type, "product");
-    assert.equal(viewedFromId.content_name, "FORCE Elite");
-    assert.equal(viewedFromId.currency, "USD");
-    assert.equal(viewedFromId.value, 28.21);
-    assert.equal(JSON.stringify(viewedFromId).includes(databaseId), false);
+    const viewed = viewContentParams({ sku: "STD-SF188010-1B", price: 21.2, name: "18 inch film" });
+    assert.deepEqual(viewed.content_ids, ["STD-SF188010-1B"]);
+    assert.equal(viewed.content_type, "product");
+    assert.equal(viewed.content_name, "18 inch film");
+    assert.equal(viewed.currency, "USD");
+    assert.equal(viewed.value, 21.2);
+    assert.equal("contents" in viewed, false);
     const checkout = initiateCheckoutParams({
-      cartSubtotal: 28.21,
+      cartSubtotal: 56.42,
       currency: "USD",
-      itemsCount: 1,
+      itemsCount: 2,
       items: [
-        {
-          sku: databaseId,
-          quantity: 1,
-          price: 28.21,
-          title: "FORCE Elite",
-          application: "hand",
-          widthInches: 15,
-          gauge: 40,
-          lengthFeet: 1500,
-          boxes: 1,
-        },
+        { sku: "STD-SF188010-1B", quantity: 2, price: 28.21, name: "18 inch film" },
+        { sku: databaseId, quantity: 1, price: 1 },
       ],
     });
-    assert.deepEqual(checkout.content_ids, ["ELT-SF154015-1B"]);
-    assert.equal(checkout.content_type, "product");
-    const added = addToCartParams({
-      sku: "FEL-154015-1BX",
-      price: 28.21,
-      currency: "USD",
-      quantity: 2,
-    });
-    assert.deepEqual(added.content_ids, ["ELT-SF154015-1B"]);
-    assert.equal(added.content_type, "product");
-    const viewed = viewContentParams({ sku: "FST-188010-64B", price: 21.2, name: "18 inch film" });
-    assert.deepEqual(viewed.content_ids, ["STD-SF188010-64B"]);
-    assert.equal(viewed.content_type, "product");
+    assert.deepEqual(checkout.content_ids, ["STD-SF188010-1B"]);
+    assert.deepEqual(checkout.contents, [{ id: "STD-SF188010-1B", quantity: 2 }]);
     const purchase = purchaseParams({
       orderId: "PO-1002",
       total: 28.21,
       currency: "USD",
-      items: [
-        { sku: "FEL-154015-1B", quantity: 1, price: 28.21 },
-        { sku: "not-in-catalog", quantity: 1, price: 1 },
-      ],
+      items: [{ sku: "STD-SF188010-1B", quantity: 1, price: 28.21, name: "18 inch film" }],
     });
-    assert.deepEqual(purchase.content_ids, ["ELT-SF154015-1B"]);
-    assert.equal(purchase.num_items, 1);
+    assert.deepEqual(purchase.content_ids, ["STD-SF188010-1B"]);
+    assert.deepEqual(purchase.contents, [{ id: "STD-SF188010-1B", quantity: 1 }]);
   });
 });

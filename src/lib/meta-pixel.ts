@@ -1,12 +1,6 @@
 /** Meta Pixel. The public id comes from Meta; a valid NEXT_PUBLIC_META_PIXEL_ID overrides it. */
 
-import { canonicalCatalogSku } from "@/lib/catalog-sku";
-import { handFilmTierSku } from "@/lib/hand-film-sku";
-import { machineFilmTierSku } from "@/lib/machine-film-sku";
-
 export const META_PIXEL_ID = "1740638949795559";
-
-const OFFICIAL_CATALOG_SKU = /^(?:STD|ELT|HPF)-SF\d{6}-(?:1|16|32|64)B$|^HPF-SF\d{6}-(?:HLP|FLP)$/;
 
 export interface PixelSkuSource {
   sku?: string | null;
@@ -33,7 +27,7 @@ export interface MetaPixelItem extends PixelSkuSource {
 }
 
 type Fbq = {
-  (command: "track", event: string, params?: Record<string, unknown>): void;
+  (command: "track", event: string, params?: Record<string, unknown>, options?: { eventID?: string }): void;
   (command: "init", pixelId: string): void;
   callMethod?: (...args: unknown[]) => void;
   queue: unknown[];
@@ -83,71 +77,36 @@ function asSkuSource(value: unknown): PixelSkuSource {
   return { sku: value == null ? "" : String(value) };
 }
 
-function packageRolls(source: PixelSkuSource): number {
-  const direct = Math.round(Number(source.rolls ?? source.rollsPerBox) || 0);
-  if (direct === 20 || direct === 40) return direct;
-  if (source.application === "machine") {
-    const total = Number(source.totalRolls) || 0;
-    const quantity = Math.max(1, Number(source.quantity) || 1);
-    const perPackage = Math.round(total / quantity);
-    if (perPackage === 20 || perPackage === 40) return perPackage;
-  }
-  return direct;
-}
-
-function deriveCatalogSku(source: PixelSkuSource): string {
-  const rolls = packageRolls(source);
-  const boxes = Math.round(Number(source.boxes) || 0);
-  const machine = source.application === "machine" || rolls === 20 || rolls === 40;
-  const derived = machine
-    ? machineFilmTierSku({
-        widthInches: source.widthInches,
-        gauge: source.gauge,
-        lengthFeet: source.lengthFeet,
-        rolls,
-      })
-    : handFilmTierSku({
-        categorySlug: source.categorySlug,
-        series: source.series,
-        partNumber: isDatabaseId(source.partNumber) ? undefined : source.partNumber,
-        title: source.title || source.name,
-        name: source.name || source.title,
-        sku: isDatabaseId(source.sku) ? undefined : source.sku,
-        widthInches: source.widthInches,
-        gauge: source.gauge,
-        lengthFeet: source.lengthFeet,
-        boxes: boxes || (rolls > 0 && rolls % 4 === 0 ? rolls / 4 : undefined),
-      });
-  const canonical = canonicalCatalogSku(String(derived || ""));
-  return OFFICIAL_CATALOG_SKU.test(canonical) ? canonical : "";
-}
-
-/** Catalog content id. Database UUIDs are never sent. Legacy codes become the current SKU. */
+/** Exact `product_variants.sku`. Case and format stay as stored. Database ids are omitted. */
 export function catalogContentId(value: unknown): string {
-  const source = asSkuSource(value);
-  const raw = String(source.sku ?? "").trim();
-  if (raw && !isDatabaseId(raw)) {
-    const canonical = canonicalCatalogSku(raw.replace(/BX$/i, "B"));
-    if (OFFICIAL_CATALOG_SKU.test(canonical)) return canonical;
-  }
-  return deriveCatalogSku(source);
+  const raw = String(asSkuSource(value).sku ?? "").trim();
+  if (!raw || isDatabaseId(raw)) return "";
+  return raw;
 }
+
+const sentEventIds = new Set<string>();
 
 function logPixel(event: string, params?: Record<string, unknown>) {
   if (process.env.NODE_ENV === "production") return;
   console.info("[meta-pixel]", event, params);
 }
 
-function track(event: string, params?: Record<string, unknown>) {
+function track(event: string, params?: Record<string, unknown>, eventID?: string) {
   const ids = params?.content_ids;
   if (Array.isArray(ids) && ids.length === 0) {
     logPixel(`${event} skipped`, params);
     return;
   }
+  if (eventID && sentEventIds.has(eventID)) {
+    logPixel(`${event} duplicate`, { eventID, ...params });
+    return;
+  }
+  if (eventID) sentEventIds.add(eventID);
   logPixel(event, params);
   if (!metaPixelId()) return;
   if (typeof window === "undefined" || typeof window.fbq !== "function") return;
-  window.fbq("track", event, params);
+  if (eventID) window.fbq("track", event, params, { eventID });
+  else window.fbq("track", event, params);
 }
 
 export function trackPageView() {
@@ -166,13 +125,14 @@ export function addToCartParams(
   const price = Number(input.price) || 0;
   const sku = catalogContentId(input);
   const name = String(input.name || input.title || "").trim();
+  const value = Math.round(price * quantity * 100) / 100;
   return {
     content_ids: sku ? [sku] : [],
     content_type: "product",
     ...(name ? { content_name: name } : {}),
-    contents: sku ? [{ id: sku, quantity, item_price: price }] : [],
-    currency: input.currency || "USD",
-    value: Math.round(price * quantity * 100) / 100,
+    contents: sku ? [{ id: sku, quantity }] : [],
+    currency: "USD",
+    value,
   };
 }
 
@@ -191,9 +151,8 @@ export function viewContentParams(
     content_type: "product",
     content_ids: sku ? [sku] : [],
     ...(name ? { content_name: name } : {}),
-    currency: input.currency || "USD",
+    currency: "USD",
     value: Math.round(price * 100) / 100,
-    contents: sku ? [{ id: sku, quantity: 1, item_price: price }] : [],
   };
 }
 
@@ -203,9 +162,10 @@ export function trackViewContent(
     price?: number;
     currency?: string;
     name?: string;
+    eventID?: string;
   }
 ) {
-  track("ViewContent", viewContentParams(input));
+  track("ViewContent", viewContentParams(input), input.eventID);
 }
 
 export function pixelItemFromCart(item: {
@@ -258,15 +218,17 @@ export function initiateCheckoutParams(input: {
     .map((item) => ({
       id: catalogContentId(item),
       quantity: Math.max(1, Math.floor(Number(item.quantity) || 1)),
-      item_price: Number(item.price) || 0,
+      name: String(item.name || item.title || "").trim(),
     }))
     .filter((item) => item.id);
   const contentIds = [...new Set(lines.map((item) => item.id))];
+  const contentName = lines.map((item) => item.name).filter(Boolean).join(", ");
   return {
     content_type: "product",
     content_ids: contentIds,
-    contents: lines,
-    currency: input.currency || "USD",
+    ...(contentName ? { content_name: contentName } : {}),
+    contents: lines.map((item) => ({ id: item.id, quantity: item.quantity })),
+    currency: "USD",
     value: Math.round((Number(input.cartSubtotal) || 0) * 100) / 100,
     num_items: Math.max(0, Math.floor(Number(input.itemsCount) || 0)),
   };
@@ -296,16 +258,20 @@ export function purchaseParams(input: {
     .map((item) => ({ ...item, sku: catalogContentId(item) }))
     .filter((item) => item.sku);
   const contentIds = [...new Set(items.map((item) => item.sku))];
+  const contentName = items
+    .map((item) => String(item.name || item.title || "").trim())
+    .filter(Boolean)
+    .join(", ");
   return {
-    value: Math.round((Number(input.total) || 0) * 100) / 100,
-    currency: input.currency || "USD",
-    order_id: String(input.orderId || ""),
     content_type: "product",
     content_ids: contentIds,
+    ...(contentName ? { content_name: contentName } : {}),
+    value: Math.round((Number(input.total) || 0) * 100) / 100,
+    currency: "USD",
+    order_id: String(input.orderId || ""),
     contents: items.map((item) => ({
       id: item.sku,
       quantity: Math.max(1, Math.floor(Number(item.quantity) || 1)),
-      item_price: Number(item.price) || 0,
     })),
     num_items: items.reduce(
       (sum, item) => sum + Math.max(1, Math.floor(Number(item.quantity) || 1)),
@@ -320,5 +286,6 @@ export function trackPurchase(input: {
   currency: string;
   items: MetaPixelItem[];
 }) {
-  track("Purchase", purchaseParams(input));
+  const orderId = String(input.orderId || "").trim();
+  track("Purchase", purchaseParams(input), orderId ? `Purchase:${orderId}` : undefined);
 }
