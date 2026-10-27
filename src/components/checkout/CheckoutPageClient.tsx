@@ -38,7 +38,7 @@ import {
   type CheckoutShippingAddress,
 } from "@/lib/shipping-address";
 import { blocksCardStep } from "@/lib/shipping/quote-window";
-import { trackInitiateCheckout } from "@/lib/meta-pixel";
+import { pixelItemFromCart, trackInitiateCheckout } from "@/lib/meta-pixel";
 import { applyMetaCheckoutQuery } from "@/lib/apply-meta-checkout";
 import { parseMetaProducts } from "@/lib/meta-checkout";
 import { checkoutLoginPath, readMetaCheckoutQuery, rememberMetaCheckoutQuery } from "@/lib/meta-checkout-storage";
@@ -131,6 +131,7 @@ function CheckoutPageInner({ taxExempt }: { taxExempt: boolean }) {
       cartSubtotal: getSubtotal(),
       currency: "USD",
       itemsCount: items.reduce((count, item) => count + item.quantity, 0),
+      items: items.map((item) => pixelItemFromCart(item)),
     });
   }, [cartReady, items, getSubtotal]);
 

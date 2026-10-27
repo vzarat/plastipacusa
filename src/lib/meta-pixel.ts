@@ -1,12 +1,32 @@
 /** Meta Pixel. The public id comes from Meta; a valid NEXT_PUBLIC_META_PIXEL_ID overrides it. */
 
 import { canonicalCatalogSku } from "@/lib/catalog-sku";
+import { handFilmTierSku } from "@/lib/hand-film-sku";
+import { machineFilmTierSku } from "@/lib/machine-film-sku";
 
 export const META_PIXEL_ID = "1740638949795559";
 
 const OFFICIAL_CATALOG_SKU = /^(?:STD|ELT|HPF)-SF\d{6}-(?:1|16|32|64)B$|^HPF-SF\d{6}-(?:HLP|FLP)$/;
 
-export interface MetaPixelItem {
+export interface PixelSkuSource {
+  sku?: string | null;
+  application?: string | null;
+  widthInches?: string | number | null;
+  gauge?: number | null;
+  lengthFeet?: number | null;
+  boxes?: number | null;
+  rolls?: number | null;
+  rollsPerBox?: number | null;
+  totalRolls?: number | null;
+  quantity?: number | null;
+  categorySlug?: string | null;
+  series?: string | null;
+  partNumber?: string | null;
+  title?: string | null;
+  name?: string | null;
+}
+
+export interface MetaPixelItem extends PixelSkuSource {
   sku: string;
   quantity: number;
   price?: number;
@@ -50,13 +70,67 @@ fbq('init', '${pixelId}');
 fbq('track', 'PageView');`;
 }
 
-/** Catalog content id. Legacy FEL/FST/HPFSF/GEN codes become the current SKU. */
-export function catalogContentId(value: unknown): string {
-  const raw = String(value ?? "")
-    .trim()
-    .replace(/BX$/i, "B");
-  const canonical = canonicalCatalogSku(raw);
+const DATABASE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isDatabaseId(value: unknown): boolean {
+  const text = String(value ?? "").trim();
+  if (!text) return false;
+  return DATABASE_ID.test(text) || /^[0-9a-f]{32}$/i.test(text) || /^\d+$/.test(text);
+}
+
+function asSkuSource(value: unknown): PixelSkuSource {
+  if (value && typeof value === "object") return value as PixelSkuSource;
+  return { sku: value == null ? "" : String(value) };
+}
+
+function packageRolls(source: PixelSkuSource): number {
+  const direct = Math.round(Number(source.rolls ?? source.rollsPerBox) || 0);
+  if (direct === 20 || direct === 40) return direct;
+  if (source.application === "machine") {
+    const total = Number(source.totalRolls) || 0;
+    const quantity = Math.max(1, Number(source.quantity) || 1);
+    const perPackage = Math.round(total / quantity);
+    if (perPackage === 20 || perPackage === 40) return perPackage;
+  }
+  return direct;
+}
+
+function deriveCatalogSku(source: PixelSkuSource): string {
+  const rolls = packageRolls(source);
+  const boxes = Math.round(Number(source.boxes) || 0);
+  const machine = source.application === "machine" || rolls === 20 || rolls === 40;
+  const derived = machine
+    ? machineFilmTierSku({
+        widthInches: source.widthInches,
+        gauge: source.gauge,
+        lengthFeet: source.lengthFeet,
+        rolls,
+      })
+    : handFilmTierSku({
+        categorySlug: source.categorySlug,
+        series: source.series,
+        partNumber: isDatabaseId(source.partNumber) ? undefined : source.partNumber,
+        title: source.title || source.name,
+        name: source.name || source.title,
+        sku: isDatabaseId(source.sku) ? undefined : source.sku,
+        widthInches: source.widthInches,
+        gauge: source.gauge,
+        lengthFeet: source.lengthFeet,
+        boxes: boxes || (rolls > 0 && rolls % 4 === 0 ? rolls / 4 : undefined),
+      });
+  const canonical = canonicalCatalogSku(String(derived || ""));
   return OFFICIAL_CATALOG_SKU.test(canonical) ? canonical : "";
+}
+
+/** Catalog content id. Database UUIDs are never sent. Legacy codes become the current SKU. */
+export function catalogContentId(value: unknown): string {
+  const source = asSkuSource(value);
+  const raw = String(source.sku ?? "").trim();
+  if (raw && !isDatabaseId(raw)) {
+    const canonical = canonicalCatalogSku(raw.replace(/BX$/i, "B"));
+    if (OFFICIAL_CATALOG_SKU.test(canonical)) return canonical;
+  }
+  return deriveCatalogSku(source);
 }
 
 function logPixel(event: string, params?: Record<string, unknown>) {
@@ -80,70 +154,136 @@ export function trackPageView() {
   track("PageView");
 }
 
-export function addToCartParams(input: {
-  sku: string;
-  price: number;
-  currency: string;
-  quantity: number;
-}): Record<string, unknown> {
+export function addToCartParams(
+  input: PixelSkuSource & {
+    sku: string;
+    price?: number;
+    currency: string;
+    quantity: number;
+  }
+): Record<string, unknown> {
   const quantity = Math.max(1, Math.floor(Number(input.quantity) || 1));
   const price = Number(input.price) || 0;
-  const sku = catalogContentId(input.sku);
+  const sku = catalogContentId(input);
+  const name = String(input.name || input.title || "").trim();
   return {
     content_ids: sku ? [sku] : [],
     content_type: "product",
+    ...(name ? { content_name: name } : {}),
     contents: sku ? [{ id: sku, quantity, item_price: price }] : [],
     currency: input.currency || "USD",
     value: Math.round(price * quantity * 100) / 100,
   };
 }
 
-export function viewContentParams(input: {
-  sku: string;
-  price?: number;
-  currency?: string;
-  name?: string;
-}): Record<string, unknown> {
-  const sku = catalogContentId(input.sku);
+export function viewContentParams(
+  input: PixelSkuSource & {
+    sku?: string | null;
+    price?: number;
+    currency?: string;
+    name?: string;
+  }
+): Record<string, unknown> {
+  const sku = catalogContentId(input);
   const price = Number(input.price) || 0;
+  const name = String(input.name || input.title || "").trim();
   return {
-    content_ids: sku ? [sku] : [],
     content_type: "product",
-    content_name: String(input.name || "").trim() || undefined,
-    contents: sku ? [{ id: sku, quantity: 1, item_price: price }] : [],
+    content_ids: sku ? [sku] : [],
+    ...(name ? { content_name: name } : {}),
     currency: input.currency || "USD",
     value: Math.round(price * 100) / 100,
+    contents: sku ? [{ id: sku, quantity: 1, item_price: price }] : [],
   };
 }
 
-export function trackViewContent(input: {
-  sku: string;
-  price?: number;
-  currency?: string;
-  name?: string;
-}) {
+export function trackViewContent(
+  input: PixelSkuSource & {
+    sku?: string | null;
+    price?: number;
+    currency?: string;
+    name?: string;
+  }
+) {
   track("ViewContent", viewContentParams(input));
 }
 
-export function trackAddToCart(input: {
+export function pixelItemFromCart(item: {
   sku: string;
-  price: number;
-  currency: string;
   quantity: number;
-}) {
+  unitPrice: number;
+  application?: string | null;
+  widthInches?: string | number | null;
+  gauge?: number | null;
+  lengthFeet?: number | null;
+  totalBoxes?: number | null;
+  rollsPerBox?: number | null;
+  totalRolls?: number | null;
+  productName?: string | null;
+}): MetaPixelItem {
+  return {
+    sku: item.sku,
+    quantity: item.quantity,
+    price: item.unitPrice,
+    application: item.application,
+    widthInches: item.widthInches,
+    gauge: item.gauge,
+    lengthFeet: item.lengthFeet,
+    boxes: item.totalBoxes,
+    rolls: item.rollsPerBox,
+    totalRolls: item.totalRolls,
+    name: item.productName,
+    title: item.productName,
+  };
+}
+
+export function trackAddToCart(
+  input: PixelSkuSource & {
+    sku: string;
+    price?: number;
+    currency: string;
+    quantity: number;
+  }
+) {
   track("AddToCart", addToCartParams(input));
+}
+
+export function initiateCheckoutParams(input: {
+  cartSubtotal: number;
+  currency: string;
+  itemsCount: number;
+  items?: MetaPixelItem[];
+}): Record<string, unknown> {
+  const lines = (input.items || [])
+    .map((item) => ({
+      id: catalogContentId(item),
+      quantity: Math.max(1, Math.floor(Number(item.quantity) || 1)),
+      item_price: Number(item.price) || 0,
+    }))
+    .filter((item) => item.id);
+  const contentIds = [...new Set(lines.map((item) => item.id))];
+  return {
+    content_type: "product",
+    content_ids: contentIds,
+    contents: lines,
+    currency: input.currency || "USD",
+    value: Math.round((Number(input.cartSubtotal) || 0) * 100) / 100,
+    num_items: Math.max(0, Math.floor(Number(input.itemsCount) || 0)),
+  };
 }
 
 export function trackInitiateCheckout(input: {
   cartSubtotal: number;
   currency: string;
   itemsCount: number;
+  items?: MetaPixelItem[];
 }) {
-  track("InitiateCheckout", {
-    value: Math.round((Number(input.cartSubtotal) || 0) * 100) / 100,
-    currency: input.currency || "USD",
-    num_items: Math.max(0, Math.floor(Number(input.itemsCount) || 0)),
-  });
+  const params = initiateCheckoutParams(input);
+  if (!Array.isArray(params.content_ids) || params.content_ids.length === 0) {
+    logPixel("InitiateCheckout skipped", params);
+    return;
+  }
+  track("InitiateCheckout", params);
 }
 
 export function purchaseParams(input: {
@@ -153,7 +293,7 @@ export function purchaseParams(input: {
   items: MetaPixelItem[];
 }): Record<string, unknown> {
   const items = input.items
-    .map((item) => ({ ...item, sku: catalogContentId(item.sku) }))
+    .map((item) => ({ ...item, sku: catalogContentId(item) }))
     .filter((item) => item.sku);
   const contentIds = [...new Set(items.map((item) => item.sku))];
   return {

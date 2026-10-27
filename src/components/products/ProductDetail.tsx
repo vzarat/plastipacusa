@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { trackViewContent } from "@/lib/meta-pixel";
+import { catalogContentId, trackViewContent } from "@/lib/meta-pixel";
 import { ProductWithVariants, ProductVariant } from "@/types";
 import { VariantSelector } from "@/components/products/VariantSelector";
 import { buildMachineFilmSelectorTiers, isMachineFilm } from "@/lib/products";
@@ -109,15 +109,31 @@ export function ProductDetail({ product }: ProductDetailProps) {
 
   const viewedSku = useRef("");
   useEffect(() => {
-    const sku = String(selectedVariant?.sku || product?.partNumber || "");
-    if (!sku || viewedSku.current === sku) return;
-    viewedSku.current = sku;
-    const price = Number(selectedVariant?.boxUnitPrice ?? selectedVariant?.price ?? product?.startingPrice) || 0;
+    if (!product) return;
+    const source = {
+      sku: selectedVariant?.sku,
+      partNumber: product.partNumber,
+      application: product.application,
+      categorySlug: product.categorySlug,
+      series: product.series,
+      title: product.title,
+      name: product.name || product.title,
+      widthInches: selectedVariant?.widthInches ?? product.widthInches ?? product.width_inches,
+      gauge: selectedVariant?.gauge ?? product.gauge,
+      lengthFeet: selectedVariant?.lengthFeet ?? product.length_feet,
+      boxes: selectedVariant?.boxes ?? selectedVariant?.boxes_count ?? selectedVariant?.boxesCount,
+      rolls: selectedVariant?.rolls_count ?? selectedVariant?.rollsCount ?? selectedVariant?.rollsPerBox,
+    };
+    const contentId = catalogContentId(source);
+    if (!contentId || viewedSku.current === contentId) return;
+    viewedSku.current = contentId;
+    const price = Number(selectedVariant?.boxUnitPrice ?? selectedVariant?.price ?? product.startingPrice) || 0;
     trackViewContent({
-      sku,
+      ...source,
+      sku: contentId,
       price,
       currency: "USD",
-      name: product?.title || product?.name || "",
+      name: product.title || product.name || "",
     });
   }, [product, selectedVariant]);
 

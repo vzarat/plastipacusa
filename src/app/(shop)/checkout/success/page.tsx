@@ -14,7 +14,7 @@ import {
   readCheckoutShipping,
   toOrderShippingAddress,
 } from "@/lib/shipping-address";
-import { trackPurchase } from "@/lib/meta-pixel";
+import { pixelItemFromCart, trackPurchase } from "@/lib/meta-pixel";
 
 export default function CheckoutSuccessPage() {
   const searchParams = useSearchParams();
@@ -152,11 +152,7 @@ export default function CheckoutSuccessPage() {
                 ? chargedTotal
                 : Number(getDiscountedTotal().toFixed(2)),
             currency: "USD",
-            items: snapshotItems.map((item) => ({
-              sku: item.sku,
-              quantity: item.quantity,
-              price: item.unitPrice,
-            })),
+            items: snapshotItems.map((item) => pixelItemFromCart(item)),
           });
         }
         clearCart();

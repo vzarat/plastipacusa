@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { CartItem } from "@/types";
 import type { AppliedCoupon } from "@/types/coupon";
 import { canonicalCatalogSku, catalogSkusMatch } from "@/lib/catalog-sku";
-import { trackAddToCart } from "@/lib/meta-pixel";
+import { pixelItemFromCart, trackAddToCart } from "@/lib/meta-pixel";
 import { totalsFromCartLines, type PricedCheckoutLine } from "@/lib/checkout-pricing";
 import { fullPalletsForPackage } from "@/lib/pallet-stock";
 import { clampCartQuantity, type CartPackageInput } from "@/lib/cart-quantity";
@@ -188,8 +188,7 @@ export const useCartStore = create<CartState>()(
           const added = newQty - existingItem.quantity;
           if (added > 0) {
             trackAddToCart({
-              sku: existingItem.sku,
-              price: priced.unitPrice,
+              ...pixelItemFromCart({ ...existingItem, unitPrice: priced.unitPrice }),
               currency: "USD",
               quantity: added,
             });
@@ -212,8 +211,7 @@ export const useCartStore = create<CartState>()(
           set({ items: [...currentItems, newItem], isDrawerOpen: true });
           if (quantity > 0) {
             trackAddToCart({
-              sku: newItem.sku,
-              price: priced.unitPrice,
+              ...pixelItemFromCart(newItem),
               currency: "USD",
               quantity,
             });

@@ -37,7 +37,7 @@ import {
 } from "@/lib/cart-quantity";
 import { calculateOrderTotal } from "@/lib/sales-tax";
 import { createClient } from "@/lib/supabase/client";
-import { trackAddToCart } from "@/lib/meta-pixel";
+import { pixelItemFromCart, trackAddToCart } from "@/lib/meta-pixel";
 
 export function CartDrawer() {
   const router = useRouter();
@@ -304,8 +304,7 @@ export function CartDrawer() {
                       onClick={() => {
                         increaseQuantity(item.id);
                         trackAddToCart({
-                          sku: item.sku,
-                          price: item.unitPrice,
+                          ...pixelItemFromCart(item),
                           currency: "USD",
                           quantity: 1,
                         });

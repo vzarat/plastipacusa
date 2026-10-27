@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { addToCartParams, catalogContentId, metaPixelId, purchaseParams, viewContentParams } from "./meta-pixel";
+import {
+  addToCartParams,
+  catalogContentId,
+  initiateCheckoutParams,
+  metaPixelId,
+  purchaseParams,
+  viewContentParams,
+} from "./meta-pixel";
 
 describe("meta pixel", () => {
   it("uses the Meta pixel id from the official snippet", () => {
@@ -45,6 +52,57 @@ describe("meta pixel", () => {
     assert.equal(catalogContentId("FEL-154015-1B"), "ELT-SF154015-1B");
     assert.equal(catalogContentId("HPFSF205170-HLP"), "HPF-SF205170-HLP");
     assert.equal(catalogContentId("product-uuid"), "");
+    const databaseId = "3f1c2a90-7b6e-4d11-9a2c-1b8e5d44a012";
+    assert.equal(catalogContentId(databaseId), "");
+    assert.equal(
+      catalogContentId({
+        sku: databaseId,
+        title: "FORCE Elite",
+        application: "hand",
+        widthInches: 15,
+        gauge: 40,
+        lengthFeet: 1500,
+        boxes: 1,
+      }),
+      "ELT-SF154015-1B"
+    );
+    const viewedFromId = viewContentParams({
+      sku: databaseId,
+      name: "FORCE Elite",
+      price: 28.21,
+      title: "FORCE Elite",
+      application: "hand",
+      widthInches: 15,
+      gauge: 40,
+      lengthFeet: 1500,
+      boxes: 1,
+    });
+    assert.deepEqual(viewedFromId.content_ids, ["ELT-SF154015-1B"]);
+    assert.equal(viewedFromId.content_type, "product");
+    assert.equal(viewedFromId.content_name, "FORCE Elite");
+    assert.equal(viewedFromId.currency, "USD");
+    assert.equal(viewedFromId.value, 28.21);
+    assert.equal(JSON.stringify(viewedFromId).includes(databaseId), false);
+    const checkout = initiateCheckoutParams({
+      cartSubtotal: 28.21,
+      currency: "USD",
+      itemsCount: 1,
+      items: [
+        {
+          sku: databaseId,
+          quantity: 1,
+          price: 28.21,
+          title: "FORCE Elite",
+          application: "hand",
+          widthInches: 15,
+          gauge: 40,
+          lengthFeet: 1500,
+          boxes: 1,
+        },
+      ],
+    });
+    assert.deepEqual(checkout.content_ids, ["ELT-SF154015-1B"]);
+    assert.equal(checkout.content_type, "product");
     const added = addToCartParams({
       sku: "FEL-154015-1BX",
       price: 28.21,
