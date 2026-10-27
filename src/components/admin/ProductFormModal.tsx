@@ -29,7 +29,8 @@ import {
 } from "@/types/product";
 import { PRODUCT_CATEGORIES, categorySlugFromRecord, getApplicationForCategory } from "@/data/categories";
 import { readBoxTierPrices } from "@/lib/pricing";
-import { boxStockLabel, boxesPerPalletForProduct } from "@/lib/pallet-stock";
+import { HAND_FULL_PALLET_BOXES } from "@/lib/pricing";
+import { stockBoxSplitLabel } from "@/lib/pallet-stock";
 import { useLanguage } from "@/context/LanguageContext";
 
 interface ProductFormModalProps {
@@ -377,16 +378,10 @@ export function ProductFormModal({
     }
   };
 
-  const boxesPerPallet = boxesPerPalletForProduct({
-    application: form.application,
-    widthInches: form.widthInches,
-    gauge: form.gauge,
-    lengthFeet: form.lengthFeet,
-    name: form.name,
-    boxesPerPallet: form.boxesPerPallet,
-  });
-  const stockBreakdown =
-    form.stockBoxes == null ? null : boxStockLabel(form.stockBoxes, boxesPerPallet);
+  const boxesPerPallet =
+    Math.floor(Number(form.boxesPerPallet) || 0) ||
+    (form.application === "machine" ? 0 : HAND_FULL_PALLET_BOXES);
+  const stockBreakdown = stockBoxSplitLabel(form.stockBoxes, boxesPerPallet);
 
   return createPortal(
     <div

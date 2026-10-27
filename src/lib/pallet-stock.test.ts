@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { customerHoldMessage } from "./payments/checkout-holds";
 import {
   boxStockLabel,
+  stockBoxSplitLabel,
   boxStockShortage,
   deductBoxesFromPalletStock,
   describeBoxStock,
@@ -144,6 +145,9 @@ describe("pallet stock", () => {
     assert.equal(palletStockLabel(2.25, 64), "2 full pallets and 16 boxes");
     assert.equal(palletStockLabel(2, 64), "2 Pallets Available");
     assert.deepEqual(describeBoxStock(144, 64), { fullPallets: 2, looseBoxes: 16, totalBoxes: 144 });
+    assert.equal(stockBoxSplitLabel(640, 64), "10 Full Pallets and 0 Boxes");
+    assert.equal(stockBoxSplitLabel(144, 64), "2 Full Pallets and 16 Boxes");
+    assert.equal(stockBoxSplitLabel(640, null), null);
     assert.equal(boxStockLabel(640, 64), "10 Pallets (640 boxes available)");
     assert.equal(boxStockLabel(144, 64), "2 Full Pallets and 16 Boxes");
     assert.equal(isLowBoxStock(192, 64), true);

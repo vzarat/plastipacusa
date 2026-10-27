@@ -155,6 +155,25 @@ export function describeBoxStock(
   };
 }
 
+/**
+ * Full pallets and leftover boxes from stock_boxes and the product's boxes_per_pallet.
+ * 640 boxes at 64 per pallet is 10 full pallets and 0 boxes.
+ */
+export function stockBoxSplitLabel(
+  stockBoxes: number | null | undefined,
+  boxesPerPallet: number | null | undefined
+): string | null {
+  if (stockBoxes == null) return null;
+  const boxes = Math.max(0, Math.floor(Number(stockBoxes) || 0));
+  const ratio = Math.floor(Number(boxesPerPallet) || 0);
+  if (ratio < 1) return null;
+  const fullPallets = Math.floor(boxes / ratio);
+  const looseBoxes = boxes % ratio;
+  const palletLabel = fullPallets === 1 ? "Full Pallet" : "Full Pallets";
+  const boxLabel = looseBoxes === 1 ? "Box" : "Boxes";
+  return `${fullPallets} ${palletLabel} and ${looseBoxes} ${boxLabel}`;
+}
+
 /** "10 Pallets (640 boxes available)" or "2 Full Pallets and 16 Boxes". */
 export function boxStockLabel(
   stockBoxes: number | null | undefined,
