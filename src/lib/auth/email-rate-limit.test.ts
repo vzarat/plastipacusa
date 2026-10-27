@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { isEmailRateLimitError } from "./email-rate-limit.ts";
+import { isEmailRateLimitError } from "./email-rate-limit";
 
 describe("email rate limit", () => {
   it("matches the Supabase message and a 429 status", () => {

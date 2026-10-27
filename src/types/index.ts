@@ -45,6 +45,7 @@ export interface ProductWithVariants
     | "partNumber"
     | "priceUsd"
     | "stockQuantity"
+    | "stockBoxes"
     | "isActive"
     | "storefrontTitle"
     | "priceCase"
@@ -91,6 +92,8 @@ export interface ProductWithVariants
   sourceId?: string;
   priceUsd?: number | null;
   stockQuantity?: number | null;
+  /** Total boxes on hand. Missing means the column was not loaded. Null is untracked. */
+  stockBoxes?: number | null;
   isAvailable?: boolean | null;
   isSoldOut: boolean;
   isActive?: boolean;
