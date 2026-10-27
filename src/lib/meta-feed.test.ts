@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildMetaFeedCsv, type MetaFeedProduct } from "./meta-feed";
+import { buildMetaFeedCsv, metaFeedImageLink, type MetaFeedProduct } from "./meta-feed";
 
 const hiddenHandFilm: MetaFeedProduct = {
   id: "product-18-80",
@@ -46,5 +46,61 @@ describe("meta catalog feed", () => {
     assert.match(csv, /variant=STD-SF188010-64B/);
     assert.match(csv, /in stock,new,/);
     assert.match(csv, /,Plastipac,product-18-80/);
+  });
+
+  it("keeps a public png and replaces a missing or blocked image", () => {
+    const hand = { sku: "STD-SF186010-1B", price: 30, boxes_count: 1, rolls_count: 4 };
+    const machine = { sku: "HPF-SF207050-HLP", price: 998.6, boxes_count: 0, rolls_count: 20 };
+    assert.equal(
+      metaFeedImageLink(
+        { ...hiddenHandFilm, images: ["https://cdn.example.com/roll photo.png"] },
+        hiddenHandFilm.product_variants![1]
+      ),
+      "https://cdn.example.com/roll%20photo.png"
+    );
+    assert.equal(
+      metaFeedImageLink(
+        {
+          ...hiddenHandFilm,
+          images: [
+            "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png",
+          ],
+        },
+        hand
+      ),
+      "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PRODUCTOS/productos_plastipac_manual.png"
+    );
+    assert.equal(
+      metaFeedImageLink(
+        {
+          id: "machine",
+          slug: "machine-film",
+          title: "Genesis",
+          width_inches: 20,
+          images: [
+            "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/AUTOMATIC_STRETCH_FILM.png",
+          ],
+        },
+        machine
+      ),
+      "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PRODUCTOS/AUTOMATIC_STRETCH_FILM.png"
+    );
+    assert.equal(
+      metaFeedImageLink(
+        {
+          id: "machine",
+          slug: "machine-film",
+          title: "Genesis",
+          width_inches: 20,
+          images: ["https://www.plastipacusa.com/images/products/machine-film.png"],
+        },
+        machine
+      ),
+      "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PRODUCTOS/AUTOMATIC_STRETCH_FILM.png"
+    );
+    assert.equal(
+      metaFeedImageLink({ id: "machine-2", slug: "hpf-207", title: "Genesis", images: [] }, machine),
+      "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PRODUCTOS/AUTOMATIC_STRETCH_FILM.png"
+    );
   });
 });

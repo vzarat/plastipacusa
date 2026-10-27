@@ -68,16 +68,56 @@ export function metaFeedOptionName(variant: MetaFeedVariant): string {
   return String(variant.title || "").trim() || "Package";
 }
 
-function absoluteUrl(value: string): string {
-  const text = value.trim();
-  if (!text) return "";
-  if (/^https?:\/\//i.test(text)) return text;
-  return `${META_FEED_ORIGIN}${text.startsWith("/") ? "" : "/"}${text}`;
+const PRODUCTS_PUBLIC =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PRODUCTOS";
+const HAND_FEED_IMAGE = `${PRODUCTS_PUBLIC}/productos_plastipac_manual.png`;
+const MACHINE_FEED_IMAGE = `${PRODUCTS_PUBLIC}/AUTOMATIC_STRETCH_FILM.png`;
+
+/** These files live in PRODUCTOS/, not in the bucket root. */
+const PRODUCTOS_FILES = ["productos_plastipac_manual.png", "AUTOMATIC_STRETCH_FILM.png"];
+
+function withProductosFolder(url: string): string {
+  return url.replace(
+    /\/object\/public\/Products\/(?!PRODUCTOS\/)(productos_plastipac_manual\.png|AUTOMATIC_STRETCH_FILM\.png)(?=$|[?#])/i,
+    "/object/public/Products/PRODUCTOS/$1"
+  );
 }
 
-function imageLink(product: MetaFeedProduct): string {
-  const listed = Array.isArray(product.images) ? product.images.find((item) => String(item || "").trim()) : "";
-  return absoluteUrl(String(listed || product.image_url || ""));
+function publicRasterUrl(value: string): string | null {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  const withOrigin = /^https?:\/\//i.test(text)
+    ? text
+    : `${META_FEED_ORIGIN}${text.startsWith("/") ? "" : "/"}${text}`;
+  const secure = withProductosFolder(withOrigin.replace(/^http:\/\//i, "https://").replace(/ /g, "%20"));
+  if (!secure.startsWith("https://")) return null;
+  if (/\/object\/sign\/|[?&]token=/i.test(secure)) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(secure);
+  } catch {
+    return null;
+  }
+  const path = decodeURIComponent(parsed.pathname).toLowerCase();
+  if (!/\.(png|jpe?g)$/.test(path)) return null;
+  if (path.endsWith("/machine-film.png")) return null;
+  if (
+    PRODUCTOS_FILES.some((name) => path.endsWith(`/${name.toLowerCase()}`)) &&
+    !path.includes("/productos/")
+  ) {
+    return null;
+  }
+  return parsed.toString();
+}
+
+export function metaFeedImageLink(product: MetaFeedProduct, variant: MetaFeedVariant): string {
+  const stored = [...(Array.isArray(product.images) ? product.images : []), product.image_url];
+  for (const candidate of stored) {
+    const url = publicRasterUrl(String(candidate || ""));
+    if (url) return url;
+  }
+  const machine = isMachineProduct(product, variant) || String(variant.sku || "").startsWith("HPF-");
+  return machine ? MACHINE_FEED_IMAGE : HAND_FEED_IMAGE;
 }
 
 export function metaFeedTokenMatches(provided: string | null, expected: string | null): boolean {
@@ -96,7 +136,6 @@ export function buildMetaFeedCsv(products: MetaFeedProduct[], origin = META_FEED
     const productTitle = String(product.title || "").trim() || "Stretch Film";
     const description = String(product.description || productTitle).trim();
     const slug = String(product.slug || "").trim();
-    const image = imageLink(product);
     if (!groupId || !slug) continue;
 
     for (const variant of product.product_variants || []) {
@@ -104,6 +143,7 @@ export function buildMetaFeedCsv(products: MetaFeedProduct[], origin = META_FEED
       if (!id || seen.has(id)) continue;
       const price = metaFeedPrice(product, variant);
       if (!price) continue;
+      const image = metaFeedImageLink(product, variant);
       seen.add(id);
       const title = `${productTitle} | ${metaFeedOptionName(variant)}`;
       const link = `${origin}/products/${encodeURIComponent(slug)}?variant=${encodeURIComponent(id)}`;
