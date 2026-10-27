@@ -62,10 +62,6 @@ function RegisterForm() {
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    if (!companyName.trim()) {
-      setErrorMsg("Please provide your Company or Organization Name.");
-      return;
-    }
     if (!fullName.trim()) {
       setErrorMsg("Please provide your Contact Full Name.");
       return;
@@ -177,13 +173,12 @@ function RegisterForm() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-              Company / Entity Name <span className="text-rose-500">*</span>
+              Company / Entity Name
             </label>
             <div className="relative">
               <Building className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                required
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 placeholder="Logistics Corp, Distribution LLC, etc."

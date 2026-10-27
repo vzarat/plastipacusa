@@ -152,7 +152,7 @@ export async function signUp({
   email: string;
   password: string;
   fullName: string;
-  companyName: string;
+  companyName?: string;
   phone?: string;
   taxId?: string;
   isTaxExempt?: boolean;
@@ -161,10 +161,10 @@ export async function signUp({
   try {
     const supabase = await createServerClient();
 
-    if (!email || !password || !fullName || !companyName) {
+    if (!email || !password || !fullName) {
       return {
         success: false,
-        error: "All fields are required (Company Name, Full Name, Work Email, and Password).",
+        error: "Full name, work email, and password are required.",
       };
     }
 
@@ -176,6 +176,7 @@ export async function signUp({
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+    const trimmedCompany = String(companyName || "").trim();
     const trimmedTaxId = (taxId || "").trim();
     const trimmedPhone = (phone || "").trim();
     const trimmedExemptNo = (taxExemptionNumber || "").trim();
@@ -187,7 +188,7 @@ export async function signUp({
       options: {
         data: {
           full_name: fullName.trim(),
-          company_name: companyName.trim(),
+          company_name: trimmedCompany,
           phone: trimmedPhone || undefined,
           tax_id: trimmedTaxId || undefined,
           is_tax_exempt: taxExempt,
@@ -211,7 +212,7 @@ export async function signUp({
         const profilePayload = {
           id: data.user.id,
           full_name: fullName.trim(),
-          company_name: companyName.trim(),
+          company_name: trimmedCompany,
           role: initialRole,
           email: normalizedEmail,
           phone: trimmedPhone || null,
@@ -229,7 +230,7 @@ export async function signUp({
           await supabase.from("company_profiles").upsert(
             {
               user_id: data.user.id,
-              company_name: companyName.trim(),
+              company_name: trimmedCompany,
               tax_id: trimmedTaxId || null,
               is_tax_exempt: taxExempt,
               tax_exemption_number: trimmedExemptNo || null,
