@@ -139,6 +139,74 @@ export function deductBoxesFromPalletStock(
   return roundPalletStock(onHand - deduction);
 }
 
+/** Full pallets and loose boxes from a total box count. Does not write to the database. */
+export function describeBoxStock(
+  stockBoxes: number | null | undefined,
+  boxesPerPallet: number | null | undefined
+): PalletStockParts | null {
+  if (stockBoxes == null || stockBoxes === undefined) return null;
+  const totalBoxes = Math.max(0, Math.floor(Number(stockBoxes) || 0));
+  const ratio = Math.floor(Number(boxesPerPallet) || 0);
+  if (ratio < 1) return { fullPallets: 0, looseBoxes: totalBoxes, totalBoxes };
+  return {
+    fullPallets: Math.floor(totalBoxes / ratio),
+    looseBoxes: totalBoxes % ratio,
+    totalBoxes,
+  };
+}
+
+/** "10 Pallets (640 boxes available)" or "2 Full Pallets and 16 Boxes". */
+export function boxStockLabel(
+  stockBoxes: number | null | undefined,
+  boxesPerPallet: number | null | undefined
+): string | null {
+  const parts = describeBoxStock(stockBoxes, boxesPerPallet);
+  if (!parts || parts.totalBoxes <= 0) return null;
+  const ratio = Math.floor(Number(boxesPerPallet) || 0);
+  if (ratio > 0 && parts.looseBoxes === 0) {
+    const noun = parts.fullPallets === 1 ? "Pallet" : "Pallets";
+    return `${parts.fullPallets} ${noun} (${parts.totalBoxes} boxes available)`;
+  }
+  if (ratio > 0) {
+    const palletLabel = parts.fullPallets === 1 ? "Full Pallet" : "Full Pallets";
+    const boxLabel = parts.looseBoxes === 1 ? "Box" : "Boxes";
+    return `${parts.fullPallets} ${palletLabel} and ${parts.looseBoxes} ${boxLabel}`;
+  }
+  return `${parts.totalBoxes} boxes available`;
+}
+
+/** True when tracked boxes are at or below three full pallets. */
+export function isLowBoxStock(
+  stockBoxes: number | null | undefined,
+  boxesPerPallet: number | null | undefined
+): boolean {
+  const ratio = Math.floor(Number(boxesPerPallet) || 0);
+  if (stockBoxes == null || ratio < 1) return false;
+  return Math.floor(stockBoxes) <= 3 * ratio;
+}
+
+export function boxStockShortage(
+  lines: Array<{ productId?: string | null; productName: string; boxes?: number | null }>,
+  onHandByProduct: Map<string, number | null>
+): string | null {
+  const demand = new Map<string, { name: string; boxes: number }>();
+  for (const line of lines) {
+    const productId = String(line.productId || "");
+    const boxes = Math.max(0, Math.floor(Number(line.boxes) || 0));
+    if (!productId || boxes <= 0) continue;
+    const current = demand.get(productId) || { name: line.productName, boxes: 0 };
+    current.boxes += boxes;
+    demand.set(productId, current);
+  }
+  for (const [productId, need] of demand) {
+    const onHand = onHandByProduct.get(productId);
+    if (onHand == null) continue;
+    if (onHand >= need.boxes) continue;
+    return `Only ${Math.max(0, Math.floor(onHand))} boxes available.`;
+  }
+  return null;
+}
+
 /** Display-only label. Does not change stock_quantity. */
 export function palletStockLabel(onHandPallets: number | null, boxesPerPallet?: number | null): string | null {
   if (onHandPallets == null || onHandPallets <= 0) return null;

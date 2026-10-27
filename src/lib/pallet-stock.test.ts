@@ -2,9 +2,13 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { customerHoldMessage } from "./payments/checkout-holds";
 import {
+  boxStockLabel,
+  boxStockShortage,
   deductBoxesFromPalletStock,
+  describeBoxStock,
   describePalletStock,
   fullPalletsForPackage,
+  isLowBoxStock,
   orderLinePallets,
   palletAvailabilityLabel,
   palletStockLabel,
@@ -139,6 +143,19 @@ describe("pallet stock", () => {
     assert.equal(deductBoxesFromPalletStock(1, null, 0, 0.5), 0.5);
     assert.equal(palletStockLabel(2.25, 64), "2 full pallets and 16 boxes");
     assert.equal(palletStockLabel(2, 64), "2 Pallets Available");
+    assert.deepEqual(describeBoxStock(144, 64), { fullPallets: 2, looseBoxes: 16, totalBoxes: 144 });
+    assert.equal(boxStockLabel(640, 64), "10 Pallets (640 boxes available)");
+    assert.equal(boxStockLabel(144, 64), "2 Full Pallets and 16 Boxes");
+    assert.equal(isLowBoxStock(192, 64), true);
+    assert.equal(isLowBoxStock(193, 64), false);
+    assert.equal(isLowBoxStock(null, 64), false);
+    assert.equal(
+      boxStockShortage(
+        [{ productId: "film", productName: "STRETCH FILM", boxes: 32 }],
+        new Map([["film", 16]])
+      ),
+      "Only 16 boxes available."
+    );
     assert.equal(
       soldOutCheckoutMessage(
         [{ productId: "film", productName: "STRETCH FILM 15" }],
@@ -154,8 +171,8 @@ describe("pallet stock", () => {
       "Only 1 full pallet is available for STRETCH FILM."
     );
     assert.equal(
-      customerHoldMessage({ message: "Only 16 boxes are available." }),
-      "Only 16 boxes are available."
+      customerHoldMessage({ message: "Only 16 boxes available." }),
+      "Only 16 boxes available."
     );
     assert.equal(
       customerHoldMessage({

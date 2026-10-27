@@ -662,6 +662,12 @@ function formatProduct(raw: any): ProductWithVariants {
     stockQuantity:
       trackedPalletStock(raw.stock_quantity ?? raw.stock_qty ?? raw.stockQuantity) ?? undefined,
     boxesPerPallet: Math.floor(Number(raw.boxes_per_pallet ?? raw.boxesPerPallet) || 0) || null,
+    stockBoxes:
+      raw.stock_boxes === undefined && raw.stockBoxes === undefined
+        ? undefined
+        : raw.stock_boxes == null && raw.stockBoxes == null
+          ? null
+          : Math.max(0, Math.floor(Number(raw.stock_boxes ?? raw.stockBoxes) || 0)),
     isAvailable:
       raw.is_available === false || raw.isAvailable === false
         ? false
@@ -674,7 +680,9 @@ function formatProduct(raw: any): ProductWithVariants {
       raw.isSoldOut === true ||
       raw.is_available === false ||
       raw.isAvailable === false ||
-      trackedPalletStock(raw.stock_quantity ?? raw.stock_qty ?? raw.stockQuantity) === 0,
+      trackedPalletStock(raw.stock_quantity ?? raw.stock_qty ?? raw.stockQuantity) === 0 ||
+      raw.stock_boxes === 0 ||
+      raw.stockBoxes === 0,
     isActive: raw.is_active === undefined && raw.isActive === undefined ? true : Boolean(raw.is_active ?? raw.isActive),
     storefrontTitle: raw.storefront_title || raw.storefrontTitle || null,
     priceCase: raw.price_case === null || raw.price_case === undefined ? null : Number(raw.price_case),
@@ -1333,6 +1341,13 @@ function formatAdminProduct(raw: any): AdminProduct {
     stockQuantity: Number(
       raw.stock_quantity ?? raw.stock_qty ?? raw.stockQuantity ?? baseVariant?.stock_quantity ?? 0
     ),
+    stockBoxes:
+      raw.stock_boxes === undefined && raw.stockBoxes === undefined
+        ? null
+        : raw.stock_boxes == null && raw.stockBoxes == null
+          ? null
+          : Math.max(0, Math.floor(Number(raw.stock_boxes ?? raw.stockBoxes) || 0)),
+    boxesPerPallet: Math.floor(Number(raw.boxes_per_pallet ?? raw.boxesPerPallet) || 0) || null,
     isSoldOut: readSoldOut(raw),
     application: applicationFromRecord(raw, categorySlug),
     categorySlug,
@@ -1538,6 +1553,7 @@ export async function createProduct(values: ProductFormValues) {
       price_40_rolls: values.price40Rolls ?? PACKAGE_TIER_DEFAULTS.price40Rolls,
       ...boxPriceColumnPatch(values.packageTiers),
       stock_quantity: roundPalletStock(values.stockQuantity),
+      stock_boxes: values.stockBoxes == null ? null : Math.max(0, Math.floor(values.stockBoxes)),
       is_sold_out:
         roundPalletStock(values.stockQuantity) === 0
           ? true
@@ -1634,6 +1650,10 @@ export async function updateProduct(id: string, values: Partial<ProductFormValue
     if (values.price20Rolls !== undefined) updatePayload.price_20_rolls = values.price20Rolls;
     if (values.price40Rolls !== undefined) updatePayload.price_40_rolls = values.price40Rolls;
     Object.assign(updatePayload, boxPriceColumnPatch(values.packageTiers));
+    if (values.stockBoxes !== undefined) {
+      updatePayload.stock_boxes = values.stockBoxes == null ? null : Math.max(0, Math.floor(values.stockBoxes));
+      if (values.stockBoxes === 0) updatePayload.is_sold_out = true;
+    }
     if (values.stockQuantity !== undefined && values.stockQuantity !== null) {
       const palletStock = roundPalletStock(values.stockQuantity);
       updatePayload.stock_quantity = palletStock;

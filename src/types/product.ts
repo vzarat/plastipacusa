@@ -53,6 +53,8 @@ export interface AdminProduct {
   price40Rolls: number;
   packageTiers: AdminPackageTier[];
   stockQuantity: number;
+  stockBoxes?: number | null;
+  boxesPerPallet?: number | null;
   isSoldOut: boolean;
   application: "hand" | "machine";
   categorySlug: string;
@@ -86,6 +88,8 @@ export interface ProductFormValues {
   price40Rolls: number;
   packageTiers: AdminPackageTier[];
   stockQuantity: number;
+  stockBoxes?: number | null;
+  boxesPerPallet?: number | null;
   isSoldOut: boolean;
   application: "hand" | "machine";
   categorySlug: string;

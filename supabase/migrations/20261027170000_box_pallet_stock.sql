@@ -1,9 +1,8 @@
--- Box purchases deduct from the same pallet balance. Do not add stock_boxes or stock_pallets.
--- products.stock_quantity stays the only on-hand number, in pallet units, including a fraction
--- for an open pallet. boxes_per_pallet is the ratio (64, or 24 for compact 18" x 80 GA).
--- Existing stock_quantity values are not converted.
--- NULL boxes_per_pallet keeps the current pallet-fraction deduction.
--- NULL stock_quantity stays untracked.
+-- Stock is an integer count of boxes in products.stock_boxes.
+-- NULL stock_boxes is untracked. 0 is sold out.
+-- boxes_per_pallet is only the display ratio (64, or 24 for compact 18" x 80 GA).
+-- Existing pallet counts in stock_quantity are copied into stock_boxes only when
+-- boxes_per_pallet is already set. They are not guessed.
 -- Run this whole file in the Supabase SQL editor. It is safe to run again.
 
 alter table public.products
@@ -22,7 +21,32 @@ begin
 end $$;
 
 comment on column public.products.boxes_per_pallet is
-  'Boxes in one full pallet. Not a second inventory. Leave null until it matches the storefront ratio.';
+  'Boxes in one full pallet. Used to display full pallets and loose boxes. Not a second inventory.';
+
+alter table public.products
+  add column if not exists stock_boxes integer;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'products_stock_boxes_nonnegative'
+  ) then
+    alter table public.products
+      add constraint products_stock_boxes_nonnegative
+      check (stock_boxes is null or stock_boxes >= 0);
+  end if;
+end $$;
+
+comment on column public.products.stock_boxes is
+  'Total boxes on hand. NULL is untracked. 0 is sold out.';
+
+update public.products
+  set stock_boxes = round(stock_quantity * boxes_per_pallet)::integer
+  where stock_boxes is null
+    and stock_quantity is not null
+    and boxes_per_pallet is not null
+    and boxes_per_pallet > 0;
 
 create or replace function public.pallet_stock_breakdown(
   p_stock numeric,
@@ -63,22 +87,24 @@ begin
 end $$;
 
 create or replace function public.deduct_product_boxes(
-  p_product_id public.products.id%type,
-  p_boxes_bought integer,
-  p_pallet_fallback numeric default null
+  p_product_id uuid,
+  p_boxes_bought integer
 )
-returns numeric
+returns integer
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  v_on_hand numeric;
+  v_stock integer;
   v_ratio integer;
-  v_deduction numeric;
 begin
-  select p.stock_quantity, p.boxes_per_pallet
-    into v_on_hand, v_ratio
+  if p_boxes_bought is null or p_boxes_bought <= 0 then
+    return null;
+  end if;
+
+  select p.stock_boxes, p.boxes_per_pallet
+    into v_stock, v_ratio
     from public.products p
     where p.id = p_product_id
     for update;
@@ -88,45 +114,23 @@ begin
   end if;
 
   -- Untracked stock is not decremented.
-  if v_on_hand is null then
+  if v_stock is null then
     return null;
   end if;
 
-  if v_ratio is not null and v_ratio > 0 and coalesce(p_boxes_bought, 0) > 0 then
-    v_deduction := round(p_boxes_bought::numeric / v_ratio, 6);
-  elsif p_pallet_fallback is not null and p_pallet_fallback > 0 then
-    v_deduction := round(p_pallet_fallback, 6);
-  else
-    return v_on_hand;
-  end if;
-
-  if v_on_hand < v_deduction then
-    if v_ratio is not null and v_ratio > 0 then
-      raise exception 'Only % boxes are available.', round(greatest(v_on_hand, 0) * v_ratio)::integer;
-    end if;
-    raise exception 'Only % pallets are available.', trim(to_char(v_on_hand, 'FM999990.9999'));
+  if v_stock < p_boxes_bought then
+    raise exception 'Only % boxes available.', v_stock;
   end if;
 
   update public.products
-    set stock_quantity = stock_quantity - v_deduction,
+    set stock_boxes = stock_boxes - p_boxes_bought,
         is_sold_out = case
-          when stock_quantity - v_deduction <= 0 then true
+          when stock_boxes - p_boxes_bought <= 0 then true
           else coalesce(is_sold_out, false)
         end
     where id = p_product_id;
 
-  if exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'products'
-      and column_name = 'stock_qty'
-  ) then
-    execute 'update public.products set stock_qty = stock_quantity where id = $1'
-      using p_product_id;
-  end if;
-
-  return round(v_on_hand - v_deduction, 6);
+  return v_stock - p_boxes_bought;
 end;
 $$;
 
@@ -195,6 +199,7 @@ declare
   v_boxes integer;
   v_product_id public.products.id%type;
   v_on_hand numeric;
+  v_stock_boxes integer;
   v_ratio integer;
   v_need_boxes integer;
   v_total_boxes integer;
@@ -222,7 +227,7 @@ begin
       v_name := coalesce(nullif(btrim(v_line->>'productName'), ''), v_sku);
       v_pallets := public.line_pallet_demand(v_line);
       v_boxes := coalesce((v_line->>'boxes')::integer, 0);
-      if v_sku = '' or v_pallets is null or v_pallets <= 0 then
+      if v_sku = '' or ((v_pallets is null or v_pallets <= 0) and v_boxes <= 0) then
         continue;
       end if;
       v_need := v_need || jsonb_build_object(
@@ -252,34 +257,28 @@ begin
       end if;
       v_on_hand := null;
       v_sold := false;
-      select p.stock_quantity, coalesce(p.is_sold_out, false), p.boxes_per_pallet
-        into v_on_hand, v_sold, v_ratio
+      v_stock_boxes := null;
+      select p.stock_boxes, coalesce(p.is_sold_out, false)
+        into v_stock_boxes, v_sold
         from public.products p
         where p.id = v_product_id
         for update;
       if not found or v_product_id is null then
         raise exception '% is sold out.', v_name;
       end if;
-      if v_sold then
-        raise exception '% is sold out.', v_name;
-      end if;
-      if v_on_hand is null then
+      if v_stock_boxes is null then
         continue;
       end if;
-      if v_on_hand <= 0 then
+      if v_sold or v_stock_boxes <= 0 then
         raise exception '% is sold out.', v_name;
       end if;
       v_need_boxes := coalesce((v_need -> v_sku ->> 'boxes')::integer, 0);
-      perform public.deduct_product_boxes(v_product_id, v_need_boxes, v_pallets);
+      if v_need_boxes <= 0 then
+        continue;
+      end if;
+      perform public.deduct_product_boxes(v_product_id, v_need_boxes);
       v_snapshot := v_snapshot || jsonb_build_array(
-        jsonb_build_object(
-          'sku', v_sku,
-          'pallets', case
-            when v_ratio is not null and v_ratio > 0 and v_need_boxes > 0
-              then round(v_need_boxes::numeric / v_ratio, 6)
-            else v_pallets
-          end
-        )
+        jsonb_build_object('sku', v_sku, 'boxes', v_need_boxes)
       );
     end loop;
   end if;
@@ -325,6 +324,7 @@ declare
   v_pallets numeric;
   v_product_id public.products.id%type;
   v_on_hand numeric;
+  v_stock_boxes integer;
   v_ratio integer;
   v_need_boxes integer;
   v_total_boxes integer;
@@ -360,7 +360,7 @@ begin
         if v_pallets is null or v_pallets < 0 then
           raise exception 'Order line % has an invalid pallet count', coalesce(v_sku, '?');
         end if;
-        if v_pallets = 0 then
+        if coalesce(v_pallets, 0) = 0 and v_boxes <= 0 then
           continue;
         end if;
         if v_sku is null or btrim(v_sku) = '' then
@@ -377,8 +377,9 @@ begin
           continue;
         end if;
         v_on_hand := null;
-        select p.stock_quantity, p.boxes_per_pallet
-          into v_on_hand, v_ratio
+        v_stock_boxes := null;
+        select p.stock_boxes
+          into v_stock_boxes
           from public.products p
           where p.id = v_product_id
           for update;
@@ -386,12 +387,15 @@ begin
           v_short := v_short || 'Unknown product for sku ' || v_sku || '. ';
           continue;
         end if;
-        if v_on_hand is null then
+        if v_stock_boxes is null then
           continue;
         end if;
         v_need_boxes := greatest(coalesce(v_boxes, 0), 0);
+        if v_need_boxes <= 0 then
+          continue;
+        end if;
         begin
-          perform public.deduct_product_boxes(v_product_id, v_need_boxes, v_pallets);
+          perform public.deduct_product_boxes(v_product_id, v_need_boxes);
         exception
           when raise_exception then
             v_short := v_short || sqlerrm || ' ';
@@ -419,6 +423,80 @@ end;
 $$;
 
 
+create or replace function public.release_checkout_holds(p_order_id text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  ord public.orders%rowtype;
+  v_id public.orders.id%type;
+  v_line jsonb;
+  v_sku text;
+  v_boxes integer;
+  v_product_id uuid;
+  v_stock integer;
+begin
+  v_id := p_order_id;
+  select * into ord from public.orders where id = v_id for update;
+  if not found then
+    return;
+  end if;
+  if ord.inventory_settled or ord.payment_status = 'Paid & Cleared' or ord.status is distinct from 'pending_payment' then
+    return;
+  end if;
+
+  if ord.stock_hold and jsonb_typeof(ord.stock_hold_snapshot) = 'array' then
+    for v_line in
+      select value
+      from jsonb_array_elements(ord.stock_hold_snapshot) as value
+      order by value->>'sku'
+    loop
+      v_sku := v_line->>'sku';
+      v_boxes := coalesce((v_line->>'boxes')::integer, 0);
+      if v_sku is null or btrim(v_sku) = '' or v_boxes <= 0 then
+        continue;
+      end if;
+      select v.product_id into v_product_id
+        from public.product_variants v
+        where v.sku = v_sku
+        limit 1;
+      if v_product_id is null then
+        continue;
+      end if;
+      select p.stock_boxes into v_stock
+        from public.products p
+        where p.id = v_product_id
+        for update;
+      if v_stock is null then
+        continue;
+      end if;
+      update public.products
+        set stock_boxes = stock_boxes + v_boxes,
+            is_sold_out = case
+              when stock_boxes + v_boxes > 0 then false
+              else coalesce(is_sold_out, false)
+            end
+        where id = v_product_id;
+    end loop;
+  end if;
+
+  if ord.coupon_hold and ord.held_coupon_id is not null then
+    update public.coupons
+      set used_count = greatest(coalesce(used_count, 0) - 1, 0)
+      where id = ord.held_coupon_id;
+  end if;
+
+  update public.orders
+    set stock_hold = false,
+        stock_hold_snapshot = null,
+        coupon_hold = false,
+        held_coupon_id = null
+    where id = v_id;
+end;
+$$;
+
 revoke all on function public.pallet_stock_breakdown(numeric, integer) from public;
 revoke all on function public.pallet_stock_breakdown(numeric, integer) from anon;
 revoke all on function public.pallet_stock_breakdown(numeric, integer) from authenticated;
@@ -441,7 +519,7 @@ begin
   execute format(
     'comment on function public.deduct_product_boxes(%s) is %L',
     sig,
-    'Locks the product row. Box purchases subtract boxes/boxes_per_pallet. A missing ratio subtracts the checkout pallet fraction. NULL stock is untracked.'
+    'Locks the product row and subtracts p_boxes_bought from stock_boxes. NULL stock_boxes is untracked.'
   );
 end $$;
 

@@ -13,7 +13,7 @@ import {
 } from "@/lib/checkout-pricing";
 import { mapCouponToApplied } from "@/lib/coupons";
 import { catalogSkuCandidates, customerLineDescription } from "@/lib/catalog-sku";
-import { palletStockShortage, soldOutCheckoutMessage, trackedPalletStock } from "@/lib/pallet-stock";
+import { boxStockShortage, palletStockShortage, soldOutCheckoutMessage, trackedPalletStock } from "@/lib/pallet-stock";
 import { releaseCheckoutHolds, syncCheckoutHolds } from "@/lib/payments/checkout-holds";
 import {
   decidePaymentAttempt,
@@ -127,11 +127,23 @@ async function loadCatalogLines(
     toCatalogCheckoutVariant(row, productsById.get(String(row.product_id || row.productId || "")) || null)
   );
   const lines = catalogCheckoutLines(requested, variants, siblings);
-  const onHand = new Map<string, number | null>();
+  const boxOnHand = new Map<string, number | null>();
+  const palletOnHand = new Map<string, number | null>();
   const availability = new Map<string, { stock: number | null; soldOut: boolean }>();
   for (const [id, product] of productsById) {
+    if (product.stock_boxes !== undefined || product.stockBoxes !== undefined) {
+      const raw = product.stock_boxes !== undefined ? product.stock_boxes : product.stockBoxes;
+      const boxes = raw == null || raw === "" ? null : Math.max(0, Math.floor(Number(raw)));
+      const stock = boxes != null && Number.isFinite(boxes) ? boxes : null;
+      boxOnHand.set(id, stock);
+      availability.set(id, {
+        stock,
+        soldOut: product.is_sold_out === true || product.isSoldOut === true || stock === 0,
+      });
+      continue;
+    }
     const stock = trackedPalletStock(product.stock_quantity ?? product.stock_qty);
-    onHand.set(id, stock);
+    palletOnHand.set(id, stock);
     availability.set(id, {
       stock,
       soldOut: product.is_sold_out === true || product.isSoldOut === true || stock === 0,
@@ -139,7 +151,7 @@ async function loadCatalogLines(
   }
   const unavailable = soldOutCheckoutMessage(lines, availability);
   if (unavailable) throw new Error(unavailable);
-  const shortage = palletStockShortage(lines, onHand);
+  const shortage = boxStockShortage(lines, boxOnHand) || palletStockShortage(lines, palletOnHand);
   if (shortage) throw new Error(shortage);
   return lines;
 }

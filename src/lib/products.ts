@@ -791,12 +791,21 @@ export type DimensionSortableProduct = {
   stockQuantity?: number | null;
   stock_quantity?: number | null;
   stock_qty?: number | null;
+  stockBoxes?: number | null;
+  stock_boxes?: number | null;
 };
 
 /** In stock when the product is not sold out and still has pallet stock. Untracked stock stays available. */
 export function isCatalogInStock(product: DimensionSortableProduct): boolean {
   if (product.isSoldOut === true || product.is_sold_out === true) return false;
   if (product.isAvailable === false || product.is_available === false) return false;
+  if (product.stockBoxes !== undefined || product.stock_boxes !== undefined) {
+    const boxes = product.stockBoxes !== undefined ? product.stockBoxes : product.stock_boxes;
+    if (boxes == null || String(boxes).trim() === "") return true;
+    const count = Number(boxes);
+    if (!Number.isFinite(count)) return true;
+    return count > 0;
+  }
   const raw = product.stockQuantity ?? product.stock_quantity ?? product.stock_qty;
   if (raw == null || String(raw).trim() === "") return true;
   const stock = Number(raw);

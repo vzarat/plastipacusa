@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  boxStockShortage,
   palletStockShortage,
   soldOutCheckoutMessage,
   trackedPalletStock,
@@ -9,6 +10,7 @@ interface HoldLine {
   productId?: string | null;
   productName: string;
   pallets: number;
+  boxes?: number | null;
 }
 
 function missingHoldFunction(error: { code?: string; message?: string } | null): boolean {
@@ -30,11 +32,12 @@ export function customerHoldMessage(error: { message?: string; details?: string;
     .join(" ")
     .replace(/^[A-Z0-9]{5}:\s*/, "")
     .trim();
-  if (/sold out|available for|boxes are available|promo code/i.test(text)) return text.slice(0, 300);
+  if (/sold out|available for|boxes available|promo code/i.test(text)) return text.slice(0, 300);
   return null;
 }
 
 const STOCK_COLUMN_SETS = [
+  "id, name, stock_boxes, boxes_per_pallet, is_sold_out",
   "id, name, stock_quantity, is_sold_out",
   "id, name, stock_qty, is_sold_out",
   "id, name, stock_quantity",
@@ -65,18 +68,34 @@ async function readAvailability(admin: SupabaseClient, lines: HoldLine[]): Promi
     console.error("[checkout] stock read failed", error?.code || "error");
     return null;
   }
-  const onHand = new Map<string, number | null>();
+  const boxOnHand = new Map<string, number | null>();
+  const palletOnHand = new Map<string, number | null>();
   const availability = new Map<string, { stock: number | null; soldOut: boolean }>();
   for (const row of data as Array<Record<string, unknown>>) {
     const id = String(row.id || "");
+    if (Object.prototype.hasOwnProperty.call(row, "stock_boxes")) {
+      const raw = row.stock_boxes;
+      const boxes = raw == null || raw === "" ? null : Math.max(0, Math.floor(Number(raw)));
+      const stock = boxes != null && Number.isFinite(boxes) ? boxes : null;
+      boxOnHand.set(id, stock);
+      availability.set(id, {
+        stock,
+        soldOut: row.is_sold_out === true || stock === 0,
+      });
+      continue;
+    }
     const stock = trackedPalletStock(row.stock_quantity ?? row.stock_qty);
-    onHand.set(id, stock);
+    palletOnHand.set(id, stock);
     availability.set(id, {
       stock,
       soldOut: row.is_sold_out === true || stock === 0,
     });
   }
-  return soldOutCheckoutMessage(lines, availability) || palletStockShortage(lines, onHand);
+  return (
+    soldOutCheckoutMessage(lines, availability) ||
+    boxStockShortage(lines, boxOnHand) ||
+    palletStockShortage(lines, palletOnHand)
+  );
 }
 
 /**

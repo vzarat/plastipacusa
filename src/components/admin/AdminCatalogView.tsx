@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/utils";
 import { getDisplayPrice } from "@/lib/pricing";
+import { boxesPerPalletForProduct, isLowBoxStock } from "@/lib/pallet-stock";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   Search,
@@ -668,6 +669,23 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                         return displayPrice != null ? `${formatCurrency(displayPrice)} USD` : "—";
                       })()}
                     </span>
+                    <div className="flex items-center gap-2">
+                    {isLowBoxStock(
+                      item.stockBoxes,
+                      item.boxesPerPallet ??
+                        boxesPerPalletForProduct({
+                          application: item.application,
+                          widthInches: item.widthInches,
+                          gauge: item.gauge,
+                          lengthFeet: item.lengthFeet,
+                          slug: item.slug,
+                          name: item.name,
+                        })
+                    ) && !item.isSoldOut && (
+                      <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800">
+                        Low Stock
+                      </span>
+                    )}
                     <button
                       type="button"
                       onClick={() => handleToggleSoldOut(item)}
@@ -681,6 +699,7 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                     >
                       {item.isSoldOut ? t("admin.soldOut") : t("admin.inStock")}
                     </button>
+                    </div>
                   </div>
                 </div>
 

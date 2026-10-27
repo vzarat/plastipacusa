@@ -172,6 +172,13 @@ function productToForm(product: AdminProduct): ProductFormValues {
       raw
     ),
     stockQuantity: numberOrNull(raw.stockQuantity, raw.stock_quantity, raw.stock_qty) ?? 0,
+    stockBoxes:
+      raw.stockBoxes === undefined && raw.stock_boxes === undefined
+        ? null
+        : raw.stockBoxes == null && raw.stock_boxes == null
+          ? null
+          : Math.max(0, Math.floor(Number(raw.stockBoxes ?? raw.stock_boxes) || 0)),
+    boxesPerPallet: Math.floor(Number(raw.boxesPerPallet ?? raw.boxes_per_pallet) || 0) || null,
     isSoldOut:
       (numberOrNull(raw.stockQuantity, raw.stock_quantity, raw.stock_qty) ?? 0) <= 0 ||
       Boolean(raw.isSoldOut ?? raw.is_sold_out ?? false),
@@ -210,6 +217,8 @@ const EMPTY_FORM: ProductFormValues = {
   price40Rolls: PACKAGE_TIER_DEFAULTS.price40Rolls,
   packageTiers: defaultPackageTiers(""),
   stockQuantity: 0,
+  stockBoxes: null,
+  boxesPerPallet: null,
   isSoldOut: true,
   application: getApplicationForCategory(DEFAULT_CATEGORY_SLUG),
   categorySlug: DEFAULT_CATEGORY_SLUG,
@@ -530,6 +539,32 @@ export function ProductFormModal({
               />
               <p className="mt-1.5 text-[11px] leading-snug text-slate-500">
                 {t("admin.stockPalletsHint")}
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5" htmlFor="stock-boxes">
+                Boxes on hand
+              </label>
+              <Input
+                id="stock-boxes"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                placeholder="Untracked"
+                value={form.stockBoxes ?? ""}
+                onChange={(e) => {
+                  const stockBoxes = e.target.value === "" ? null : Math.max(0, Math.floor(Number(e.target.value) || 0));
+                  setForm((current) => ({
+                    ...current,
+                    stockBoxes,
+                    isSoldOut: stockBoxes === 0,
+                  }));
+                }}
+              />
+              <p className="mt-1.5 text-[11px] leading-snug text-slate-500">
+                Total boxes. Leave blank if this product is not tracked. 0 marks it sold out.
               </p>
             </div>
 
