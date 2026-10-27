@@ -30,18 +30,41 @@ export function customerHoldMessage(error: { message?: string; details?: string;
     .join(" ")
     .replace(/^[A-Z0-9]{5}:\s*/, "")
     .trim();
-  if (/sold out|available for|promo code/i.test(text)) return text.slice(0, 300);
+  if (/sold out|available for|boxes are available|promo code/i.test(text)) return text.slice(0, 300);
   return null;
+}
+
+const STOCK_COLUMN_SETS = [
+  "id, name, stock_quantity, is_sold_out",
+  "id, name, stock_qty, is_sold_out",
+  "id, name, stock_quantity",
+  "id, name, stock_qty",
+];
+
+function missingStockColumn(error: { message?: string } | null): boolean {
+  const message = String(error?.message || "");
+  return /column|schema cache|does not exist/i.test(message);
 }
 
 async function readAvailability(admin: SupabaseClient, lines: HoldLine[]): Promise<string | null> {
   const productIds = [...new Set(lines.map((line) => String(line.productId || "")).filter(Boolean))];
   if (productIds.length === 0) return null;
-  const { data, error } = await admin
-    .from("products")
-    .select("id, name, stock_quantity, stock_qty, is_sold_out")
-    .in("id", productIds);
-  if (error || !data) return "We couldn't confirm pallet stock. Please try again.";
+  let data: unknown[] | null = null;
+  let error: { code?: string; message?: string } | null = null;
+  for (const columns of STOCK_COLUMN_SETS) {
+    const result = await admin.from("products").select(columns).in("id", productIds);
+    if (!result.error && result.data) {
+      data = result.data as unknown[];
+      error = null;
+      break;
+    }
+    error = result.error;
+    if (!missingStockColumn(result.error)) break;
+  }
+  if (error || !data) {
+    console.error("[checkout] stock read failed", error?.code || "error");
+    return null;
+  }
   const onHand = new Map<string, number | null>();
   const availability = new Map<string, { stock: number | null; soldOut: boolean }>();
   for (const row of data as Array<Record<string, unknown>>) {

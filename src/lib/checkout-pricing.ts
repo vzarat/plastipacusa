@@ -38,7 +38,7 @@ export interface PricedCheckoutLine {
   totalBoxes: number;
   /** Catalog boxes_count times quantity. Shipping still uses boxes. */
   boxes: number;
-  /** Full pallets consumed from products.stock_quantity. Loose boxes and half pallets are 0. */
+  /** Pallet share consumed from products.stock_quantity. Loose boxes are a fraction of one pallet. */
   pallets: number;
   unitPrice: number;
   totalPrice: number;

@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { customerHoldMessage } from "./payments/checkout-holds";
 import {
+  deductBoxesFromPalletStock,
+  describePalletStock,
   fullPalletsForPackage,
   orderLinePallets,
   palletAvailabilityLabel,
+  palletStockLabel,
   palletStockShortage,
   soldOutCheckoutMessage,
 } from "./pallet-stock";
@@ -110,6 +113,33 @@ describe("pallet stock", () => {
       "Only 0.25 pallets are available for STRETCH FILM 15."
     );
     assert.equal(
+      palletStockShortage(
+        [{ productId: "film", productName: "STRETCH FILM 15", pallets: 0.5, boxes: 32 }],
+        new Map([["film", 0.25]])
+      ),
+      "Only 0 full pallets and 16 boxes are available for STRETCH FILM 15."
+    );
+  });
+
+  it("breaks a full pallet into loose boxes when the customer buys cases", () => {
+    assert.deepEqual(describePalletStock(2.25, 64), {
+      fullPallets: 2,
+      looseBoxes: 16,
+      totalBoxes: 144,
+    });
+    assert.equal(deductBoxesFromPalletStock(1, 64, 1), 0.984375);
+    assert.deepEqual(describePalletStock(0.984375, 64), {
+      fullPallets: 0,
+      looseBoxes: 63,
+      totalBoxes: 63,
+    });
+    assert.equal(deductBoxesFromPalletStock(2, 64, 80), 0.75);
+    assert.equal(deductBoxesFromPalletStock(0.25, 64, 32), null);
+    assert.equal(deductBoxesFromPalletStock(null, 64, 4), null);
+    assert.equal(deductBoxesFromPalletStock(1, null, 0, 0.5), 0.5);
+    assert.equal(palletStockLabel(2.25, 64), "2 full pallets and 16 boxes");
+    assert.equal(palletStockLabel(2, 64), "2 Pallets Available");
+    assert.equal(
       soldOutCheckoutMessage(
         [{ productId: "film", productName: "STRETCH FILM 15" }],
         new Map([["film", { stock: 0, soldOut: false }]])
@@ -122,6 +152,10 @@ describe("pallet stock", () => {
     assert.equal(
       customerHoldMessage({ message: "Only 1 full pallet is available for STRETCH FILM." }),
       "Only 1 full pallet is available for STRETCH FILM."
+    );
+    assert.equal(
+      customerHoldMessage({ message: "Only 16 boxes are available." }),
+      "Only 16 boxes are available."
     );
     assert.equal(
       customerHoldMessage({

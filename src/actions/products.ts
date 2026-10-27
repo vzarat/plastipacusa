@@ -661,6 +661,7 @@ function formatProduct(raw: any): ProductWithVariants {
     partNumber: raw.part_number || raw.partNumber || null,
     stockQuantity:
       trackedPalletStock(raw.stock_quantity ?? raw.stock_qty ?? raw.stockQuantity) ?? undefined,
+    boxesPerPallet: Math.floor(Number(raw.boxes_per_pallet ?? raw.boxesPerPallet) || 0) || null,
     isAvailable:
       raw.is_available === false || raw.isAvailable === false
         ? false

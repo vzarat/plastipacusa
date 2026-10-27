@@ -230,7 +230,7 @@ function CheckoutPageInner({ taxExempt }: { taxExempt: boolean }) {
     taxExempt,
   });
   const [serverChargeTotal, setServerChargeTotal] = useState<number | null>(null);
-  const total = step === 4 ? serverChargeTotal : quote.total;
+  const total = step === 4 ? (serverChargeTotal ?? quote.total) : quote.total;
 
   const goToStep = (next: CheckoutStepId) => {
     if (next > furthestStep) return;

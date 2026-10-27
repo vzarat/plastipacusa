@@ -38,6 +38,8 @@ export const products = pgTable("products", {
   price32Boxes: numeric("price_32_boxes", { precision: 10, scale: 2 }),
   price64Boxes: numeric("price_64_boxes", { precision: 10, scale: 2 }),
   stockQuantity: integer("stock_quantity").notNull().default(0),
+  /** Boxes in one full pallet. Stock stays in stock_quantity; this is only the ratio. */
+  boxesPerPallet: integer("boxes_per_pallet"),
   isSoldOut: boolean("is_sold_out").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
   features: jsonb("features").$type<string[]>().notNull().default([]),

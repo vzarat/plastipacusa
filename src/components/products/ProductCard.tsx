@@ -24,7 +24,7 @@ import {
   getDisplayPrice,
   handCatalogQuote,
 } from "@/lib/pricing";
-import { palletAvailabilityLabel } from "@/lib/pallet-stock";
+import { boxesPerPalletForProduct, palletStockLabel } from "@/lib/pallet-stock";
 import { useCartStore } from "@/lib/store/useCartStore";
 function isolateCardAction(event: React.MouseEvent | React.TouchEvent) {
   event.stopPropagation();
@@ -221,7 +221,21 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   }
   const isSoldOut = !isCatalogInStock(product);
   const palletCount = Number(product.stockQuantity) || 0;
-  const palletLabel = !isSoldOut && palletCount > 0 ? palletAvailabilityLabel(palletCount) : null;
+  const palletLabel =
+    !isSoldOut && palletCount > 0
+      ? palletStockLabel(
+          palletCount,
+          boxesPerPalletForProduct({
+            application: product.application,
+            widthInches: width,
+            gauge: product.gauge,
+            lengthFeet: product.length_feet,
+            slug: product.slug,
+            name: product.name,
+            boxesPerPallet: product.boxesPerPallet,
+          })
+        )
+      : null;
   const variant64 = (product.variants || []).find(
     (variant) => Number(variant.boxes_count ?? variant.boxesCount) === HAND_FULL_PALLET_BOXES
   );
