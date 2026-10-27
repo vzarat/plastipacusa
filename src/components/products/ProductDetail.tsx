@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
+import { trackViewContent } from "@/lib/meta-pixel";
 import { ProductWithVariants, ProductVariant } from "@/types";
 import { VariantSelector } from "@/components/products/VariantSelector";
 import { buildMachineFilmSelectorTiers, isMachineFilm } from "@/lib/products";
@@ -105,6 +106,20 @@ export function ProductDetail({ product }: ProductDetailProps) {
   useEffect(() => {
     setSelectedVariant(initialVariant);
   }, [initialVariant]);
+
+  const viewedSku = useRef("");
+  useEffect(() => {
+    const sku = String(selectedVariant?.sku || product?.partNumber || "");
+    if (!sku || viewedSku.current === sku) return;
+    viewedSku.current = sku;
+    const price = Number(selectedVariant?.boxUnitPrice ?? selectedVariant?.price ?? product?.startingPrice) || 0;
+    trackViewContent({
+      sku,
+      price,
+      currency: "USD",
+      name: product?.title || product?.name || "",
+    });
+  }, [product, selectedVariant]);
 
   if (!product) {
     return (

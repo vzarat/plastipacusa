@@ -1,6 +1,10 @@
 /** Meta Pixel. The public id comes from Meta; a valid NEXT_PUBLIC_META_PIXEL_ID overrides it. */
 
+import { canonicalCatalogSku } from "@/lib/catalog-sku";
+
 export const META_PIXEL_ID = "1740638949795559";
+
+const OFFICIAL_CATALOG_SKU = /^(?:STD|ELT|HPF)-SF\d{6}-(?:1|16|32|64)B$|^HPF-SF\d{6}-(?:HLP|FLP)$/;
 
 export interface MetaPixelItem {
   sku: string;
@@ -46,7 +50,27 @@ fbq('init', '${pixelId}');
 fbq('track', 'PageView');`;
 }
 
+/** Catalog content id. Legacy FEL/FST/HPFSF/GEN codes become the current SKU. */
+export function catalogContentId(value: unknown): string {
+  const raw = String(value ?? "")
+    .trim()
+    .replace(/BX$/i, "B");
+  const canonical = canonicalCatalogSku(raw);
+  return OFFICIAL_CATALOG_SKU.test(canonical) ? canonical : "";
+}
+
+function logPixel(event: string, params?: Record<string, unknown>) {
+  if (process.env.NODE_ENV === "production") return;
+  console.info("[meta-pixel]", event, params);
+}
+
 function track(event: string, params?: Record<string, unknown>) {
+  const ids = params?.content_ids;
+  if (Array.isArray(ids) && ids.length === 0) {
+    logPixel(`${event} skipped`, params);
+    return;
+  }
+  logPixel(event, params);
   if (!metaPixelId()) return;
   if (typeof window === "undefined" || typeof window.fbq !== "function") return;
   window.fbq("track", event, params);
@@ -64,14 +88,41 @@ export function addToCartParams(input: {
 }): Record<string, unknown> {
   const quantity = Math.max(1, Math.floor(Number(input.quantity) || 1));
   const price = Number(input.price) || 0;
-  const sku = String(input.sku || "").trim();
+  const sku = catalogContentId(input.sku);
   return {
     content_ids: sku ? [sku] : [],
     content_type: "product",
-    contents: [{ id: sku, quantity, item_price: price }],
+    contents: sku ? [{ id: sku, quantity, item_price: price }] : [],
     currency: input.currency || "USD",
     value: Math.round(price * quantity * 100) / 100,
   };
+}
+
+export function viewContentParams(input: {
+  sku: string;
+  price?: number;
+  currency?: string;
+  name?: string;
+}): Record<string, unknown> {
+  const sku = catalogContentId(input.sku);
+  const price = Number(input.price) || 0;
+  return {
+    content_ids: sku ? [sku] : [],
+    content_type: "product",
+    content_name: String(input.name || "").trim() || undefined,
+    contents: sku ? [{ id: sku, quantity: 1, item_price: price }] : [],
+    currency: input.currency || "USD",
+    value: Math.round(price * 100) / 100,
+  };
+}
+
+export function trackViewContent(input: {
+  sku: string;
+  price?: number;
+  currency?: string;
+  name?: string;
+}) {
+  track("ViewContent", viewContentParams(input));
 }
 
 export function trackAddToCart(input: {
@@ -101,13 +152,16 @@ export function purchaseParams(input: {
   currency: string;
   items: MetaPixelItem[];
 }): Record<string, unknown> {
-  const items = input.items.filter((item) => String(item.sku || "").trim());
+  const items = input.items
+    .map((item) => ({ ...item, sku: catalogContentId(item.sku) }))
+    .filter((item) => item.sku);
+  const contentIds = [...new Set(items.map((item) => item.sku))];
   return {
     value: Math.round((Number(input.total) || 0) * 100) / 100,
     currency: input.currency || "USD",
     order_id: String(input.orderId || ""),
     content_type: "product",
-    content_ids: items.map((item) => item.sku),
+    content_ids: contentIds,
     contents: items.map((item) => ({
       id: item.sku,
       quantity: Math.max(1, Math.floor(Number(item.quantity) || 1)),
