@@ -29,7 +29,7 @@ import {
 } from "@/types/product";
 import { PRODUCT_CATEGORIES, categorySlugFromRecord, getApplicationForCategory } from "@/data/categories";
 import { readBoxTierPrices } from "@/lib/pricing";
-import { roundPalletStock } from "@/lib/pallet-stock";
+import { boxStockLabel, boxesPerPalletForProduct } from "@/lib/pallet-stock";
 import { useLanguage } from "@/context/LanguageContext";
 
 interface ProductFormModalProps {
@@ -131,6 +131,12 @@ function productToForm(product: AdminProduct): ProductFormValues {
     raw.application === "machine" || raw.application === "hand"
       ? raw.application
       : getApplicationForCategory(categorySlug);
+  const stockBoxes =
+    raw.stockBoxes === undefined && raw.stock_boxes === undefined
+      ? null
+      : raw.stockBoxes == null && raw.stock_boxes == null
+        ? null
+        : Math.max(0, Math.floor(Number(raw.stockBoxes ?? raw.stock_boxes) || 0));
 
   return {
     id: product.id,
@@ -172,16 +178,9 @@ function productToForm(product: AdminProduct): ProductFormValues {
       raw
     ),
     stockQuantity: numberOrNull(raw.stockQuantity, raw.stock_quantity, raw.stock_qty) ?? 0,
-    stockBoxes:
-      raw.stockBoxes === undefined && raw.stock_boxes === undefined
-        ? null
-        : raw.stockBoxes == null && raw.stock_boxes == null
-          ? null
-          : Math.max(0, Math.floor(Number(raw.stockBoxes ?? raw.stock_boxes) || 0)),
+    stockBoxes,
     boxesPerPallet: Math.floor(Number(raw.boxesPerPallet ?? raw.boxes_per_pallet) || 0) || null,
-    isSoldOut:
-      (numberOrNull(raw.stockQuantity, raw.stock_quantity, raw.stock_qty) ?? 0) <= 0 ||
-      Boolean(raw.isSoldOut ?? raw.is_sold_out ?? false),
+    isSoldOut: stockBoxes === 0 || Boolean(raw.isSoldOut ?? raw.is_sold_out ?? false),
     application,
     categorySlug,
     imageUrl: textValue(raw.imageUrl, raw.image_url),
@@ -219,7 +218,7 @@ const EMPTY_FORM: ProductFormValues = {
   stockQuantity: 0,
   stockBoxes: null,
   boxesPerPallet: null,
-  isSoldOut: true,
+  isSoldOut: false,
   application: getApplicationForCategory(DEFAULT_CATEGORY_SLUG),
   categorySlug: DEFAULT_CATEGORY_SLUG,
   imageUrl: "",
@@ -378,6 +377,17 @@ export function ProductFormModal({
     }
   };
 
+  const boxesPerPallet = boxesPerPalletForProduct({
+    application: form.application,
+    widthInches: form.widthInches,
+    gauge: form.gauge,
+    lengthFeet: form.lengthFeet,
+    name: form.name,
+    boxesPerPallet: form.boxesPerPallet,
+  });
+  const stockBreakdown =
+    form.stockBoxes == null ? null : boxStockLabel(form.stockBoxes, boxesPerPallet);
+
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
@@ -516,35 +526,8 @@ export function ProductFormModal({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5" htmlFor="stock-pallets">
-                {t("admin.stockQty")}
-              </label>
-              <Input
-                id="stock-pallets"
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step="any"
-                placeholder="5"
-                value={form.stockQuantity}
-                onChange={(e) => {
-                  const stockQuantity = roundPalletStock(e.target.value);
-                  setForm((current) => ({
-                    ...current,
-                    stockQuantity,
-                    isSoldOut:
-                      stockQuantity === 0 ? true : current.stockQuantity === 0 ? false : current.isSoldOut,
-                  }));
-                }}
-              />
-              <p className="mt-1.5 text-[11px] leading-snug text-slate-500">
-                {t("admin.stockPalletsHint")}
-              </p>
-            </div>
-
-            <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5" htmlFor="stock-boxes">
-                Boxes on hand
+                {t("admin.stockQty")}
               </label>
               <Input
                 id="stock-boxes"
@@ -555,17 +538,21 @@ export function ProductFormModal({
                 placeholder="Untracked"
                 value={form.stockBoxes ?? ""}
                 onChange={(e) => {
-                  const stockBoxes = e.target.value === "" ? null : Math.max(0, Math.floor(Number(e.target.value) || 0));
+                  const nextBoxes =
+                    e.target.value === "" ? null : Math.max(0, Math.floor(Number(e.target.value) || 0));
                   setForm((current) => ({
                     ...current,
-                    stockBoxes,
-                    isSoldOut: stockBoxes === 0,
+                    stockBoxes: nextBoxes,
+                    isSoldOut: nextBoxes === 0,
                   }));
                 }}
               />
               <p className="mt-1.5 text-[11px] leading-snug text-slate-500">
-                Total boxes. Leave blank if this product is not tracked. 0 marks it sold out.
+                {t("admin.stockPalletsHint")}
               </p>
+              {stockBreakdown ? (
+                <p className="mt-1 text-[11px] font-semibold leading-snug text-slate-700">{stockBreakdown}</p>
+              ) : null}
             </div>
 
             <div>
@@ -730,7 +717,7 @@ export function ProductFormModal({
                   onChange={() =>
                     setForm((current) => ({
                       ...current,
-                      isSoldOut: current.stockQuantity <= 0,
+                      isSoldOut: current.stockBoxes === 0,
                     }))
                   }
                   className="h-4 w-4 text-emerald-600"

@@ -1247,9 +1247,6 @@ async function syncBaseVariant(
   ) {
     patch.price = Number(values.priceUsd);
   }
-  if (values.stockQuantity !== undefined && values.stockQuantity !== null) {
-    patch.stock_quantity = Math.max(0, Math.floor(Number(values.stockQuantity) || 0));
-  }
   if (Object.keys(patch).length > 0) {
     await supabase.from("product_variants").update(patch).eq("id", base.id);
     Object.assign(base, patch);
@@ -1552,12 +1549,8 @@ export async function createProduct(values: ProductFormValues) {
       price_20_rolls: values.price20Rolls ?? PACKAGE_TIER_DEFAULTS.price20Rolls,
       price_40_rolls: values.price40Rolls ?? PACKAGE_TIER_DEFAULTS.price40Rolls,
       ...boxPriceColumnPatch(values.packageTiers),
-      stock_quantity: roundPalletStock(values.stockQuantity),
       stock_boxes: values.stockBoxes == null ? null : Math.max(0, Math.floor(values.stockBoxes)),
-      is_sold_out:
-        roundPalletStock(values.stockQuantity) === 0
-          ? true
-          : Boolean(values.isSoldOut),
+      is_sold_out: values.stockBoxes === 0 || Boolean(values.isSoldOut),
       is_active: values.isActive ?? true,
       image_url: values.imageUrl || values.images?.[0] || "",
       images: values.images || [],
@@ -1651,14 +1644,9 @@ export async function updateProduct(id: string, values: Partial<ProductFormValue
     if (values.price40Rolls !== undefined) updatePayload.price_40_rolls = values.price40Rolls;
     Object.assign(updatePayload, boxPriceColumnPatch(values.packageTiers));
     if (values.stockBoxes !== undefined) {
-      updatePayload.stock_boxes = values.stockBoxes == null ? null : Math.max(0, Math.floor(values.stockBoxes));
+      updatePayload.stock_boxes =
+        values.stockBoxes == null ? null : Math.max(0, Math.floor(values.stockBoxes));
       if (values.stockBoxes === 0) updatePayload.is_sold_out = true;
-    }
-    if (values.stockQuantity !== undefined && values.stockQuantity !== null) {
-      const palletStock = roundPalletStock(values.stockQuantity);
-      updatePayload.stock_quantity = palletStock;
-      updatePayload.stock_qty = palletStock;
-      if (palletStock === 0) updatePayload.is_sold_out = true;
     }
     if (values.isSoldOut !== undefined && updatePayload.is_sold_out !== true) {
       updatePayload.is_sold_out = values.isSoldOut;
