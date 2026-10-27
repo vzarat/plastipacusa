@@ -4,6 +4,8 @@ import React, { useState, useTransition, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signUp } from "@/actions/auth";
+import { EmailRateLimitNotice } from "@/components/auth/EmailRateLimitNotice";
+import { useEmailRateLimit } from "@/lib/auth/use-email-rate-limit";
 import { uploadTaxExemptionCertificate } from "@/actions/customers";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { createClient } from "@/lib/supabase/client";
@@ -56,11 +58,13 @@ function RegisterForm() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const emailLimit = useEmailRateLimit("plastipac-email-limit-register");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
+    if (emailLimit.limited) return;
 
     if (!fullName.trim()) {
       setErrorMsg("Please provide your Contact Full Name.");
@@ -118,6 +122,8 @@ function RegisterForm() {
               "Customer registration initiated! Please check your email inbox to verify your account."
           );
         }
+      } else if (emailLimit.lockFrom(res.rateLimited ? { status: 429, message: res.error } : res.error)) {
+        return;
       } else {
         setErrorMsg(
           res.error || "Failed to register account. Please check your information."
@@ -161,7 +167,9 @@ function RegisterForm() {
         </div>
       )}
 
-      {errorMsg && (
+      {emailLimit.limited && <EmailRateLimitNotice minutesLeft={emailLimit.minutesLeft} />}
+
+      {errorMsg && !emailLimit.limited && (
         <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-xs text-rose-800 animate-fade-in-up">
           <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
           <span className="font-medium">{errorMsg}</span>
@@ -384,10 +392,12 @@ function RegisterForm() {
 
           <button
             type="submit"
-            disabled={isPending}
+            disabled={isPending || emailLimit.limited}
             className="w-full py-3.5 px-4 rounded-xl bg-slate-900 hover:bg-blue-950 text-white font-bold text-sm tracking-wide shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
           >
-            {isPending ? (
+            {emailLimit.limited ? (
+              <span>Please wait {emailLimit.minutesLeft} min</span>
+            ) : isPending ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin text-white" />
                 <span>Creating Customer Account...</span>

@@ -4,7 +4,9 @@ import React, { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, Loader2, Mail } from "lucide-react";
+import { EmailRateLimitNotice } from "@/components/auth/EmailRateLimitNotice";
 import { createClient } from "@/lib/supabase/client";
+import { useEmailRateLimit } from "@/lib/auth/use-email-rate-limit";
 
 const RESET_REDIRECT = "https://www.plastipacusa.com/update-password";
 
@@ -20,10 +22,12 @@ function ForgotPasswordForm() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const emailLimit = useEmailRateLimit("plastipac-email-limit-forgot");
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setErrorMsg(null);
+    if (emailLimit.limited) return;
     const address = email.trim().toLowerCase();
     if (!address || !address.includes("@")) {
       setErrorMsg("Enter the email address on your account.");
@@ -37,11 +41,13 @@ function ForgotPasswordForm() {
         redirectTo: RESET_REDIRECT,
       });
       if (error) {
+        if (emailLimit.lockFrom(error)) return;
         setErrorMsg(error.message || "Could not send the reset email. Try again.");
         return;
       }
       setSentTo(address);
-    } catch {
+    } catch (error) {
+      if (emailLimit.lockFrom(error)) return;
       setErrorMsg("Could not send the reset email. Try again.");
     } finally {
       setPending(false);
@@ -72,7 +78,8 @@ function ForgotPasswordForm() {
         </div>
       ) : (
         <form onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
-          {errorMsg && (
+          {emailLimit.limited && <EmailRateLimitNotice minutesLeft={emailLimit.minutesLeft} />}
+          {errorMsg && !emailLimit.limited && (
             <div className="flex items-start gap-2.5 rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-800">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
               <span className="font-medium">{errorMsg}</span>
@@ -98,11 +105,17 @@ function ForgotPasswordForm() {
           </div>
           <button
             type="submit"
-            disabled={pending}
-            className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-slate-900 py-3.5 px-4 text-sm font-bold tracking-wide text-white shadow-md transition-all hover:bg-blue-950 disabled:opacity-60"
+            disabled={pending || emailLimit.limited}
+            className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-slate-900 py-3.5 px-4 text-sm font-bold tracking-wide text-white shadow-md transition-all hover:bg-blue-950 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-            <span>{pending ? "Sending reset link..." : "Send reset link"}</span>
+            <span>
+              {emailLimit.limited
+                ? `Please wait ${emailLimit.minutesLeft} min`
+                : pending
+                  ? "Sending reset link..."
+                  : "Send reset link"}
+            </span>
           </button>
         </form>
       )}

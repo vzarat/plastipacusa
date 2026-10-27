@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { EMAIL_RATE_LIMIT_MESSAGE, isEmailRateLimitError } from "@/lib/auth/email-rate-limit";
 import { createServerClient } from "@/lib/supabase/server";
 
 export interface UserProfile {
@@ -214,6 +215,9 @@ export async function signUp({
     });
 
     if (error) {
+      if (isEmailRateLimitError(error)) {
+        return { success: false, error: EMAIL_RATE_LIMIT_MESSAGE, rateLimited: true };
+      }
       return { success: false, error: error.message };
     }
 
@@ -293,6 +297,9 @@ export async function signUp({
     };
   } catch (err: any) {
     console.error("signUp error:", err);
+    if (isEmailRateLimitError(err)) {
+      return { success: false, error: EMAIL_RATE_LIMIT_MESSAGE, rateLimited: true };
+    }
     return {
       success: false,
       error: err?.message || "An unexpected error occurred during account creation.",

@@ -9,6 +9,8 @@ import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency, formatOrderId } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { UserProfile, signOut } from "@/actions/auth";
+import { EmailRateLimitNotice } from "@/components/auth/EmailRateLimitNotice";
+import { useEmailRateLimit } from "@/lib/auth/use-email-rate-limit";
 import {
   Building2,
   Package,
@@ -201,6 +203,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
   const [profileFormError, setProfileFormError] = useState<string | null>(null);
   const [profileFormSuccess, setProfileFormSuccess] = useState<string | null>(null);
   const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
+  const emailLimit = useEmailRateLimit("plastipac-email-limit-profile");
   const [selectedOrder, setSelectedOrder] = useState<OrderDetailLike | null>(null);
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
   const [pdfModalPhase, setPdfModalPhase] = useState<InvoicePdfModalPhase>("idle");
@@ -421,6 +424,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
     event.preventDefault();
     setProfileFormError(null);
     setProfileFormSuccess(null);
+    if (emailLimit.limited) return;
 
     if (!profileForm.fullName.trim()) {
       setProfileFormError(
@@ -452,6 +456,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
         });
 
         if (emailError) {
+          if (emailLimit.lockFrom(emailError)) return;
           throw emailError;
         }
       }
@@ -493,6 +498,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
       router.refresh();
       toast.success("Perfil actualizado correctamente");
     } catch (err: any) {
+      if (emailLimit.lockFrom(err)) return;
       const message =
         err?.message ||
         (locale === "es"
@@ -1217,7 +1223,13 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                 />
               </div>
 
-              {profileFormError && (
+              {emailLimit.limited && (
+                <div className="mt-4">
+                  <EmailRateLimitNotice minutesLeft={emailLimit.minutesLeft} />
+                </div>
+              )}
+
+              {profileFormError && !emailLimit.limited && (
                 <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
                   {profileFormError}
                 </div>
@@ -1294,10 +1306,12 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
 
                 <button
                   type="submit"
-                  disabled={isProfileSubmitting}
+                  disabled={isProfileSubmitting || emailLimit.limited}
                   className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-950 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isProfileSubmitting
+                  {emailLimit.limited
+                    ? `Please wait ${emailLimit.minutesLeft} min`
+                    : isProfileSubmitting
                     ? locale === "es"
                       ? "Guardando..."
                       : "Saving..."
