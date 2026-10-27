@@ -13,6 +13,8 @@ import {
   perBoxPriceFromVariant,
   preferredHandTier,
   formatBoxPriceEquation,
+  handCartQuote,
+  normalizeHandPackageBoxes,
   quoteTierPrice,
   repriceHandCartLine,
   totalForBoxes,
@@ -304,5 +306,19 @@ describe("box price × box quantity", () => {
     );
     assert.equal(line.unitPrice, 608);
     assert.equal(line.totalPrice, 608);
+  });
+
+  it("prices a 256-roll pallet as 64 boxes", () => {
+    assert.equal(normalizeHandPackageBoxes(256, 256), 64);
+    assert.equal(normalizeHandPackageBoxes(64, 256), 64);
+    const quote = handCartQuote({
+      application: "hand",
+      totalBoxes: 256,
+      quantity: 1,
+      unitPrice: 9356.8,
+      boxUnitPrice: 36.55,
+    });
+    assert.equal(quote?.boxes, 64);
+    assert.equal(quote?.total, 2339.2);
   });
 });

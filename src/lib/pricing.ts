@@ -70,6 +70,26 @@ export function readBoxTierPrices(raw: unknown): BoxTierPrices {
   };
 }
 
+/** 256 is a roll count on a 64-box pallet, not a box count. */
+export function normalizeHandPackageBoxes(boxes: unknown, rolls?: unknown): number {
+  const boxCount = Math.floor(Number(boxes) || 0);
+  const rollCount = Math.floor(Number(rolls) || 0);
+  if (boxCount === 1 || boxCount === 12 || boxCount === 16 || boxCount === 24 || boxCount === 32 || boxCount === 48 || boxCount === 64) {
+    return boxCount;
+  }
+  const fromRolls = boxesForStoredRolls(rollCount);
+  if (fromRolls) return fromRolls;
+  return boxesForStoredRolls(boxCount) ?? boxCount;
+}
+
+function boxesForStoredRolls(rolls: number): number | null {
+  if (rolls === 96) return 24;
+  if (rolls === 128) return 32;
+  if (rolls === 192) return 48;
+  if (rolls === 256) return 64;
+  return null;
+}
+
 export function hasBoxTierPrices(prices: BoxTierPrices | null | undefined): boolean {
   if (!prices) return false;
   return (
@@ -477,7 +497,7 @@ export function handCartQuote(item: {
   boxUnitPrice?: number | null;
 }): { boxes: number; unitBoxPrice: number; total: number } | null {
   if (String(item.application || "").toLowerCase() === "machine") return null;
-  const perPackage = Math.floor(Number(item.totalBoxes) || 0);
+  const perPackage = normalizeHandPackageBoxes(item.totalBoxes);
   const packages = Math.max(1, Math.floor(Number(item.quantity) || 1));
   if (perPackage < 1) return null;
 
@@ -511,7 +531,7 @@ export function repriceHandCartLine<
   if (String(item.application || "").toLowerCase() === "machine") return item;
   if (!hasBoxTierPrices(prices)) return item;
 
-  const perPackage = Math.floor(Number(item.totalBoxes) || 0);
+  const perPackage = normalizeHandPackageBoxes(item.totalBoxes);
   const packages = Math.max(1, Math.floor(Number(item.quantity) || 1));
   if (perPackage < 1) return item;
 
@@ -521,6 +541,7 @@ export function repriceHandCartLine<
   const packageUnit = totalForBoxes(unit, perPackage);
   const totalPrice = totalForBoxes(unit, perPackage * packages);
   if (
+    item.totalBoxes === perPackage &&
     item.unitPrice === packageUnit &&
     item.boxUnitPrice === unit &&
     item.totalPrice === totalPrice
@@ -530,6 +551,7 @@ export function repriceHandCartLine<
 
   return {
     ...item,
+    totalBoxes: perPackage,
     unitPrice: packageUnit,
     boxUnitPrice: unit,
     totalPrice,

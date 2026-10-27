@@ -23,10 +23,15 @@ function missingHoldFunction(error: { code?: string; message?: string } | null):
   );
 }
 
-function holdErrorMessage(message: string): string {
-  const text = message.replace(/^[A-Z0-9]{5}:\s*/, "").trim();
+/** A real stock or promo rejection. Other database failures are not a quantity problem. */
+export function customerHoldMessage(error: { message?: string; details?: string; hint?: string } | null): string | null {
+  const text = [error?.message, error?.details, error?.hint]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/^[A-Z0-9]{5}:\s*/, "")
+    .trim();
   if (/sold out|available for|promo code/i.test(text)) return text.slice(0, 300);
-  return "This product is no longer available in that quantity.";
+  return null;
 }
 
 async function readAvailability(admin: SupabaseClient, lines: HoldLine[]): Promise<string | null> {
@@ -62,8 +67,12 @@ export async function syncCheckoutHolds(
 ): Promise<string | null> {
   const held = await admin.rpc("sync_checkout_holds", { p_order_id: orderId });
   if (!held.error) return null;
-  if (missingHoldFunction(held.error)) return readAvailability(admin, lines);
-  return holdErrorMessage(String(held.error.message || ""));
+  const reported = customerHoldMessage(held.error);
+  if (reported && !missingHoldFunction(held.error)) return reported;
+  const availability = await readAvailability(admin, lines);
+  if (availability) return availability;
+  console.error("[checkout] stock hold skipped", held.error.code || "error");
+  return null;
 }
 
 /** Return pallet stock and a promo hold when an unpaid order is deleted. */

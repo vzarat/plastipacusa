@@ -32,6 +32,7 @@ import { getProductBySlug } from "@/actions/products";
 import {
   HAND_FULL_PALLET_BOXES,
   buildHandFullPalletCartItem,
+  normalizeHandPackageBoxes,
   perBoxPriceFromVariant,
   readBoxTierPrices,
   totalForBoxes,
@@ -58,17 +59,17 @@ function getRollsCount(variant: any): number {
 function getBoxesCount(variant: any, isMachine: boolean): number {
   if (isMachine) return 0;
 
-  const explicit = Number(variant?.boxes_count ?? variant?.boxesCount);
-  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  const rolls = getRollsCount(variant);
+  const normalized = normalizeHandPackageBoxes(variant?.boxes_count ?? variant?.boxesCount, rolls);
+  if (normalized > 0) return normalized;
 
   const label = getVariantLabel(variant);
   const boxMatch = label.match(/(\d+)\s*BOX/);
-  if (boxMatch) return Number(boxMatch[1]);
+  if (boxMatch) return normalizeHandPackageBoxes(boxMatch[1], rolls) || Number(boxMatch[1]);
 
-  const rolls = getRollsCount(variant);
   if (rolls <= 4) return 1;
   if (rolls === HAND_FULL_PALLET.rolls) return HAND_FULL_PALLET.boxes;
-  return Math.round(rolls / 4);
+  return Math.round(rolls / 4) || 1;
 }
 
 function isCompact1880Package(variant: any): boolean {

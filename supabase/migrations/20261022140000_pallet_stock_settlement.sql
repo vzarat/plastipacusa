@@ -59,7 +59,7 @@ begin
         is_sold_out = case
           when p_stock <= 0 then true
           when p_clear_sold_out then false
-          else is_sold_out
+          else coalesce(is_sold_out, false)
         end
     where id = p_product_id;
 

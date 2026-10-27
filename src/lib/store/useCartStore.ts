@@ -7,13 +7,14 @@ import { pixelItemFromCart, trackAddToCart } from "@/lib/meta-pixel";
 import { totalsFromCartLines, type PricedCheckoutLine } from "@/lib/checkout-pricing";
 import { fullPalletsForPackage } from "@/lib/pallet-stock";
 import { clampCartQuantity, type CartPackageInput } from "@/lib/cart-quantity";
-import { boxTierPricesFromVariants, repriceHandCartLine, totalForBoxes } from "@/lib/pricing";
+import { boxTierPricesFromVariants, normalizeHandPackageBoxes, repriceHandCartLine, totalForBoxes } from "@/lib/pricing";
 import { toast } from "sonner";
 
 function pricedLineFromCart(item: CartItem): PricedCheckoutLine {
   const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
   const application = item.application === "machine" ? "machine" : "hand";
-  const boxesPerPackage = Math.floor(Number(item.totalBoxes) || 0);
+  const boxesPerPackage = normalizeHandPackageBoxes(item.totalBoxes, item.totalRolls);
+  const repriced = application === "hand" ? lineMoney({ ...item, totalBoxes: boxesPerPackage }, quantity) : null;
   return {
     sku: item.sku,
     quantity: item.quantity,
@@ -34,9 +35,9 @@ function pricedLineFromCart(item: CartItem): PricedCheckoutLine {
       slug: item.productSlug,
       name: item.productName,
     }),
-    unitPrice: item.unitPrice,
-    totalPrice: item.totalPrice,
-    boxUnitPrice: item.boxUnitPrice ?? null,
+    unitPrice: repriced?.unitPrice ?? item.unitPrice,
+    totalPrice: repriced?.totalPrice ?? item.totalPrice,
+    boxUnitPrice: repriced?.boxUnitPrice ?? item.boxUnitPrice ?? null,
     widthInches: item.widthInches,
     gauge: item.gauge,
   };
@@ -86,7 +87,7 @@ function lineMoney<T extends CartPackageInput & { unitPrice: number; boxUnitPric
   item: T,
   quantity: number
 ): { unitPrice: number; boxUnitPrice?: number; totalPrice: number } {
-  const perPackage = Math.floor(Number(item.totalBoxes) || 0);
+  const perPackage = normalizeHandPackageBoxes(item.totalBoxes);
   const storedBoxUnit = Number(item.boxUnitPrice);
   const packageUnit = Number(item.unitPrice);
   const boxUnit =

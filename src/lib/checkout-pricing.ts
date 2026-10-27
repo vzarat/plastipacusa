@@ -2,7 +2,7 @@ import { getCartDiscountAmount } from "@/lib/coupons";
 import { catalogSkuCandidates, canonicalCatalogSku } from "@/lib/catalog-sku";
 import { machineFilmPackagePriceBySku } from "@/lib/machine-film-pricing";
 import { fullPalletsForPackage } from "@/lib/pallet-stock";
-import { boxTierPricesFromVariants, repriceHandCartLine, roundMoney } from "@/lib/pricing";
+import { boxTierPricesFromVariants, normalizeHandPackageBoxes, repriceHandCartLine, roundMoney } from "@/lib/pricing";
 import { calculateOrderTotal, type CheckoutTotals } from "@/lib/sales-tax";
 import type { AppliedCoupon } from "@/types/coupon";
 import type { CartItem } from "@/types";
@@ -66,14 +66,11 @@ function textOf(...values: unknown[]): string {
 
 function inferredBoxes(row: Record<string, unknown>): number | null {
   const boxes = Math.floor(Number(row.boxes_count ?? row.boxesCount) || 0);
-  if (boxes > 0) return boxes;
   const rolls = Math.floor(Number(row.rolls_count ?? row.rollsCount) || 0);
-  if (rolls === 4) return 1;
-  if (rolls === 64) return 16;
-  if (rolls === 128) return 32;
-  if (rolls === 256) return 64;
+  const normalized = normalizeHandPackageBoxes(boxes, rolls);
+  if (normalized > 0) return normalized;
   const label = textOf(row.title, row.package_size, row.packageSize);
-  const labeled = Math.floor(Number(label.match(/(\d+)\s*BOX/i)?.[1]) || 0);
+  const labeled = normalizeHandPackageBoxes(label.match(/(\d+)\s*BOX/i)?.[1]);
   return labeled > 0 ? labeled : null;
 }
 

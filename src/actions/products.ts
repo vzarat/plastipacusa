@@ -28,6 +28,7 @@ import { roundPalletStock, trackedPalletStock } from "@/lib/pallet-stock";
 import {
   BOX_PRICE_PRESETS,
   getDisplayPrice,
+  normalizeHandPackageBoxes,
   perBoxPriceFromVariant,
   readBoxTierPrices,
   totalForBoxes,
@@ -269,14 +270,11 @@ function formatProduct(raw: any): ProductWithVariants {
       const machineVariant =
         Math.round(Number(widthInches) || 0) === 20 ||
         String(raw.application || raw.type || raw.film_type || raw.filmType || "").toLowerCase().includes("machine");
+      const labeledBoxes = (v.title || v.package_size || v.packageSize || "").match(/(\d+)\s*BOX/i)?.[1];
       const boxesCount = machineVariant
         ? 0
-        : Number(
-            v.boxes_count ??
-            v.boxesCount ??
-            (v.title || v.package_size || v.packageSize || "").match(/(\d+)\s*BOX/i)?.[1] ??
-            (rollsCount <= 4 ? 1 : Math.round(rollsCount / 4))
-          );
+        : normalizeHandPackageBoxes(v.boxes_count ?? v.boxesCount ?? labeledBoxes, rollsCount) ||
+          (rollsCount <= 4 ? 1 : Math.round(rollsCount / 4));
       const variantTitle = String(
         v.title ||
           v.package_size ||

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { customerHoldMessage } from "./payments/checkout-holds";
 import {
   fullPalletsForPackage,
   orderLinePallets,
@@ -114,6 +115,19 @@ describe("pallet stock", () => {
         new Map([["film", { stock: 0, soldOut: false }]])
       ),
       "STRETCH FILM 15 is sold out."
+    );
+  });
+
+  it("keeps a real stock rejection and ignores a database failure", () => {
+    assert.equal(
+      customerHoldMessage({ message: "Only 1 full pallet is available for STRETCH FILM." }),
+      "Only 1 full pallet is available for STRETCH FILM."
+    );
+    assert.equal(
+      customerHoldMessage({
+        message: 'null value in column "is_sold_out" of relation "products" violates not-null constraint',
+      }),
+      null
     );
   });
 });

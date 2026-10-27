@@ -505,7 +505,7 @@ function CheckoutPageInner({ taxExempt }: { taxExempt: boolean }) {
                   </p>
                 </div>
                 <p className="text-sm font-bold text-slate-900">
-                  {formatCurrency(item.totalPrice)}
+                  {formatCurrency(handCartQuote(item)?.total ?? item.totalPrice)}
                 </p>
               </div>
             ))}
