@@ -9,6 +9,7 @@ import { OnboardingTourWrapper } from "@/components/onboarding/OnboardingTourWra
 import { Analytics } from "@vercel/analytics/next";
 import { MetaPixel } from "@/components/analytics/MetaPixel";
 import { metaPixelId, metaPixelSnippet } from "@/lib/meta-pixel";
+import { CONTACT_EMAIL } from "@/lib/company-email";
 import { META_CHECKOUT_BOOTSTRAP_SCRIPT } from "@/lib/meta-checkout-storage";
 
 const SUPABASE_ORIGIN = "https://ahvmjptomjjnqjylofpa.supabase.co";
@@ -147,6 +148,19 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://images.unsplash.com" />
 
         <script dangerouslySetInnerHTML={{ __html: META_CHECKOUT_BOOTSTRAP_SCRIPT }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "Plastipac USA",
+              url: SITE_URL,
+              email: CONTACT_EMAIL,
+              telephone: "+1-956-400-3683",
+            }),
+          }}
+        />
 
         {pixelId ? (
           <script dangerouslySetInnerHTML={{ __html: metaPixelSnippet(pixelId) }} />

@@ -7,8 +7,8 @@ import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { formatOrderId } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { OrderConfirmationEmail } from "@/emails/OrderConfirmationEmail";
+import { ORDERS_FROM } from "@/lib/company-email";
 import {
-  getSenderEmail,
   notifyAdminPurchaseOrder,
   sendEmail,
 } from "@/lib/email";
@@ -178,7 +178,7 @@ export async function createOrder(order: AdminOrder) {
 
       await Promise.allSettled([
         sendEmail({
-          from: `Plastipac Orders <${getSenderEmail("onboarding@resend.dev")}>`,
+          from: ORDERS_FROM,
           to: order.customerEmail,
           subject: `Order Confirmation #${orderId} - Plastipac USA`,
           text: [
@@ -403,7 +403,7 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
           profile.email ||
           row.shipping_address?.email ||
           row.customer_email ||
-          "sales@plastipacusa.com",
+          "",
         customerCompany:
           profile.company_name || row.company_name || "Industrial Partner",
         isGuest,

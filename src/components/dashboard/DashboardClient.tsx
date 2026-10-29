@@ -1526,7 +1526,9 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                   </div>
                   <div className="flex justify-between py-2">
                     <span className="text-slate-500 font-medium">{t("dashboard.directEmail")}</span>
-                    <span className="font-mono text-slate-900">sales@plastipacusa.com</span>
+                    <a href="mailto:support@plastipacusa.com" className="font-mono text-slate-900 hover:underline">
+                      support@plastipacusa.com
+                    </a>
                   </div>
                 </div>
               </div>
@@ -1681,9 +1683,9 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                 <div className="text-xs text-slate-700 space-y-1 pt-2">
                   <p className="font-semibold">{t("dashboard.plantName")}</p>
                   <p className="text-slate-500">{t("dashboard.plantLocation")}</p>
-                  <p className="font-mono text-blue-700 font-semibold pt-1">
-                    sales@plastipacusa.com
-                  </p>
+                  <a href="mailto:support@plastipacusa.com" className="block font-mono text-blue-700 font-semibold pt-1 hover:underline">
+                    support@plastipacusa.com
+                  </a>
                 </div>
               </div>
             </div>

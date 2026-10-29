@@ -7,8 +7,8 @@ import {
   isServiceRoleConfigured,
 } from "@/lib/supabase/admin";
 import { formatOrderId } from "@/lib/utils";
+import { ORDERS_EMAIL, ORDERS_FROM } from "@/lib/company-email";
 import {
-  getSenderEmail,
   notifyAdminPurchaseOrder,
   sendEmail,
   sendOrderConfirmationEmail,
@@ -658,12 +658,12 @@ export async function createOrderFromCheckout(
           : sendEmail({
               from:
                 rendered.from ||
-                `Plastipac USA <${getSenderEmail("orders@plastipacusa.com")}>`,
+                ORDERS_FROM,
               to: customerEmail,
               subject: rendered.subject,
               text: rendered.text,
               html: rendered.html,
-              replyTo: template.footerSalesEmail,
+              replyTo: ORDERS_EMAIL,
             }),
         notifyAdminPurchaseOrder({
           orderId: createdOrderId,

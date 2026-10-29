@@ -73,7 +73,7 @@ function SocialIconBar({ interactive = false }: { interactive?: boolean }) {
         <LinkedinIcon className="w-4 h-4" />
       </a>
       <a
-        href="mailto:info@plastipacusa.com"
+        href="mailto:contact@plastipacusa.com"
         className={linkClass}
         aria-label="Email"
         tabIndex={interactive ? undefined : -1}

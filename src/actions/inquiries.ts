@@ -1,6 +1,8 @@
 "use server";
 
 import { db, inquiries } from "@/db";
+import { CONTACT_EMAIL, CONTACT_FROM } from "@/lib/company-email";
+import { sendEmail } from "@/lib/email";
 import { InquiryFormData } from "@/types";
 
 export async function submitInquiry(formData: InquiryFormData) {
@@ -30,6 +32,29 @@ export async function submitInquiry(formData: InquiryFormData) {
     } catch (dbErr) {
       console.warn("Direct DB insert skipped/failed (possibly running before db:push):", dbErr);
     }
+
+    await sendEmail({
+      from: CONTACT_FROM,
+      to: CONTACT_EMAIL,
+      replyTo: formData.email,
+      subject: `Business proposal — ${formData.companyName}`,
+      text: [
+        "New business proposal",
+        "",
+        `Company: ${formData.companyName}`,
+        `Contact: ${formData.contactName}`,
+        `Email: ${formData.email}`,
+        `Phone: ${formData.phone || "N/A"}`,
+        `Monthly volume: ${formData.monthlyPalletVolume || "1-5 Pallets/Mo"}`,
+        `Interest: ${formData.productInterest || "General Stretch Film Inquiry"}`,
+        formData.selectedSku ? `SKU: ${formData.selectedSku}` : null,
+        `Quantity: ${formData.estimatedQuantity || 1} ${formData.unitType || "pallets"}`,
+        formData.shippingZip ? `ZIP: ${formData.shippingZip}` : null,
+        formData.message ? `Message: ${formData.message}` : null,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    });
 
     return {
       success: true,

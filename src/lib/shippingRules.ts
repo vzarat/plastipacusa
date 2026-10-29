@@ -1,3 +1,4 @@
+import { ORDERS_EMAIL } from "@/lib/company-email";
 import { freeRgvDelivery, RGV_FREE_DELIVERY_ROLLS } from "@/lib/shipping/rgv-delivery";
 
 export const RGV_FREE_DELIVERY_BOXES = 16;
@@ -6,7 +7,7 @@ export const RGV_FREE_DELIVERY_LABEL = "Free Local Delivery (Plastipac Fleet)";
 export const HOUSTON_FRIDAY_LABEL = "Free Houston Delivery (Fridays Only)";
 export const HOUSTON_FRIDAY_NOTE = "Free Houston Delivery — Friday Route Only";
 
-export const LOGISTICS_EMAIL = "sales@plastipacusa.com";
+export const LOGISTICS_EMAIL = ORDERS_EMAIL;
 export const LOGISTICS_PHONE_DISPLAY = "+1 (956) 400-3683";
 export const LOGISTICS_PHONE_TEL = "+19564003683";
 

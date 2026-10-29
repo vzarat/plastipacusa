@@ -1,5 +1,7 @@
 "use server";
 
+import { SUPPORT_EMAIL, SUPPORT_FROM } from "@/lib/company-email";
+import { sendEmail } from "@/lib/email";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export type SampleFilmType = "hand" | "machine";
@@ -117,6 +119,29 @@ export async function submitSampleRequest(
       error: "Unable to submit sample request. Please try again.",
     };
   }
+
+  await sendEmail({
+    from: SUPPORT_FROM,
+    to: SUPPORT_EMAIL,
+    replyTo: workEmail,
+    subject: `Sample request — ${companyName}`,
+    text: [
+      "New sample request",
+      "",
+      `Name: ${fullName}`,
+      `Company: ${companyName}`,
+      `Email: ${workEmail}`,
+      `Phone: ${phone}`,
+      `ZIP: ${shippingZip}`,
+      shippingAddress ? `Address: ${shippingAddress}` : null,
+      `Film: ${filmType}`,
+      preferredWidth ? `Width: ${preferredWidth}` : null,
+      preferredGauge ? `Gauge: ${preferredGauge}` : null,
+      input.productName ? `Product: ${input.productName}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  });
 
   return {
     success: true,

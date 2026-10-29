@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, Loader2, Mail } from "lucide-react";
 import { EmailRateLimitNotice } from "@/components/auth/EmailRateLimitNotice";
+import { SUPPORT_EMAIL } from "@/lib/company-email";
 import { createClient } from "@/lib/supabase/client";
 import { useEmailRateLimit } from "@/lib/auth/use-email-rate-limit";
 
@@ -72,7 +73,11 @@ function ForgotPasswordForm() {
             <strong className="mb-0.5 block font-bold text-emerald-950">Check your inbox</strong>
             <span>
               If an account exists for {sentTo}, a reset link is on its way. Open it on this device
-              and choose a new password.
+              and choose a new password. If it does not arrive, write to{" "}
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold underline">
+                {SUPPORT_EMAIL}
+              </a>
+              .
             </span>
           </div>
         </div>
@@ -120,6 +125,12 @@ function ForgotPasswordForm() {
         </form>
       )}
 
+      <p className="text-center text-[11px] text-slate-500">
+        Account support:{" "}
+        <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-sky-700 hover:underline">
+          {SUPPORT_EMAIL}
+        </a>
+      </p>
       <Link
         href={loginHref}
         className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900"

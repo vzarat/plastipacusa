@@ -164,7 +164,7 @@ export function TaxExemptionModal({
               {uploading ? "Uploading…" : "Upload Exemption Certificate"}
             </button>
             <a
-              href="mailto:payables@plastipacusa.com,sales@plastipacusa.com?subject=Tax%20Exemption%20Certificate"
+              href="mailto:orders@plastipacusa.com,payables@plastipacusa.com?subject=Tax%20Exemption%20Certificate"
               className="inline-flex items-center bg-slate-100 hover:bg-slate-200 text-slate-800 px-4 py-2 rounded-xl text-xs font-semibold"
             >
               Email Certificate to Tax Dept
@@ -211,8 +211,8 @@ export function TaxExemptionModal({
                 payables@plastipacusa.com
               </a>{" "}
               /{" "}
-              <a href="mailto:sales@plastipacusa.com" className={linkClass}>
-                sales@plastipacusa.com
+              <a href="mailto:orders@plastipacusa.com" className={linkClass}>
+                orders@plastipacusa.com
               </a>
             </li>
             <li>

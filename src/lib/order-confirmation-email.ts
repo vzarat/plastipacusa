@@ -3,11 +3,12 @@
  * Used by Resend webhook sends and the Admin live preview / test mailer.
  */
 
+import { ORDERS_EMAIL, ORDERS_FROM } from "@/lib/company-email";
 import { fridayDeliveryTitleForAddress } from "@/lib/shipping/friday-delivery";
 
 export const ORDER_CONFIRMATION_TEMPLATE_SLUG = "order_confirmation";
 export const DASHBOARD_ORDERS_URL = "https://www.plastipacusa.com/dashboard/orders";
-export const DEFAULT_ORDER_FROM = "Plastipac USA <orders@plastipacusa.com>";
+export const DEFAULT_ORDER_FROM = ORDERS_FROM;
 
 /** Public absolute logo (same CDN asset used in Navbar/Footer). */
 export const DEFAULT_LOGO_URL =
@@ -51,7 +52,7 @@ export const DEFAULT_EMAIL_TEMPLATE: EmailTemplateBranding = {
     "We have received your order and it is currently being processed. Your payment has been confirmed and order status is Paid & Cleared.",
   ctaLabel: "",
   ctaUrl: "",
-  footerSalesEmail: "sales@plastipacusa.com",
+  footerSalesEmail: ORDERS_EMAIL,
   footerSupportPhoneUs: "+1 (956) 400-3683",
   footerSupportPhoneMx: "+52 (899) 923-1320",
   footerAddress:

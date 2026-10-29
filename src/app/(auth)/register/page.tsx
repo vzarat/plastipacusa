@@ -4,6 +4,7 @@ import React, { useState, useTransition, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signUp } from "@/actions/auth";
+import { SUPPORT_EMAIL } from "@/lib/company-email";
 import { EmailRateLimitNotice } from "@/components/auth/EmailRateLimitNotice";
 import { useEmailRateLimit } from "@/lib/auth/use-email-rate-limit";
 import { uploadTaxExemptionCertificate } from "@/actions/customers";
@@ -144,7 +145,10 @@ function RegisterForm() {
         </h1>
         <p className="text-xs sm:text-sm text-slate-500">
           Register your organization for factory-direct pallet pricing, tax
-          exemption records, and commercial credit terms.
+          exemption records, and commercial credit terms. Account help:{" "}
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-sky-700 hover:underline">
+            {SUPPORT_EMAIL}
+          </a>
         </p>
       </div>
 

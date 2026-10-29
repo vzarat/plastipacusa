@@ -227,7 +227,7 @@ function buildContentStream(data: InvoicePdfData): string {
   );
   lines.push("0.29 0.33 0.39 rg");
   pushText(FLAG_BOX.x, 742, "www.plastipacusa.com", { font: "F1", size: 9 });
-  pushText(FLAG_BOX.x, 728, "sales@plastipacusa.com", { font: "F1", size: 9 });
+  pushText(FLAG_BOX.x, 728, "orders@plastipacusa.com", { font: "F1", size: 9 });
   lines.push("0.06 0.09 0.16 rg");
   pushText(FLAG_BOX.x, 712, "Phone: (956) 400-3683", { font: "F2", size: 10 });
 
@@ -341,7 +341,7 @@ function buildContentStream(data: InvoicePdfData): string {
   pushText(
     40,
     56,
-    "Thank you for your business. Questions? Call (956) 400-3683 or email sales@plastipacusa.com",
+    "Thank you for your business. Questions? Call (956) 400-3683 or email orders@plastipacusa.com",
     { font: "F1", size: 8 }
   );
   pushText(

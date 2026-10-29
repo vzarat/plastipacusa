@@ -1,5 +1,12 @@
 import { Resend } from "resend";
 import React from "react";
+import {
+  CONTACT_EMAIL,
+  CONTACT_FROM,
+  mailboxRecipients,
+  ORDERS_EMAIL,
+  ORDERS_FROM,
+} from "@/lib/company-email";
 
 /** Prefer ADMIN_NOTIFICATION_EMAIL for all admin alerts. */
 export function getAdminNotificationEmail(): string {
@@ -19,7 +26,7 @@ export function getAppBaseUrl(): string {
   return "https://plastipacusa.com";
 }
 
-export function getSenderEmail(fallback = "onboarding@resend.dev"): string {
+export function getSenderEmail(fallback = CONTACT_EMAIL): string {
   return (
     process.env.SENDER_EMAIL ||
     process.env.RESEND_FROM_EMAIL ||
@@ -82,7 +89,7 @@ export async function sendEmail(
     const resend = new Resend(process.env.RESEND_API_KEY!);
     const from =
       input.from ||
-      `Plastipac USA <${getSenderEmail("onboarding@resend.dev")}>`;
+      CONTACT_FROM;
 
     const attachments = input.attachments?.map((file) => ({
       filename: file.filename,
@@ -131,13 +138,10 @@ export interface CreditApplicationNotifyInput {
 export async function notifyAdminCreditApplication(
   payload: CreditApplicationNotifyInput
 ): Promise<SendEmailResult> {
-  const adminEmail = getAdminNotificationEmail();
-  if (!adminEmail) {
-    console.warn(
-      "[email] ADMIN_NOTIFICATION_EMAIL is not set — credit alert skipped."
-    );
-    console.log("[email] credit application payload:", payload);
-    return { success: false, skipped: true, error: "ADMIN_NOTIFICATION_EMAIL missing." };
+  const recipients = mailboxRecipients(CONTACT_EMAIL, getAdminNotificationEmail());
+  if (recipients.length === 0) {
+    console.warn("[email] No credit-application recipient — alert skipped.");
+    return { success: false, skipped: true, error: "No credit-application recipient." };
   }
 
   const base = getAppBaseUrl();
@@ -165,11 +169,11 @@ export async function notifyAdminCreditApplication(
   ].filter(Boolean) as string[];
 
   return sendEmail({
-    to: adminEmail,
+    to: recipients,
     subject: `B2B Credit Application — ${payload.companyName}`,
     text: lines.join("\n"),
     replyTo: payload.workEmail,
-    from: `Plastipac Credit <${getSenderEmail("onboarding@resend.dev")}>`,
+    from: `Plastipac Credit <${CONTACT_EMAIL}>`,
   });
 }
 
@@ -191,14 +195,7 @@ export async function notifyAdminTaxExemption(
   payload: TaxExemptionNotifyInput,
   attachment?: EmailAttachmentInput
 ): Promise<SendEmailResult> {
-  const adminEmail = getAdminNotificationEmail();
-  if (!adminEmail) {
-    console.warn(
-      "[email] ADMIN_NOTIFICATION_EMAIL is not set — tax exemption alert skipped."
-    );
-    console.log("[email] tax exemption payload:", payload);
-    return { success: false, skipped: true, error: "ADMIN_NOTIFICATION_EMAIL missing." };
-  }
+  const recipients = mailboxRecipients(ORDERS_EMAIL, getAdminNotificationEmail());
 
   const lines = [
     "Tax exemption verification requested during checkout",
@@ -216,11 +213,11 @@ export async function notifyAdminTaxExemption(
   ].filter(Boolean) as string[];
 
   return sendEmail({
-    to: adminEmail,
+    to: recipients,
     subject: `Tax exemption request — ${payload.companyName}`,
     text: lines.join("\n"),
     replyTo: payload.customerEmail,
-    from: `Plastipac Tax <${getSenderEmail("onboarding@resend.dev")}>`,
+    from: `Plastipac Orders <${ORDERS_EMAIL}>`,
     attachments: attachment ? [attachment] : undefined,
   });
 }
@@ -249,14 +246,7 @@ export interface PurchaseOrderNotifyInput {
 export async function notifyAdminPurchaseOrder(
   payload: PurchaseOrderNotifyInput
 ): Promise<SendEmailResult> {
-  const adminEmail = getAdminNotificationEmail();
-  if (!adminEmail) {
-    console.warn(
-      "[email] ADMIN_NOTIFICATION_EMAIL is not set — PO alert skipped."
-    );
-    console.log("[email] purchase order payload:", payload);
-    return { success: false, skipped: true, error: "ADMIN_NOTIFICATION_EMAIL missing." };
-  }
+  const recipients = mailboxRecipients(ORDERS_EMAIL, getAdminNotificationEmail());
 
   const base = getAppBaseUrl();
   const total = new Intl.NumberFormat("en-US", {
@@ -298,11 +288,11 @@ export async function notifyAdminPurchaseOrder(
   ].filter(Boolean) as string[];
 
   return sendEmail({
-    to: adminEmail,
+    to: recipients,
     subject: `New B2B PO — ${payload.orderId} (${total})`,
     text: lines.join("\n"),
     replyTo: payload.customerEmail,
-    from: `Plastipac Orders <${getSenderEmail("onboarding@resend.dev")}>`,
+    from: `Plastipac Orders <${ORDERS_EMAIL}>`,
   });
 }
 
@@ -355,11 +345,12 @@ export async function sendOrderConfirmationEmail(
       "@/lib/order-confirmation-email"
     );
 
-    const template = await fetchOrderConfirmationTemplate();
-    const salesEmail = template.footerSalesEmail || "sales@plastipacusa.com";
-    const recipients = Array.from(
-      new Set([buyerEmail, salesEmail].filter(Boolean))
-    );
+    const template = {
+      ...(await fetchOrderConfirmationTemplate()),
+      footerSalesEmail: ORDERS_EMAIL,
+      fromAddress: ORDERS_FROM,
+    };
+    const recipients = mailboxRecipients(buyerEmail, ORDERS_EMAIL);
 
     const rendered = buildOrderConfirmationHtml(template, {
       orderId: payload.orderId,
@@ -390,7 +381,7 @@ export async function sendOrderConfirmationEmail(
       subject: rendered.subject,
       text: rendered.text,
       html: rendered.html,
-      replyTo: salesEmail,
+      replyTo: ORDERS_EMAIL,
       attachments: [
         {
           filename: pdfFilename,
