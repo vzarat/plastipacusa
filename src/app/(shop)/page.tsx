@@ -46,7 +46,7 @@ const CategoryShowcase = nextDynamic(
   {
     loading: () => (
       <div
-        className="min-h-[280px] border-b border-slate-100 bg-slate-50/60 py-12"
+        className="hidden min-h-[280px] border-b border-slate-100 bg-slate-50/60 py-12 md:block"
         aria-hidden
       />
     ),

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ORDERS_EMAIL, SUPPORT_EMAIL } from "@/lib/company-email";
+import { SUPPORT_EMAIL } from "@/lib/company-email";
 import Link from "next/link";
 import Image from "next/image";
 import { ChevronDown, Clock3, Lock, Mail, MapPin, MessageCircle, Phone, CreditCard } from "lucide-react";
@@ -182,11 +182,11 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href={`mailto:${ORDERS_EMAIL}`}
+                  href={`mailto:${SUPPORT_EMAIL}`}
                   className="inline-flex items-center gap-2 text-slate-700 hover:text-sky-700"
                 >
                   <Mail className="h-4 w-4 shrink-0 text-sky-600" />
-                  {ORDERS_EMAIL}
+                  {SUPPORT_EMAIL}
                 </a>
               </li>
               <li className="inline-flex items-center gap-2 text-slate-700">
@@ -273,7 +273,7 @@ export function Footer() {
                 <LinkedinIcon className="w-4 h-4" />
               </a>
               <a
-                href={`mailto:${ORDERS_EMAIL}`}
+                href={`mailto:${SUPPORT_EMAIL}`}
                 className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 hover:text-sky-700 hover:border-sky-300 transition-colors"
                 aria-label="Email"
               >
@@ -368,12 +368,6 @@ export function Footer() {
                     className="block text-slate-700 hover:text-sky-700"
                   >
                     {SUPPORT_EMAIL}
-                  </a>
-                  <a
-                    href={`mailto:${ORDERS_EMAIL}`}
-                    className="block text-slate-700 hover:text-sky-700"
-                  >
-                    {ORDERS_EMAIL}
                   </a>
                 </div>
               </li>

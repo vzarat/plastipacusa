@@ -244,7 +244,9 @@ export function USACoverageSection() {
           </aside>
         </div>
       </div>
-      <CarrierPartners />
+      <div className="hidden md:block">
+        <CarrierPartners />
+      </div>
     </section>
   );
 }

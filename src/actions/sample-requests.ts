@@ -1,6 +1,6 @@
 "use server";
 
-import { SUPPORT_EMAIL, SUPPORT_FROM } from "@/lib/company-email";
+import { CONTACT_EMAIL, CONTACT_FROM } from "@/lib/company-email";
 import { sendEmail } from "@/lib/email";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
@@ -121,8 +121,8 @@ export async function submitSampleRequest(
   }
 
   await sendEmail({
-    from: SUPPORT_FROM,
-    to: SUPPORT_EMAIL,
+    from: CONTACT_FROM,
+    to: CONTACT_EMAIL,
     replyTo: workEmail,
     subject: `Sample request — ${companyName}`,
     text: [

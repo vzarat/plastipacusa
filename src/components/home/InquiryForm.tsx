@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { submitInquiry } from "@/actions/inquiries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,15 @@ export function InquiryForm() {
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message?: string; error?: string } | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const formPanelRef = useRef<HTMLDivElement>(null);
+
+  const openForm = () => {
+    setFormOpen(true);
+    window.setTimeout(() => {
+      formPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +70,22 @@ export function InquiryForm() {
   };
 
   return (
-    <section id="inquiry-form" className="py-20 bg-slate-50/50 border-b border-slate-100 scroll-mt-20">
+    <section id="inquiry-form" className="scroll-mt-20 border-b border-slate-100 bg-slate-50/50">
+      <div className={formOpen ? "hidden" : "px-4 py-14 md:hidden"}>
+        <div className="mx-auto max-w-lg rounded-3xl border border-slate-200 bg-white px-6 py-10 text-center shadow-xl shadow-slate-200/40">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-700">Custom quote</p>
+          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900">
+            Need a pallet or truckload quote?
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-slate-600">
+            Open the form only if you need volume pricing, a blanket order, or a freight evaluation.
+          </p>
+          <Button type="button" variant="gradient" size="lg" className="mt-6 w-full font-bold" onClick={openForm}>
+            Fill out the quote form
+          </Button>
+        </div>
+      </div>
+      <div ref={formPanelRef} className={formOpen ? "scroll-mt-20 py-12" : "hidden scroll-mt-20 py-20 md:block"}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           {/* Left Column: Info & Value Proposition */}
@@ -278,6 +302,7 @@ export function InquiryForm() {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </section>
   );

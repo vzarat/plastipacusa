@@ -42,7 +42,7 @@ export function CategoryShowcase({
     <section
       id="categories"
       aria-label="Product Category Selector"
-      className={`relative py-12 sm:py-16 bg-slate-50/60 dark:bg-slate-950/40 border-b border-slate-100 dark:border-slate-900 scroll-mt-24 ${className}`}
+      className={`relative hidden py-12 sm:py-16 bg-slate-50/60 dark:bg-slate-950/40 border-b border-slate-100 dark:border-slate-900 scroll-mt-24 md:block ${className}`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-12 space-y-3">
