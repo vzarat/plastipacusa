@@ -45,6 +45,8 @@ export interface PricedCheckoutLine {
   boxUnitPrice: number | null;
   widthInches: string;
   gauge: number;
+  lengthFeet: number;
+  rolls: number;
 }
 
 function positiveMoney(...values: unknown[]): number | null {
@@ -167,6 +169,8 @@ export function catalogCheckoutLines(
       const boxes = presetBoxes * quantity;
       const widthInches = String(product?.width_inches ?? "");
       const gauge = Math.round(Number(product?.gauge) || 0);
+      const lengthFeet = Math.round(Number(product?.length_feet) || 0);
+      const rolls = packageRolls(variant) * quantity;
       const productName = String(product?.name || sku);
       const productSlug = String(product?.slug || "");
       const productId = textOf(variant.product_id);
@@ -202,6 +206,8 @@ export function catalogCheckoutLines(
           boxUnitPrice: null,
           widthInches,
           gauge,
+          lengthFeet,
+          rolls,
         };
       }
 
@@ -235,6 +241,8 @@ export function catalogCheckoutLines(
         boxUnitPrice: repriced.boxUnitPrice ?? null,
         widthInches,
         gauge,
+        lengthFeet,
+        rolls,
       };
     });
 }
@@ -252,7 +260,7 @@ function asCartItem(line: PricedCheckoutLine): CartItem {
     sku: line.sku,
     widthInches: line.widthInches,
     gauge: line.gauge,
-    lengthFeet: 0,
+    lengthFeet: line.lengthFeet,
     rollsPerBox: 0,
     rollsPerPallet: 0,
     weightLbs: "0",

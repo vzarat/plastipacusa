@@ -64,9 +64,30 @@ export const DEFAULT_EMAIL_TEMPLATE: EmailTemplateBranding = {
 
 export interface OrderConfirmationLineItem {
   description: string;
+  sku?: string;
   quantity: number;
   unitPrice?: number;
   total?: number;
+  /** Film size, package count, and weight. */
+  detail?: string;
+}
+
+export interface OrderShipmentPiece {
+  dimensions: string;
+  weight: string;
+  quantity: number;
+  packaging: string;
+}
+
+export interface OrderShippingSelection {
+  carrierName: string;
+  carrierKey?: string;
+  logoUrl?: string;
+  serviceName?: string;
+  transitDays?: number;
+  price: number;
+  weightLbs?: number;
+  pieces: OrderShipmentPiece[];
 }
 
 export interface OrderConfirmationContent {
@@ -89,6 +110,11 @@ export interface OrderConfirmationContent {
   };
   orderDate?: string;
   lineItems?: OrderConfirmationLineItem[];
+  subtotalUsd?: number;
+  discountUsd?: number;
+  shippingUsd?: number;
+  taxUsd?: number;
+  shippingSelection?: OrderShippingSelection;
   fridayDeliveryDate?: string;
   fridayDeliveryService?: string;
 }
@@ -199,6 +225,7 @@ function buildProductsTableRows(
         <tr>
           <td style="padding:10px 12px;border-bottom:1px solid ${border};background:${bg};color:${brand.textColor};font-size:13px;line-height:1.4;">
             ${escapeHtml(item.description)}
+            ${item.detail ? `<div style="margin-top:4px;color:${brand.mutedColor};font-size:12px;font-weight:400;line-height:1.45;">${escapeHtml(item.detail)}</div>` : ""}
           </td>
           <td align="center" style="padding:10px 12px;border-bottom:1px solid ${border};background:${bg};color:${brand.textColor};font-size:13px;font-weight:700;white-space:nowrap;">
             ${qty}
@@ -277,9 +304,74 @@ export function buildOrderConfirmationHtml(
       postalCode: ship?.postalCode,
     }) ||
     "";
+  const shippingSelection = content.shippingSelection;
+  const chargeRows = [
+    content.subtotalUsd != null
+      ? ["Subtotal", formatUsd(content.subtotalUsd)]
+      : null,
+    content.discountUsd != null && content.discountUsd > 0
+      ? ["Discount", `-${formatUsd(content.discountUsd)}`]
+      : null,
+    content.shippingUsd != null
+      ? ["Shipping", formatUsd(content.shippingUsd)]
+      : null,
+    content.taxUsd != null && content.taxUsd > 0
+      ? ["Tax", formatUsd(content.taxUsd)]
+      : null,
+  ].filter((row): row is [string, string] => Boolean(row));
+  const chargeHtml = chargeRows
+    .map(
+      ([label, value]) => `
+                <tr>
+                  <td colspan="3" align="right" style="padding:8px 12px 0;background-color:${white};color:${template.mutedColor};font-size:13px;">
+                    ${escapeHtml(label)}
+                  </td>
+                  <td align="right" style="padding:8px 12px 0;background-color:${white};color:${template.textColor};font-size:13px;white-space:nowrap;">
+                    ${escapeHtml(value)}
+                  </td>
+                </tr>`
+    )
+    .join("");
+  const pieceLines = (shippingSelection?.pieces || [])
+    .map((piece) => {
+      const label = [piece.dimensions, piece.weight].filter(Boolean).join(" · ");
+      return `${piece.quantity} × ${piece.packaging}${label ? `: ${label}` : ""}`;
+    })
+    .filter(Boolean);
+  const carrierLogo = shippingSelection?.logoUrl
+    ? `<img src="${escapeHtml(shippingSelection.logoUrl)}" alt="" width="72" height="36" style="display:block;width:72px;height:36px;object-fit:contain;border:0;margin:0 0 8px;" />`
+    : "";
+  const shippingMethodBlock = shippingSelection
+    ? `<p style="margin:14px 0 0;color:${template.mutedColor};font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Shipping method</p>
+       ${carrierLogo}
+       <p style="margin:0;color:${template.textColor};font-size:14px;line-height:1.5;font-weight:700;">${escapeHtml(shippingSelection.carrierName)}</p>
+       ${
+         shippingSelection.serviceName && shippingSelection.serviceName !== shippingSelection.carrierName
+           ? `<p style="margin:2px 0 0;color:${template.mutedColor};font-size:13px;line-height:1.5;">${escapeHtml(shippingSelection.serviceName)}</p>`
+           : ""
+       }
+       <p style="margin:2px 0 0;color:${template.textColor};font-size:13px;line-height:1.5;">Shipping price: ${escapeHtml(formatUsd(shippingSelection.price))}${
+         shippingSelection.transitDays ? ` · ${shippingSelection.transitDays} business days` : ""
+       }</p>
+       ${
+         shippingSelection.weightLbs
+           ? `<p style="margin:2px 0 0;color:${template.mutedColor};font-size:13px;line-height:1.5;">Shipment weight: ${escapeHtml(String(shippingSelection.weightLbs))} lb</p>`
+           : ""
+       }
+       ${
+         pieceLines.length
+           ? `<p style="margin:8px 0 0;color:${template.textColor};font-size:13px;line-height:1.55;">${pieceLines.map((line) => escapeHtml(line)).join("<br/>")}</p>`
+           : ""
+       }`
+    : "";
+  const fridayShippingIsFree = content.shippingUsd == null || content.shippingUsd === 0;
   const fridayNote = fridayService
-    ? `${fridayService}. Shipping cost $0.00.`
-    : "Shipping cost $0.00.";
+    ? fridayShippingIsFree
+      ? `${fridayService}. Shipping cost $0.00.`
+      : fridayService
+    : fridayShippingIsFree
+      ? "Shipping cost $0.00."
+      : "";
   const fridayBlock = content.fridayDeliveryDate
     ? `<p style="margin:14px 0 0;color:${template.mutedColor};font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Friday delivery</p>
        <p style="margin:4px 0 0;color:${template.textColor};font-size:14px;line-height:1.5;font-weight:700;">${escapeHtml(content.fridayDeliveryDate)}</p>
@@ -372,6 +464,7 @@ export function buildOrderConfirmationHtml(
                   <th align="right" style="padding:10px 12px;background-color:${template.panelColor};border-bottom:1px solid ${border};color:${template.navyColor};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Subtotal</th>
                 </tr>
                 ${productRows}
+                ${chargeHtml}
                 <tr>
                   <td colspan="3" align="right" style="padding:14px 12px;background-color:${white};color:${template.textColor};font-size:14px;font-weight:700;border-top:2px solid ${template.navyColor};">
                     Total Paid (USD)
@@ -385,6 +478,7 @@ export function buildOrderConfirmationHtml(
                 <tr>
                   <td style="padding:16px 18px;font-family:Arial,Helvetica,sans-serif;">
                     ${shippingBlock}
+                    ${shippingMethodBlock}
                     ${fridayBlock}
                   </td>
                 </tr>
@@ -439,8 +533,30 @@ export function buildOrderConfirmationHtml(
           : item.unitPrice != null
             ? formatUsd(Number(item.unitPrice) * qty)
             : "";
-      return `- ${item.description} × ${qty}${line ? ` — ${line}` : ""}`;
+      return `- ${item.description} × ${qty}${line ? ` — ${line}` : ""}${item.detail ? `\n  ${item.detail}` : ""}`;
     }),
+    content.subtotalUsd != null ? `Subtotal: ${formatUsd(content.subtotalUsd)}` : null,
+    content.discountUsd && content.discountUsd > 0 ? `Discount: -${formatUsd(content.discountUsd)}` : null,
+    content.shippingUsd != null ? `Shipping: ${formatUsd(content.shippingUsd)}` : null,
+    content.taxUsd && content.taxUsd > 0 ? `Tax: ${formatUsd(content.taxUsd)}` : null,
+    shippingSelection
+      ? [
+          "SHIPPING METHOD",
+          shippingSelection.carrierName,
+          shippingSelection.serviceName && shippingSelection.serviceName !== shippingSelection.carrierName
+            ? shippingSelection.serviceName
+            : null,
+          `Shipping price: ${formatUsd(shippingSelection.price)}`,
+          shippingSelection.transitDays ? `${shippingSelection.transitDays} business days` : null,
+          shippingSelection.weightLbs ? `Shipment weight: ${shippingSelection.weightLbs} lb` : null,
+          ...shippingSelection.pieces.map((piece) => {
+            const label = [piece.dimensions, piece.weight].filter(Boolean).join(" · ");
+            return `${piece.quantity} × ${piece.packaging}${label ? `: ${label}` : ""}`;
+          }),
+        ]
+          .filter(Boolean)
+          .join("\n")
+      : null,
     "",
     `Total Paid: ${totalFormatted} USD`,
     hasStructuredShipping
@@ -506,20 +622,41 @@ export const SAMPLE_ORDER_CONTENT: OrderConfirmationContent = {
     phone: "+1 (956) 555-0142",
   },
   fridayDeliveryDate: "Friday, October 30, 2026",
+  subtotalUsd: 1847.5,
+  shippingUsd: 0,
   lineItems: [
     {
-      description: 'FORCE Hand Film 18" × 80 Ga × 1500 ft',
-      quantity: 4,
-      unitPrice: 286.0,
-      total: 1144.0,
+      description: 'FORCE Hand Film 18" × 80 Ga × 1500 ft · ELT-SF188015-64B',
+      quantity: 1,
+      unitPrice: 1356.8,
+      total: 1356.8,
+      detail: '18" × 80 Ga × 1500 ft · 64 boxes',
     },
     {
-      description: "GENESIS Machine Roll 20\" × 5000 ft",
-      quantity: 2,
-      unitPrice: 351.75,
-      total: 703.5,
+      description: "GENESIS Machine Roll 20\" × 70 Ga × 5000 ft · HPF-SF207050-HLP",
+      quantity: 1,
+      unitPrice: 490.7,
+      total: 490.7,
+      detail: '20" × 70 Ga × 5000 ft · 20 rolls',
     },
   ],
+  shippingSelection: {
+    carrierName: "Plastipac Delivery",
+    carrierKey: "plastipac",
+    logoUrl:
+      "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/CARRIERS/PLASTIPAC_DELIVERY.svg",
+    serviceName: "Friday free delivery",
+    price: 0,
+    weightLbs: 1173.5,
+    pieces: [
+      {
+        dimensions: '48" W x 48" L x 66.0" H',
+        weight: "1,173.5 lb",
+        quantity: 1,
+        packaging: "pallet",
+      },
+    ],
+  },
 };
 
 /** SQL to create the Supabase table used by the admin email template editor. */

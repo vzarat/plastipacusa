@@ -18,6 +18,7 @@ import {
   generateInvoicePdf,
 } from "@/lib/invoice-pdf";
 import { fetchOrderConfirmationTemplate } from "@/lib/email-template-store";
+import { purchaseEmailFromOrder } from "@/lib/order-purchase-email";
 import {
   formatFridayDeliveryDate,
   fridayDeliveryTitleForAddress,
@@ -532,6 +533,7 @@ export async function createOrderFromCheckout(
         .join("; ");
 
       const template = await fetchOrderConfirmationTemplate();
+      const purchase = purchaseEmailFromOrder(payload);
       const rendered = buildOrderConfirmationHtml(template, {
         orderId: createdOrderId,
         customerName,
@@ -553,11 +555,18 @@ export async function createOrderFromCheckout(
         orderDate,
         fridayDeliveryDate,
         fridayDeliveryService,
-        lineItems: orderItems.map((item) => ({
-          description: item.productName,
-          quantity: item.quantity,
-          total: item.linePrice,
-        })),
+        lineItems: purchase.lineItems.length
+          ? purchase.lineItems
+          : orderItems.map((item) => ({
+              description: item.productName,
+              quantity: item.quantity,
+              total: item.linePrice,
+            })),
+        subtotalUsd: purchase.subtotalUsd,
+        discountUsd: purchase.discountUsd,
+        shippingUsd: purchase.shippingUsd,
+        taxUsd: purchase.taxUsd,
+        shippingSelection: purchase.shippingSelection,
       });
 
       let pdfBytes: Uint8Array | null = null;
@@ -579,14 +588,28 @@ export async function createOrderFromCheckout(
           customerName,
           customerCompany: companyName,
           customerEmail,
-          items: orderItems.map((item) => ({
-            description: item.productName,
-            quantity: item.quantity,
-            unitPrice: item.quantity
-              ? Number((item.linePrice / item.quantity).toFixed(2))
-              : item.linePrice,
-            total: item.linePrice,
-          })),
+          items: purchase.lineItems.length
+            ? purchase.lineItems.map((item) => ({
+                description: item.description,
+                detail: item.detail,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice ?? (item.quantity ? Number(((item.total || 0) / item.quantity).toFixed(2)) : 0),
+                total: item.total || 0,
+              }))
+            : orderItems.map((item) => ({
+                description: item.productName,
+                quantity: item.quantity,
+                unitPrice: item.quantity ? Number((item.linePrice / item.quantity).toFixed(2)) : item.linePrice,
+                total: item.linePrice,
+              })),
+          charges: [
+            purchase.subtotalUsd != null ? { label: "Subtotal", amount: purchase.subtotalUsd } : null,
+            purchase.discountUsd && purchase.discountUsd > 0
+              ? { label: "Discount", amount: -purchase.discountUsd }
+              : null,
+            purchase.shippingUsd != null ? { label: "Shipping", amount: purchase.shippingUsd } : null,
+            purchase.taxUsd && purchase.taxUsd > 0 ? { label: "Tax", amount: purchase.taxUsd } : null,
+          ].filter((row): row is { label: string; amount: number } => Boolean(row)),
           totalUsd: totalAmount,
           logo,
           deliveryDate: fridayDeliveryDate,
@@ -618,11 +641,18 @@ export async function createOrderFromCheckout(
               orderDate,
               fridayDeliveryDate,
               fridayDeliveryService,
-              lineItems: orderItems.map((item) => ({
-                description: item.productName,
-                quantity: item.quantity,
-                total: item.linePrice,
-              })),
+              lineItems: purchase.lineItems.length
+                ? purchase.lineItems
+                : orderItems.map((item) => ({
+                    description: item.productName,
+                    quantity: item.quantity,
+                    total: item.linePrice,
+                  })),
+              subtotalUsd: purchase.subtotalUsd,
+              discountUsd: purchase.discountUsd,
+              shippingUsd: purchase.shippingUsd,
+              taxUsd: purchase.taxUsd,
+              shippingSelection: purchase.shippingSelection,
               pdfBytes,
             })
           : sendEmail({
@@ -647,6 +677,7 @@ export async function createOrderFromCheckout(
           shippingPhone: shippingAddress.phone || undefined,
           itemCount: orderItems.length,
           itemsSummary,
+          detailsText: purchase.detailsText,
           orderDate,
           fridayDeliveryDate,
           fridayDeliveryService,

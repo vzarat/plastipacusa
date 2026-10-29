@@ -311,6 +311,7 @@ export async function createPaymentIntent(
       mode: string;
       serviceName: string;
       carrierName?: string;
+      carrierKey?: string;
       serviceLevel?: string;
       price: number;
       carrierPrice?: number;
@@ -335,6 +336,8 @@ export async function createPaymentIntent(
           provider: "plastipac",
           mode: "local",
           serviceName: RGV_FREE_DELIVERY_LABEL,
+          carrierName: "Plastipac Delivery",
+          carrierKey: "plastipac",
           price: local.price,
           transitDays: 1,
           destinationZip: zip,
@@ -362,6 +365,8 @@ export async function createPaymentIntent(
           provider: "plastipac",
           mode: "local",
           serviceName: offered.label,
+          carrierName: "Plastipac Delivery",
+          carrierKey: "plastipac",
           price: 0,
           transitDays: 1,
           destinationZip: zip,
@@ -387,6 +392,7 @@ export async function createPaymentIntent(
           mode: resolved.option.mode,
           serviceName: resolved.option.serviceName,
           carrierName: resolved.option.carrierName,
+          carrierKey: resolved.option.carrierKey,
           serviceLevel: resolved.option.serviceLevel,
           price: resolved.option.price,
           carrierPrice: resolved.option.carrierPrice,
@@ -544,7 +550,36 @@ export async function createPaymentIntent(
       checkout_fingerprint: fingerprint,
       friday_delivery_date: fridayDeliveryDate,
       friday_delivery_region: fridayRegion ? fridayRegionTag(fridayRegion) : null,
+      carrier_name: shippingOption?.carrierName || shippingOption?.serviceName || null,
+      carrier_key: shippingOption?.carrierKey || null,
+      shipping_service: shippingOption?.serviceLevel || shippingOption?.serviceName || null,
+      shipping_price: shippingOption?.price ?? priced.shipping,
+      shipping_transit_days: shippingOption?.transitDays ?? null,
     };
+    try {
+      const freight = await buildShipmentFreight(
+        priced.lines.map((line) => ({
+          sku: line.sku,
+          productSlug: line.productSlug,
+          quantity: line.quantity,
+          totalBoxes: line.totalBoxes,
+          totalRolls: line.rolls,
+          application: line.application,
+        }))
+      );
+      addressRecord.shipment_weight_lbs = freight.weightLbs;
+      addressRecord.shipment_pieces = freight.pieces.map((piece) => ({
+        dimensions: piece.dimensionLabel,
+        weight: piece.weightLabel,
+        quantity: piece.quantity,
+        packaging: piece.packaging,
+      }));
+    } catch (error) {
+      console.error(
+        "[checkout] shipment details left off the order email:",
+        error instanceof Error ? error.message : "unavailable"
+      );
+    }
     const orderPayload: Record<string, unknown> = {
       user_id: userId,
       status: "pending_payment",
@@ -575,9 +610,13 @@ export async function createPaymentIntent(
         productName: line.productName,
         quantity: line.quantity,
         boxes: line.boxes,
+        rolls: line.rolls,
         pallets: line.pallets,
         unitPrice: line.unitPrice,
         totalPrice: line.totalPrice,
+        widthInches: line.widthInches,
+        gauge: line.gauge,
+        lengthFeet: line.lengthFeet,
       })),
       shipping_address: addressRecord,
     };

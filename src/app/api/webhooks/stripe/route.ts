@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { customerLineDescription } from "@/lib/catalog-sku";
+import { filmSpecLabel, purchaseEmailFromOrder } from "@/lib/order-purchase-email";
 import Stripe from "stripe";
 import {
   createServiceRoleClient,
@@ -110,6 +111,7 @@ function mapOrderItems(rawItems: unknown, fallbackTotal: number): InvoicePdfItem
       item?.product_name ||
       item?.name ||
       "Stretch Film";
+    const detail = filmSpecLabel(item);
     return {
       description: customerLineDescription({
         productName: name,
@@ -118,6 +120,7 @@ function mapOrderItems(rawItems: unknown, fallbackTotal: number): InvoicePdfItem
       quantity,
       unitPrice,
       total,
+      detail: detail || undefined,
     };
   });
 }
@@ -406,6 +409,7 @@ async function generateOrderSummaryPdf(order: OrderRow): Promise<Uint8Array> {
     );
   }
 
+  const purchase = purchaseEmailFromOrder(order as unknown as Record<string, unknown>);
   const pdfBytes = generateInvoicePdf({
     invoiceNumber,
     orderPoRef,
@@ -422,6 +426,14 @@ async function generateOrderSummaryPdf(order: OrderRow): Promise<Uint8Array> {
       order.customer_email ||
       (order.shipping_address?.email as string | undefined),
     items: mapOrderItems(order.items, totalUsd),
+    charges: [
+      purchase.subtotalUsd != null ? { label: "Subtotal", amount: purchase.subtotalUsd } : null,
+      purchase.discountUsd && purchase.discountUsd > 0
+        ? { label: "Discount", amount: -purchase.discountUsd }
+        : null,
+      purchase.shippingUsd != null ? { label: "Shipping", amount: purchase.shippingUsd } : null,
+      purchase.taxUsd && purchase.taxUsd > 0 ? { label: "Tax", amount: purchase.taxUsd } : null,
+    ].filter((row): row is { label: string; amount: number } => Boolean(row)),
     totalUsd,
     logo,
     deliveryDate: fridayDeliveryCopy(order.shipping_address),
@@ -474,9 +486,13 @@ async function dispatchAdminPoEmail(payload: {
   orderDate?: string;
   fridayDeliveryDate?: string;
   fridayDeliveryService?: string;
+  detailsText?: string;
 }) {
   try {
-    const result = await notifyAdminPurchaseOrder(payload);
+    const result = await notifyAdminPurchaseOrder({
+      ...payload,
+      detailsText: payload.detailsText,
+    });
     if (!result.success) {
       console.error(
         "[stripe webhook] admin PO email not sent:",
@@ -677,9 +693,10 @@ async function handleCheckoutSessionCompleted(
     "";
 
   try {
+    const purchase = purchaseEmailFromOrder(order as unknown as Record<string, unknown>);
     const emailLineItems =
-      Array.isArray(order.items) && order.items.length > 0
-        ? mapOrderItems(order.items, totalAmount)
+      purchase.lineItems.length > 0
+        ? purchase.lineItems
         : lineItems.map((item) => ({
             description: String(item.description || "Plastipac Product"),
             quantity: Number(item.quantity || 1) || 1,
@@ -699,6 +716,11 @@ async function handleCheckoutSessionCompleted(
         (session.created || Date.now() / 1000) * 1000
       ).toISOString(),
       lineItems: emailLineItems,
+      subtotalUsd: purchase.subtotalUsd,
+      discountUsd: purchase.discountUsd,
+      shippingUsd: purchase.shippingUsd,
+      taxUsd: purchase.taxUsd,
+      shippingSelection: purchase.shippingSelection,
       fridayDeliveryDate: fridayDeliveryCopy(order.shipping_address, session.metadata),
       fridayDeliveryService: fridayDeliveryTitleForAddress(structuredShipping) || undefined,
       pdfBytes,
@@ -725,6 +747,7 @@ async function handleCheckoutSessionCompleted(
       shippingPhone,
       itemCount,
       itemsSummary,
+      detailsText: purchaseEmailFromOrder(order as unknown as Record<string, unknown>).detailsText,
       orderDate: new Date(
         (session.created || Date.now() / 1000) * 1000
       ).toISOString(),
@@ -921,6 +944,7 @@ async function notifyPaidPaymentIntent(
   });
 
   const pdfBytes = await generateOrderSummaryPdf(order);
+  const purchase = purchaseEmailFromOrder(order as unknown as Record<string, unknown>);
   await sendOrderConfirmationEmail({
     orderId: poReference,
     customerName,
@@ -940,7 +964,12 @@ async function notifyPaidPaymentIntent(
       phone: String(address.phone || "") || undefined,
     },
     orderDate: order.created_at || new Date().toISOString(),
-    lineItems: mapOrderItems(items, totalAmount),
+    lineItems: purchase.lineItems.length ? purchase.lineItems : mapOrderItems(items, totalAmount),
+    subtotalUsd: purchase.subtotalUsd,
+    discountUsd: purchase.discountUsd,
+    shippingUsd: purchase.shippingUsd,
+    taxUsd: purchase.taxUsd,
+    shippingSelection: purchase.shippingSelection,
     fridayDeliveryDate: fridayDeliveryCopy(address, meta),
     fridayDeliveryService:
       fridayDeliveryTitleForAddress({
@@ -962,6 +991,7 @@ async function notifyPaidPaymentIntent(
     shippingPhone: String(address.phone || "") || undefined,
     itemCount: items.length || 1,
     itemsSummary,
+    detailsText: purchase.detailsText,
     orderDate: order.created_at || new Date().toISOString(),
     fridayDeliveryDate: fridayDeliveryCopy(address, meta),
     fridayDeliveryService:

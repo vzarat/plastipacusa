@@ -11,6 +11,7 @@ export interface InvoicePdfItem {
   quantity: number;
   unitPrice: number;
   total: number;
+  detail?: string;
 }
 
 export interface InvoiceLogoImage {
@@ -30,6 +31,7 @@ export interface InvoicePdfData {
   customerEmail?: string;
   items: InvoicePdfItem[];
   totalUsd: number;
+  charges?: Array<{ label: string; amount: number }>;
   logo?: InvoiceLogoImage | null;
   deliveryDate?: string;
 }
@@ -300,20 +302,32 @@ function buildContentStream(data: InvoicePdfData): string {
           },
         ];
 
-  items.slice(0, 18).forEach((item, index) => {
+  items.slice(0, 12).forEach((item, index) => {
+    const rowHeight = item.detail ? 30 : 18;
     if (index % 2 === 0) {
       lines.push("0.97 0.98 0.99 rg");
-      lines.push(`40 ${y - 6} 532 18 re`);
+      lines.push(`40 ${y - (item.detail ? 16 : 6)} 532 ${rowHeight} re`);
       lines.push("f");
     }
     lines.push("0.06 0.09 0.16 rg");
     const desc = pdfLineDescription(item.description);
     pushText(50, y, desc, { font: "F1", size: 9 });
+    if (item.detail) {
+      lines.push("0.39 0.45 0.55 rg");
+      pushText(50, y - 12, pdfLineDescription(item.detail), { font: "F1", size: 8 });
+      lines.push("0.06 0.09 0.16 rg");
+    }
     pushText(320, y, String(item.quantity || 0), { font: "F1", size: 9 });
     pushText(370, y, money(item.unitPrice), { font: "F1", size: 9 });
     pushText(470, y, money(item.total), { font: "F2", size: 9 });
-    y -= 20;
+    y -= item.detail ? 32 : 20;
   });
+  for (const charge of data.charges || []) {
+    lines.push("0.39 0.45 0.55 rg");
+    pushText(370, y, charge.label, { font: "F1", size: 9 });
+    pushText(470, y, money(charge.amount), { font: "F1", size: 9 });
+    y -= 14;
+  }
 
   y -= 10;
   lines.push("0.80 0.86 0.92 RG");

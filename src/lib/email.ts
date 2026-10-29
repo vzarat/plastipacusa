@@ -240,6 +240,7 @@ export interface PurchaseOrderNotifyInput {
   orderDate?: string;
   fridayDeliveryDate?: string;
   fridayDeliveryService?: string;
+  detailsText?: string;
 }
 
 /**
@@ -290,7 +291,7 @@ export async function notifyAdminPurchaseOrder(
           .join("\n")
       : null,
     payload.itemCount != null ? `Line Items: ${payload.itemCount}` : null,
-    payload.itemsSummary ? `Items: ${payload.itemsSummary}` : null,
+    payload.detailsText || (payload.itemsSummary ? `Items: ${payload.itemsSummary}` : null),
     payload.orderDate ? `Order Date: ${payload.orderDate}` : null,
     "",
     `Open Admin Orders: ${base}/admin/orders`,
@@ -322,6 +323,11 @@ export interface OrderConfirmationEmailInput {
   shippingAddress?: import("@/lib/order-confirmation-email").OrderConfirmationContent["shippingAddress"];
   orderDate?: string;
   lineItems?: import("@/lib/order-confirmation-email").OrderConfirmationLineItem[];
+  subtotalUsd?: number;
+  discountUsd?: number;
+  shippingUsd?: number;
+  taxUsd?: number;
+  shippingSelection?: import("@/lib/order-confirmation-email").OrderShippingSelection;
   fridayDeliveryDate?: string;
   fridayDeliveryService?: string;
   pdfBytes: Uint8Array;
@@ -367,6 +373,11 @@ export async function sendOrderConfirmationEmail(
       shippingAddress: payload.shippingAddress,
       orderDate: payload.orderDate,
       lineItems: payload.lineItems,
+      subtotalUsd: payload.subtotalUsd,
+      discountUsd: payload.discountUsd,
+      shippingUsd: payload.shippingUsd,
+      taxUsd: payload.taxUsd,
+      shippingSelection: payload.shippingSelection,
       fridayDeliveryDate: payload.fridayDeliveryDate,
       fridayDeliveryService: payload.fridayDeliveryService,
     });

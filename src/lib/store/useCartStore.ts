@@ -40,6 +40,8 @@ function pricedLineFromCart(item: CartItem): PricedCheckoutLine {
     boxUnitPrice: repriced?.boxUnitPrice ?? item.boxUnitPrice ?? null,
     widthInches: item.widthInches,
     gauge: item.gauge,
+    lengthFeet: Math.round(Number(item.lengthFeet) || 0),
+    rolls: item.application === "machine" ? machinePackageRolls(item) * quantity : 0,
   };
 }
 
