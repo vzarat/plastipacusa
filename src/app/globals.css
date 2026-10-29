@@ -248,6 +248,36 @@
   .dashboard-mobile-scroll a[class*="rounded"]:active {
     transform: scale(0.98);
   }
+
+  .dash-side-drawer {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
+    height: 100dvh;
+    width: min(100%, 18rem);
+    transform: translate3d(-100%, 0, 0);
+    visibility: hidden;
+    transition:
+      transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s linear 320ms;
+  }
+
+  .dash-side-drawer.is-open {
+    transform: translate3d(0, 0, 0);
+    visibility: visible;
+    transition:
+      transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s linear 0s;
+  }
+}
+
+@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
+  .dash-side-drawer,
+  .dash-side-drawer.is-open {
+    transition: none;
+  }
 }
 
 @keyframes carrier-logo-in {

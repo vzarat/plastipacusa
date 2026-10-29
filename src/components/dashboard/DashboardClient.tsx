@@ -623,21 +623,22 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
         onMenu={() => setMenuOpen((open) => !open)}
         headerAction={<NotificationBell pending={backupPasswordPending} />}
       />
-      {menuOpen ? (
-        <button
-          type="button"
-          className="fixed inset-0 z-40 bg-slate-950/40 md:hidden"
-          aria-label="Close dashboard menu"
-          onClick={() => setMenuOpen(false)}
-        />
-      ) : null}
+      <button
+        type="button"
+        className={`fixed inset-0 z-40 bg-slate-950/40 transition-opacity duration-300 ease-out md:hidden ${
+          menuOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        aria-label="Close dashboard menu"
+        tabIndex={menuOpen ? 0 : -1}
+        onClick={() => setMenuOpen(false)}
+      />
 
       {/* Left Sidebar Navigation Column */}
-      <aside className={`${menuOpen ? "fixed inset-y-0 left-0 z-50 flex h-dvh w-[min(100%,18rem)] flex-col justify-between overflow-y-auto" : "hidden"} md:sticky md:top-0 md:z-30 md:flex md:h-screen md:w-72 md:shrink-0 md:flex-col md:justify-between md:overflow-visible md:border-r md:border-slate-200/90 md:bg-white md:p-6 border-r border-slate-200/90 bg-white p-6`}>
+      <aside className={`dash-side-drawer flex h-dvh w-[min(100%,18rem)] flex-col justify-between overflow-y-auto border-r border-slate-200/90 bg-white p-6 md:sticky md:top-0 md:z-30 md:h-screen md:w-72 md:shrink-0 md:overflow-visible ${menuOpen ? "is-open" : ""}`}>
         {/* Top: Logo & Portal Badge */}
         <div className="space-y-6">
           <div className="space-y-2">
-            <Link href="/" className="inline-block">
+            <Link href="/" className="inline-block" onClick={() => setMenuOpen(false)}>
               <Image
                 src="https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PLASTIPAC_USA_LOGO%202.svg"
                 alt="Plastipac USA Portal"

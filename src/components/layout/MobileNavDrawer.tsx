@@ -5,10 +5,8 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Mail, Phone, Sparkles, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Mail, Phone, X } from "lucide-react";
 import { SUPPORT_EMAIL } from "@/lib/company-email";
-import { useAssistStore } from "@/lib/store/useAssistStore";
 
 const LOGO_SRC =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PLASTIPAC_USA_LOGO%202.svg";
@@ -29,11 +27,18 @@ interface MobileNavDrawerProps {
   onSignOut?: () => void;
 }
 
+const linkClass = (active: boolean) =>
+  `border-b border-slate-100 text-sm transition-colors hover:bg-slate-100 ${
+    active
+      ? "rounded-lg bg-sky-50 px-3 py-2 font-semibold text-sky-700"
+      : "rounded-lg px-3 py-2 text-slate-800"
+  }`;
+
 function isLinkActive(id: string, pathname: string, hash: string) {
   if (id === "home") return pathname === "/" && hash === "";
   if (id === "about") return pathname === "/about";
   if (id === "products") return pathname === "/products" || pathname.startsWith("/products/");
-  if (id === "categories") return hash === "#categories";
+  if (id === "categories") return hash === "#product-catalog" || hash === "#categories";
   if (id === "contact") return hash === "#inquiry-form";
   return false;
 }
@@ -46,10 +51,8 @@ export function MobileNavDrawer({
   onSignOut,
 }: MobileNavDrawerProps) {
   const pathname = usePathname();
-  const openAssist = useAssistStore((state) => state.setOpen);
   const [hash, setHash] = useState("");
   const [mounted, setMounted] = useState(false);
-  const [contactOpen, setContactOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -61,10 +64,6 @@ export function MobileNavDrawer({
     window.addEventListener("hashchange", syncHash);
     return () => window.removeEventListener("hashchange", syncHash);
   }, [pathname]);
-
-  useEffect(() => {
-    if (!open) setContactOpen(false);
-  }, [open]);
 
   useEffect(() => {
     if (!open || typeof document === "undefined") return;
@@ -105,7 +104,7 @@ export function MobileNavDrawer({
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        <div className="min-h-0">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="flex items-center justify-between gap-3">
             <Link href="/" onClick={onClose} className="inline-flex shrink-0" aria-label="Plastipac USA Home">
               <Image
@@ -134,86 +133,66 @@ export function MobileNavDrawer({
                   key={link.id}
                   href={link.href}
                   onClick={onClose}
-                  className={`border-b border-slate-100 text-sm text-slate-800 transition-colors hover:bg-slate-100 ${
-                    active
-                      ? "rounded-lg bg-sky-50 px-3 py-2 font-semibold text-sky-700"
-                      : "rounded-lg px-3 py-2"
-                  }`}
+                  className={linkClass(active)}
                 >
                   {link.label}
                 </Link>
               );
             })}
-          </nav>
-        </div>
-
-        <div className="flex flex-col gap-3 pt-6">
-          {signedIn ? (
-            <>
-              <Button asChild variant="outline" className="h-11 w-full text-sm">
-                <Link href={isAdmin ? "/admin" : "/dashboard"} onClick={onClose}>
-                  {isAdmin ? "Admin" : "Dashboard"}
-                </Link>
-              </Button>
+            {signedIn ? (
+              <Link
+                href={isAdmin ? "/admin" : "/dashboard"}
+                onClick={onClose}
+                className={linkClass(
+                  isAdmin ? pathname.startsWith("/admin") : pathname.startsWith("/dashboard")
+                )}
+              >
+                {isAdmin ? "Admin" : "Dashboard"}
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                onClick={onClose}
+                className={linkClass(pathname === "/login")}
+              >
+                Log In
+              </Link>
+            )}
+            {signedIn ? (
               <button
                 type="button"
                 onClick={() => {
                   onClose();
                   onSignOut?.();
                 }}
-                className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-rose-200 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+                className="rounded-lg border-b border-slate-100 px-3 py-2 text-left text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50"
               >
                 Sign Out
               </button>
-            </>
-          ) : (
-            <Button asChild variant="outline" className="h-11 w-full text-sm">
-              <Link href="/login" onClick={onClose}>
-                Log In
-              </Link>
-            </Button>
-          )}
-          <div className="overflow-hidden rounded-xl border border-slate-200">
-            <button
-              type="button"
-              onClick={() => setContactOpen((open) => !open)}
-              className="flex h-11 w-full items-center justify-center text-sm font-bold text-white bg-gradient-to-r from-sky-500 to-blue-700"
-              aria-expanded={contactOpen}
-            >
-              Contact us
-            </button>
-            {contactOpen ? (
-              <div className="flex flex-col bg-white">
-                <a
-                  href={`mailto:${SUPPORT_EMAIL}`}
-                  onClick={onClose}
-                  className="flex items-center gap-2 border-t border-slate-100 px-4 py-3 text-sm font-semibold text-slate-800"
-                >
-                  <Mail className="h-4 w-4 text-sky-600" />
-                  Email {SUPPORT_EMAIL}
-                </a>
-                <a
-                  href="tel:+19564003683"
-                  onClick={onClose}
-                  className="flex items-center gap-2 border-t border-slate-100 px-4 py-3 text-sm font-semibold text-slate-800"
-                >
-                  <Phone className="h-4 w-4 text-sky-600" />
-                  Call (956) 400-3683
-                </a>
-              </div>
             ) : null}
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              openAssist(true);
-            }}
-            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#085de7] text-sm font-bold text-white shadow-lg shadow-sky-900/25 transition active:scale-[0.98]"
+          </nav>
+        </div>
+
+        <div className="mt-6 border-t border-slate-100 pt-5">
+          <p className="px-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Questions? We&apos;re here to help.
+          </p>
+          <a
+            href={`mailto:${SUPPORT_EMAIL}`}
+            onClick={onClose}
+            className="mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-100"
           >
-            <Sparkles className="h-4 w-4" aria-hidden />
-            Assist AI
-          </button>
+            <Mail className="h-4 w-4 shrink-0 text-sky-600" />
+            <span className="min-w-0 break-all">{SUPPORT_EMAIL}</span>
+          </a>
+          <a
+            href="tel:+19564003683"
+            onClick={onClose}
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-100"
+          >
+            <Phone className="h-4 w-4 shrink-0 text-sky-600" />
+            (956) 400-3683
+          </a>
         </div>
       </aside>
     </div>,

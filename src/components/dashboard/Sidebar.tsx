@@ -81,11 +81,9 @@ export function DashboardSidebar({
 
   return (
     <aside
-      className={`${
-        isMobileOpen
-          ? "fixed inset-y-0 left-0 z-50 flex h-dvh w-[min(100%,18rem)] flex-col justify-between overflow-y-auto"
-          : "hidden"
-      } border-r border-slate-200/90 bg-white p-6 md:sticky md:top-0 md:z-30 md:flex md:h-screen md:w-72 md:shrink-0 md:flex-col md:justify-between md:overflow-visible`}
+      className={`dash-side-drawer flex h-dvh w-[min(100%,18rem)] flex-col justify-between overflow-y-auto border-r border-slate-200/90 bg-white p-6 md:sticky md:top-0 md:z-30 md:h-screen md:w-72 md:shrink-0 md:overflow-visible ${
+        isMobileOpen ? "is-open" : ""
+      }`}
     >
       <div className="space-y-6 overflow-y-auto">
         <div className="space-y-2">

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Menu, X } from "lucide-react";
 
 const LOGO_SRC =
@@ -20,13 +21,15 @@ export function DashboardMobileChrome({
 }: DashboardMobileChromeProps) {
   return (
     <header className="sticky top-0 z-40 flex items-center justify-between border-b bg-white/90 px-4 py-3 backdrop-blur-md md:hidden">
-      <Image
-        src={LOGO_SRC}
-        alt="Plastipac USA"
-        width={120}
-        height={32}
-        className="h-7 w-auto shrink-0 object-contain"
-      />
+      <Link href="/" className="inline-flex shrink-0" aria-label="Plastipac USA Home">
+        <Image
+          src={LOGO_SRC}
+          alt="Plastipac USA"
+          width={120}
+          height={32}
+          className="h-7 w-auto shrink-0 object-contain"
+        />
+      </Link>
       <div className="flex shrink-0 items-center gap-1">
         {headerAction}
         <button

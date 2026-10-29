@@ -247,14 +247,15 @@ export function DashboardCreditClient({
           <NotificationBell pending={Boolean(profile.backupPasswordPending)} />
         }
       />
-      {menuOpen ? (
-        <button
-          type="button"
-          className="fixed inset-0 z-40 bg-slate-950/40 md:hidden"
-          aria-label="Close dashboard menu"
-          onClick={() => setMenuOpen(false)}
-        />
-      ) : null}
+      <button
+        type="button"
+        className={`fixed inset-0 z-40 bg-slate-950/40 transition-opacity duration-300 ease-out md:hidden ${
+          menuOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        aria-label="Close dashboard menu"
+        tabIndex={menuOpen ? 0 : -1}
+        onClick={() => setMenuOpen(false)}
+      />
 
       <DashboardSidebar
         profile={profile}
