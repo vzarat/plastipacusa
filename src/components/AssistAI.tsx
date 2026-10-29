@@ -22,6 +22,7 @@ type AssistProfile = {
   calibre: 51 | 60 | 70 | 80 | null;
 };
 
+const ASSIST_PAUSED = true;
 const WELCOME_TEXT = "Do you already have a stretch wrapper?";
 const WRAP_CHOICES = [
   { label: "Yes, I use a machine", usa_maquina: true },
@@ -112,7 +113,7 @@ export default function AssistAI() {
   }, [open, setOpen]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || ASSIST_PAUSED) return;
     const mobile = window.matchMedia("(max-width: 767px)");
     if (!mobile.matches) return;
 
@@ -142,7 +143,7 @@ export default function AssistAI() {
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || ASSIST_PAUSED) return;
     const token = ++loadToken.current;
     setHistoryReady(false);
     const load = async () => {
@@ -212,7 +213,7 @@ export default function AssistAI() {
   };
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || ASSIST_PAUSED) return;
     void fetch("/api/assistant/wizard")
       .then((response) => (response.ok ? response.json() : null))
       .then((data: { profile?: AssistProfile } | null) => {
@@ -227,6 +228,52 @@ export default function AssistAI() {
     sendMessage({ text: next });
     setInput("");
   };
+
+  if (ASSIST_PAUSED) {
+    return (
+      <AnimatePresence>
+        {open && (
+          <>
+            <motion.button
+              type="button"
+              aria-label="Close Assist AI"
+              className="fixed inset-0 z-[90] bg-slate-950/40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setOpen(false)}
+            />
+            <motion.div
+              role="dialog"
+              aria-labelledby="assist-paused-title"
+              className="fixed left-1/2 top-24 z-[91] w-[min(22rem,calc(100%-2rem))] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <h2 id="assist-paused-title" className="flex items-center gap-1.5 text-base font-black text-slate-900">
+                  <Sparkles className="h-4 w-4 text-sky-600" aria-hidden />
+                  Assist AI
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600">
+                We&apos;re still working on Assist AI.
+              </p>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    );
+  }
 
   return (
     <>

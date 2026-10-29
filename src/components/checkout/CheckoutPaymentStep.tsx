@@ -7,7 +7,7 @@ import { StripeEmbeddedCheckout } from "@/components/checkout/StripeEmbeddedChec
 import { Button } from "@/components/ui/button";
 import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
 import { useCartStore } from "@/lib/store/useCartStore";
-import { ORDER_PREP_SENTENCE, carrierTimingLabel } from "@/lib/shipping/dates";
+import { estimatedShipmentWindow } from "@/lib/shipping/dates";
 import { countCartBoxes } from "@/lib/shipping-method";
 import { labelForShippingMethod } from "@/lib/shippingRules";
 import { formatCurrency } from "@/lib/utils";
@@ -62,6 +62,10 @@ export function CheckoutPaymentStep({
       ? resolveFridayDeliveryIso(selectedShippingOption.deliveryDate)
       : null;
   const fridayDelivery = fridayIso ? formatFridayDeliveryDate(fridayIso) : null;
+  const shipmentEstimate =
+    !fridayIso && selectedShippingOption
+      ? estimatedShipmentWindow(selectedShippingOption.transitDays)
+      : null;
   return (
     <div className="space-y-6">
       <div>
@@ -122,18 +126,21 @@ export function CheckoutPaymentStep({
           </p>
           {fridayDelivery && fridayIso ? (
             <p className="mt-1 text-sm font-semibold text-emerald-800">
-              {fridayDelivery}
-              <span className="mt-0.5 block text-xs font-semibold text-slate-600">
-                {fridayTransitLabel(fridayIso)}. {ORDER_PREP_SENTENCE}
+              Estimated delivery: {fridayDelivery}
+              <span className="mt-0.5 block text-xs font-semibold leading-relaxed text-slate-600">
+                {fridayTransitLabel(fridayIso)}. Ready for that route 3 business days after purchase.
               </span>
             </p>
-          ) : selectedShippingOption?.transitDays ? (
-            <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-600">
-              {carrierTimingLabel(selectedShippingOption.transitDays)}
+          ) : shipmentEstimate ? (
+            <p className="mt-1 text-sm font-semibold text-slate-800">
+              {shipmentEstimate.summary}
+              <span className="mt-0.5 block text-xs font-semibold leading-relaxed text-slate-600">
+                {shipmentEstimate.detail}
+              </span>
             </p>
           ) : (
             <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-600">
-              Prepared in 2–3 business days before it ships.
+              Estimated delivery is calculated once a shipping method is selected. Pickup is 3 business days after purchase.
             </p>
           )}
           <p className="mt-1 text-sm text-slate-600">

@@ -45,6 +45,22 @@ export function nextBusinessPickupDate(now = new Date()): string {
   return `${ship.getFullYear()}-${month}-${day}`;
 }
 
+/** Customer-facing window: ready for Warp pickup 3 business days after purchase, then carrier transit. */
+export function estimatedShipmentWindow(transitDays: number, now = new Date()) {
+  const transit = Math.max(1, Math.round(Number(transitDays) || 1));
+  const ready = addBusinessDays(now, ORDER_PREP_BUSINESS_DAYS_MAX);
+  const delivery = addBusinessDays(ready, transit);
+  const transitText = transit === 1 ? "1 business day" : `${transit} business days`;
+  const readyLabel = formatScheduleDate(ready);
+  const deliveryLabel = formatScheduleDate(delivery);
+  return {
+    readyLabel,
+    deliveryLabel,
+    summary: `Estimated delivery: ${deliveryLabel}`,
+    detail: `Ready for pickup ${readyLabel}, 3 business days after purchase, then ${transitText} in transit.`,
+  };
+}
+
 export function scheduleFromTransitDays(transitDays: number, now = new Date()) {
   const transit = Math.max(1, Math.round(Number(transitDays) || 1));
   const shipStart = addBusinessDays(now, ORDER_PREP_BUSINESS_DAYS_MIN);

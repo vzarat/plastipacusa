@@ -20,7 +20,7 @@ import {
   shouldAutoRequote,
 } from "@/lib/shipping/quote-window";
 import type { ShippingOption } from "@/lib/shipping/types";
-import { ORDER_PREP_SENTENCE, carrierTimingLabel } from "@/lib/shipping/dates";
+import { estimatedShipmentWindow } from "@/lib/shipping/dates";
 import { evalShippingEligibility } from "@/lib/shippingRules";
 import {
   formatFridayDeliveryDate,
@@ -627,6 +627,7 @@ export function CheckoutShippingMethodStep({
               const methodForSelection = chosenFriday
                 ? withFridaySelection(method, chosenFriday)
                 : method;
+              const estimate = chosenFriday ? null : estimatedShipmentWindow(method.transitDays);
               const title = methodForSelection.carrierName || methodForSelection.serviceName;
               return (
                 <label
@@ -733,17 +734,22 @@ export function CheckoutShippingMethodStep({
                         </select>
                       </label>
                     ) : null}
-                    <span className="mt-1 block text-xs font-semibold text-slate-600">
+                    <span className="mt-1 block text-xs font-semibold text-slate-700">
                       {chosenFriday
-                        ? fridayTransitLabel(chosenFriday)
-                        : carrierTimingLabel(method.transitDays)}
+                        ? `Estimated delivery: ${formatFridayDeliveryDate(chosenFriday)}`
+                        : estimate?.summary}
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">
+                      {chosenFriday
+                        ? `${fridayTransitLabel(chosenFriday)}. Ready for that route 3 business days after purchase.`
+                        : estimate?.detail}
                     </span>
                   </span>
                 </label>
               );
             })}
             <p className="text-xs leading-relaxed text-slate-500">
-              {ORDER_PREP_SENTENCE} Rates assume a commercial address with a loading dock. Liftgate, residential delivery or appointment may add charges.
+              Estimated delivery starts after the order is ready for pickup, 3 business days after purchase. Rates assume a commercial address with a loading dock. Liftgate, residential delivery or appointment may add charges.
             </p>
             {cards.hiddenCount > 0 && (
               <button

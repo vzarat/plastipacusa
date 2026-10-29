@@ -1,7 +1,7 @@
 "use client";
 
 import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
-import { ORDER_PREP_SENTENCE, scheduleFromTransitDays } from "@/lib/shipping/dates";
+import { estimatedShipmentWindow } from "@/lib/shipping/dates";
 import {
   formatFridayDeliveryDate,
   fridayTransitLabel,
@@ -16,13 +16,13 @@ export function ShipmentOriginSummary() {
     selectedShippingOption?.id === "rgv-local" || selectedShippingOption?.id === "houston-friday"
       ? resolveFridayDeliveryIso(selectedShippingOption.deliveryDate)
       : null;
-  const schedule =
+  const estimate =
     !fridayIso && selectedShippingOption
-      ? scheduleFromTransitDays(selectedShippingOption.transitDays)
+      ? estimatedShipmentWindow(selectedShippingOption.transitDays)
       : null;
   const deliveryLabel = fridayIso
-    ? `${formatFridayDeliveryDate(fridayIso)} · ${fridayTransitLabel(fridayIso)}`
-    : schedule?.deliveryLabel;
+    ? formatFridayDeliveryDate(fridayIso)
+    : estimate?.deliveryLabel;
 
   return (
     <div className="mt-6 rounded-2xl border border-slate-200 bg-white px-4 py-3.5">
@@ -36,13 +36,16 @@ export function ShipmentOriginSummary() {
           </dt>
         </div>
         <div>
-          <dt className="font-semibold text-slate-900">
-            Estimated Delivery: {deliveryLabel || "Select a delivery method"}
-          </dt>
-          {schedule?.deliveryRange ? (
-            <dd className="mt-0.5 text-slate-600">{schedule.deliveryRange}</dd>
-          ) : null}
-          <dd className="mt-1 text-xs leading-relaxed text-slate-500">{ORDER_PREP_SENTENCE}</dd>
+          <dt className="text-slate-500">Estimated delivery</dt>
+          <dd className="font-semibold text-slate-900">
+            {deliveryLabel || "Select a delivery method"}
+          </dd>
+          <dd className="mt-1 text-xs leading-relaxed text-slate-500">
+            {fridayIso
+              ? `${fridayTransitLabel(fridayIso)}. The order is ready for that route 3 business days after purchase.`
+              : estimate?.detail ||
+                "The order is ready for carrier pickup 3 business days after purchase."}
+          </dd>
         </div>
       </dl>
     </div>

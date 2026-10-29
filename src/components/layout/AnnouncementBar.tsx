@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Mail, PhoneCall } from "lucide-react";
-import { CONTACT_EMAIL } from "@/lib/company-email";
+import { ORDERS_EMAIL } from "@/lib/company-email";
 import { useLanguage } from "@/context/LanguageContext";
 
 function UsFlagIcon({ className = "h-4 w-5" }: { className?: string }) {
@@ -46,11 +46,11 @@ export function AnnouncementBar() {
             (956) 400-3683
           </a>
           <a
-            href={`mailto:${CONTACT_EMAIL}`}
+            href={`mailto:${ORDERS_EMAIL}`}
             className="flex items-center gap-1 text-white hover:text-sky-100 transition-colors font-semibold"
           >
             <Mail className="w-3.5 h-3.5 text-sky-200" />
-            {CONTACT_EMAIL}
+            {ORDERS_EMAIL}
           </a>
         </div>
       </div>
