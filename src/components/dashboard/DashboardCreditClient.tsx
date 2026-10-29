@@ -96,6 +96,7 @@ export function DashboardCreditClient({
   const router = useRouter();
   const [creditStatus, setCreditStatus] = useState(initialStatus);
   const [submitting, setSubmitting] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [form, setForm] = useState({
     companyName: profile.companyName || "",
     contactName: profile.fullName || "",
@@ -240,19 +241,28 @@ export function DashboardCreditClient({
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-slate-50 md:h-auto md:min-h-screen md:flex-row md:overflow-visible">
       <DashboardMobileChrome
-        welcomeName={profile.fullName || profile.email || "there"}
-        avatarUrl={profile.avatarUrl}
-        avatarInitial={profile.fullName?.charAt(0) || "C"}
-        onAccount={() => router.push("/dashboard/settings")}
+        menuOpen={menuOpen}
+        onMenu={() => setMenuOpen((open) => !open)}
         headerAction={
           <NotificationBell pending={Boolean(profile.backupPasswordPending)} />
         }
       />
+      {menuOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-slate-950/40 md:hidden"
+          aria-label="Close dashboard menu"
+          onClick={() => setMenuOpen(false)}
+        />
+      ) : null}
 
       <DashboardSidebar
         profile={profile}
         activeKey="credit"
+        isMobileOpen={menuOpen}
+        onCloseMobile={() => setMenuOpen(false)}
         onNavigate={(key) => {
+          setMenuOpen(false);
           if (key === "settings") {
             router.push("/dashboard/settings");
             return;

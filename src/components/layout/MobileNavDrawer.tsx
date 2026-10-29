@@ -5,8 +5,9 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Sparkles, X } from "lucide-react";
+import { Mail, Phone, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SUPPORT_EMAIL } from "@/lib/company-email";
 import { useAssistStore } from "@/lib/store/useAssistStore";
 
 const LOGO_SRC =
@@ -48,6 +49,7 @@ export function MobileNavDrawer({
   const openAssist = useAssistStore((state) => state.setOpen);
   const [hash, setHash] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -59,6 +61,10 @@ export function MobileNavDrawer({
     window.addEventListener("hashchange", syncHash);
     return () => window.removeEventListener("hashchange", syncHash);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!open) setContactOpen(false);
+  }, [open]);
 
   useEffect(() => {
     if (!open || typeof document === "undefined") return;
@@ -167,11 +173,36 @@ export function MobileNavDrawer({
               </Link>
             </Button>
           )}
-          <Button asChild variant="gradient" className="h-11 w-full text-sm">
-            <Link href="/#inquiry-form" onClick={onClose}>
-              Request Quote
-            </Link>
-          </Button>
+          <div className="overflow-hidden rounded-xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setContactOpen((open) => !open)}
+              className="flex h-11 w-full items-center justify-center text-sm font-bold text-white bg-gradient-to-r from-sky-500 to-blue-700"
+              aria-expanded={contactOpen}
+            >
+              Contact us
+            </button>
+            {contactOpen ? (
+              <div className="flex flex-col bg-white">
+                <a
+                  href={`mailto:${SUPPORT_EMAIL}`}
+                  onClick={onClose}
+                  className="flex items-center gap-2 border-t border-slate-100 px-4 py-3 text-sm font-semibold text-slate-800"
+                >
+                  <Mail className="h-4 w-4 text-sky-600" />
+                  Email {SUPPORT_EMAIL}
+                </a>
+                <a
+                  href="tel:+19564003683"
+                  onClick={onClose}
+                  className="flex items-center gap-2 border-t border-slate-100 px-4 py-3 text-sm font-semibold text-slate-800"
+                >
+                  <Phone className="h-4 w-4 text-sky-600" />
+                  Call (956) 400-3683
+                </a>
+              </div>
+            ) : null}
+          </div>
           <button
             type="button"
             onClick={() => {

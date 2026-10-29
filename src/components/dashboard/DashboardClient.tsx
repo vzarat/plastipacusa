@@ -171,6 +171,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
     return null;
   };
 
+  const [menuOpen, setMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>(
     resolveTab(initialTab) ?? "overview"
   );
@@ -587,6 +588,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
 
   const handleTabClick = (tab: TabKey) => {
     setActiveTab(tab);
+    setMenuOpen(false);
   };
 
   return (
@@ -617,15 +619,21 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
       />
       <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-slate-50 md:h-auto md:min-h-screen md:flex-row md:overflow-visible">
       <DashboardMobileChrome
-        welcomeName={profile.fullName || profile.email || "there"}
-        avatarUrl={profile.avatarUrl}
-        avatarInitial={profile.fullName?.charAt(0) || "C"}
-        onAccount={() => handleTabClick("settings")}
+        menuOpen={menuOpen}
+        onMenu={() => setMenuOpen((open) => !open)}
         headerAction={<NotificationBell pending={backupPasswordPending} />}
       />
+      {menuOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-slate-950/40 md:hidden"
+          aria-label="Close dashboard menu"
+          onClick={() => setMenuOpen(false)}
+        />
+      ) : null}
 
       {/* Left Sidebar Navigation Column */}
-      <aside className="hidden md:sticky md:top-0 md:z-30 md:flex md:h-screen md:w-72 md:shrink-0 md:flex-col md:justify-between md:border-r md:border-slate-200/90 md:bg-white md:p-6">
+      <aside className={`${menuOpen ? "fixed inset-y-0 left-0 z-50 flex h-dvh w-[min(100%,18rem)] flex-col justify-between overflow-y-auto" : "hidden"} md:sticky md:top-0 md:z-30 md:flex md:h-screen md:w-72 md:shrink-0 md:flex-col md:justify-between md:overflow-visible md:border-r md:border-slate-200/90 md:bg-white md:p-6 border-r border-slate-200/90 bg-white p-6`}>
         {/* Top: Logo & Portal Badge */}
         <div className="space-y-6">
           <div className="space-y-2">
@@ -684,6 +692,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                     {button}
                     <Link
                       href="/dashboard/credit"
+                      onClick={() => setMenuOpen(false)}
                       className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 ease-in-out text-left border-l-4 border-transparent text-emerald-900 hover:text-emerald-950 hover:bg-emerald-50/70 font-semibold"
                     >
                       <CreditCard className="w-4 h-4 shrink-0 text-emerald-600" />
@@ -712,6 +721,7 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
           <div className="pt-2">
             <Link
               href="/products"
+              onClick={() => setMenuOpen(false)}
               className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 hover:text-sky-700 hover:border-sky-300 text-xs font-semibold bg-slate-50/50 transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5 text-slate-400" />
