@@ -69,7 +69,7 @@ const TrustBadges = nextDynamic(
   () =>
     import("@/components/home/TrustBadges").then((m) => m.TrustBadges),
   {
-    loading: () => <div className="min-h-[160px]" aria-hidden />,
+    loading: () => <div className="hidden min-h-[160px] md:block" aria-hidden />,
   }
 );
 
