@@ -20,6 +20,7 @@ import {
   shouldAutoRequote,
 } from "@/lib/shipping/quote-window";
 import type { ShippingOption } from "@/lib/shipping/types";
+import { ORDER_PREP_SENTENCE, carrierTimingLabel } from "@/lib/shipping/dates";
 import { evalShippingEligibility } from "@/lib/shippingRules";
 import {
   formatFridayDeliveryDate,
@@ -735,16 +736,14 @@ export function CheckoutShippingMethodStep({
                     <span className="mt-1 block text-xs font-semibold text-slate-600">
                       {chosenFriday
                         ? fridayTransitLabel(chosenFriday)
-                        : method.transitDays === 1
-                          ? "1 business day"
-                          : `${method.transitDays} business days`}
+                        : carrierTimingLabel(method.transitDays)}
                     </span>
                   </span>
                 </label>
               );
             })}
             <p className="text-xs leading-relaxed text-slate-500">
-              Rates assume a commercial address with a loading dock. Liftgate, residential delivery or appointment may add charges.
+              {ORDER_PREP_SENTENCE} Rates assume a commercial address with a loading dock. Liftgate, residential delivery or appointment may add charges.
             </p>
             {cards.hiddenCount > 0 && (
               <button

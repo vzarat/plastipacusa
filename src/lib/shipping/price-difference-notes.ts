@@ -1,5 +1,5 @@
 export const PRICE_DIFFERENCE_NOTES = [
-  "Pickup date: both quotes must use the same YYYY-MM-DD from nextBusinessPickupDate.",
+  "Pickup date: both quotes must use the same YYYY-MM-DD from nextBusinessPickupDate, which is 3 business days out for order preparation.",
   "Rounding: Warp is sent Math.ceil of each piece weight, not the decimal shown in the order summary.",
   "Dimensions: each tier uses only the inches stored for that tier.",
   "Accessorials: liftgate, residential, or appointment changes the carrier price.",

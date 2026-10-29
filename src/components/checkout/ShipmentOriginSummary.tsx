@@ -1,7 +1,7 @@
 "use client";
 
 import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
-import { scheduleFromTransitDays } from "@/lib/shipping/dates";
+import { ORDER_PREP_SENTENCE, scheduleFromTransitDays } from "@/lib/shipping/dates";
 import {
   formatFridayDeliveryDate,
   fridayTransitLabel,
@@ -39,6 +39,10 @@ export function ShipmentOriginSummary() {
           <dt className="font-semibold text-slate-900">
             Estimated Delivery: {deliveryLabel || "Select a delivery method"}
           </dt>
+          {schedule?.deliveryRange ? (
+            <dd className="mt-0.5 text-slate-600">{schedule.deliveryRange}</dd>
+          ) : null}
+          <dd className="mt-1 text-xs leading-relaxed text-slate-500">{ORDER_PREP_SENTENCE}</dd>
         </div>
       </dl>
     </div>

@@ -1,3 +1,4 @@
+import { nextBusinessPickupDate } from "@/lib/shipping/dates";
 import { SHIPPING_MARKUP_PERCENT, getWarpConfig } from "@/lib/shipping/config";
 import { warpDeliveryInfo, warpPickupInfo, type WarpDestinationAddress } from "@/lib/shipping/origin";
 import { redactSecrets } from "@/lib/shipping/diagnostics";
@@ -132,15 +133,6 @@ export function warpFreightQuoteBody(input: {
   };
 }
 
-function nextPickupDate(): string {
-  const date = new Date();
-  date.setDate(date.getDate() + 1);
-  while (date.getDay() === 0 || date.getDay() === 6) {
-    date.setDate(date.getDate() + 1);
-  }
-  return date.toISOString().slice(0, 10);
-}
-
 function applyMarkup(amount: number): number {
   const marked = amount * (1 + SHIPPING_MARKUP_PERCENT / 100);
   return Math.round(marked * 100) / 100;
@@ -166,7 +158,7 @@ async function quoteVehicle(input: {
       signal: controller.signal,
       body: JSON.stringify(
         warpFreightQuoteBody({
-          pickupDate: nextPickupDate(),
+          pickupDate: nextBusinessPickupDate(),
           destinationZip: input.destinationZip,
           destination: input.destination,
           freight: input.freight,
@@ -250,7 +242,7 @@ export async function quoteWarpParcel(input: {
       signal: controller.signal,
       body: JSON.stringify(
         warpFreightQuoteBody({
-          pickupDate: nextPickupDate(),
+          pickupDate: nextBusinessPickupDate(),
           destinationZip: input.destinationZip,
           destination: input.destination,
           freight: input.freight,
@@ -398,7 +390,7 @@ export async function probeWarpConnection(
       },
       signal: controller.signal,
       body: JSON.stringify({
-        pickupDate: nextPickupDate(),
+        pickupDate: nextBusinessPickupDate(),
         pickupInfo: warpPickupInfo(),
         deliveryInfo: warpDeliveryInfo("77002"),
         shipmentType: vehicle.shipmentType,

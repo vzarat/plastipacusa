@@ -10,7 +10,7 @@ export const metadata = {
 
 export default function ShippingPolicyPage() {
   return (
-    <LegalPageShell title="Freight & Delivery Policy" effectiveDate="September 15, 2026">
+    <LegalPageShell title="Freight & Delivery Policy" effectiveDate="October 29, 2026">
       <section className="space-y-3">
         <h2>1. Overview</h2>
         <p>
@@ -33,11 +33,12 @@ export default function ShippingPolicyPage() {
       </section>
 
       <section className="space-y-3">
-        <h2>3. Plant Dispatch Window (24–48 Hours)</h2>
+        <h2>3. Order Preparation (2–3 Business Days)</h2>
         <p>
-          In-stock orders are typically prepared for <strong>plant dispatch within twenty-four to forty-eight (24–48)
-          hours</strong> after order confirmation and successful payment authorization (or approved commercial terms),
-          excluding weekends, U.S. federal holidays, and plant closure days.
+          Every order, for any product, is prepared at our office in <strong>two to three (2–3) business days</strong>{" "}
+          after order confirmation and successful payment authorization (or approved commercial terms), excluding
+          weekends, U.S. federal holidays, and plant closure days. The shipment is tendered to a carrier or placed on a
+          scheduled route only after that preparation.
         </p>
         <ul>
           <li>
@@ -58,7 +59,8 @@ export default function ShippingPolicyPage() {
       <section className="space-y-3">
         <h2>4. Delivery Estimates</h2>
         <p>
-          Transit times after dispatch depend on carrier service level, destination, and freight mode. Any delivery dates
+          Carrier transit time starts after the 2–3 business day preparation and depends on service level, destination,
+          and freight mode. Any delivery dates
           shown at checkout, in quotes, or in confirmation emails are <strong>estimates only</strong> and are not
           guaranteed unless expressly stated in a signed written agreement. Tracking information will be provided when
           available from the carrier.

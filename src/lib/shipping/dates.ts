@@ -21,26 +21,41 @@ export function formatScheduleDate(date: Date): string {
   });
 }
 
+/** Office time before any order, of any product, can leave for a carrier or a scheduled route. */
+export const ORDER_PREP_BUSINESS_DAYS_MIN = 2;
+export const ORDER_PREP_BUSINESS_DAYS_MAX = 3;
+export const ORDER_PREP_LABEL = "2–3 business days";
+export const ORDER_PREP_SENTENCE =
+  "Every order is prepared in 2–3 business days before it leaves our office.";
+
+export function carrierTimingLabel(transitDays: number): string {
+  const transit = Math.max(1, Math.round(Number(transitDays) || 1));
+  const transitText = transit === 1 ? "1 business day" : `${transit} business days`;
+  return `${ORDER_PREP_LABEL} to prepare, then ${transitText} in transit`;
+}
+
 /**
- * Pickup date sent to Warp. The next business day after `now`, in the local calendar, as YYYY-MM-DD.
- * Saturday and Sunday are skipped. Checkout, the quote API, and the parity tool all call this.
+ * Pickup date sent to Warp. Three business days after `now`, so the carrier quote matches
+ * an order the office can actually have ready. Saturday and Sunday are skipped.
  */
 export function nextBusinessPickupDate(now = new Date()): string {
-  const ship = addBusinessDays(now, 1);
+  const ship = addBusinessDays(now, ORDER_PREP_BUSINESS_DAYS_MAX);
   const month = String(ship.getMonth() + 1).padStart(2, "0");
   const day = String(ship.getDate()).padStart(2, "0");
   return `${ship.getFullYear()}-${month}-${day}`;
 }
 
 export function scheduleFromTransitDays(transitDays: number, now = new Date()) {
-  const ship = addBusinessDays(now, 1);
-  const delivery = addBusinessDays(ship, Math.max(1, transitDays));
-  const dayLabel =
-    transitDays === 1 ? "1 business day" : `${transitDays} business days`;
+  const transit = Math.max(1, Math.round(Number(transitDays) || 1));
+  const shipStart = addBusinessDays(now, ORDER_PREP_BUSINESS_DAYS_MIN);
+  const shipEnd = addBusinessDays(now, ORDER_PREP_BUSINESS_DAYS_MAX);
+  const deliveryStart = addBusinessDays(shipStart, transit);
+  const deliveryEnd = addBusinessDays(shipEnd, transit);
   return {
-    shippingLabel: "Next business day",
-    shippingDate: formatScheduleDate(ship),
-    deliveryLabel: dayLabel,
-    deliveryDate: formatScheduleDate(delivery),
+    shippingLabel: ORDER_PREP_LABEL,
+    shippingDate: `${formatScheduleDate(shipStart)} – ${formatScheduleDate(shipEnd)}`,
+    deliveryLabel: carrierTimingLabel(transit),
+    deliveryDate: formatScheduleDate(deliveryStart),
+    deliveryRange: `${formatScheduleDate(deliveryStart)} – ${formatScheduleDate(deliveryEnd)}`,
   };
 }

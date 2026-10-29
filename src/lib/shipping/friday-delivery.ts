@@ -1,3 +1,4 @@
+import { ORDER_PREP_BUSINESS_DAYS_MAX } from "@/lib/shipping/dates";
 import { isHoustonArea, isRioGrandeValley } from "@/lib/shipping-method";
 
 export type FridayDeliveryRegion = "houston" | "rgv";
@@ -72,16 +73,18 @@ function chicagoCalendar(now: Date): { year: number; month: number; day: number;
 }
 
 /**
- * Monday through Wednesday: Friday of the current week.
- * Thursday through Sunday: Friday of the following week.
- * The calendar day is America/Chicago.
+ * The soonest Friday the fleet can deliver after the office has 2–3 business days to prepare the order.
+ * A Friday with fewer than 3 business days left is skipped. The calendar day is America/Chicago.
  */
 export function nextFridayDeliveryIso(now = new Date()): string {
   const { year, month, day, weekday } = chicagoCalendar(now);
-  const daysUntilFriday =
-    weekday >= 1 && weekday <= 3 ? 5 - weekday : weekday === 4 ? 8 : weekday === 5 ? 7 : weekday === 6 ? 6 : 5;
-  const friday = new Date(Date.UTC(year, month - 1, day + daysUntilFriday, 12));
-  return friday.toISOString().slice(0, 10);
+  const daysUntilThisFriday = (5 - weekday + 7) % 7;
+  const today = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  let iso = addIsoDays(today, daysUntilThisFriday === 0 ? 7 : daysUntilThisFriday);
+  while (businessDaysUntilDelivery(iso, now) < ORDER_PREP_BUSINESS_DAYS_MAX) {
+    iso = addIsoDays(iso, 7);
+  }
+  return iso;
 }
 
 function addIsoDays(iso: string, days: number): string {

@@ -1,4 +1,7 @@
-/** Shared USA delivery estimate bands from the South Texas plant. */
+/**
+ * USA delivery estimate bands from the South Texas plant, including 2–3 business days
+ * to prepare the order before carrier transit.
+ */
 
 const TEXAS_STATES = new Set<string>(["TX"]);
 
@@ -16,9 +19,9 @@ const REGIONAL_STATES = new Set<string>([
   "CO",
 ]);
 
-export const LEAD_TIME_TEXAS = "1 - 2 Business Days";
-export const LEAD_TIME_REGIONAL = "6 - 7 Business Days";
-export const LEAD_TIME_DISTANT = "7 - 8 Business Days";
+export const LEAD_TIME_TEXAS = "3 - 5 Business Days";
+export const LEAD_TIME_REGIONAL = "8 - 10 Business Days";
+export const LEAD_TIME_DISTANT = "9 - 11 Business Days";
 
 export type DeliveryZone = "texas" | "regional" | "distant";
 

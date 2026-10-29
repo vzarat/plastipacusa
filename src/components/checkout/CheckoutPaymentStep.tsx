@@ -7,6 +7,7 @@ import { StripeEmbeddedCheckout } from "@/components/checkout/StripeEmbeddedChec
 import { Button } from "@/components/ui/button";
 import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
 import { useCartStore } from "@/lib/store/useCartStore";
+import { ORDER_PREP_SENTENCE, carrierTimingLabel } from "@/lib/shipping/dates";
 import { countCartBoxes } from "@/lib/shipping-method";
 import { labelForShippingMethod } from "@/lib/shippingRules";
 import { formatCurrency } from "@/lib/utils";
@@ -123,10 +124,18 @@ export function CheckoutPaymentStep({
             <p className="mt-1 text-sm font-semibold text-emerald-800">
               {fridayDelivery}
               <span className="mt-0.5 block text-xs font-semibold text-slate-600">
-                {fridayTransitLabel(fridayIso)}
+                {fridayTransitLabel(fridayIso)}. {ORDER_PREP_SENTENCE}
               </span>
             </p>
-          ) : null}
+          ) : selectedShippingOption?.transitDays ? (
+            <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-600">
+              {carrierTimingLabel(selectedShippingOption.transitDays)}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-600">
+              Prepared in 2–3 business days before it ships.
+            </p>
+          )}
           <p className="mt-1 text-sm text-slate-600">
             {shippingAmount > 0 ? formatCurrency(shippingAmount) : "FREE"}
           </p>

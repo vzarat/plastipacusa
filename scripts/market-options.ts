@@ -4,17 +4,11 @@
  * Does not print API keys or header values, and does not book a shipment.
  */
 import { getWarpConfig, WARP_ORIGIN_ZIP } from "../src/lib/shipping/config";
+import { nextBusinessPickupDate } from "../src/lib/shipping/dates";
 import { LTL_MARKET_OPTIONS_URL, fetchLtlMarketOptions } from "../src/lib/shipping/market-options";
 
 const DESTINATION_ZIP = "77002";
 const TIMEOUT_MS = 50_000;
-
-function nextPickupDate(): string {
-  const date = new Date();
-  date.setDate(date.getDate() + 1);
-  while (date.getDay() === 0 || date.getDay() === 6) date.setDate(date.getDate() + 1);
-  return date.toISOString().slice(0, 10);
-}
 
 async function main(): Promise<void> {
   const config = getWarpConfig();
@@ -23,7 +17,7 @@ async function main(): Promise<void> {
     apiKey: config.apiKey,
     originZip: WARP_ORIGIN_ZIP,
     destinationZip: DESTINATION_ZIP,
-    pickupDate: nextPickupDate(),
+    pickupDate: nextBusinessPickupDate(),
     pallets: 1,
     weightLbsPerPallet: 500,
     lengthIn: 48,

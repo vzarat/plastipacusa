@@ -159,7 +159,7 @@ export function CoverageStateTooltip({
     >
       <p className="text-xs font-black text-slate-900">{stateName}</p>
       <p className="mt-0.5 text-[10px] font-bold text-sky-700">
-        {getDeliveryLeadTime(abbr)}
+        {getDeliveryLeadTime(abbr)}. Includes 2–3 business days to prepare the order.
       </p>
       <p className="mt-1.5 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">
         {CUSTOM_FREIGHT_BADGE}

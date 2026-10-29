@@ -41,11 +41,14 @@ describe("Friday free delivery", () => {
     );
   });
 
-  it("offers this Friday from Monday through Wednesday", () => {
+  it("offers this Friday from Monday through Tuesday", () => {
     assert.equal(nextFridayDeliveryIso(new Date("2026-10-26T20:00:00Z")), "2026-10-30");
     assert.equal(nextFridayDeliveryIso(new Date("2026-10-27T15:00:00Z")), "2026-10-30");
-    assert.equal(nextFridayDeliveryIso(new Date("2026-10-28T20:00:00Z")), "2026-10-30");
-    assert.equal(nextFridayDeliveryIso(new Date("2026-10-29T04:59:00Z")), "2026-10-30");
+  });
+
+  it("skips this Friday when fewer than 3 business days remain to prepare the order", () => {
+    assert.equal(nextFridayDeliveryIso(new Date("2026-10-28T20:00:00Z")), "2026-11-06");
+    assert.equal(nextFridayDeliveryIso(new Date("2026-10-29T04:59:00Z")), "2026-11-06");
   });
 
   it("skips this Friday from Thursday through Sunday", () => {

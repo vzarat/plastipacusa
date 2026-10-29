@@ -5,6 +5,7 @@ import type {
   OrderShippingSelection,
 } from "@/lib/order-confirmation-email";
 import { carrierLogoUrl } from "@/lib/shipping/carrier-logo";
+import { ORDER_PREP_SENTENCE, carrierTimingLabel } from "@/lib/shipping/dates";
 
 export interface PurchaseEmailDetails {
   lineItems: OrderConfirmationLineItem[];
@@ -112,6 +113,14 @@ export function purchaseEmailFromOrder(order: Record<string, unknown>): Purchase
   const carrierKey = text(address?.carrier_key, order.shipping_provider);
   const serviceName = text(order.shipping_service, address?.shipping_service, carrierName);
   const transitDays = count(order.shipping_transit_days ?? address?.shipping_transit_days);
+  const scheduledDelivery = Boolean(text(address?.friday_delivery_date));
+  const timingText = scheduledDelivery
+    ? transitDays
+      ? `${ORDER_PREP_SENTENCE} ${transitDays} business day${transitDays === 1 ? "" : "s"} until the scheduled delivery.`
+      : ORDER_PREP_SENTENCE
+    : transitDays
+      ? carrierTimingLabel(transitDays)
+      : ORDER_PREP_SENTENCE;
   const pieces = piecesFrom(address?.shipment_pieces);
   const weightLbs = amount(address?.shipment_weight_lbs) ?? undefined;
   const shippingSelection =
@@ -148,7 +157,7 @@ export function purchaseEmailFromOrder(order: Record<string, unknown>): Purchase
           shippingSelection.serviceName && shippingSelection.serviceName !== shippingSelection.carrierName
             ? shippingSelection.serviceName
             : null,
-          shippingSelection.transitDays ? `${shippingSelection.transitDays} business days` : null,
+          timingText,
           `Shipping price: ${money(shippingSelection.price)}`,
           shippingSelection.weightLbs ? `Shipment weight: ${shippingSelection.weightLbs} lb` : null,
           ...shippingSelection.pieces.map(

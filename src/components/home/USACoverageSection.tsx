@@ -228,7 +228,7 @@ export function USACoverageSection() {
                 ) : (
                   <div className="space-y-3">
                     <div className="rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3 text-sm font-semibold leading-relaxed text-blue-900">
-                      Estimated delivery to {selected}: {getDeliveryLeadTime(selected)}.
+                      Estimated delivery to {selected}: {getDeliveryLeadTime(selected)}. Includes 2–3 business days to prepare the order.
                     </div>
                     <p className="text-sm font-semibold leading-snug text-slate-900">
                       {CUSTOM_FREIGHT_DESCRIPTION}

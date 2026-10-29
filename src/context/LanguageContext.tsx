@@ -66,7 +66,7 @@ export const translations = {
     "dashboard.promo1Cta": "View Machine Film",
     "dashboard.promo2Title": "Fast USA Shipping",
     "dashboard.promo2Body":
-      "Guaranteed 48-hr dispatch across all US states.",
+      "Every order is prepared in 2–3 business days, then shipped across the US.",
     "dashboard.promo2Cta": "Browse Catalog",
     "dashboard.promo3Title": "Net 30 Credit Line Available",
     "dashboard.promo3Body": "Apply today for flexible financing.",
@@ -110,7 +110,7 @@ export const translations = {
     "dashboard.totalProcurement": "Total historical procurement:",
     "dashboard.lastOrder": "Last Order Dispatched",
     "dashboard.noRecentPo": "No Recent PO",
-    "dashboard.dispatchTime": "Direct plant dispatch in 24–48 hours",
+    "dashboard.dispatchTime": "Orders are prepared in 2–3 business days",
     "dashboard.quickReorderAdded": "All items from {orderId} were added to your cart for instant reorder.",
     "dashboard.fastPalletAdded": "1 Full Pallet batch of {productName} was added to your cart.",
     "dashboard.reorderStatus": "Quick Reorder Status",
@@ -441,7 +441,7 @@ export const translations = {
     "credit.step2Title": "Instant PO Checkout",
     "credit.step2Desc": "Enter official Purchase Order numbers at checkout.",
     "credit.step3Title": "Fast Dispatch",
-    "credit.step3Desc": "Shipments dispatched within 24-48 hours.",
+    "credit.step3Desc": "Orders are prepared in 2–3 business days before dispatch.",
     "credit.step4Title": "Net 30 Terms",
     "credit.step4Desc":
       "Pay via ACH, Wire Transfer, or Corporate Check in 30 days.",

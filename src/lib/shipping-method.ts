@@ -1,4 +1,5 @@
 import { roundMoney } from "@/lib/sales-tax";
+import { ORDER_PREP_LABEL, addBusinessDays, formatScheduleDate } from "@/lib/shipping/dates";
 import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
 import { evalShippingEligibility } from "@/lib/shippingRules";
 
@@ -229,38 +230,14 @@ export interface ShippingSchedule {
   deliveryRange: string;
 }
 
-function startOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function addBusinessDays(start: Date, days: number): Date {
-  const date = startOfDay(start);
-  let remaining = days;
-  while (remaining > 0) {
-    date.setDate(date.getDate() + 1);
-    const weekday = date.getDay();
-    if (weekday !== 0 && weekday !== 6) remaining -= 1;
-  }
-  return date;
-}
-
-function formatScheduleDate(date: Date): string {
-  return date.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-}
-
 export function buildShippingSchedule(now = new Date()): ShippingSchedule {
-  const shippingDate = addBusinessDays(now, 1);
-  const deliveryStart = addBusinessDays(shippingDate, 2);
-  const deliveryEnd = addBusinessDays(shippingDate, 3);
+  const earliest = addBusinessDays(now, 2);
+  const latest = addBusinessDays(now, 3);
 
   return {
-    shippingLabel: "Next business day",
-    shippingDate: formatScheduleDate(shippingDate),
-    deliveryLabel: "2–3 business days",
-    deliveryRange: `${formatScheduleDate(deliveryStart)} – ${formatScheduleDate(deliveryEnd)}`,
+    shippingLabel: ORDER_PREP_LABEL,
+    shippingDate: `${formatScheduleDate(earliest)} – ${formatScheduleDate(latest)}`,
+    deliveryLabel: "Prepared before carrier transit",
+    deliveryRange: `${formatScheduleDate(earliest)} – ${formatScheduleDate(latest)}`,
   };
 }

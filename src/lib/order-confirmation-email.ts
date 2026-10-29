@@ -4,7 +4,17 @@
  */
 
 import { ORDERS_EMAIL, ORDERS_FROM } from "@/lib/company-email";
+import { ORDER_PREP_SENTENCE, carrierTimingLabel } from "@/lib/shipping/dates";
 import { fridayDeliveryTitleForAddress } from "@/lib/shipping/friday-delivery";
+
+function transitTimingPhrase(transitDays: number | undefined, scheduled: boolean): string {
+  if (!transitDays) return ORDER_PREP_SENTENCE;
+  if (scheduled) {
+    const noun = transitDays === 1 ? "business day" : "business days";
+    return `${ORDER_PREP_SENTENCE} ${transitDays} ${noun} until the scheduled delivery.`;
+  }
+  return carrierTimingLabel(transitDays);
+}
 
 export const ORDER_CONFIRMATION_TEMPLATE_SLUG = "order_confirmation";
 export const DASHBOARD_ORDERS_URL = "https://www.plastipacusa.com/dashboard/orders";
@@ -351,9 +361,10 @@ export function buildOrderConfirmationHtml(
            ? `<p style="margin:2px 0 0;color:${template.mutedColor};font-size:13px;line-height:1.5;">${escapeHtml(shippingSelection.serviceName)}</p>`
            : ""
        }
-       <p style="margin:2px 0 0;color:${template.textColor};font-size:13px;line-height:1.5;">Shipping price: ${escapeHtml(formatUsd(shippingSelection.price))}${
-         shippingSelection.transitDays ? ` · ${shippingSelection.transitDays} business days` : ""
-       }</p>
+       <p style="margin:2px 0 0;color:${template.textColor};font-size:13px;line-height:1.5;">Shipping price: ${escapeHtml(formatUsd(shippingSelection.price))}</p>
+       <p style="margin:2px 0 0;color:${template.textColor};font-size:13px;line-height:1.5;">${escapeHtml(
+         transitTimingPhrase(shippingSelection.transitDays, Boolean(content.fridayDeliveryDate))
+       )}</p>
        ${
          shippingSelection.weightLbs
            ? `<p style="margin:2px 0 0;color:${template.mutedColor};font-size:13px;line-height:1.5;">Shipment weight: ${escapeHtml(String(shippingSelection.weightLbs))} lb</p>`
@@ -548,7 +559,7 @@ export function buildOrderConfirmationHtml(
             ? shippingSelection.serviceName
             : null,
           `Shipping price: ${formatUsd(shippingSelection.price)}`,
-          shippingSelection.transitDays ? `${shippingSelection.transitDays} business days` : null,
+          transitTimingPhrase(shippingSelection.transitDays, Boolean(content.fridayDeliveryDate)),
           shippingSelection.weightLbs ? `Shipment weight: ${shippingSelection.weightLbs} lb` : null,
           ...shippingSelection.pieces.map((piece) => {
             const label = [piece.dimensions, piece.weight].filter(Boolean).join(" · ");

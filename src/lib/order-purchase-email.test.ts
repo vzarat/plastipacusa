@@ -58,6 +58,10 @@ describe("purchase order email details", () => {
     assert.match(details.shippingSelection?.logoUrl || "", /XPO/);
     assert.equal(details.shippingSelection?.pieces[0]?.dimensions, '48" W x 48" L x 66.0" H');
     assert.match(details.detailsText, /Shipping price: \$48\.65/);
+    assert.match(
+      details.detailsText,
+      /2–3 business days to prepare, then 3 business days in transit/
+    );
     assert.match(details.detailsText, /1,173\.5 lb/);
   });
 });
