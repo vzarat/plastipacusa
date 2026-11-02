@@ -33,16 +33,19 @@ export function WhatsAppFloat() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`Chat with Plastipac USA on WhatsApp ${WHATSAPP_PHONE_DISPLAY}`}
-      className={`whatsapp-float group fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-4 z-40 flex items-center gap-0 rounded-full bg-[#25D366] text-white shadow-[0_10px_28px_-8px_rgba(15,118,66,0.45)] outline-none transition-[transform,box-shadow,opacity] duration-300 hover:bg-[#20bd5a] hover:shadow-[0_14px_32px_-8px_rgba(15,118,66,0.55)] focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 sm:bottom-[max(1.5rem,env(safe-area-inset-bottom))] sm:right-6 ${
+      className={`whatsapp-float group fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-4 z-40 flex items-center gap-0 overflow-hidden rounded-full bg-[#25D366] text-white shadow-[0_10px_28px_-8px_rgba(15,118,66,0.45)] outline-none ring-1 ring-white/25 transition-[transform,box-shadow,opacity] duration-300 hover:bg-[#20bd5a] hover:shadow-[0_14px_32px_-8px_rgba(15,118,66,0.55)] focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 sm:bottom-[max(1.5rem,env(safe-area-inset-bottom))] sm:right-6 ${
         ready ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"
       }`}
     >
       <span
-        className="pointer-events-none absolute inset-0 rounded-full bg-[#25D366]/whatsapp-float-pulse"
+        className="whatsapp-float-pulse pointer-events-none absolute inset-0 -z-10 rounded-full"
         aria-hidden
       />
-      <span className="relative flex h-14 w-14 items-center justify-center sm:h-14 sm:w-14">
+      <span className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center sm:h-14 sm:w-14">
         <WhatsAppIcon className="h-7 w-7 sm:h-8 sm:w-8" />
+      </span>
+      <span className="relative z-10 max-w-0 overflow-hidden whitespace-nowrap pr-0 text-sm font-semibold tracking-tight opacity-0 transition-all duration-300 group-hover:max-w-[9.5rem] group-hover:pr-4 group-hover:opacity-100 group-focus-visible:max-w-[9.5rem] group-focus-visible:pr-4 group-focus-visible:opacity-100">
+        Chat with us
       </span>
     </a>
   );
