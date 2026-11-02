@@ -1,17 +1,20 @@
 /**
  * Warp freight settings. API keys stay in server env vars.
- * Origin, markup, and the free-delivery minimum are constants here.
+ * Origin street/city/state/ZIP live in warehouse-origin (Admin Settings).
+ * These exports stay as the safe McAllen defaults for sync imports/tests.
  */
+
+import { DEFAULT_WAREHOUSE_ORIGIN } from "@/lib/shipping/warehouse-origin";
 
 /**
  * Warehouse zip. 5801 George McVay Dr is in 78503.
  * 78507 returns no Warp carriers for this lane.
  */
-export const WARP_ORIGIN_ZIP: string = "78503";
+export const WARP_ORIGIN_ZIP: string = DEFAULT_WAREHOUSE_ORIGIN.zip;
 
-export const WARP_ORIGIN_CITY: string = "McAllen";
+export const WARP_ORIGIN_CITY: string = DEFAULT_WAREHOUSE_ORIGIN.city;
 
-export const WARP_ORIGIN_STATE: string = "TX";
+export const WARP_ORIGIN_STATE: string = DEFAULT_WAREHOUSE_ORIGIN.state;
 
 /** Percent added on top of a Warp quote. 0 means the quoted amount is unchanged. */
 export const SHIPPING_MARKUP_PERCENT = 0;

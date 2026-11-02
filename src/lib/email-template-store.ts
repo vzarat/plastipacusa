@@ -20,6 +20,15 @@ function resolveLogoUrl(raw: unknown): string {
   return value;
 }
 
+function resolveFooterAddress(raw: unknown): string {
+  const value = String(raw || "").trim();
+  // Legacy MX plant address — email footer must match the site McAllen footer.
+  if (!value || /reynosa|san\s+rafael|parque\s+moll|tamps/i.test(value)) {
+    return DEFAULT_EMAIL_TEMPLATE.footerAddress;
+  }
+  return value;
+}
+
 function rowToBranding(row: Record<string, unknown> | null): EmailTemplateBranding {
   if (!row) return { ...DEFAULT_EMAIL_TEMPLATE };
   return mergeEmailTemplate({
@@ -48,9 +57,7 @@ function rowToBranding(row: Record<string, unknown> | null): EmailTemplateBrandi
     footerSupportPhoneMx: String(
       row.footer_support_phone_mx || DEFAULT_EMAIL_TEMPLATE.footerSupportPhoneMx
     ),
-    footerAddress: String(
-      row.footer_address || DEFAULT_EMAIL_TEMPLATE.footerAddress
-    ),
+    footerAddress: resolveFooterAddress(row.footer_address),
     footerWebsite: String(
       row.footer_website || DEFAULT_EMAIL_TEMPLATE.footerWebsite
     ),

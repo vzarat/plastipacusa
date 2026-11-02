@@ -5,6 +5,8 @@ import { nextBusinessPickupDate } from "@/lib/shipping/dates";
 import { redactSecrets } from "@/lib/shipping/diagnostics";
 import { ShipmentDataError } from "@/lib/shipping/shipment-error";
 import type { FreightPiece } from "@/lib/shipping/types";
+import { ensureWarehouseOriginLoaded } from "@/lib/shipping/warehouse-origin";
+import "@/lib/shipping/warehouse-origin-store";
 
 /** Agent API host. The project quote client keeps using stg/gw for /freights/quote. */
 export const LTL_MARKET_OPTIONS_URL = "https://www.wearewarp.com/api/v1/ltl/market-options";
@@ -408,6 +410,7 @@ export async function fetchLtlMarketOptions(input: {
   retryable: boolean;
   note: string | null;
 }> {
+  await ensureWarehouseOriginLoaded();
   const items =
     input.items && input.items.length > 0
       ? input.items

@@ -65,8 +65,7 @@ export const DEFAULT_EMAIL_TEMPLATE: EmailTemplateBranding = {
   footerSalesEmail: ORDERS_EMAIL,
   footerSupportPhoneUs: "+1 (956) 400-3683",
   footerSupportPhoneMx: "+52 (899) 923-1320",
-  footerAddress:
-    "Priv. San Rafael, Parque Moll Industrial, C.P. 88756, Reynosa, Tamps.",
+  footerAddress: "5801 George McVay Dr, McAllen, TX 78503",
   footerWebsite: "www.plastipacusa.com",
   legalDisclaimer:
     "This is an automated purchase confirmation email from Plastipac USA. If you have any questions about your order, reply to this email or contact our sales team.",

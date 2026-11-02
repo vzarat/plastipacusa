@@ -1,6 +1,8 @@
 import { nextBusinessPickupDate } from "@/lib/shipping/dates";
 import { SHIPPING_MARKUP_PERCENT, getWarpConfig } from "@/lib/shipping/config";
 import { warpDeliveryInfo, warpPickupInfo, type WarpDestinationAddress } from "@/lib/shipping/origin";
+import { ensureWarehouseOriginLoaded } from "@/lib/shipping/warehouse-origin";
+import "@/lib/shipping/warehouse-origin-store";
 import { redactSecrets } from "@/lib/shipping/diagnostics";
 import type { FreightPiece, ShipmentFreight, ShippingOption } from "@/lib/shipping/types";
 
@@ -229,6 +231,7 @@ export async function quoteWarpParcel(input: {
   destination?: WarpDestinationAddress;
   freight: ShipmentFreight;
 }): Promise<ShippingOption | null> {
+  await ensureWarehouseOriginLoaded();
   const { baseUrl, apiKey } = getWarpConfig();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), QUOTE_TIMEOUT_MS);
@@ -303,6 +306,7 @@ export async function quoteWarpFreight(input: {
   destination?: WarpDestinationAddress;
   freight: ShipmentFreight;
 }): Promise<ShippingOption[]> {
+  await ensureWarehouseOriginLoaded();
   const { baseUrl, apiKey } = getWarpConfig();
   const attempts = await Promise.all(
     VEHICLES.map(async (vehicle) => {
@@ -378,6 +382,7 @@ export async function probeWarpConnection(
   timeoutMs: number,
   config: { baseUrl: string; apiKey: string }
 ): Promise<{ httpStatus: number; bodyText: string }> {
+  await ensureWarehouseOriginLoaded();
   const vehicle = VEHICLES[0];
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);

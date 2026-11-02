@@ -1,9 +1,14 @@
-import { WARP_ORIGIN_CITY, WARP_ORIGIN_STATE, WARP_ORIGIN_ZIP } from "@/lib/shipping/config";
+import {
+  WARP_ORIGIN_COUNTRY,
+  getWarehouseOrigin,
+  warpOriginAddressPayload,
+  type WarehouseOriginAddress,
+} from "@/lib/shipping/warehouse-origin";
 
-/** Warehouse street. Server-side Warp calls only. Do not render this on the storefront. */
+export { WARP_ORIGIN_COUNTRY } from "@/lib/shipping/warehouse-origin";
+
+/** @deprecated Prefer getWarehouseOrigin().street — kept for older imports/tests. */
 export const WARP_ORIGIN_STREET = "5801 George McVay Dr";
-
-export const WARP_ORIGIN_COUNTRY = "US";
 
 export interface WarpDestinationAddress {
   street?: string | null;
@@ -12,7 +17,7 @@ export interface WarpDestinationAddress {
 }
 
 /** Pickup block for POST /freights/quote. The zip stays at the top level Warp requires. */
-export function warpPickupInfo(): {
+export function warpPickupInfo(origin?: WarehouseOriginAddress): {
   zipcode: string;
   address: {
     street: string;
@@ -22,15 +27,11 @@ export function warpPickupInfo(): {
     country: string;
   };
 } {
+  const resolved = origin ?? getWarehouseOrigin();
+  const address = warpOriginAddressPayload(resolved);
   return {
-    zipcode: WARP_ORIGIN_ZIP,
-    address: {
-      street: WARP_ORIGIN_STREET,
-      city: WARP_ORIGIN_CITY,
-      state: WARP_ORIGIN_STATE,
-      zipcode: WARP_ORIGIN_ZIP,
-      country: WARP_ORIGIN_COUNTRY,
-    },
+    zipcode: address.zipcode,
+    address,
   };
 }
 
@@ -60,17 +61,23 @@ export function warpDeliveryInfo(zip: string, address?: WarpDestinationAddress):
   };
 }
 
-/** Lane fields for POST /ltl/market-options. Origin is always the McAllen warehouse. */
-export function warpOriginLane(destinationZip: string, address?: WarpDestinationAddress): Record<string, string> {
+/** Lane fields for POST /ltl/market-options. Origin is always the structured warehouse. */
+export function warpOriginLane(
+  destinationZip: string,
+  address?: WarpDestinationAddress,
+  origin?: WarehouseOriginAddress
+): Record<string, string> {
+  const resolved = origin ?? getWarehouseOrigin();
+  const pickup = warpOriginAddressPayload(resolved);
   const street = address?.street?.trim() || "";
   const city = address?.city?.trim() || "";
   const state = address?.state?.trim() || "";
   return {
-    origin_zip: WARP_ORIGIN_ZIP,
-    origin_street: WARP_ORIGIN_STREET,
-    origin_city: WARP_ORIGIN_CITY,
-    origin_state: WARP_ORIGIN_STATE,
-    origin_country: WARP_ORIGIN_COUNTRY,
+    origin_zip: pickup.zipcode,
+    origin_street: pickup.street,
+    origin_city: pickup.city,
+    origin_state: pickup.state,
+    origin_country: pickup.country,
     destination_zip: destinationZip,
     ...(street ? { destination_street: street } : {}),
     ...(city ? { destination_city: city } : {}),
