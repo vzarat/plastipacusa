@@ -14,9 +14,26 @@ import { machineFilmTierSku } from "@/lib/machine-film-sku";
 import { machineFilmPackagePrice, machineFilmPerRollPrice } from "@/lib/machine-film-pricing";
 import { MACHINE_FILM_WEIGHT_SPECS, packageTotalWeightLbs } from "@/lib/package-weight";
 
+const PRODUCTS_PUBLIC_ROOT =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products";
+const PRODUCTS_PUBLIC_FOLDER = `${PRODUCTS_PUBLIC_ROOT}/PRODUCTOS`;
+
+/**
+ * Rewrite legacy root-bucket product image URLs to the PRODUCTOS/ folder.
+ * Root keys 404; Next/Image then shows a blank card.
+ */
+export function resolvePublicProductImageUrl(url: string): string {
+  const raw = String(url || "").trim();
+  if (!raw) return raw;
+  return raw.replace(
+    /\/object\/public\/Products\/(?!PRODUCTOS\/)(productos_plastipac_manual\.png|AUTOMATIC_STRETCH_FILM\.png|CAJA_MANUAL_PLASTIPAC\.png|FICHA(?:%20| )TECNICA\.png)(?=$|[?#])/i,
+    "/object/public/Products/PRODUCTOS/$1"
+  );
+}
+
 /** Remote fallback when a product row has no image_url. Never stored in /public. */
 export const STRETCH_FILM_PLACEHOLDER =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png";
+  `${PRODUCTS_PUBLIC_FOLDER}/productos_plastipac_manual.png`;
 
 export interface PackageOptionLike {
   rolls: number;
@@ -26,14 +43,14 @@ export interface PackageOptionLike {
 }
 
 export const MACHINE_FILM_IMAGE_URL =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/AUTOMATIC_STRETCH_FILM.png";
+  `${PRODUCTS_PUBLIC_FOLDER}/AUTOMATIC_STRETCH_FILM.png`;
 
 /** Manual stretch film gallery extras. The roll photo stays first. */
 export const HAND_FILM_BOX_IMAGE_URL =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PRODUCTOS/CAJA_MANUAL_PLASTIPAC.png";
+  `${PRODUCTS_PUBLIC_FOLDER}/CAJA_MANUAL_PLASTIPAC.png`;
 
 export const HAND_FILM_SPEC_SHEET_IMAGE_URL =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PRODUCTOS/FICHA%20TECNICA.png";
+  `${PRODUCTS_PUBLIC_FOLDER}/FICHA%20TECNICA.png`;
 
 function isManualRollPhoto(url: string): boolean {
   const value = url.toLowerCase();
@@ -49,8 +66,10 @@ function isManualRollPhoto(url: string): boolean {
  * Order is the stored roll photo, then the carton, then the technical sheet.
  */
 export function manualFilmGallery(stored: unknown, fallbackRoll?: string | null): string[] {
-  const list = Array.isArray(stored) ? stored.map((item) => String(item || "").trim()) : [];
-  const fallback = String(fallbackRoll || "").trim();
+  const list = Array.isArray(stored)
+    ? stored.map((item) => resolvePublicProductImageUrl(String(item || "").trim())).filter(Boolean)
+    : [];
+  const fallback = resolvePublicProductImageUrl(String(fallbackRoll || "").trim());
   const roll =
     list.find((url) => isManualRollPhoto(url)) ||
     (isManualRollPhoto(fallback) ? fallback : "") ||

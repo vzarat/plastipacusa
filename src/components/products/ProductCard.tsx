@@ -12,6 +12,7 @@ import { ShoppingCart, ArrowRight, CheckCircle2, Box, Layers } from "lucide-reac
 import {
   GENESIS_HP_SLUGS,
   MACHINE_FILM_IMAGE_URL,
+  resolvePublicProductImageUrl,
   SERIES_GENESIS_HP,
   SERIES_GENESIS_STANDARD,
   STRETCH_FILM_PLACEHOLDER,
@@ -34,9 +35,6 @@ interface ProductCardProps {
   product: ProductWithVariants;
   priority?: boolean;
 }
-
-const DEFAULT_PRODUCT_IMAGE =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/productos_plastipac_manual.png";
 
 const CATEGORY_LOGOS: Record<string, { src: string; alt: string }> = {
   "force-standard": {
@@ -184,8 +182,9 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
     (a, b) => a.price - b.price
   )[0];
 
-  const rawImage =
-    (product?.images && product.images[0]) || product?.imageUrl;
+  const rawImage = resolvePublicProductImageUrl(
+    (product?.images && product.images[0]) || product?.imageUrl || ""
+  );
 
   const primaryImage = imageFailed
     ? STRETCH_FILM_PLACEHOLDER
@@ -195,7 +194,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
 
   const secondaryImage =
     product?.images && product.images.length > 1
-      ? product.images[1]
+      ? resolvePublicProductImageUrl(product.images[1])
       : null;
 
   const title =

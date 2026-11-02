@@ -3,7 +3,11 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
-import { manualFilmGallery, STRETCH_FILM_PLACEHOLDER } from "@/lib/products";
+import {
+  manualFilmGallery,
+  resolvePublicProductImageUrl,
+  STRETCH_FILM_PLACEHOLDER,
+} from "@/lib/products";
 import {
   Eye,
   ZoomIn,
@@ -34,9 +38,13 @@ export function ProductGallery({
   // Combine all images cleanly, ensuring at least one valid image
   const galleryList = React.useMemo(() => {
     if (application === "hand") return manualFilmGallery(images, imageUrl);
-    const list = images && images.length > 0 ? [...images] : [imageUrl || DEFAULT_IMAGE];
-    if (!list.includes(imageUrl) && imageUrl) {
-      list.unshift(imageUrl);
+    const resolvedUrl = resolvePublicProductImageUrl(imageUrl);
+    const list =
+      images && images.length > 0
+        ? images.map((item) => resolvePublicProductImageUrl(item))
+        : [resolvedUrl || DEFAULT_IMAGE];
+    if (resolvedUrl && !list.includes(resolvedUrl)) {
+      list.unshift(resolvedUrl);
     }
     return Array.from(new Set(list.filter(Boolean)));
   }, [application, images, imageUrl]);
