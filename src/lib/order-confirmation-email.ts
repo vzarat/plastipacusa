@@ -3,7 +3,7 @@
  * Used by Resend webhook sends and the Admin live preview / test mailer.
  */
 
-import { ORDERS_EMAIL, ORDERS_FROM } from "@/lib/company-email";
+import { ORDERS_FROM, SUPPORT_EMAIL } from "@/lib/company-email";
 import { ORDER_PREP_SENTENCE, carrierTimingLabel } from "@/lib/shipping/dates";
 import { fridayDeliveryTitleForAddress } from "@/lib/shipping/friday-delivery";
 
@@ -62,7 +62,7 @@ export const DEFAULT_EMAIL_TEMPLATE: EmailTemplateBranding = {
     "We have received your order and it is currently being processed. Your payment has been confirmed and order status is Paid & Cleared.",
   ctaLabel: "",
   ctaUrl: "",
-  footerSalesEmail: ORDERS_EMAIL,
+  footerSalesEmail: SUPPORT_EMAIL,
   footerSupportPhoneUs: "+1 (956) 400-3683",
   footerSupportPhoneMx: "+52 (899) 923-1320",
   footerAddress: "5801 George McVay Dr, McAllen, TX 78503",

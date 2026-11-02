@@ -29,6 +29,15 @@ function resolveFooterAddress(raw: unknown): string {
   return value;
 }
 
+function resolveFooterSalesEmail(raw: unknown): string {
+  const value = String(raw || "").trim();
+  // Support contact in the template footer (not the orders mailbox).
+  if (!value || /^orders@plastipacusa\.com$/i.test(value)) {
+    return DEFAULT_EMAIL_TEMPLATE.footerSalesEmail;
+  }
+  return value;
+}
+
 function rowToBranding(row: Record<string, unknown> | null): EmailTemplateBranding {
   if (!row) return { ...DEFAULT_EMAIL_TEMPLATE };
   return mergeEmailTemplate({
@@ -48,9 +57,7 @@ function rowToBranding(row: Record<string, unknown> | null): EmailTemplateBrandi
     mainMessage: String(row.main_message || DEFAULT_EMAIL_TEMPLATE.mainMessage),
     ctaLabel: String(row.cta_label || DEFAULT_EMAIL_TEMPLATE.ctaLabel),
     ctaUrl: String(row.cta_url || DEFAULT_EMAIL_TEMPLATE.ctaUrl),
-    footerSalesEmail: String(
-      row.footer_sales_email || DEFAULT_EMAIL_TEMPLATE.footerSalesEmail
-    ),
+    footerSalesEmail: resolveFooterSalesEmail(row.footer_sales_email),
     footerSupportPhoneUs: String(
       row.footer_support_phone_us || DEFAULT_EMAIL_TEMPLATE.footerSupportPhoneUs
     ),
