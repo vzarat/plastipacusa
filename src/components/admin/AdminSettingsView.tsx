@@ -89,7 +89,7 @@ export function AdminSettingsView({
               <label className="font-bold text-slate-700">Primary Cross-Dock Terminal</label>
               <input
                 type="text"
-                defaultValue="Laredo Commercial Distribution Center, Texas 78045"
+                defaultValue="McAllen Commercial Warehouse Terminal, Texas"
                 className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/10 focus:border-blue-500"
               />
             </div>
@@ -101,12 +101,15 @@ export function AdminSettingsView({
                 defaultValue="16:00 CST (Mon - Fri)"
                 className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/10 focus:border-blue-500"
               />
+              <p className="text-slate-500 text-[11px]">
+                McAllen warehouse pickup schedule.
+              </p>
             </div>
 
             <div className="space-y-1">
               <label className="font-bold text-slate-700">Approved LTL Carriers</label>
               <p className="text-slate-500 text-[11px]">
-                FedEx Freight Priority, R&L Carriers, Old Dominion Freight Line, Estes Express Lines.
+                Warp (primary logistics carrier).
               </p>
             </div>
           </div>

@@ -3,13 +3,8 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, Factory, ArrowRight, Truck, PhoneCall, Target, MapPin } from "lucide-react";
+import { ShieldCheck, Factory, ArrowRight, Truck, PhoneCall, Target } from "lucide-react";
 import { AboutSocialSection } from "@/components/about/AboutSocialSection";
-
-const COMPANY_STREET = "5801 George McVay Dr";
-const COMPANY_CITY_LINE = "McAllen, TX 78503";
-const COMPANY_MAPS_URL =
-  "https://www.google.com/maps/search/?api=1&query=5801+George+McVay+Dr,+McAllen,+TX+78503";
 
 const USACoverageMap = dynamic(
   () =>
@@ -99,41 +94,6 @@ export default function AboutPage() {
                 <Target className="w-4 h-4 mr-2" />
                 <span>Read Our Mission & Vision</span>
               </Link>
-            </Button>
-          </div>
-        </div>
-
-        {/* Location */}
-        <div className="rounded-3xl border border-slate-200 bg-white p-8 sm:p-10 shadow-sm">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-            <div className="space-y-3 max-w-xl">
-              <Badge variant="default" className="uppercase text-xs tracking-wider font-bold">
-                Our Location
-              </Badge>
-              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">
-                Visit Plastipac USA
-              </h2>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Our warehouse and commercial office are in McAllen, South Texas, ready to support industrial stretch film orders across the Rio Grande Valley and nationwide.
-              </p>
-              <a
-                href={COMPANY_MAPS_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-start gap-3 rounded-2xl border border-sky-100 bg-sky-50/70 px-4 py-3 text-left transition-colors hover:bg-sky-50"
-              >
-                <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-sky-600" />
-                <span className="text-sm">
-                  <span className="block font-bold text-slate-900">{COMPANY_STREET}</span>
-                  <span className="block text-slate-600">{COMPANY_CITY_LINE}</span>
-                </span>
-              </a>
-            </div>
-            <Button asChild variant="outline" size="lg" className="self-start border-slate-200 hover:bg-slate-50">
-              <a href={COMPANY_MAPS_URL} target="_blank" rel="noopener noreferrer">
-                <MapPin className="mr-2 h-4 w-4" />
-                <span>Open in Maps</span>
-              </a>
             </Button>
           </div>
         </div>
