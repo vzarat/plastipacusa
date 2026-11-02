@@ -68,24 +68,24 @@ export function AboutSocialSection() {
           colors={["#082f49", "#0ea5e9", "#e0f2fe", "#38bdf8"]}
           shape="horizon"
           characters=" ·=+*xX0S#@"
-          cellSize={16}
-          density={0.72}
-          glyphOpacity={0.55}
-          gradientOpacity={0.85}
-          glow={0.28}
-          flicker={0.12}
-          softness={0.62}
-          scale={1.15}
-          flow={0.45}
-          speed={0.55}
-          grain={0.05}
+          cellSize={15}
+          density={0.82}
+          glyphOpacity={0.78}
+          gradientOpacity={1}
+          glow={0.42}
+          flicker={0.14}
+          softness={0.55}
+          scale={1.2}
+          flow={0.5}
+          speed={0.58}
+          grain={0.06}
           mouseInteraction={false}
           clickEffect="none"
           intro
           className="h-full w-full"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/55 to-slate-950/35" />
-        <div className="absolute inset-0 bg-slate-950/25" />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/55 via-slate-950/30 to-slate-950/10" />
+        <div className="absolute inset-0 bg-slate-950/10" />
       </div>
 
       <div className="relative z-10 grid gap-10 p-8 sm:p-10 lg:grid-cols-[1.1fr_1.4fr] lg:items-center lg:gap-12 lg:p-12">
