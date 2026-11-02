@@ -3,8 +3,14 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, Factory, ArrowRight, Truck, PhoneCall, Target } from "lucide-react";
+import { ShieldCheck, Factory, ArrowRight, Truck, PhoneCall, Target, MessageCircle } from "lucide-react";
 import { AboutSocialSection } from "@/components/about/AboutSocialSection";
+import {
+  PRIMARY_PHONE_DISPLAY,
+  PRIMARY_PHONE_HREF,
+  WHATSAPP_PHONE_DISPLAY,
+  WHATSAPP_URL_BARE,
+} from "@/lib/company-contact";
 
 const USACoverageMap = dynamic(
   () =>
@@ -111,18 +117,23 @@ export default function AboutPage() {
 
           <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
             <a
-              href="tel:+19564003683"
+              href={PRIMARY_PHONE_HREF}
               className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-sky-50 border border-sky-200 text-sky-800 hover:bg-sky-100 transition-colors font-bold text-sm"
             >
               <PhoneCall className="w-4 h-4 text-sky-600" />
-              <span>(956) 400 36 83</span>
+              <span>{PRIMARY_PHONE_DISPLAY}</span>
             </a>
             <a
-              href="tel:+19564006563"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-sky-50 border border-sky-200 text-sky-800 hover:bg-sky-100 transition-colors font-bold text-sm"
+              href={WHATSAPP_URL_BARE}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100 transition-colors font-bold text-sm"
             >
-              <PhoneCall className="w-4 h-4 text-sky-600" />
-              <span>(956) 400 65 63</span>
+              <MessageCircle className="w-4 h-4 text-emerald-600" />
+              <span>
+                {WHATSAPP_PHONE_DISPLAY}
+                <span className="ml-1 font-semibold text-emerald-700/80">WhatsApp</span>
+              </span>
             </a>
           </div>
 
