@@ -13,9 +13,8 @@ const LOGO_SRC =
 
 const NAV_LINKS = [
   { href: "/", label: "Home", id: "home" },
-  { href: "/about", label: "About Us", id: "about" },
   { href: "/products", label: "Products", id: "products" },
-  { href: "/#product-catalog", label: "Categories", id: "categories" },
+  { href: "/about", label: "About Us", id: "about" },
   { href: "/#inquiry-form", label: "Contact", id: "contact" },
 ] as const;
 
@@ -38,7 +37,6 @@ function isLinkActive(id: string, pathname: string, hash: string) {
   if (id === "home") return pathname === "/" && hash === "";
   if (id === "about") return pathname === "/about";
   if (id === "products") return pathname === "/products" || pathname.startsWith("/products/");
-  if (id === "categories") return hash === "#product-catalog" || hash === "#categories";
   if (id === "contact") return hash === "#inquiry-form";
   return false;
 }
@@ -140,36 +138,38 @@ export function MobileNavDrawer({
               );
             })}
             {signedIn ? (
-              <Link
-                href={isAdmin ? "/admin" : "/dashboard"}
-                onClick={onClose}
-                className={linkClass(
-                  isAdmin ? pathname.startsWith("/admin") : pathname.startsWith("/dashboard")
-                )}
-              >
-                {isAdmin ? "Admin" : "Dashboard"}
-              </Link>
+              <>
+                <Link
+                  href={isAdmin ? "/admin" : "/dashboard"}
+                  onClick={onClose}
+                  className={linkClass(
+                    isAdmin
+                      ? pathname.startsWith("/admin")
+                      : pathname.startsWith("/dashboard")
+                  )}
+                >
+                  {isAdmin ? "Admin" : "Dashboard"}
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onSignOut?.();
+                  }}
+                  className="rounded-lg border-b border-slate-100 px-3 py-2 text-left text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+                >
+                  Sign Out
+                </button>
+              </>
             ) : (
               <Link
-                href="/login"
+                href="/register"
                 onClick={onClose}
-                className={linkClass(pathname === "/login")}
+                className="mt-3 flex h-11 items-center justify-center rounded-xl bg-gradient-to-r from-sky-500 to-blue-700 text-sm font-bold text-white shadow-sm transition active:scale-[0.98]"
               >
-                Log In
+                Sign Up
               </Link>
             )}
-            {signedIn ? (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onSignOut?.();
-                }}
-                className="rounded-lg border-b border-slate-100 px-3 py-2 text-left text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50"
-              >
-                Sign Out
-              </button>
-            ) : null}
           </nav>
         </div>
 

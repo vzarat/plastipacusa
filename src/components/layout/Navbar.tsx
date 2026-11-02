@@ -157,7 +157,6 @@ export function Navbar() {
       </span>
     </button>
   );
-  const isHomePage = pathname === "/";
   const isCatalogPage =
     pathname === "/catalog" ||
     pathname === "/products" ||
@@ -181,20 +180,6 @@ export function Navbar() {
       pathname === "/catalog" || pathname === "/products" ? pathname : "/products";
     router.push(query ? `${listing}?q=${encodeURIComponent(query)}` : listing);
   };
-
-  const handleCategoriesClick = (
-    event: React.MouseEvent<HTMLAnchorElement>
-  ) => {
-    if (!isHomePage) return;
-    event.preventDefault();
-    const target =
-      document.getElementById("categories") ||
-      document.getElementById("category-showcase") ||
-      document.getElementById("product-catalog-section");
-    target?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  const categoriesHref = isHomePage ? "/#categories" : "/products";
 
   const roleLabel =
     currentUser?.profile.role === "admin"
@@ -477,14 +462,6 @@ export function Navbar() {
                 </Link>
                 {assistHint && assistHintPopup}
               </div>
-
-              <Link
-                href={categoriesHref}
-                onClick={handleCategoriesClick}
-                className="whitespace-nowrap rounded-xl px-2 py-2 text-[13px] font-semibold text-slate-600 transition-all hover:bg-sky-50/50 hover:text-sky-600 xl:px-3.5 xl:text-sm"
-              >
-                Categories
-              </Link>
 
               <Link
                 href="/about"
