@@ -3,6 +3,10 @@
 import React from "react";
 import dynamic from "next/dynamic";
 import { Badge } from "@/components/ui/badge";
+import {
+  WHATSAPP_PHONE_DISPLAY,
+  WHATSAPP_URL_BARE,
+} from "@/lib/company-contact";
 
 const GradientASCII = dynamic(() => import("@/components/ui/GradientASCII"), {
   ssr: false,
@@ -36,8 +40,8 @@ const SOCIAL_LINKS = [
   },
   {
     name: "WhatsApp",
-    handle: "(956) 400-3683",
-    href: "https://wa.me/19564003683",
+    handle: WHATSAPP_PHONE_DISPLAY,
+    href: WHATSAPP_URL_BARE,
     color: "#25D366",
     soft: "rgba(37, 211, 102, 0.18)",
     icon: (

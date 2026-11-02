@@ -2,6 +2,12 @@
 
 import React from "react";
 import { SUPPORT_EMAIL } from "@/lib/company-email";
+import {
+  PRIMARY_PHONE_DISPLAY,
+  PRIMARY_PHONE_HREF,
+  WHATSAPP_PHONE_DISPLAY,
+  WHATSAPP_URL_BARE,
+} from "@/lib/company-contact";
 import Link from "next/link";
 import Image from "next/image";
 import { ChevronDown, Clock3, Lock, Mail, MapPin, MessageCircle, Phone, CreditCard } from "lucide-react";
@@ -178,11 +184,29 @@ export function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 <a
-                  href="tel:+19564003683"
+                  href={PRIMARY_PHONE_HREF}
                   className="inline-flex items-center gap-2 font-semibold text-slate-800 hover:text-sky-700"
                 >
                   <Phone className="h-4 w-4 shrink-0 text-sky-600" />
-                  (956) 400-3683
+                  {PRIMARY_PHONE_DISPLAY}
+                </a>
+              </li>
+              <li>
+                <a
+                  href={WHATSAPP_URL_BARE}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-slate-700 hover:text-sky-700"
+                >
+                  <MessageCircle className="h-4 w-4 shrink-0 text-emerald-600" />
+                  <span>
+                    <span className="block font-semibold text-slate-800">
+                      {WHATSAPP_PHONE_DISPLAY}
+                    </span>
+                    <span className="block text-[11px] text-slate-500">
+                      WhatsApp only
+                    </span>
+                  </span>
                 </a>
               </li>
               <li>
@@ -297,11 +321,11 @@ export function Footer() {
                 <Mail className="w-4 h-4" />
               </a>
               <a
-                href="https://wa.me/19564003683"
+                href={WHATSAPP_URL_BARE}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 hover:text-sky-700 hover:border-sky-300 transition-colors"
-                aria-label="WhatsApp"
+                aria-label={`WhatsApp ${WHATSAPP_PHONE_DISPLAY}`}
               >
                 <MessageCircle className="w-4 h-4" />
               </a>
@@ -371,10 +395,26 @@ export function Footer() {
               <li className="flex items-start gap-2.5">
                 <Phone className="h-4 w-4 text-sky-600 mt-0.5 shrink-0" />
                 <a
-                  href="tel:+19564003683"
+                  href={PRIMARY_PHONE_HREF}
                   className="font-semibold text-slate-800 hover:text-sky-700"
                 >
-                  (956) 400-3683
+                  {PRIMARY_PHONE_DISPLAY}
+                </a>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <MessageCircle className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                <a
+                  href={WHATSAPP_URL_BARE}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-slate-700 hover:text-sky-700"
+                >
+                  <span className="block font-semibold text-slate-800">
+                    {WHATSAPP_PHONE_DISPLAY}
+                  </span>
+                  <span className="block text-[11px] text-slate-500">
+                    WhatsApp only
+                  </span>
                 </a>
               </li>
               <li className="flex items-start gap-2.5">

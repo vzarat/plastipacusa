@@ -3,6 +3,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Cpu, Mail, MessageCircle } from "lucide-react";
+import { WHATSAPP_URL_BARE } from "@/lib/company-contact";
 
 function FacebookIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
@@ -81,7 +82,7 @@ function SocialIconBar({ interactive = false }: { interactive?: boolean }) {
         <Mail className="w-4 h-4" />
       </a>
       <a
-        href="https://wa.me/19564003683"
+        href={WHATSAPP_URL_BARE}
         target="_blank"
         rel="noopener noreferrer"
         className={linkClass}

@@ -5,8 +5,14 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Mail, Phone, X } from "lucide-react";
+import { Mail, MessageCircle, Phone, X } from "lucide-react";
 import { SUPPORT_EMAIL } from "@/lib/company-email";
+import {
+  PRIMARY_PHONE_DISPLAY,
+  PRIMARY_PHONE_HREF,
+  WHATSAPP_PHONE_DISPLAY,
+  WHATSAPP_URL_BARE,
+} from "@/lib/company-contact";
 
 const LOGO_SRC =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PLASTIPAC_USA_LOGO%202.svg";
@@ -186,12 +192,27 @@ export function MobileNavDrawer({
             <span className="min-w-0 break-all">{SUPPORT_EMAIL}</span>
           </a>
           <a
-            href="tel:+19564003683"
+            href={PRIMARY_PHONE_HREF}
             onClick={onClose}
             className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-100"
           >
             <Phone className="h-4 w-4 shrink-0 text-sky-600" />
-            (956) 400-3683
+            {PRIMARY_PHONE_DISPLAY}
+          </a>
+          <a
+            href={WHATSAPP_URL_BARE}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onClose}
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-100"
+          >
+            <MessageCircle className="h-4 w-4 shrink-0 text-emerald-600" />
+            <span>
+              {WHATSAPP_PHONE_DISPLAY}
+              <span className="ml-1 text-[11px] font-medium text-slate-500">
+                WhatsApp
+              </span>
+            </span>
           </a>
         </div>
       </aside>

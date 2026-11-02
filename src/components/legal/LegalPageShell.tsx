@@ -57,6 +57,15 @@ export function LegalPageShell({ title, effectiveDate, children }: LegalPageShel
             <a href="tel:+19564003683" className="text-sky-700 font-medium hover:underline">
               (956) 400-3683
             </a>
+            . WhatsApp (secondary):{" "}
+            <a
+              href="https://wa.me/13237904340"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sky-700 font-medium hover:underline"
+            >
+              +1 323-790-4340
+            </a>
             .
           </p>
           <p>
