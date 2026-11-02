@@ -77,7 +77,7 @@ interface AdminOrdersClientProps {
   initialProducts?: AdminProduct[];
   initialTab?: AdminTabKey;
   paymentsToReview?: PaymentReviewItem[];
-  /** Optional Settings subsection to scroll into view (e.g. email-templates). */
+  /** Optional Settings subsection tab (e.g. email-templates). */
   settingsSection?: "email-templates";
 }
 
@@ -276,7 +276,13 @@ export function AdminOrdersClient({
           {activeTab === "customers" && <AdminCustomersView customers={customers} />}
 
           {activeTab === "settings" && (
-            <AdminSettingsView scrollToSection={settingsSection} />
+            <AdminSettingsView
+              initialTab={
+                settingsSection === "email-templates"
+                  ? "email-templates"
+                  : "general"
+              }
+            />
           )}
         </main>
       </div>
