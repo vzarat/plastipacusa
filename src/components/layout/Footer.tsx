@@ -10,6 +10,11 @@ import { useLanguage } from "@/context/LanguageContext";
 const LOGO_SRC =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PLASTIPAC_USA_LOGO%202.svg";
 
+const COMPANY_STREET = "5801 George McVay Dr";
+const COMPANY_CITY_LINE = "McAllen, TX 78503";
+const COMPANY_MAPS_URL =
+  "https://www.google.com/maps/search/?api=1&query=5801+George+McVay+Dr,+McAllen,+TX+78503";
+
 const linkClass =
   "text-sm text-slate-600 hover:text-sky-700 transition-colors";
 
@@ -189,9 +194,21 @@ export function Footer() {
                   {SUPPORT_EMAIL}
                 </a>
               </li>
-              <li className="inline-flex items-center gap-2 text-slate-700">
-                <MapPin className="h-4 w-4 shrink-0 text-sky-600" />
-                Texas / RGV Region
+              <li>
+                <a
+                  href={COMPANY_MAPS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-start gap-2 text-slate-700 hover:text-sky-700"
+                >
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
+                  <span>
+                    <span className="block font-medium text-slate-800">
+                      {COMPANY_STREET}
+                    </span>
+                    <span className="block">{COMPANY_CITY_LINE}</span>
+                  </span>
+                </a>
               </li>
             </ul>
           </div>
@@ -370,6 +387,20 @@ export function Footer() {
                     {SUPPORT_EMAIL}
                   </a>
                 </div>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <MapPin className="h-4 w-4 text-sky-600 mt-0.5 shrink-0" />
+                <a
+                  href={COMPANY_MAPS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-slate-700 hover:text-sky-700"
+                >
+                  <span className="block font-medium text-slate-800">
+                    {COMPANY_STREET}
+                  </span>
+                  <span className="block">{COMPANY_CITY_LINE}</span>
+                </a>
               </li>
               <li className="flex items-start gap-2.5">
                 <Clock3 className="h-4 w-4 text-sky-600 mt-0.5 shrink-0" />
