@@ -8,7 +8,13 @@ import {
   isBrowserTurnstileEnabled,
   TurnstileField,
 } from "@/components/security/TurnstileField";
-import { CheckCircle2, AlertCircle, Send, Building2, Package, MapPin } from "lucide-react";
+import { CheckCircle2, AlertCircle, Send, Building2, Package, MapPin, MessageCircle } from "lucide-react";
+import {
+  PRIMARY_PHONE_DISPLAY,
+  PRIMARY_PHONE_HREF,
+  WHATSAPP_PHONE_DISPLAY,
+  WHATSAPP_URL_BARE,
+} from "@/lib/company-contact";
 
 export function InquiryForm() {
   const [formData, setFormData] = useState({
@@ -150,16 +156,25 @@ export function InquiryForm() {
               </div>
             </div>
 
-            {/* Direct Phone Numbers Callout */}
-            <div className="p-4 rounded-2xl bg-white border border-slate-200/90 space-y-1 text-xs shadow-sm">
+            {/* Direct Sales Desk: call + WhatsApp */}
+            <div className="p-4 rounded-2xl bg-white border border-slate-200/90 space-y-2 text-xs shadow-sm">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Direct Sales Desk:</span>
-              <div className="flex items-center gap-3 font-bold text-slate-800">
-                <a href="tel:+19564003683" className="text-sky-700 hover:text-sky-800">
-                  (956) 400 36 83
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 font-bold text-slate-800">
+                <a href={PRIMARY_PHONE_HREF} className="text-sky-700 hover:text-sky-800">
+                  {PRIMARY_PHONE_DISPLAY}
                 </a>
                 <span className="text-slate-300">•</span>
-                <a href="tel:+19564006563" className="text-sky-700 hover:text-sky-800">
-                  (956) 400 65 63
+                <a
+                  href={WHATSAPP_URL_BARE}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-800"
+                >
+                  <MessageCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <span>
+                    {WHATSAPP_PHONE_DISPLAY}
+                    <span className="ml-1 font-semibold text-emerald-700/80">WhatsApp</span>
+                  </span>
                 </a>
               </div>
             </div>
