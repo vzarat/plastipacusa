@@ -61,9 +61,8 @@ function rowToBranding(row: Record<string, unknown> | null): EmailTemplateBrandi
     footerSupportPhoneUs: String(
       row.footer_support_phone_us || DEFAULT_EMAIL_TEMPLATE.footerSupportPhoneUs
     ),
-    footerSupportPhoneMx: String(
-      row.footer_support_phone_mx || DEFAULT_EMAIL_TEMPLATE.footerSupportPhoneMx
-    ),
+    // US-only contact — never surface MX numbers from legacy rows.
+    footerSupportPhoneMx: "",
     footerAddress: resolveFooterAddress(row.footer_address),
     footerWebsite: String(
       row.footer_website || DEFAULT_EMAIL_TEMPLATE.footerWebsite

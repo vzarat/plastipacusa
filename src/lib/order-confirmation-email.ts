@@ -64,7 +64,8 @@ export const DEFAULT_EMAIL_TEMPLATE: EmailTemplateBranding = {
   ctaUrl: "",
   footerSalesEmail: SUPPORT_EMAIL,
   footerSupportPhoneUs: "+1 (956) 400-3683",
-  footerSupportPhoneMx: "+52 (899) 923-1320",
+  /** Kept for DB row compatibility; US-only contact — leave empty. */
+  footerSupportPhoneMx: "",
   footerAddress: "5801 George McVay Dr, McAllen, TX 78503",
   footerWebsite: "www.plastipacusa.com",
   legalDisclaimer:
@@ -505,7 +506,7 @@ export function buildOrderConfirmationHtml(
                 <a href="mailto:${escapeHtml(template.footerSalesEmail)}" style="color:#BFDBFE;text-decoration:none;">${escapeHtml(template.footerSalesEmail)}</a>
               </p>
               <p style="margin:0 0 6px;font-size:13px;line-height:1.5;color:${white};">
-                Phones: ${escapeHtml(template.footerSupportPhoneUs)} | ${escapeHtml(template.footerSupportPhoneMx)}
+                Phone: ${escapeHtml(template.footerSupportPhoneUs)}
               </p>
               <p style="margin:0 0 6px;font-size:13px;line-height:1.5;color:#CBD5E1;">
                 ${escapeHtml(template.footerAddress)}
@@ -597,7 +598,7 @@ export function buildOrderConfirmationHtml(
     "",
     "Support:",
     template.footerSalesEmail,
-    `Phones: ${template.footerSupportPhoneUs} | ${template.footerSupportPhoneMx}`,
+    `Phone: ${template.footerSupportPhoneUs}`,
     template.footerAddress,
     template.footerWebsite,
     "",

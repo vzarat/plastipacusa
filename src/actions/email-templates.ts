@@ -43,7 +43,7 @@ function brandingToRow(branding: EmailTemplateBranding) {
     cta_url: branding.ctaUrl,
     footer_sales_email: branding.footerSalesEmail,
     footer_support_phone_us: branding.footerSupportPhoneUs,
-    footer_support_phone_mx: branding.footerSupportPhoneMx,
+    footer_support_phone_mx: "",
     footer_address: branding.footerAddress,
     footer_website: branding.footerWebsite,
     legal_disclaimer: branding.legalDisclaimer,

@@ -235,22 +235,13 @@ export function AdminEmailTemplatesView({
                 onChange={(e) => update("footerSalesEmail", e.target.value)}
               />
             </Field>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Field label="Phone US">
-                <input
-                  className={inputClass}
-                  value={template.footerSupportPhoneUs}
-                  onChange={(e) => update("footerSupportPhoneUs", e.target.value)}
-                />
-              </Field>
-              <Field label="Phone MX">
-                <input
-                  className={inputClass}
-                  value={template.footerSupportPhoneMx}
-                  onChange={(e) => update("footerSupportPhoneMx", e.target.value)}
-                />
-              </Field>
-            </div>
+            <Field label="Phone (US)">
+              <input
+                className={inputClass}
+                value={template.footerSupportPhoneUs}
+                onChange={(e) => update("footerSupportPhoneUs", e.target.value)}
+              />
+            </Field>
             <Field label="Plant address">
               <textarea
                 className={`${inputClass} min-h-[72px] resize-y`}
