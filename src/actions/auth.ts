@@ -173,6 +173,8 @@ export async function signUp({
   taxId,
   isTaxExempt,
   taxExemptionNumber,
+  acceptTerms,
+  marketingOptIn,
   turnstileToken,
 }: {
   email: string;
@@ -183,6 +185,8 @@ export async function signUp({
   taxId?: string;
   isTaxExempt?: boolean;
   taxExemptionNumber?: string;
+  acceptTerms?: boolean;
+  marketingOptIn?: boolean;
   turnstileToken?: string;
 }) {
   try {
@@ -200,6 +204,13 @@ export async function signUp({
       };
     }
 
+    if (!acceptTerms) {
+      return {
+        success: false,
+        error: "Please accept the Terms of Service and Privacy Policy to continue.",
+      };
+    }
+
     if (password.length < 6) {
       return {
         success: false,
@@ -213,6 +224,8 @@ export async function signUp({
     const trimmedPhone = (phone || "").trim();
     const trimmedExemptNo = (taxExemptionNumber || "").trim();
     const taxExempt = Boolean(isTaxExempt);
+    const wantsMarketing = Boolean(marketingOptIn);
+    const termsAcceptedAt = new Date().toISOString();
 
     const { data, error } = await supabase.auth.signUp({
       email: normalizedEmail,
@@ -225,6 +238,9 @@ export async function signUp({
           tax_id: trimmedTaxId || undefined,
           is_tax_exempt: taxExempt,
           role: "client",
+          accept_terms: true,
+          terms_accepted_at: termsAcceptedAt,
+          marketing_opt_in: wantsMarketing,
         },
       },
     });
@@ -257,9 +273,20 @@ export async function signUp({
           credit_application_status: "pending" as const,
           has_password: true,
           password_setup_skipped: false,
+          terms_accepted_at: termsAcceptedAt,
+          marketing_opt_in: wantsMarketing,
         };
 
-        await supabase.from("profiles").upsert(profilePayload);
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .upsert(profilePayload);
+
+        // Older DBs may not have consent columns yet — retry without them.
+        if (profileError) {
+          const { terms_accepted_at: _t, marketing_opt_in: _m, ...legacyPayload } =
+            profilePayload;
+          await supabase.from("profiles").upsert(legacyPayload);
+        }
 
         try {
           await supabase.from("company_profiles").upsert(

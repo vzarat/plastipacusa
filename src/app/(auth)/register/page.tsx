@@ -60,6 +60,8 @@ function RegisterForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -95,6 +97,10 @@ function RegisterForm() {
       );
       return;
     }
+    if (!acceptTerms) {
+      setErrorMsg("Please accept the Terms of Service and Privacy Policy.");
+      return;
+    }
     if (turnstileRequired && !turnstileToken) {
       setErrorMsg("Please complete the bot check.");
       return;
@@ -110,6 +116,8 @@ function RegisterForm() {
         taxId,
         isTaxExempt,
         taxExemptionNumber,
+        acceptTerms,
+        marketingOptIn,
         turnstileToken: turnstileToken || undefined,
       });
 
@@ -405,6 +413,53 @@ function RegisterForm() {
             </div>
           </div>
 
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acceptTerms}
+                onChange={(e) => setAcceptTerms(e.target.checked)}
+                disabled={isPending}
+                required
+                className="mt-0.5 rounded border-slate-300 text-blue-700 focus:ring-blue-600"
+              />
+              <span className="text-xs text-slate-700 leading-relaxed">
+                I agree to the{" "}
+                <Link
+                  href="/terms-of-service"
+                  target="_blank"
+                  className="font-semibold text-sky-700 hover:underline"
+                >
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link
+                  href="/privacy-policy"
+                  target="_blank"
+                  className="font-semibold text-sky-700 hover:underline"
+                >
+                  Privacy Policy
+                </Link>
+                . <span className="text-rose-500">*</span>
+              </span>
+            </label>
+
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={marketingOptIn}
+                onChange={(e) => setMarketingOptIn(e.target.checked)}
+                disabled={isPending}
+                className="mt-0.5 rounded border-slate-300 text-blue-700 focus:ring-blue-600"
+              />
+              <span className="text-xs text-slate-700 leading-relaxed">
+                Yes, I want to receive product offers, promotions, and commercial
+                updates at my registered email.{" "}
+                <span className="text-slate-400">(Optional)</span>
+              </span>
+            </label>
+          </div>
+
           <TurnstileField onToken={setTurnstileToken} />
 
           <button
@@ -412,6 +467,7 @@ function RegisterForm() {
             disabled={
               isPending ||
               emailLimit.limited ||
+              !acceptTerms ||
               (turnstileRequired && !turnstileToken)
             }
             className="w-full py-3.5 px-4 rounded-xl bg-slate-900 hover:bg-blue-950 text-white font-bold text-sm tracking-wide shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"

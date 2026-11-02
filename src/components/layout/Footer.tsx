@@ -294,40 +294,42 @@ export function Footer() {
             <p className="text-sm leading-relaxed text-slate-600 max-w-sm">
               {t("footer.tagline")}
             </p>
-            <div className="flex items-center gap-2.5 text-slate-600">
-              <a
-                href="https://www.facebook.com/profile.php?id=61557962543741"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 hover:text-sky-700 hover:border-sky-300 transition-colors"
-                aria-label="Facebook"
-              >
-                <FacebookIcon className="w-4 h-4" />
-              </a>
-              <a
-                href="https://linkedin.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 hover:text-sky-700 hover:border-sky-300 transition-colors"
-                aria-label="LinkedIn"
-              >
-                <LinkedinIcon className="w-4 h-4" />
-              </a>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2.5 text-slate-600">
+                <a
+                  href="https://www.facebook.com/profile.php?id=61557962543741"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 hover:text-sky-700 hover:border-sky-300 transition-colors"
+                  aria-label="Facebook"
+                >
+                  <FacebookIcon className="w-4 h-4" />
+                </a>
+                <a
+                  href="https://linkedin.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 hover:text-sky-700 hover:border-sky-300 transition-colors"
+                  aria-label="LinkedIn"
+                >
+                  <LinkedinIcon className="w-4 h-4" />
+                </a>
+                <a
+                  href={WHATSAPP_URL_BARE}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 hover:text-sky-700 hover:border-sky-300 transition-colors"
+                  aria-label={`WhatsApp ${WHATSAPP_PHONE_DISPLAY}`}
+                >
+                  <MessageCircle className="w-4 h-4" />
+                </a>
+              </div>
               <a
                 href={`mailto:${SUPPORT_EMAIL}`}
-                className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 hover:text-sky-700 hover:border-sky-300 transition-colors"
-                aria-label="Email"
+                className="inline-flex items-center gap-2 text-sm text-slate-700 hover:text-sky-700"
               >
-                <Mail className="w-4 h-4" />
-              </a>
-              <a
-                href={WHATSAPP_URL_BARE}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 hover:text-sky-700 hover:border-sky-300 transition-colors"
-                aria-label={`WhatsApp ${WHATSAPP_PHONE_DISPLAY}`}
-              >
-                <MessageCircle className="w-4 h-4" />
+                <Mail className="h-4 w-4 shrink-0 text-sky-600" />
+                {SUPPORT_EMAIL}
               </a>
             </div>
           </div>
@@ -416,17 +418,6 @@ export function Footer() {
                     WhatsApp only
                   </span>
                 </a>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <Mail className="h-4 w-4 text-sky-600 mt-0.5 shrink-0" />
-                <div className="space-y-0.5">
-                  <a
-                    href={`mailto:${SUPPORT_EMAIL}`}
-                    className="block text-slate-700 hover:text-sky-700"
-                  >
-                    {SUPPORT_EMAIL}
-                  </a>
-                </div>
               </li>
               <li className="flex items-start gap-2.5">
                 <MapPin className="h-4 w-4 text-sky-600 mt-0.5 shrink-0" />
