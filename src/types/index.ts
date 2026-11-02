@@ -149,6 +149,7 @@ export interface CartItem {
 }
 
 export interface InquiryFormData {
+  turnstileToken?: string;
   companyName: string;
   contactName: string;
   email: string;

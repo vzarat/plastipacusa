@@ -27,7 +27,11 @@ export function AdminCustomerDossierClient({
       return;
     }
     if (tab === "customers") {
-      router.push("/admin");
+      router.push("/admin?tab=customers");
+      return;
+    }
+    if (tab === "settings") {
+      router.push("/admin?tab=settings");
       return;
     }
     router.push("/admin");

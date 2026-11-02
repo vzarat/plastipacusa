@@ -118,7 +118,8 @@ export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) 
                     <td className="py-4 px-4 sm:px-6">
                       <div>
                         <Link
-                          href={`/admin/customers/${client.id}`}
+                          href={`/admin/customers/${encodeURIComponent(client.id)}`}
+                          prefetch={false}
                           className="font-bold text-slate-900 text-xs hover:text-blue-700 hover:underline"
                         >
                           {client.companyName}
@@ -189,11 +190,12 @@ export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) 
 
                     <td className="py-4 px-4 sm:px-6 text-right">
                       <Link
-                        href={`/admin/customers/${client.id}`}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-[10px] font-bold text-slate-700 hover:border-blue-300 hover:text-blue-800 hover:bg-blue-50 transition-colors"
+                        href={`/admin/customers/${encodeURIComponent(client.id)}`}
+                        prefetch={false}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-blue-200 bg-blue-50 text-[11px] font-bold text-blue-800 shadow-xs hover:bg-blue-600 hover:border-blue-600 hover:text-white transition-colors"
                       >
                         <FolderOpen className="w-3.5 h-3.5" />
-                        Open File
+                        Open Expediente
                       </Link>
                     </td>
                   </tr>

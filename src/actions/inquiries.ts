@@ -3,10 +3,16 @@
 import { db, inquiries } from "@/db";
 import { CONTACT_EMAIL, CONTACT_FROM } from "@/lib/company-email";
 import { sendEmail } from "@/lib/email";
+import { requireTurnstileToken } from "@/lib/turnstile";
 import { InquiryFormData } from "@/types";
 
 export async function submitInquiry(formData: InquiryFormData) {
   try {
+    const turnstileError = await requireTurnstileToken(formData.turnstileToken);
+    if (turnstileError) {
+      return { success: false, error: turnstileError };
+    }
+
     if (!formData.email || !formData.companyName || !formData.contactName) {
       return {
         success: false,

@@ -25,6 +25,10 @@ import { useCartStore } from "@/lib/store/useCartStore";
 import { calculateOrderTotal } from "@/lib/sales-tax";
 import { formatCurrency } from "@/lib/utils";
 import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
+import {
+  isBrowserTurnstileEnabled,
+  TurnstileField,
+} from "@/components/security/TurnstileField";
 import { quotePackageWeightLbs } from "@/lib/package-weight";
 
 const TEST_CARDS = [
@@ -282,6 +286,8 @@ export function StripeEmbeddedCheckout({
   const [initErrorDetail, setInitErrorDetail] = useState<string | null>(null);
   const [showInitError, setShowInitError] = useState(false);
   const [isPreparing, setIsPreparing] = useState(true);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRequired = isBrowserTurnstileEnabled();
 
   const stripePromise = useMemo(() => getStripe(), []);
   const itemsSummary = useMemo(
@@ -297,6 +303,14 @@ export function StripeEmbeddedCheckout({
     let cancelled = false;
 
     const prepare = async () => {
+      if (turnstileRequired && !turnstileToken) {
+        if (!cancelled) {
+          setIsPreparing(false);
+          setClientSecret(null);
+        }
+        return;
+      }
+
       setIsPreparing(true);
       setInitError(null);
       setInitErrorDetail(null);
@@ -319,6 +333,7 @@ export function StripeEmbeddedCheckout({
         companyName: selectedAddress?.companyName || shipping.line2,
         itemsSummary,
         productSlugs: items.map((item) => item.productSlug).filter(Boolean),
+        turnstileToken: turnstileToken || undefined,
         subtotal: quote.subtotal,
         discountAmount: quote.discount,
         couponCode: appliedCoupon?.code,
@@ -404,7 +419,20 @@ export function StripeEmbeddedCheckout({
     shipping.state,
     shipping.postalCode,
     shipping.phone,
+    turnstileToken,
+    turnstileRequired,
   ]);
+
+  if (turnstileRequired && !turnstileToken) {
+    return (
+      <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6">
+        <p className="text-sm font-semibold text-slate-800">
+          Complete the bot check to load secure payment.
+        </p>
+        <TurnstileField onToken={setTurnstileToken} />
+      </div>
+    );
+  }
 
   if (isPreparing) {
     return (

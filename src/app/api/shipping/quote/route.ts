@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceRoleClient, isServiceRoleConfigured } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import { getWarpConfig, shippingDebugVisible } from "@/lib/shipping/config";
+import { requireTurnstileToken } from "@/lib/turnstile";
 import { buildQuoteFailure, shippingRequestId } from "@/lib/shipping/diagnostics";
 import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
 import { fridaySelectionFields, nextFridayDeliveryIso } from "@/lib/shipping/friday-delivery";
@@ -279,11 +280,27 @@ async function quoteForSignedInUser(request: Request) {
     city?: string;
     state?: string;
     lines?: ShippingQuoteLine[];
+    turnstileToken?: string;
   } = {};
   let zip: string | null = null;
 
   try {
     body = (await request.json()) as typeof body;
+
+    const turnstileError = await requireTurnstileToken(body.turnstileToken);
+    if (turnstileError) {
+      const requestId = shippingRequestId();
+      return NextResponse.json(
+        {
+          ok: false,
+          message: turnstileError,
+          requestId,
+          error: { code: "TURNSTILE_FAILED", requestId, message: turnstileError },
+        },
+        { status: 403 }
+      );
+    }
+
     zip = zipCode(body.postalCode);
     if (!zip) {
       return failureJson({

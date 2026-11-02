@@ -9,6 +9,10 @@ import { EmailRateLimitNotice } from "@/components/auth/EmailRateLimitNotice";
 import { useEmailRateLimit } from "@/lib/auth/use-email-rate-limit";
 import { uploadTaxExemptionCertificate } from "@/actions/customers";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import {
+  isBrowserTurnstileEnabled,
+  TurnstileField,
+} from "@/components/security/TurnstileField";
 import { createClient } from "@/lib/supabase/client";
 import {
   Lock,
@@ -58,8 +62,10 @@ function RegisterForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const emailLimit = useEmailRateLimit("plastipac-email-limit-register");
+  const turnstileRequired = isBrowserTurnstileEnabled();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,6 +95,10 @@ function RegisterForm() {
       );
       return;
     }
+    if (turnstileRequired && !turnstileToken) {
+      setErrorMsg("Please complete the bot check.");
+      return;
+    }
 
     startTransition(async () => {
       const res = await signUp({
@@ -100,6 +110,7 @@ function RegisterForm() {
         taxId,
         isTaxExempt,
         taxExemptionNumber,
+        turnstileToken: turnstileToken || undefined,
       });
 
       if (res.success) {
@@ -394,9 +405,15 @@ function RegisterForm() {
             </div>
           </div>
 
+          <TurnstileField onToken={setTurnstileToken} />
+
           <button
             type="submit"
-            disabled={isPending || emailLimit.limited}
+            disabled={
+              isPending ||
+              emailLimit.limited ||
+              (turnstileRequired && !turnstileToken)
+            }
             className="w-full py-3.5 px-4 rounded-xl bg-slate-900 hover:bg-blue-950 text-white font-bold text-sm tracking-wide shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
           >
             {emailLimit.limited ? (

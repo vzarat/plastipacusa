@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { EMAIL_RATE_LIMIT_MESSAGE, isEmailRateLimitError } from "@/lib/auth/email-rate-limit";
 import { createServerClient } from "@/lib/supabase/server";
+import { requireTurnstileToken } from "@/lib/turnstile";
 
 export interface UserProfile {
   id: string;
@@ -48,11 +49,18 @@ const REFRESH_COOKIE = "sb-refresh-token";
 export async function signIn({
   email,
   password,
+  turnstileToken,
 }: {
   email: string;
   password: string;
+  turnstileToken?: string;
 }) {
   try {
+    const turnstileError = await requireTurnstileToken(turnstileToken);
+    if (turnstileError) {
+      return { success: false, error: turnstileError };
+    }
+
     const supabase = await createServerClient();
     const emailAddress = String(email || "").trim().toLowerCase();
 
@@ -165,6 +173,7 @@ export async function signUp({
   taxId,
   isTaxExempt,
   taxExemptionNumber,
+  turnstileToken,
 }: {
   email: string;
   password: string;
@@ -174,8 +183,14 @@ export async function signUp({
   taxId?: string;
   isTaxExempt?: boolean;
   taxExemptionNumber?: string;
+  turnstileToken?: string;
 }) {
   try {
+    const turnstileError = await requireTurnstileToken(turnstileToken);
+    if (turnstileError) {
+      return { success: false, error: turnstileError };
+    }
+
     const supabase = await createServerClient();
 
     if (!email || !password || !fullName) {
@@ -303,6 +318,59 @@ export async function signUp({
     return {
       success: false,
       error: err?.message || "An unexpected error occurred during account creation.",
+    };
+  }
+}
+
+const PASSWORD_RESET_REDIRECT =
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "")
+    ? `${process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "")}/update-password`
+    : "https://www.plastipacusa.com/update-password";
+
+/**
+ * Send a password-reset email after Turnstile verification.
+ */
+export async function requestPasswordReset({
+  email,
+  turnstileToken,
+}: {
+  email: string;
+  turnstileToken?: string;
+}): Promise<{ success: boolean; error?: string; rateLimited?: boolean }> {
+  try {
+    const turnstileError = await requireTurnstileToken(turnstileToken);
+    if (turnstileError) {
+      return { success: false, error: turnstileError };
+    }
+
+    const address = String(email || "").trim().toLowerCase();
+    if (!address || !address.includes("@")) {
+      return { success: false, error: "Enter the email address on your account." };
+    }
+
+    const supabase = await createServerClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(address, {
+      redirectTo: PASSWORD_RESET_REDIRECT,
+    });
+
+    if (error) {
+      if (isEmailRateLimitError(error)) {
+        return { success: false, error: EMAIL_RATE_LIMIT_MESSAGE, rateLimited: true };
+      }
+      return {
+        success: false,
+        error: error.message || "Could not send the reset email. Try again.",
+      };
+    }
+
+    return { success: true };
+  } catch (err: unknown) {
+    if (isEmailRateLimitError(err)) {
+      return { success: false, error: EMAIL_RATE_LIMIT_MESSAGE, rateLimited: true };
+    }
+    return {
+      success: false,
+      error: "Could not send the reset email. Try again.",
     };
   }
 }

@@ -4,12 +4,14 @@ import React, { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, Loader2, Mail } from "lucide-react";
+import { requestPasswordReset } from "@/actions/auth";
 import { EmailRateLimitNotice } from "@/components/auth/EmailRateLimitNotice";
+import {
+  isBrowserTurnstileEnabled,
+  TurnstileField,
+} from "@/components/security/TurnstileField";
 import { SUPPORT_EMAIL } from "@/lib/company-email";
-import { createClient } from "@/lib/supabase/client";
 import { useEmailRateLimit } from "@/lib/auth/use-email-rate-limit";
-
-const RESET_REDIRECT = "https://www.plastipacusa.com/update-password";
 
 function ForgotPasswordForm() {
   const searchParams = useSearchParams();
@@ -23,7 +25,9 @@ function ForgotPasswordForm() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const emailLimit = useEmailRateLimit("plastipac-email-limit-forgot");
+  const turnstileRequired = isBrowserTurnstileEnabled();
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -34,16 +38,23 @@ function ForgotPasswordForm() {
       setErrorMsg("Enter the email address on your account.");
       return;
     }
+    if (turnstileRequired && !turnstileToken) {
+      setErrorMsg("Please complete the bot check.");
+      return;
+    }
 
     setPending(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.resetPasswordForEmail(address, {
-        redirectTo: RESET_REDIRECT,
+      const result = await requestPasswordReset({
+        email: address,
+        turnstileToken: turnstileToken || undefined,
       });
-      if (error) {
-        if (emailLimit.lockFrom(error)) return;
-        setErrorMsg(error.message || "Could not send the reset email. Try again.");
+      if (!result.success) {
+        if (result.rateLimited) {
+          emailLimit.lockFrom({ message: result.error });
+          return;
+        }
+        setErrorMsg(result.error || "Could not send the reset email. Try again.");
         return;
       }
       setSentTo(address);
@@ -108,12 +119,17 @@ function ForgotPasswordForm() {
               />
             </div>
           </div>
+          <TurnstileField onToken={setTurnstileToken} />
           <button
             type="submit"
-            disabled={pending || emailLimit.limited}
+            disabled={
+              pending ||
+              emailLimit.limited ||
+              (turnstileRequired && !turnstileToken)
+            }
             className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-slate-900 py-3.5 px-4 text-sm font-bold tracking-wide text-white shadow-md transition-all hover:bg-blue-950 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 h-4" />}
             <span>
               {emailLimit.limited
                 ? `Please wait ${emailLimit.minutesLeft} min`

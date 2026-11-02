@@ -24,6 +24,7 @@ import {
   type PreviousIntent,
 } from "@/lib/payments/intent-attempt";
 import { createServiceRoleClient, isServiceRoleConfigured } from "@/lib/supabase/admin";
+import { requireTurnstileToken } from "@/lib/turnstile";
 import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
 import {
   fridayRegionFromOptionId,
@@ -48,6 +49,8 @@ export interface CreatePaymentIntentOptions {
   companyName?: string;
   itemsSummary?: string;
   productSlugs?: string[];
+  /** Cloudflare Turnstile response token from checkout. */
+  turnstileToken?: string;
   /** Merchandise subtotal before tax. Tax is calculated on the server. */
   subtotal?: number;
   discountAmount?: number;
@@ -215,6 +218,11 @@ export async function createPaymentIntent(
   expired?: boolean;
 }> {
   try {
+    const turnstileError = await requireTurnstileToken(options.turnstileToken);
+    if (turnstileError) {
+      return { success: false, error: turnstileError };
+    }
+
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 
     if (!stripeSecretKey || stripeSecretKey.startsWith("pk_")) {

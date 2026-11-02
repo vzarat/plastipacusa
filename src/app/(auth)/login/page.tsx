@@ -6,6 +6,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { signIn } from "@/actions/auth";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import {
+  isBrowserTurnstileEnabled,
+  TurnstileField,
+} from "@/components/security/TurnstileField";
 import { createClient } from "@/lib/supabase/client";
 import {
   Lock,
@@ -65,11 +69,13 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const passwordReset = searchParams.get("reset") === "success";
   const forgotHref = `/forgot-password${
     redirectTarget !== "/dashboard" ? `?redirect=${encodeURIComponent(redirectTarget)}` : ""
   }`;
+  const turnstileRequired = isBrowserTurnstileEnabled();
 
   useEffect(() => {
     // OAuth code exchange is handled server-side in /auth/callback/route.ts.
@@ -83,9 +89,17 @@ function LoginForm() {
       toast.error("Please enter your work email and password.");
       return;
     }
+    if (turnstileRequired && !turnstileToken) {
+      toast.error("Please complete the bot check.");
+      return;
+    }
 
     startTransition(async () => {
-      const res = await signIn({ email: address, password });
+      const res = await signIn({
+        email: address,
+        password,
+        turnstileToken: turnstileToken || undefined,
+      });
       if (res.success) {
         // Full refresh to ensure server components read updated cookies
         const explicitRedirect = searchParams.get("redirect");
@@ -259,10 +273,12 @@ function LoginForm() {
           </Link>
         </div>
 
+        <TurnstileField onToken={setTurnstileToken} />
+
         {/* Submit Button */}
         <button
           type="submit"
-          disabled={isPending}
+          disabled={isPending || (turnstileRequired && !turnstileToken)}
           className="w-full py-3.5 px-4 rounded-xl bg-slate-900 hover:bg-blue-950 text-white font-bold text-sm tracking-wide shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
         >
           {isPending ? (

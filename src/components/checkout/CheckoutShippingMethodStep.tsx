@@ -5,6 +5,11 @@ import { MapPin, Warehouse } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
+import {
+  isBrowserTurnstileEnabled,
+  TurnstileField,
+  type TurnstileFieldHandle,
+} from "@/components/security/TurnstileField";
 import { quotePackageWeightLbs } from "@/lib/package-weight";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { submitInquiry } from "@/actions/inquiries";
@@ -191,6 +196,9 @@ export function CheckoutShippingMethodStep({
   const [requesting, setRequesting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [now, setNow] = useState(() => Date.now());
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileFieldHandle | null>(null);
+  const turnstileRequired = isBrowserTurnstileEnabled();
   const requestRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const selectedRef = useRef(selectedShippingOption);
@@ -261,6 +269,11 @@ export function CheckoutShippingMethodStep({
       setSelectedShippingOption(null);
       return;
     }
+    if (turnstileRequired && !turnstileToken) {
+      setLoading(false);
+      setMessage("Complete the bot check to calculate freight rates.");
+      return;
+    }
 
     const requestId = ++requestRef.current;
     abortRef.current?.abort();
@@ -268,6 +281,7 @@ export function CheckoutShippingMethodStep({
     abortRef.current = controller;
     const lines = shippingQuoteLines(items);
     const address = selectedAddress;
+    const captchaToken = turnstileToken;
 
     const load = async () => {
       setLoading(true);
@@ -289,11 +303,13 @@ export function CheckoutShippingMethodStep({
             city: address.city,
             state: address.state,
             lines,
+            turnstileToken: captchaToken || undefined,
           }),
         });
         const payload = (await response.json()) as QuotePayload;
         if (requestId !== requestRef.current) return;
         quotedKeyRef.current = requestKey;
+        turnstileRef.current?.reset();
         if (typeof payload.weightLbs === "number") setShipmentWeightLbs(payload.weightLbs);
         setShipmentDimensions(payload.dimensions || []);
         setShipmentWeightDetail(payload.weightDetail || []);
@@ -367,13 +383,17 @@ export function CheckoutShippingMethodStep({
     return () => {
       controller.abort();
     };
-  }, [active, quoteKey, reloadKey]);
+  }, [active, quoteKey, reloadKey, turnstileToken, turnstileRequired]);
 
   const refreshSelectedQuote = async (manual = false) => {
     const selected = selectedRef.current;
     const address = selectedAddress;
     const zip = fullZip(address?.postalCode);
     if (!selected || !address || !zip || !selected.expiresAt) return;
+    if (turnstileRequired && !turnstileToken) {
+      toast.error("Complete the bot check to refresh freight rates.");
+      return;
+    }
     const requestId = ++requestRef.current;
     const countAtStart = autoCountRef.current;
     const selectedId = selected.id;
@@ -392,9 +412,11 @@ export function CheckoutShippingMethodStep({
           city: address.city,
           state: address.state,
           lines: shippingQuoteLines(items),
+          turnstileToken: turnstileToken || undefined,
         }),
       });
       const payload = (await response.json()) as QuotePayload;
+      turnstileRef.current?.reset();
       const failed = !response.ok || payload.ok === false;
       const selectionMoved = selectedRef.current?.id !== selectedId;
       const decision = decideRequote({
@@ -565,6 +587,18 @@ export function CheckoutShippingMethodStep({
       </section>
 
       <ShippingEligibilityAlert eligibility={shippingEligibility} />
+
+      {turnstileRequired && (
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 space-y-2">
+          <p className="text-xs font-semibold text-slate-700">
+            Bot check required for live Warp freight rates
+          </p>
+          <TurnstileField
+            onToken={setTurnstileToken}
+            widgetRef={turnstileRef}
+          />
+        </div>
+      )}
 
       {priceUpdated != null && (
         <p className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-950" role="status">

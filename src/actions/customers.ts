@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/actions/auth";
+import {
+  createServiceRoleClient,
+  isServiceRoleConfigured,
+} from "@/lib/supabase/admin";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export type CreditApplicationStatus = "pending" | "approved" | "rejected";
@@ -68,6 +72,13 @@ async function syncCompanyProfile(
   }
 }
 
+async function getAdminDbClient() {
+  if (isServiceRoleConfigured()) {
+    return createServiceRoleClient();
+  }
+  return createServerClient();
+}
+
 export async function getAdminCustomerDossier(
   customerId: string
 ): Promise<CustomerDossier | null> {
@@ -76,7 +87,9 @@ export async function getAdminCustomerDossier(
       return null;
     }
 
-    const supabase = await createServerClient();
+    // Prefer service role so Open File works for every customer row
+    // (RLS on the cookie client often blocks reading other profiles).
+    const supabase = await getAdminDbClient();
     const { data, error } = await supabase
       .from("profiles")
       .select(
@@ -180,7 +193,7 @@ export async function updateAdminCustomerDossier(
       return { success: false, error: "No changes provided." };
     }
 
-    const supabase = await createServerClient();
+    const supabase = await getAdminDbClient();
     const { error } = await supabase
       .from("profiles")
       .update(patch)

@@ -21,6 +21,7 @@
     "@ai-sdk/openai": "^4.0.84",
     "@ai-sdk/react": "^4.0.131",
     "@ducanh2912/next-pwa": "^10.2.9",
+    "@marsidev/react-turnstile": "^1.6.3",
     "@mirawision/usa-map-react": "^2.0.2",
     "@react-email/components": "^1.0.12",
     "@react-three/drei": "^10.7.7",

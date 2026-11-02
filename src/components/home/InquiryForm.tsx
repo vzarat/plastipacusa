@@ -4,6 +4,10 @@ import React, { useRef, useState } from "react";
 import { submitInquiry } from "@/actions/inquiries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  isBrowserTurnstileEnabled,
+  TurnstileField,
+} from "@/components/security/TurnstileField";
 import { CheckCircle2, AlertCircle, Send, Building2, Package, MapPin } from "lucide-react";
 
 export function InquiryForm() {
@@ -23,7 +27,9 @@ export function InquiryForm() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message?: string; error?: string } | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const formPanelRef = useRef<HTMLDivElement>(null);
+  const turnstileRequired = isBrowserTurnstileEnabled();
 
   const openForm = () => {
     setFormOpen(true);
@@ -34,6 +40,14 @@ export function InquiryForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (turnstileRequired && !turnstileToken) {
+      setResult({
+        success: false,
+        error: "Please complete the bot check before submitting.",
+      });
+      return;
+    }
+
     setLoading(true);
     setResult(null);
 
@@ -48,12 +62,14 @@ export function InquiryForm() {
       unitType: formData.unitType,
       shippingZip: formData.shippingZip,
       message: formData.message,
+      turnstileToken: turnstileToken || undefined,
     });
 
     setLoading(false);
     setResult(res);
 
     if (res.success) {
+      setTurnstileToken(null);
       setFormData({
         companyName: "",
         contactName: "",
@@ -288,9 +304,11 @@ export function InquiryForm() {
                   />
                 </div>
 
+                <TurnstileField onToken={setTurnstileToken} />
+
                 <Button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || (turnstileRequired && !turnstileToken)}
                   variant="gradient"
                   size="lg"
                   className="w-full flex items-center justify-center gap-2 font-bold shadow-lg shadow-sky-500/20"
