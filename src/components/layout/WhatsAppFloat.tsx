@@ -6,11 +6,15 @@ const WHATSAPP_URL =
   "https://wa.me/19564003683?text=" +
   encodeURIComponent("Hi Plastipac USA — I’d like help with stretch film.");
 
-function WhatsAppIcon({ className = "h-6 w-6" }: { className?: string }) {
+function WhatsAppIcon({ className = "h-7 w-7" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 32 32" fill="currentColor" className={className} aria-hidden>
-      <path d="M19.11 17.33c-.28-.14-1.64-.81-1.9-.9-.25-.1-.44-.14-.62.14-.18.28-.71.9-.87 1.08-.16.18-.32.2-.6.07-.28-.14-1.17-.43-2.23-1.37-.82-.73-1.38-1.64-1.54-1.92-.16-.28-.02-.43.12-.57.12-.12.28-.32.42-.48.14-.16.18-.28.28-.46.09-.18.05-.35-.02-.48-.07-.14-.62-1.5-.85-2.05-.22-.53-.45-.46-.62-.47h-.53c-.18 0-.48.07-.73.35-.25.28-.96.94-.96 2.3s.98 2.67 1.12 2.85c.14.18 1.93 2.95 4.68 4.13.65.28 1.16.45 1.56.57.65.21 1.25.18 1.72.11.52-.08 1.64-.67 1.87-1.32.23-.65.23-1.2.16-1.32-.07-.11-.25-.18-.53-.32z" />
-      <path d="M16.04 3C9.42 3 4.05 8.37 4.05 14.99c0 2.12.56 4.18 1.62 6.01L4 29l8.2-1.64A12 12 0 0 0 16.04 27c6.62 0 11.99-5.37 11.99-11.99C28.03 8.37 22.66 3 16.04 3zm0 21.82c-1.93 0-3.82-.52-5.47-1.5l-.39-.23-4.86.97 1.03-4.74-.25-.41a9.84 9.84 0 0 1-1.5-5.25c0-5.44 4.43-9.86 9.86-9.86s9.86 4.43 9.86 9.86-4.42 9.86-9.86 9.86z" />
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden
+    >
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z" />
     </svg>
   );
 }
@@ -29,13 +33,16 @@ export function WhatsAppFloat() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with Plastipac USA on WhatsApp"
-      className={`whatsapp-float group fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-4 z-40 flex items-center gap-0 overflow-hidden rounded-full bg-[#1fad5a] text-white shadow-[0_10px_28px_-8px_rgba(15,118,66,0.55)] outline-none ring-1 ring-white/25 transition-[transform,box-shadow,opacity] duration-300 hover:bg-[#19a050] hover:shadow-[0_14px_32px_-8px_rgba(15,118,66,0.6)] focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 sm:bottom-[max(1.5rem,env(safe-area-inset-bottom))] sm:right-6 ${
+      className={`whatsapp-float group fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-4 z-40 flex items-center gap-0 rounded-full bg-[#25D366] text-white shadow-[0_10px_28px_-8px_rgba(15,118,66,0.45)] outline-none transition-[transform,box-shadow,opacity] duration-300 hover:bg-[#20bd5a] hover:shadow-[0_14px_32px_-8px_rgba(15,118,66,0.55)] focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 sm:bottom-[max(1.5rem,env(safe-area-inset-bottom))] sm:right-6 ${
         ready ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"
       }`}
     >
-      <span className="whatsapp-float-pulse pointer-events-none absolute inset-0 rounded-full" aria-hidden />
+      <span
+        className="whatsapp-float-pulse pointer-events-none absolute inset-0 -z-10 rounded-full"
+        aria-hidden
+      />
       <span className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center sm:h-14 sm:w-14">
-        <WhatsAppIcon className="h-6 w-6 sm:h-7 sm:w-7" />
+        <WhatsAppIcon className="h-7 w-7 sm:h-8 sm:w-8" />
       </span>
       <span className="relative z-10 max-w-0 overflow-hidden whitespace-nowrap pr-0 text-sm font-semibold tracking-tight opacity-0 transition-all duration-300 group-hover:max-w-[9.5rem] group-hover:pr-4 group-hover:opacity-100 group-focus-visible:max-w-[9.5rem] group-focus-visible:pr-4 group-focus-visible:opacity-100">
         Chat with us
