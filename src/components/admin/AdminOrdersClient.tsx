@@ -77,8 +77,8 @@ interface AdminOrdersClientProps {
   initialProducts?: AdminProduct[];
   initialTab?: AdminTabKey;
   paymentsToReview?: PaymentReviewItem[];
-  /** Optional Settings subsection tab (e.g. email-templates). */
-  settingsSection?: "email-templates";
+  /** Optional Settings subsection tab (e.g. email-templates | users). */
+  settingsSection?: "email-templates" | "users";
 }
 
 export function AdminOrdersClient({
@@ -277,10 +277,13 @@ export function AdminOrdersClient({
 
           {activeTab === "settings" && (
             <AdminSettingsView
+              currentAdminId={profile.id}
               initialTab={
                 settingsSection === "email-templates"
                   ? "email-templates"
-                  : "general"
+                  : settingsSection === "users"
+                    ? "users"
+                    : "general"
               }
             />
           )}

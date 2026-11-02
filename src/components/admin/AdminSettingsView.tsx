@@ -13,22 +13,29 @@ import {
   Loader2,
   Mail,
   Settings2,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WarpIntegrationCard } from "@/components/admin/WarpIntegrationCard";
 import { ResendEmailUsageCard } from "@/components/admin/ResendEmailUsageCard";
 import { AdminEmailTemplatesView } from "@/components/admin/AdminEmailTemplatesView";
+import { AdminUsersView } from "@/components/admin/AdminUsersView";
 import {
   loadWarehouseOriginForAdmin,
   saveWarehouseOrigin,
 } from "@/actions/warehouse-origin";
 import type { WarehouseOriginAddress } from "@/lib/shipping/warehouse-origin";
 
-export type AdminSettingsTab = "general" | "email-templates" | "integrations";
+export type AdminSettingsTab =
+  | "general"
+  | "email-templates"
+  | "users"
+  | "integrations";
 
 interface AdminSettingsViewProps {
   /** Opens a Settings subsection (e.g. deep-link from /admin/email-templates). */
   initialTab?: AdminSettingsTab;
+  currentAdminId: string;
 }
 
 const EMPTY_ORIGIN: WarehouseOriginAddress = {
@@ -49,11 +56,13 @@ const SETTINGS_TABS: {
 }[] = [
   { key: "general", label: "General", icon: Settings2 },
   { key: "email-templates", label: "Email Templates", icon: Mail },
+  { key: "users", label: "Users", icon: Users },
   { key: "integrations", label: "Integrations", icon: Plug },
 ];
 
 export function AdminSettingsView({
   initialTab = "general",
+  currentAdminId,
 }: AdminSettingsViewProps) {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<AdminSettingsTab>(initialTab);
@@ -393,6 +402,10 @@ export function AdminSettingsView({
           <ResendEmailUsageCard />
           <AdminEmailTemplatesView embedded />
         </div>
+      )}
+
+      {activeTab === "users" && (
+        <AdminUsersView currentAdminId={currentAdminId} autoLoad />
       )}
 
       {activeTab === "integrations" && (

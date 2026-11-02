@@ -51,7 +51,9 @@ export default async function AdminIndexPage({
     ? params.section[0]
     : params.section;
   const settingsSection =
-    sectionRaw === "email-templates" ? "email-templates" : undefined;
+    sectionRaw === "email-templates" || sectionRaw === "users"
+      ? sectionRaw
+      : undefined;
 
   // If profile.role === 'admin' -> RENDER the admin dashboard (DO NOT REDIRECT)
   const [orders, customers, products] = await Promise.all([

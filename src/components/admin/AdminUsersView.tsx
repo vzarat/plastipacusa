@@ -28,8 +28,10 @@ import {
 import { useLanguage } from "@/context/LanguageContext";
 
 interface AdminUsersViewProps {
-  initialUsers: AdminManagedUser[];
+  initialUsers?: AdminManagedUser[];
   currentAdminId: string;
+  /** When true, fetch users on mount without a success toast (Settings embed). */
+  autoLoad?: boolean;
 }
 
 function formatDate(iso: string | null, locale: string): string {
@@ -66,8 +68,9 @@ function normalizeApiUser(row: Record<string, unknown>): AdminManagedUser {
 }
 
 export function AdminUsersView({
-  initialUsers,
+  initialUsers = [],
   currentAdminId,
+  autoLoad = false,
 }: AdminUsersViewProps) {
   const { locale } = useLanguage();
   const isSpanish = locale === "es";
@@ -101,6 +104,46 @@ export function AdminUsersView({
     setUsers(initialUsers);
   }, [initialUsers]);
 
+  const closeMenu = () => setMenuUserId(null);
+
+  const refreshUsers = async (opts?: { silent?: boolean }) => {
+    setIsRefreshing(true);
+    closeMenu();
+    try {
+      const res = await fetch("/api/admin/users", { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error || "Failed to refresh users.");
+        return;
+      }
+      const list = Array.isArray(data.users)
+        ? data.users.map((row: Record<string, unknown>) =>
+            normalizeApiUser(row)
+          )
+        : [];
+      setUsers(list);
+      if (!opts?.silent) {
+        toast.success(
+          isSpanish
+            ? `${list.length} usuarios cargados.`
+            : `${list.length} users loaded.`
+        );
+      }
+    } catch {
+      toast.error(
+        isSpanish ? "No se pudo actualizar la lista." : "Unable to refresh."
+      );
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!autoLoad) return;
+    void refreshUsers({ silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once when embedded
+  }, [autoLoad]);
+
   useEffect(() => {
     if (!menuUserId) {
       setMenuPos(null);
@@ -129,40 +172,8 @@ export function AdminUsersView({
     );
   }, [users, search]);
 
-  const closeMenu = () => setMenuUserId(null);
-
   const toggleMenu = (userId: string) => {
     setMenuUserId((id) => (id === userId ? null : userId));
-  };
-
-  const refreshUsers = async () => {
-    setIsRefreshing(true);
-    closeMenu();
-    try {
-      const res = await fetch("/api/admin/users", { cache: "no-store" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast.error(data.error || "Failed to refresh users.");
-        return;
-      }
-      const list = Array.isArray(data.users)
-        ? data.users.map((row: Record<string, unknown>) =>
-            normalizeApiUser(row)
-          )
-        : [];
-      setUsers(list);
-      toast.success(
-        isSpanish
-          ? `${list.length} usuarios cargados.`
-          : `${list.length} users loaded.`
-      );
-    } catch {
-      toast.error(
-        isSpanish ? "No se pudo actualizar la lista." : "Unable to refresh."
-      );
-    } finally {
-      setIsRefreshing(false);
-    }
   };
 
   const openEdit = (user: AdminManagedUser) => {
