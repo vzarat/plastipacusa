@@ -272,7 +272,7 @@ export function Footer() {
             </p>
             <div className="flex items-center gap-2.5 text-slate-600">
               <a
-                href="https://facebook.com"
+                href="https://www.facebook.com/profile.php?id=61557962543741"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 hover:text-sky-700 hover:border-sky-300 transition-colors"
