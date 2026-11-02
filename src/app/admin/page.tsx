@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/actions/auth";
 import { getAdminCustomers, getAdminOrders } from "@/actions/admin";
 import { getAdminProducts } from "@/actions/products";
 import { AdminOrdersClient } from "@/components/admin/AdminOrdersClient";
+import type { AdminTabKey } from "@/components/admin/AdminSidebar";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -11,7 +12,27 @@ export const metadata: Metadata = {
   description: "Customer order management dashboard for Plastipac USA.",
 };
 
-export default async function AdminIndexPage() {
+const VALID_TABS: AdminTabKey[] = [
+  "overview",
+  "orders",
+  "products",
+  "customers",
+  "settings",
+];
+
+function resolveInitialTab(tab: string | string[] | undefined): AdminTabKey {
+  const value = Array.isArray(tab) ? tab[0] : tab;
+  if (value && VALID_TABS.includes(value as AdminTabKey)) {
+    return value as AdminTabKey;
+  }
+  return "overview";
+}
+
+export default async function AdminIndexPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string | string[]; section?: string | string[] }>;
+}) {
   const currentUser = await getCurrentUser();
 
   // If unauthenticated -> redirect to /login
@@ -23,6 +44,14 @@ export default async function AdminIndexPage() {
   if (currentUser.profile.role !== "admin") {
     redirect("/dashboard");
   }
+
+  const params = await searchParams;
+  const initialTab = resolveInitialTab(params.tab);
+  const sectionRaw = Array.isArray(params.section)
+    ? params.section[0]
+    : params.section;
+  const settingsSection =
+    sectionRaw === "email-templates" ? "email-templates" : undefined;
 
   // If profile.role === 'admin' -> RENDER the admin dashboard (DO NOT REDIRECT)
   const [orders, customers, products] = await Promise.all([
@@ -37,7 +66,8 @@ export default async function AdminIndexPage() {
       profile={currentUser.profile}
       customers={customers}
       initialProducts={products}
+      initialTab={initialTab}
+      settingsSection={settingsSection}
     />
   );
 }
-

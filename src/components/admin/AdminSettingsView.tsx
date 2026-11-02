@@ -1,24 +1,37 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import {
-  Settings,
-  Building2,
   Truck,
   ShieldCheck,
   CheckCircle2,
-  Bell,
   Save,
   Plug,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WarpIntegrationCard } from "@/components/admin/WarpIntegrationCard";
 import { ResendEmailUsageCard } from "@/components/admin/ResendEmailUsageCard";
+import { AdminEmailTemplatesView } from "@/components/admin/AdminEmailTemplatesView";
 
-export function AdminSettingsView() {
+interface AdminSettingsViewProps {
+  scrollToSection?: "email-templates";
+}
+
+export function AdminSettingsView({
+  scrollToSection,
+}: AdminSettingsViewProps) {
   const { t } = useLanguage();
   const [savedNotice, setSavedNotice] = useState(false);
+
+  useEffect(() => {
+    if (!scrollToSection) return;
+    const el = document.getElementById(scrollToSection);
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [scrollToSection]);
 
   const handleSave = () => {
     setSavedNotice(true);
@@ -134,6 +147,8 @@ export function AdminSettingsView() {
       </div>
 
       <ResendEmailUsageCard />
+
+      <AdminEmailTemplatesView embedded />
 
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-6 space-y-4">
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">

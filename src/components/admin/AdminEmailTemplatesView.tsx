@@ -35,7 +35,14 @@ function Field({
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-xs focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-200";
 
-export function AdminEmailTemplatesView() {
+interface AdminEmailTemplatesViewProps {
+  /** When true, render as a Settings segment instead of a standalone page. */
+  embedded?: boolean;
+}
+
+export function AdminEmailTemplatesView({
+  embedded = false,
+}: AdminEmailTemplatesViewProps) {
   const [template, setTemplate] = useState<EmailTemplateBranding>({
     ...DEFAULT_EMAIL_TEMPLATE,
   });
@@ -103,17 +110,30 @@ export function AdminEmailTemplatesView() {
     );
   }
 
+  const TitleTag = embedded ? "h2" : "h1";
+
   return (
-    <div className="space-y-6">
+    <div
+      id={embedded ? "email-templates" : undefined}
+      className={
+        embedded
+          ? "scroll-mt-24 space-y-6 rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs sm:p-6"
+          : "space-y-6"
+      }
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-blue-900">
             <Mail className="h-3.5 w-3.5 text-blue-600" />
             Email Templates
           </div>
-          <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900">
+          <TitleTag
+            className={`mt-2 font-black tracking-tight text-slate-900 ${
+              embedded ? "text-xl" : "text-2xl"
+            }`}
+          >
             Order Confirmation
-          </h1>
+          </TitleTag>
           <p className="mt-1 max-w-2xl text-sm text-slate-600">
             Customize branding, message, and footer for Resend order emails.
             Live preview updates with a sample order (#TEST-123).
