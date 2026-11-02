@@ -416,6 +416,20 @@ function displayPackageSubtext(variant: any, isMachine: boolean): string {
   return rolls > 0 ? `${rolls} Rolls included` : "";
 }
 
+/** Short mobile line — title already has rolls/boxes; skip pallet-weight legalese. */
+function compactPackageSubtext(full: string, isMachine: boolean): string {
+  if (!full) return "";
+  if (isMachine) return full;
+
+  const withoutPallet = full.replace(HAND_PALLET_WEIGHT_NOTE, "").replace(/\s+/g, " ").trim();
+  if (/Houston Friday Freight/i.test(withoutPallet)) return "Houston Friday Freight";
+  if (/Free RGV Freight/i.test(withoutPallet)) return "Free RGV Freight";
+  if (/Standard package/i.test(withoutPallet)) return "Standard package";
+  // Title already shows box/roll counts — omit redundant "N Rolls included" lines.
+  if (/Rolls included|Boxes ·/i.test(withoutPallet)) return "";
+  return withoutPallet.replace(/[.\s]+$/g, "").trim();
+}
+
 interface VariantSelectorProps {
   product: any;
   selectedVariantId?: string;
@@ -1073,6 +1087,7 @@ export function VariantSelector({
             const tierSubtext = String(
               variant?.tierSubtext || displayPackageSubtext(variant, isMachineFilm)
             );
+            const tierSubtextMobile = compactPackageSubtext(tierSubtext, isMachineFilm);
             const { savingsPercent, unitCount } = getPackageSavings(
               variant,
               baseUnitPrice,
@@ -1139,9 +1154,16 @@ export function VariantSelector({
                           <span className={discountBadgeClass}>Save {savingsPercent}% OFF</span>
                         )}
                       </div>
-                      <span className="mt-0.5 block text-[11px] text-slate-500">
-                        {tierSubtext}
-                      </span>
+                      {tierSubtextMobile ? (
+                        <span className="mt-0.5 block text-[11px] text-slate-500 md:hidden">
+                          {tierSubtextMobile}
+                        </span>
+                      ) : null}
+                      {tierSubtext ? (
+                        <span className="mt-0.5 hidden text-[11px] text-slate-500 md:block">
+                          {tierSubtext}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
 
