@@ -20,12 +20,15 @@ import {
   XCircle,
 } from "lucide-react";
 import {
+  getAdminManagedUsers,
   updateAdminManagedUserProfile,
   updateAdminManagedUserRole,
   type AdminManagedRole,
   type AdminManagedUser,
 } from "@/actions/admin-users";
 import { useLanguage } from "@/context/LanguageContext";
+
+const EMPTY_USERS: AdminManagedUser[] = [];
 
 interface AdminUsersViewProps {
   initialUsers?: AdminManagedUser[];
@@ -68,7 +71,7 @@ function normalizeApiUser(row: Record<string, unknown>): AdminManagedUser {
 }
 
 export function AdminUsersView({
-  initialUsers = [],
+  initialUsers = EMPTY_USERS,
   currentAdminId,
   autoLoad = false,
 }: AdminUsersViewProps) {
@@ -81,7 +84,8 @@ export function AdminUsersView({
     null
   );
   const menuButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(autoLoad && initialUsers.length === 0);
+  const [hasLoaded, setHasLoaded] = useState(initialUsers.length > 0);
   const [editUser, setEditUser] = useState<AdminManagedUser | null>(null);
   const [passwordUser, setPasswordUser] = useState<AdminManagedUser | null>(
     null
@@ -101,8 +105,11 @@ export function AdminUsersView({
   const [nextRole, setNextRole] = useState<AdminManagedRole>("client");
 
   useEffect(() => {
+    // Only hydrate from props when the parent actually supplies users.
+    // Avoid wiping an API/server-action load with a fresh [] default each render.
+    if (autoLoad) return;
     setUsers(initialUsers);
-  }, [initialUsers]);
+  }, [initialUsers, autoLoad]);
 
   const closeMenu = () => setMenuUserId(null);
 
@@ -110,18 +117,25 @@ export function AdminUsersView({
     setIsRefreshing(true);
     closeMenu();
     try {
-      const res = await fetch("/api/admin/users", { cache: "no-store" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast.error(data.error || "Failed to refresh users.");
-        return;
+      // Prefer the same server action the old /admin/users page used.
+      let list = await getAdminManagedUsers();
+
+      if (list.length === 0) {
+        const res = await fetch("/api/admin/users", { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          toast.error(data.error || "Failed to refresh users.");
+          return;
+        }
+        list = Array.isArray(data.users)
+          ? data.users.map((row: Record<string, unknown>) =>
+              normalizeApiUser(row)
+            )
+          : [];
       }
-      const list = Array.isArray(data.users)
-        ? data.users.map((row: Record<string, unknown>) =>
-            normalizeApiUser(row)
-          )
-        : [];
+
       setUsers(list);
+      setHasLoaded(true);
       if (!opts?.silent) {
         toast.success(
           isSpanish
@@ -395,10 +409,21 @@ export function AdminUsersView({
 
         {filtered.length === 0 ? (
           <div className="p-10 text-center">
-            <Users className="w-8 h-8 text-slate-300 mx-auto mb-3" />
-            <p className="text-sm font-bold text-slate-700">
-              {isSpanish ? "No hay usuarios." : "No users found."}
-            </p>
+            {isRefreshing || !hasLoaded ? (
+              <>
+                <Loader2 className="w-8 h-8 text-blue-500 mx-auto mb-3 animate-spin" />
+                <p className="text-sm font-bold text-slate-700">
+                  {isSpanish ? "Cargando usuarios…" : "Loading users…"}
+                </p>
+              </>
+            ) : (
+              <>
+                <Users className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+                <p className="text-sm font-bold text-slate-700">
+                  {isSpanish ? "No hay usuarios." : "No users found."}
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div className="w-full overflow-x-auto overflow-y-visible">
