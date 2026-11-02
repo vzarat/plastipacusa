@@ -55,6 +55,7 @@ import {
   InvoicePdfModal,
   type InvoicePdfModalPhase,
 } from "@/components/dashboard/InvoicePdfModal";
+import { SupportTicketForm } from "@/components/dashboard/SupportTicketForm";
 
 const DashboardPromoCarousel = dynamic(
   () =>
@@ -1700,6 +1701,8 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                 </div>
               </div>
             </div>
+
+            <SupportTicketForm />
           </div>
         )}
         </div>
