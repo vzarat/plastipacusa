@@ -7,6 +7,7 @@ import {
   ORDERS_EMAIL,
   ORDERS_FROM,
 } from "@/lib/company-email";
+import { logEmailDispatch } from "@/lib/resend-usage";
 
 /** Prefer ADMIN_NOTIFICATION_EMAIL for all admin alerts. */
 export function getAdminNotificationEmail(): string {
@@ -109,13 +110,29 @@ export async function sendEmail(
 
     if (error) {
       console.error("[email] Resend error:", error);
+      void logEmailDispatch({
+        subject: input.subject,
+        recipientCount: recipients.length,
+        status: "failed",
+      });
       return { success: false, error: error.message || "Send failed." };
     }
 
+    void logEmailDispatch({
+      resendId: data?.id,
+      subject: input.subject,
+      recipientCount: recipients.length,
+      status: "sent",
+    });
     return { success: true, id: data?.id };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[email] send exception:", message);
+    void logEmailDispatch({
+      subject: input.subject,
+      recipientCount: recipients.length,
+      status: "failed",
+    });
     return { success: false, error: message };
   }
 }

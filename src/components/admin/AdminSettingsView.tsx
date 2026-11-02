@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WarpIntegrationCard } from "@/components/admin/WarpIntegrationCard";
+import { ResendEmailUsageCard } from "@/components/admin/ResendEmailUsageCard";
 
 export function AdminSettingsView() {
   const { t } = useLanguage();
@@ -131,6 +132,8 @@ export function AdminSettingsView() {
           </div>
         </div>
       </div>
+
+      <ResendEmailUsageCard />
 
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-6 space-y-4">
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
