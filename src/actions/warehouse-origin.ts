@@ -2,7 +2,6 @@
 
 import { getCurrentUser } from "@/actions/auth";
 import {
-  DEFAULT_WAREHOUSE_ORIGIN,
   ensureWarehouseOriginLoaded,
   setWarehouseOriginCache,
   validateWarehouseOriginForSave,
@@ -51,5 +50,3 @@ export async function saveWarehouseOrigin(
 export async function primeWarehouseOriginForShipping(): Promise<WarehouseOriginAddress> {
   return ensureWarehouseOriginLoaded();
 }
-
-export { DEFAULT_WAREHOUSE_ORIGIN };
