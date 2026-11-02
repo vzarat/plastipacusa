@@ -301,6 +301,30 @@
   }
 }
 
+@keyframes whatsapp-float-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(31, 173, 90, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(31, 173, 90, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(31, 173, 90, 0);
+  }
+}
+
+.whatsapp-float-pulse {
+  animation: whatsapp-float-pulse 2.4s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .whatsapp-float,
+  .whatsapp-float-pulse {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 body {
   background-color: #f8fafc;
   color: #0f172a;

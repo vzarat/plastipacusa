@@ -2,6 +2,7 @@ import React from "react";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { WhatsAppFloat } from "@/components/layout/WhatsAppFloat";
 import { LiveCatalogSync } from "@/components/products/LiveCatalogSync";
 
 export default function ShopLayout({
@@ -16,6 +17,7 @@ export default function ShopLayout({
       <LiveCatalogSync />
       <main className="flex-1 bg-white">{children}</main>
       <Footer />
+      <WhatsAppFloat />
     </div>
   );
 }

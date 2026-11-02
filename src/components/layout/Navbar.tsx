@@ -474,14 +474,12 @@ export function Navbar() {
                 About Us
               </Link>
 
-              {!currentUser && (
-                <Link
-                  href="/#inquiry-form"
-                  className="whitespace-nowrap rounded-xl px-2 py-2 text-[13px] font-semibold text-slate-600 transition-all hover:bg-sky-50/50 hover:text-sky-600 xl:px-3.5 xl:text-sm"
-                >
-                  Contact
-                </Link>
-              )}
+              <Link
+                href="/#inquiry-form"
+                className="whitespace-nowrap rounded-xl px-2 py-2 text-[13px] font-semibold text-slate-600 transition-all hover:bg-sky-50/50 hover:text-sky-600 xl:px-3.5 xl:text-sm"
+              >
+                Contact
+              </Link>
             </nav>
           </div>
 
