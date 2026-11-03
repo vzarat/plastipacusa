@@ -12,6 +12,9 @@ import {
 } from "@/lib/pricing";
 import { PhoneCall } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import { isCatalogInStock } from "@/lib/products";
+import { OutOfStockCallout } from "@/components/products/OutOfStockCallout";
+import { PRIMARY_PHONE_DISPLAY, PRIMARY_PHONE_HREF } from "@/lib/company-contact";
 
 interface ProductDetailProps {
   product: ProductWithVariants;
@@ -139,6 +142,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
   }
 
   const title = product?.title || product?.name || "Stretch Film";
+  const isSoldOut = !isCatalogInStock(product);
 
   return (
     <div className="space-y-3 md:space-y-6">
@@ -154,6 +158,8 @@ export function ProductDetail({ product }: ProductDetailProps) {
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
           {title}
         </h1>
+
+        {isSoldOut ? <OutOfStockCallout /> : null}
 
         <p className="text-sm text-slate-600 mt-3 leading-relaxed">
           {product?.description ||
@@ -174,11 +180,11 @@ export function ProductDetail({ product }: ProductDetailProps) {
           <PhoneCall className="w-4 h-4 text-sky-600" />
           <span>
             {t("products.needCustomSpecs")}{" "}
-            <strong className="text-slate-900">(956) 400 36 83</strong>
+            <strong className="text-slate-900">{PRIMARY_PHONE_DISPLAY}</strong>
           </span>
         </div>
         <a
-          href="tel:+19564003683"
+          href={PRIMARY_PHONE_HREF}
           className="font-bold text-sky-600 hover:text-sky-700 transition-colors"
         >
           {t("products.callSpecialist")}
