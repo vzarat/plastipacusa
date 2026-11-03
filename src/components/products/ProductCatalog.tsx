@@ -22,6 +22,7 @@ import {
   type CatalogSort,
 } from "@/components/products/MobileFilterBar";
 import { ProductCatalogToolbar } from "@/components/products/ProductCatalogToolbar";
+import { CatalogNeedHelpBanner } from "@/components/products/CatalogNeedHelpBanner";
 import { useLanguage } from "@/context/LanguageContext";
 import { getProducts } from "@/actions/products";
 import type { ProductWithVariants } from "@/types";
@@ -743,12 +744,17 @@ export function ProductCatalog({
           }`}
         >
           {filteredProducts.length === 0 ? (
-            <div className="text-center py-20 rounded-3xl border border-slate-200 bg-white space-y-4 shadow-sm">
-              <PackageOpen className="w-12 h-12 text-slate-400 mx-auto" />
-              <h3 className="text-lg font-bold text-slate-900">{t("products.noProducts")}</h3>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">
-                {t("products.noProductsHint")}
-              </p>
+            <div className="space-y-5">
+              <div className="space-y-4 rounded-3xl border border-slate-200 bg-white py-16 text-center shadow-sm">
+                <PackageOpen className="mx-auto h-12 w-12 text-slate-400" />
+                <h3 className="text-lg font-bold text-slate-900">
+                  {t("products.noProducts")}
+                </h3>
+                <p className="mx-auto max-w-md text-xs text-slate-500">
+                  {t("products.noProductsHint")}
+                </p>
+              </div>
+              <CatalogNeedHelpBanner compact />
             </div>
           ) : (
             <>
@@ -779,6 +785,10 @@ export function ProductCatalog({
                 hrefForPage={hrefForPage}
                 onPageChange={goToPage}
               />
+
+              <div className="mt-5 md:mt-8">
+                <CatalogNeedHelpBanner />
+              </div>
             </>
           )}
         </div>
