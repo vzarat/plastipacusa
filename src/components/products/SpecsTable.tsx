@@ -175,7 +175,7 @@ function packageTierLabel(variant: ProductVariant): string {
   const explicit = Number(variant.rolls_count ?? variant.rollsCount);
   const rolls = Number.isFinite(explicit) && explicit > 0 ? explicit : 0;
   const boxes = Number(variant.boxes_count ?? variant.boxesCount) || 0;
-  if (rolls === 256 || boxes === 64) return "Full Pallet (Includes pallet & packaging)";
+  if (rolls === 256 || boxes === 64) return formatBoxRollLabel(64, 256);
   if (boxes > 0 && rolls > 0) return formatBoxRollLabel(boxes, rolls);
   if (rolls === 128 || boxes === 32) return formatBoxRollLabel(32, 128);
   if (rolls === 64 || boxes === 16) return formatBoxRollLabel(16, 64);

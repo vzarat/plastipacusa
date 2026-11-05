@@ -21,6 +21,7 @@ const NAV_LINKS = [
   { href: "/", label: "Home", id: "home" },
   { href: "/products", label: "Products", id: "products" },
   { href: "/about", label: "About Us", id: "about" },
+  { href: "/credit-application", label: "B2B Credit", id: "credit" },
   { href: "/#inquiry-form", label: "Contact", id: "contact" },
 ] as const;
 
@@ -43,6 +44,14 @@ function isLinkActive(id: string, pathname: string, hash: string) {
   if (id === "home") return pathname === "/" && hash === "";
   if (id === "about") return pathname === "/about";
   if (id === "products") return pathname === "/products" || pathname.startsWith("/products/");
+  if (id === "credit") {
+    return (
+      pathname === "/credit-application" ||
+      pathname.startsWith("/credit-application/") ||
+      pathname === "/dashboard/credit" ||
+      pathname.startsWith("/dashboard/credit/")
+    );
+  }
   if (id === "contact") return hash === "#inquiry-form";
   return false;
 }

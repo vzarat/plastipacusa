@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/actions/auth";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import {
+  createServiceRoleClient,
+  isServiceRoleConfigured,
+} from "@/lib/supabase/admin";
 import { notifyAdminCreditApplication } from "@/lib/email";
+import { PRIMARY_PHONE_DISPLAY } from "@/lib/company-contact";
 
 export type CreditApplicationStatus = "pending" | "approved" | "rejected";
 
@@ -55,6 +60,22 @@ function normalizeStatus(value: unknown): CreditApplicationStatus {
   const raw = String(value || "pending").toLowerCase();
   if (raw === "approved" || raw === "rejected") return raw;
   return "pending";
+}
+
+async function requireAdmin() {
+  const currentUser = await getCurrentUser();
+  if (!currentUser || currentUser.profile.role !== "admin") {
+    return null;
+  }
+  return currentUser;
+}
+
+/** Prefer service role so admin queue is not blocked by RLS edge cases. */
+async function getAdminCreditDbClient() {
+  if (isServiceRoleConfigured()) {
+    return createServiceRoleClient();
+  }
+  return createServerClient();
 }
 
 function mapCreditApplicationRow(row: Record<string, unknown>): AdminCreditApplication {
@@ -159,35 +180,48 @@ export async function submitCreditApplication(
   if (!isSupabaseConfigured) {
     return {
       success: false,
-      error:
-        "Credit applications are temporarily unavailable. Please call (956) 400-3683.",
+      error: `Credit applications are temporarily unavailable. Please call ${PRIMARY_PHONE_DISPLAY}.`,
     };
   }
 
   let applicantUserId: string | null = null;
+  let applicationId: string | null = null;
 
   try {
-    const supabase = await createServerClient();
+    // Prefer service role for durable inserts (bypasses RLS), fall back to cookie client.
+    const writeClient = isServiceRoleConfigured()
+      ? createServiceRoleClient()
+      : await createServerClient();
+    const sessionClient = await createServerClient();
     const currentUser = await getCurrentUser();
     applicantUserId = currentUser?.user?.id || null;
 
     const insertPayload: Record<string, unknown> = {
       ...payload,
+      // Schema requires tax_id_ein NOT NULL — keep a clear placeholder when omitted.
+      tax_id_ein: taxIdEin || "Pending — to be provided",
     };
     if (applicantUserId) {
       insertPayload.user_id = applicantUserId;
     }
 
-    const { error } = await supabase
+    const { data: inserted, error } = await writeClient
       .from("credit_applications")
-      .insert(insertPayload);
+      .insert(insertPayload)
+      .select("id")
+      .maybeSingle();
 
     if (error) {
       // Retry without user_id if column not migrated yet
       if (/user_id|schema cache/i.test(error.message || "")) {
-        const { error: fallbackError } = await supabase
+        const { data: fallbackRow, error: fallbackError } = await writeClient
           .from("credit_applications")
-          .insert(payload);
+          .insert({
+            ...payload,
+            tax_id_ein: taxIdEin || "Pending — to be provided",
+          })
+          .select("id")
+          .maybeSingle();
         if (fallbackError) {
           console.warn(
             "credit_applications insert failed:",
@@ -200,6 +234,7 @@ export async function submitCreditApplication(
               "Unable to submit credit application. Please try again or call our sales desk.",
           };
         }
+        applicationId = fallbackRow?.id ? String(fallbackRow.id) : null;
       } else {
         console.warn(
           "credit_applications insert failed:",
@@ -212,24 +247,26 @@ export async function submitCreditApplication(
             "Unable to submit credit application. Please try again or call our sales desk.",
         };
       }
+    } else {
+      applicationId = inserted?.id ? String(inserted.id) : null;
     }
 
     // Mirror EIN + pending credit status onto the authenticated profile when possible
     if (currentUser?.user?.id) {
       try {
-        await supabase.from("profiles").upsert({
+        await sessionClient.from("profiles").upsert({
           id: currentUser.user.id,
           email: currentUser.user.email || workEmail,
           company_name: companyName,
           phone,
-          tax_id: taxIdEin,
+          tax_id: taxIdEin || null,
           credit_application_status: "pending",
         });
-        await supabase.from("company_profiles").upsert(
+        await sessionClient.from("company_profiles").upsert(
           {
             user_id: currentUser.user.id,
             company_name: companyName,
-            tax_id: taxIdEin,
+            tax_id: taxIdEin || null,
             credit_application_status: "pending",
           },
           { onConflict: "user_id" }
@@ -247,17 +284,18 @@ export async function submitCreditApplication(
     };
   }
 
-  // Notify admin after a successful DB write (email failure must not fail the submit).
+  // Notify contact@ + payables@ after a successful DB write (email failure must not fail the submit).
   try {
-    await notifyAdminCreditApplication({
+    const emailResult = await notifyAdminCreditApplication({
       customerName: contactName,
       companyName,
-      taxIdEin,
+      taxIdEin: taxIdEin || "Pending — to be provided",
       requestedCreditLimit: desiredCreditLimit || undefined,
       workEmail,
       phone,
       userId: applicantUserId,
       notes: [
+        applicationId ? `Application ID: ${applicationId}` : null,
         notes || null,
         annualVolume ? `Estimated annual volume: ${annualVolume}` : null,
         creditReference1 ? `Credit ref 1: ${creditReference1}` : null,
@@ -268,6 +306,12 @@ export async function submitCreditApplication(
         .filter(Boolean)
         .join("\n"),
     });
+    if (!emailResult.success && !emailResult.skipped) {
+      console.error(
+        "credit application saved but email notify failed:",
+        emailResult.error || "unknown"
+      );
+    }
   } catch (emailError) {
     console.error("credit application email dispatch error:", emailError);
   }
@@ -290,14 +334,10 @@ export async function getAdminCreditApplications(): Promise<
   AdminCreditApplication[]
 > {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser || currentUser.profile.role !== "admin") {
-      return [];
-    }
-
+    if (!(await requireAdmin())) return [];
     if (!isSupabaseConfigured) return [];
 
-    const supabase = await createServerClient();
+    const supabase = await getAdminCreditDbClient();
     const { data, error } = await supabase
       .from("credit_applications")
       .select("*")
@@ -328,8 +368,8 @@ export async function updateCreditApplicationStatus(
   status: CreditApplicationStatus
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser || currentUser.profile.role !== "admin") {
+    const currentUser = await requireAdmin();
+    if (!currentUser) {
       return { success: false, error: "Unauthorized." };
     }
 
@@ -345,7 +385,7 @@ export async function updateCreditApplicationStatus(
       return { success: false, error: "Database is not configured." };
     }
 
-    const supabase = await createServerClient();
+    const supabase = await getAdminCreditDbClient();
 
     // Load application so we can sync the linked profile
     const { data: application } = await supabase

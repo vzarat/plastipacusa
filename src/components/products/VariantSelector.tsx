@@ -237,7 +237,7 @@ const STANDARD_HAND_PACKAGE_TIERS = [
   },
   {
     key: "full",
-    title: "Full Pallet (Includes pallet & packaging)",
+    title: "64 Boxes (256 Rolls)",
     rolls: 256,
     boxes: 64,
     subtext: `64 Boxes · 256 Rolls. ${HAND_PALLET_WEIGHT_NOTE}`,
@@ -372,7 +372,7 @@ function displayPackageTitle(variant: any, isMachine: boolean): string {
   const rolls = Math.max(0, getRollsCount(variant));
   const boxes = getBoxesCount(variant, false);
   if (kind === "full_pallet" || boxes === 64) {
-    return "Full Pallet (Includes pallet & packaging)";
+    return formatBoxRollLabel(64, rolls > 0 ? rolls : 256);
   }
   if (boxes > 0) {
     const rollCount = rolls > 0 ? rolls : boxes * 4;

@@ -1,8 +1,9 @@
 -- Plastipac USA B2B Credit Applications
--- Run in Supabase SQL Editor
+-- Run in Supabase SQL Editor (creates table if missing)
 
 create table if not exists public.credit_applications (
   id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users (id) on delete set null,
   company_name text not null,
   contact_name text not null,
   work_email text not null,
@@ -22,7 +23,8 @@ create table if not exists public.credit_applications (
   created_at timestamptz not null default now()
 );
 
--- Backfill columns if the table already existed without them
+alter table public.credit_applications
+  add column if not exists user_id uuid references auth.users (id) on delete set null;
 alter table public.credit_applications
   add column if not exists reviewed_at timestamptz;
 alter table public.credit_applications
@@ -34,6 +36,8 @@ create index if not exists credit_applications_created_idx
   on public.credit_applications (created_at desc);
 create index if not exists credit_applications_status_idx
   on public.credit_applications (status);
+create index if not exists credit_applications_user_id_idx
+  on public.credit_applications (user_id);
 
 alter table public.credit_applications enable row level security;
 
@@ -43,6 +47,16 @@ create policy "Anyone can submit credit applications"
   for insert
   with check (true);
 
+drop policy if exists "Users read own credit applications" on public.credit_applications;
+create policy "Users read own credit applications"
+  on public.credit_applications
+  for select
+  to authenticated
+  using (
+    user_id = (select auth.uid())
+    or lower(work_email) = lower(coalesce((select auth.jwt() ->> 'email'), ''))
+  );
+
 drop policy if exists "Admins read credit applications" on public.credit_applications;
 create policy "Admins read credit applications"
   on public.credit_applications
@@ -50,7 +64,7 @@ create policy "Admins read credit applications"
   using (
     exists (
       select 1 from public.profiles p
-      where p.id = auth.uid() and p.role = 'admin'
+      where p.id = (select auth.uid()) and p.role = 'admin'
     )
   );
 
@@ -61,12 +75,12 @@ create policy "Admins update credit applications"
   using (
     exists (
       select 1 from public.profiles p
-      where p.id = auth.uid() and p.role = 'admin'
+      where p.id = (select auth.uid()) and p.role = 'admin'
     )
   )
   with check (
     exists (
       select 1 from public.profiles p
-      where p.id = auth.uid() and p.role = 'admin'
+      where p.id = (select auth.uid()) and p.role = 'admin'
     )
   );

@@ -6,6 +6,7 @@ import {
   mailboxRecipients,
   ORDERS_EMAIL,
   ORDERS_FROM,
+  PAYABLES_EMAIL,
 } from "@/lib/company-email";
 import { logEmailDispatch } from "@/lib/resend-usage";
 
@@ -150,21 +151,27 @@ export interface CreditApplicationNotifyInput {
 }
 
 /**
- * Admin alert when a B2B Net 30 credit application is submitted.
+ * Alert contact@ + payables@ (and optional ADMIN_NOTIFICATION_EMAIL)
+ * when a B2B Net 30 credit application is submitted.
  */
 export async function notifyAdminCreditApplication(
   payload: CreditApplicationNotifyInput
 ): Promise<SendEmailResult> {
-  const recipients = mailboxRecipients(CONTACT_EMAIL, getAdminNotificationEmail());
+  const recipients = mailboxRecipients(
+    CONTACT_EMAIL,
+    PAYABLES_EMAIL,
+    getAdminNotificationEmail()
+  );
   if (recipients.length === 0) {
     console.warn("[email] No credit-application recipient — alert skipped.");
     return { success: false, skipped: true, error: "No credit-application recipient." };
   }
 
   const base = getAppBaseUrl();
+  const queueUrl = `${base}/admin/credit-applications`;
   const dossierUrl = payload.userId
     ? `${base}/admin/customers/${payload.userId}`
-    : `${base}/admin/credit-applications`;
+    : queueUrl;
 
   const limitDisplay = payload.requestedCreditLimit
     ? `$${String(payload.requestedCreditLimit).replace(/^\$/, "")}`
@@ -179,19 +186,59 @@ export async function notifyAdminCreditApplication(
     `Requested Credit Limit: ${limitDisplay}`,
     payload.workEmail ? `Work Email: ${payload.workEmail}` : null,
     payload.phone ? `Phone: ${payload.phone}` : null,
-    payload.notes ? `Notes: ${payload.notes}` : null,
+    payload.notes ? `Notes:\n${payload.notes}` : null,
     "",
+    `Credit Applications Queue: ${queueUrl}`,
     `View Customer Dossier: ${dossierUrl}`,
-    `Credit Applications Queue: ${base}/admin/credit-applications`,
   ].filter(Boolean) as string[];
 
-  return sendEmail({
+  const text = lines.join("\n");
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;line-height:1.5;max-width:640px">
+      <h2 style="margin:0 0 12px;font-size:18px">New B2B Net 30 Credit Application</h2>
+      <p style="margin:0 0 6px"><strong>Customer:</strong> ${escapeEmailHtml(payload.customerName)}</p>
+      <p style="margin:0 0 6px"><strong>Company:</strong> ${escapeEmailHtml(payload.companyName)}</p>
+      <p style="margin:0 0 6px"><strong>TAX ID / FEIN:</strong> ${escapeEmailHtml(payload.taxIdEin || "—")}</p>
+      <p style="margin:0 0 6px"><strong>Requested Credit Limit:</strong> ${escapeEmailHtml(limitDisplay)}</p>
+      ${payload.workEmail ? `<p style="margin:0 0 6px"><strong>Work Email:</strong> ${escapeEmailHtml(payload.workEmail)}</p>` : ""}
+      ${payload.phone ? `<p style="margin:0 0 6px"><strong>Phone:</strong> ${escapeEmailHtml(payload.phone)}</p>` : ""}
+      ${payload.notes ? `<p style="margin:12px 0 6px"><strong>Notes</strong></p><pre style="white-space:pre-wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin:0;font-family:Arial,Helvetica,sans-serif">${escapeEmailHtml(payload.notes)}</pre>` : ""}
+      <p style="margin:16px 0 0">
+        <a href="${queueUrl}" style="color:#0369a1;font-weight:700">Open Credit Applications Queue</a>
+      </p>
+      <p style="margin:8px 0 0">
+        <a href="${dossierUrl}" style="color:#0369a1;font-weight:700">View Customer Dossier</a>
+      </p>
+    </div>
+  `;
+
+  const result = await sendEmail({
     to: recipients,
     subject: `B2B Credit Application — ${payload.companyName}`,
-    text: lines.join("\n"),
+    text,
+    html,
     replyTo: payload.workEmail,
-    from: `Plastipac Credit <${CONTACT_EMAIL}>`,
+    from: CONTACT_FROM,
   });
+
+  if (!result.success) {
+    console.error(
+      "[email] credit application notify failed:",
+      result.error || "unknown",
+      "recipients:",
+      recipients.join(", ")
+    );
+  }
+
+  return result;
+}
+
+function escapeEmailHtml(value: string): string {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 export interface TaxExemptionNotifyInput {
