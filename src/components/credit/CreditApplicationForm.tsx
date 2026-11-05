@@ -8,6 +8,8 @@ import {
   CreditCard,
   Loader2,
   Lock,
+  Mail,
+  MessageCircle,
   PhoneCall,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,12 +22,55 @@ import {
   US_STATES,
   formatUsAddress,
 } from "@/lib/us-states";
+import { SUPPORT_EMAIL } from "@/lib/company-email";
+import {
+  PRIMARY_PHONE_DISPLAY,
+  PRIMARY_PHONE_HREF,
+  WHATSAPP_PHONE_DISPLAY,
+  WHATSAPP_URL_BARE,
+} from "@/lib/company-contact";
 
 const fieldLabel =
   "text-[11px] font-bold uppercase tracking-wider text-slate-500";
 
 const selectClassName =
-  "flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 focus-visible:border-sky-400 disabled:cursor-not-allowed disabled:opacity-60";
+  "flex min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 focus-visible:border-sky-400 disabled:cursor-not-allowed disabled:opacity-60";
+
+function ContactHelpLinks({ stacked = false }: { stacked?: boolean }) {
+  return (
+    <div
+      className={
+        stacked
+          ? "grid w-full grid-cols-1 gap-2.5"
+          : "grid w-full grid-cols-1 gap-2.5 sm:grid-cols-3"
+      }
+    >
+      <a
+        href={PRIMARY_PHONE_HREF}
+        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-3 py-3 text-sm font-bold text-sky-800 transition active:scale-[0.98] hover:bg-sky-50"
+      >
+        <PhoneCall className="h-4 w-4 shrink-0" aria-hidden />
+        <span className="truncate">Call {PRIMARY_PHONE_DISPLAY}</span>
+      </a>
+      <a
+        href={WHATSAPP_URL_BARE}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-3 text-sm font-bold text-emerald-800 transition active:scale-[0.98] hover:bg-emerald-50"
+      >
+        <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
+        <span className="truncate">WhatsApp {WHATSAPP_PHONE_DISPLAY}</span>
+      </a>
+      <a
+        href={`mailto:${SUPPORT_EMAIL}`}
+        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold text-slate-800 transition active:scale-[0.98] hover:bg-slate-50"
+      >
+        <Mail className="h-4 w-4 shrink-0" aria-hidden />
+        <span className="truncate">{SUPPORT_EMAIL}</span>
+      </a>
+    </div>
+  );
+}
 
 export function CreditApplicationForm() {
   const { t } = useLanguage();
@@ -47,7 +92,6 @@ export function CreditApplicationForm() {
     annualVolume: "",
     creditReference1: "",
     creditReference2: "",
-    creditReference3: "",
     notes: "",
   });
   const [submitting, setSubmitting] = useState(false);
@@ -78,6 +122,7 @@ export function CreditApplicationForm() {
         country,
       });
 
+      const monthlyPallets = form.annualVolume.trim();
       const result = await submitCreditApplication({
         companyName: form.companyName,
         contactName: form.contactName,
@@ -87,10 +132,13 @@ export function CreditApplicationForm() {
         billingAddress: billingAddress || undefined,
         shippingAddress: shippingAddress || undefined,
         country,
-        annualVolume: form.annualVolume || undefined,
-        creditReference1: form.creditReference1 || undefined,
+        annualVolume: monthlyPallets
+          ? `Monthly pallet volume: ${monthlyPallets}`
+          : undefined,
+        creditReference1: form.creditReference1
+          ? `Monthly corporate reference: ${form.creditReference1}`
+          : undefined,
         creditReference2: form.creditReference2 || undefined,
-        creditReference3: form.creditReference3 || undefined,
         notes: form.notes || undefined,
       });
 
@@ -100,7 +148,7 @@ export function CreditApplicationForm() {
       }
 
       setSubmitted(true);
-      toast.success(result.message || "Credit application received.");
+      toast.success(result.message || "Form sent successfully.");
     } catch {
       toast.error("Unable to submit credit application. Please try again.");
     } finally {
@@ -110,21 +158,29 @@ export function CreditApplicationForm() {
 
   if (submitted) {
     return (
-      <div className="rounded-3xl border border-emerald-200 bg-emerald-50/60 p-8 sm:p-10 text-center space-y-4 shadow-sm">
-        <div className="mx-auto w-14 h-14 rounded-2xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700">
-          <CheckCircle2 className="w-7 h-7" />
+      <div className="space-y-5 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-center shadow-sm sm:rounded-3xl sm:p-8 md:p-10">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-100 text-emerald-700 sm:h-14 sm:w-14">
+          <CheckCircle2 className="h-6 w-6 sm:h-7 sm:w-7" />
         </div>
-        <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-          {t("credit.successTitle")}
-        </h2>
-        <p className="text-sm text-slate-600 leading-relaxed max-w-lg mx-auto">
-          {t("credit.successBody")}
-        </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-          <Button asChild variant="gradient" className="rounded-xl font-bold">
+        <div className="space-y-2 px-1">
+          <h2 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
+            {t("credit.successTitle")}
+          </h2>
+          <p className="mx-auto max-w-lg text-sm leading-relaxed text-slate-600">
+            {t("credit.successBody")}
+          </p>
+          <p className="mx-auto max-w-lg text-sm leading-relaxed text-slate-600">
+            {t("credit.successHelp")}
+          </p>
+        </div>
+
+        <ContactHelpLinks stacked />
+
+        <div className="flex w-full flex-col gap-2.5 pt-1 sm:flex-row sm:justify-center">
+          <Button asChild variant="gradient" className="min-h-12 w-full rounded-xl font-bold sm:w-auto">
             <Link href="/products">{t("credit.browseCatalog")}</Link>
           </Button>
-          <Button asChild variant="outline" className="rounded-xl font-bold">
+          <Button asChild variant="outline" className="min-h-12 w-full rounded-xl font-bold sm:w-auto">
             <Link href="/">{t("credit.backHome")}</Link>
           </Button>
         </div>
@@ -135,21 +191,23 @@ export function CreditApplicationForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm space-y-5"
+      className="space-y-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6 md:p-8"
     >
-      <div className="flex items-center gap-2">
-        <div className="p-2 rounded-xl bg-blue-50 border border-blue-100 text-blue-700">
-          <CreditCard className="w-4 h-4" />
+      <div className="flex items-start gap-2.5 sm:items-center">
+        <div className="rounded-xl border border-blue-100 bg-blue-50 p-2 text-blue-700">
+          <CreditCard className="h-4 w-4" />
         </div>
-        <div>
+        <div className="min-w-0">
           <h2 className="text-sm font-black uppercase tracking-wide text-slate-900">
             {t("credit.formTitle")}
           </h2>
-          <p className="text-xs text-slate-500">{t("credit.formSubtitle")}</p>
+          <p className="text-xs leading-relaxed text-slate-500">
+            {t("credit.formSubtitle")}
+          </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="block space-y-1.5 sm:col-span-2">
           <span className={fieldLabel}>{t("credit.companyName")}</span>
           <Input
@@ -157,7 +215,7 @@ export function CreditApplicationForm() {
             value={form.companyName}
             onChange={(e) => update("companyName", e.target.value)}
             placeholder="Acme Logistics LLC"
-            className="rounded-xl"
+            className="min-h-11 rounded-xl"
           />
         </label>
 
@@ -168,7 +226,7 @@ export function CreditApplicationForm() {
             value={form.contactName}
             onChange={(e) => update("contactName", e.target.value)}
             placeholder="Jane Smith"
-            className="rounded-xl"
+            className="min-h-11 rounded-xl"
           />
         </label>
 
@@ -179,7 +237,7 @@ export function CreditApplicationForm() {
             value={form.taxIdEin}
             onChange={(e) => update("taxIdEin", e.target.value)}
             placeholder="XX-XXXXXXX"
-            className="rounded-xl"
+            className="min-h-11 rounded-xl"
             autoComplete="off"
           />
         </label>
@@ -192,7 +250,7 @@ export function CreditApplicationForm() {
             value={form.workEmail}
             onChange={(e) => update("workEmail", e.target.value)}
             placeholder="ap@company.com"
-            className="rounded-xl"
+            className="min-h-11 rounded-xl"
           />
         </label>
 
@@ -204,12 +262,11 @@ export function CreditApplicationForm() {
             value={form.phone}
             onChange={(e) => update("phone", e.target.value)}
             placeholder="(555) 000-0000"
-            className="rounded-xl"
+            className="min-h-11 rounded-xl"
           />
         </label>
 
-        {/* Billing address */}
-        <div className="sm:col-span-2 space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+        <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-3.5 sm:col-span-2 sm:p-4">
           <p className={fieldLabel}>{t("credit.billingAddress")}</p>
           <label className="block space-y-1.5">
             <span className={fieldLabel}>{t("credit.street")}</span>
@@ -217,18 +274,18 @@ export function CreditApplicationForm() {
               value={form.billingStreet}
               onChange={(e) => update("billingStreet", e.target.value)}
               placeholder="1000 Industrial Parkway"
-              className="rounded-xl"
+              className="min-h-11 rounded-xl"
               autoComplete="billing street-address"
             />
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <label className="block space-y-1.5 sm:col-span-1">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <label className="block space-y-1.5">
               <span className={fieldLabel}>{t("credit.city")}</span>
               <Input
                 value={form.billingCity}
                 onChange={(e) => update("billingCity", e.target.value)}
                 placeholder="Dallas"
-                className="rounded-xl"
+                className="min-h-11 rounded-xl"
                 autoComplete="billing address-level2"
               />
             </label>
@@ -257,15 +314,14 @@ export function CreditApplicationForm() {
                 value={form.billingZip}
                 onChange={(e) => update("billingZip", e.target.value)}
                 placeholder="75201"
-                className="rounded-xl"
+                className="min-h-11 rounded-xl"
                 autoComplete="billing postal-code"
               />
             </label>
           </div>
         </div>
 
-        {/* Shipping address */}
-        <div className="sm:col-span-2 space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+        <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-3.5 sm:col-span-2 sm:p-4">
           <p className={fieldLabel}>{t("credit.shippingAddress")}</p>
           <label className="block space-y-1.5">
             <span className={fieldLabel}>{t("credit.street")}</span>
@@ -273,18 +329,18 @@ export function CreditApplicationForm() {
               value={form.shippingStreet}
               onChange={(e) => update("shippingStreet", e.target.value)}
               placeholder="1000 Industrial Parkway"
-              className="rounded-xl"
+              className="min-h-11 rounded-xl"
               autoComplete="shipping street-address"
             />
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <label className="block space-y-1.5 sm:col-span-1">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <label className="block space-y-1.5">
               <span className={fieldLabel}>{t("credit.city")}</span>
               <Input
                 value={form.shippingCity}
                 onChange={(e) => update("shippingCity", e.target.value)}
                 placeholder="Dallas"
-                className="rounded-xl"
+                className="min-h-11 rounded-xl"
                 autoComplete="shipping address-level2"
               />
             </label>
@@ -313,30 +369,29 @@ export function CreditApplicationForm() {
                 value={form.shippingZip}
                 onChange={(e) => update("shippingZip", e.target.value)}
                 placeholder="75201"
-                className="rounded-xl"
+                className="min-h-11 rounded-xl"
                 autoComplete="shipping postal-code"
               />
             </label>
           </div>
         </div>
 
-        {/* Locked country — USA only */}
-        <div className="sm:col-span-2 space-y-1.5">
+        <div className="space-y-1.5 sm:col-span-2">
           <span className={fieldLabel}>{t("credit.country")}</span>
           <div className="relative">
-            <Lock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
               name="country"
               value={form.country}
               readOnly
               disabled
-              className="rounded-xl pl-9 bg-slate-100 text-slate-700 cursor-not-allowed border-slate-200"
+              className="min-h-11 cursor-not-allowed rounded-xl border-slate-200 bg-slate-100 pl-9 text-slate-700"
               aria-readonly="true"
             />
             <input type="hidden" name="country" value={CREDIT_APPLICATION_COUNTRY} />
           </div>
-          <p className="text-[11px] text-slate-500 leading-relaxed flex items-start gap-1.5 pt-0.5">
-            <Lock className="w-3 h-3 mt-0.5 shrink-0 text-slate-400" />
+          <p className="flex items-start gap-1.5 pt-0.5 text-[11px] leading-relaxed text-slate-500">
+            <Lock className="mt-0.5 h-3 w-3 shrink-0 text-slate-400" />
             {t("credit.countryNote")}
           </p>
         </div>
@@ -344,11 +399,15 @@ export function CreditApplicationForm() {
         <label className="block space-y-1.5 sm:col-span-2">
           <span className={fieldLabel}>{t("credit.annualVolume")}</span>
           <Input
+            required
             value={form.annualVolume}
             onChange={(e) => update("annualVolume", e.target.value)}
-            placeholder="e.g. 40–80 pallets / year"
-            className="rounded-xl"
+            placeholder="e.g. 8–20 pallets / month"
+            className="min-h-11 rounded-xl"
           />
+          <span className="block text-[11px] text-slate-500">
+            {t("credit.annualVolumeHint")}
+          </span>
         </label>
       </div>
 
@@ -367,8 +426,11 @@ export function CreditApplicationForm() {
             value={form.creditReference1}
             onChange={(e) => update("creditReference1", e.target.value)}
             placeholder="Vendor name · AP contact · phone"
-            className="rounded-xl"
+            className="min-h-11 rounded-xl"
           />
+          <span className="block text-[11px] text-slate-500">
+            {t("credit.reference1Hint")}
+          </span>
         </label>
 
         <label className="block space-y-1.5">
@@ -377,17 +439,7 @@ export function CreditApplicationForm() {
             value={form.creditReference2}
             onChange={(e) => update("creditReference2", e.target.value)}
             placeholder="Vendor name · AP contact · phone"
-            className="rounded-xl"
-          />
-        </label>
-
-        <label className="block space-y-1.5">
-          <span className={fieldLabel}>{t("credit.reference3")}</span>
-          <Input
-            value={form.creditReference3}
-            onChange={(e) => update("creditReference3", e.target.value)}
-            placeholder="Vendor name · AP contact · phone"
-            className="rounded-xl"
+            className="min-h-11 rounded-xl"
           />
         </label>
       </div>
@@ -399,23 +451,23 @@ export function CreditApplicationForm() {
           onChange={(e) => update("notes", e.target.value)}
           rows={3}
           placeholder="PO process details, preferred payment method, or credit line request…"
-          className="flex w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-xs placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 focus-visible:border-sky-400"
+          className="flex min-h-[96px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-xs placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 focus-visible:border-sky-400"
         />
       </label>
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
-        <p className="text-[11px] text-slate-500 leading-relaxed max-w-md">
+      <div className="flex flex-col gap-3 pt-1">
+        <p className="text-[11px] leading-relaxed text-slate-500">
           {t("credit.authNote")}
         </p>
         <Button
           type="submit"
           variant="gradient"
           disabled={submitting}
-          className="rounded-xl font-bold min-w-[220px]"
+          className="min-h-12 w-full rounded-xl font-bold sm:w-auto sm:min-w-[220px] sm:self-end"
         >
           {submitting ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               {t("credit.submitting")}
             </>
           ) : (
@@ -424,16 +476,12 @@ export function CreditApplicationForm() {
         </Button>
       </div>
 
-      <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
-        <PhoneCall className="w-3.5 h-3.5" />
-        {t("credit.questions")}{" "}
-        <a
-          href="tel:+19564003683"
-          className="font-semibold text-sky-700 hover:underline"
-        >
-          (956) 400-3683
-        </a>
-      </p>
+      <div className="space-y-2 border-t border-slate-100 pt-4">
+        <p className="text-center text-[11px] font-semibold uppercase tracking-wider text-slate-500 sm:text-left">
+          {t("credit.questions")}
+        </p>
+        <ContactHelpLinks />
+      </div>
     </form>
   );
 }

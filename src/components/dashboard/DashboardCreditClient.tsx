@@ -25,7 +25,6 @@ import { DashboardSidebar } from "@/components/dashboard/Sidebar";
 import { DashboardMobileChrome } from "@/components/dashboard/DashboardMobileChrome";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { Net30CreditHeroBanner } from "@/components/dashboard/Net30CreditHeroBanner";
-import { useLanguage } from "@/context/LanguageContext";
 import { formatCurrency } from "@/lib/utils";
 import {
   formatEinInput,
@@ -91,8 +90,8 @@ export function DashboardCreditClient({
   profile,
   creditStatus: initialStatus,
 }: DashboardCreditClientProps) {
-  const { locale } = useLanguage();
-  const isSpanish = locale === "es";
+  // Site UI is English-only for credit flows.
+  const isSpanish = false;
   const router = useRouter();
   const [creditStatus, setCreditStatus] = useState(initialStatus);
   const [submitting, setSubmitting] = useState(false);
