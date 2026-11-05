@@ -475,6 +475,13 @@ export function Navbar() {
               </Link>
 
               <Link
+                href="/#inquiry-form"
+                className="whitespace-nowrap rounded-xl px-2 py-2 text-[13px] font-semibold text-slate-600 transition-all hover:bg-sky-50/50 hover:text-sky-600 xl:px-3.5 xl:text-sm"
+              >
+                Contact
+              </Link>
+
+              <Link
                 href="/credit-application"
                 className={`whitespace-nowrap rounded-xl px-2 py-2 text-[13px] font-semibold transition-all xl:px-3.5 xl:text-sm ${
                   pathname === "/credit-application" ||
@@ -483,14 +490,7 @@ export function Navbar() {
                     : "text-slate-600 hover:bg-sky-50/50 hover:text-sky-600"
                 }`}
               >
-                B2B Credit
-              </Link>
-
-              <Link
-                href="/#inquiry-form"
-                className="whitespace-nowrap rounded-xl px-2 py-2 text-[13px] font-semibold text-slate-600 transition-all hover:bg-sky-50/50 hover:text-sky-600 xl:px-3.5 xl:text-sm"
-              >
-                Contact
+                Apply Credit B2B
               </Link>
             </nav>
           </div>

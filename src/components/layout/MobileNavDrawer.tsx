@@ -21,8 +21,8 @@ const NAV_LINKS = [
   { href: "/", label: "Home", id: "home" },
   { href: "/products", label: "Products", id: "products" },
   { href: "/about", label: "About Us", id: "about" },
-  { href: "/credit-application", label: "B2B Credit", id: "credit" },
   { href: "/#inquiry-form", label: "Contact", id: "contact" },
+  { href: "/credit-application", label: "Apply Credit B2B", id: "credit" },
 ] as const;
 
 interface MobileNavDrawerProps {
