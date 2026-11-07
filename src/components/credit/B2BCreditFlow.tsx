@@ -48,30 +48,30 @@ export function B2BCreditFlow() {
   return (
     <section
       aria-labelledby="b2b-credit-flow-heading"
-      className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm"
+      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-8"
     >
-      <div className="mb-6 sm:mb-8 space-y-1.5">
+      <div className="mb-5 space-y-1.5 sm:mb-8">
         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-sky-700">
           {t("credit.flowEyebrow")}
         </p>
         <h2
           id="b2b-credit-flow-heading"
-          className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight"
+          className="text-lg font-extrabold tracking-tight text-slate-900 sm:text-2xl"
         >
           {t("credit.flowTitle")}
         </h2>
-        <p className="text-sm text-slate-500 max-w-2xl">
+        <p className="max-w-2xl text-[13px] leading-relaxed text-slate-500 sm:text-sm">
           {t("credit.flowSubtitle")}
         </p>
       </div>
 
-      <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      <ol className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
         {STEPS.map((item, index) => {
           const Icon = item.icon;
           return (
             <li
               key={item.step}
-              className="relative flex flex-col rounded-2xl border border-slate-200 bg-slate-50/70 p-5 transition-colors hover:border-sky-300 hover:bg-sky-50/40"
+              className="relative flex flex-col rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition-colors hover:border-sky-300 hover:bg-sky-50/40 sm:p-5"
             >
               {index < STEPS.length - 1 ? (
                 <span

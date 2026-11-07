@@ -179,23 +179,23 @@ export function AdminCreditApplicationsView({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="min-w-0 space-y-4 sm:space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">
+        <div className="min-w-0">
+          <h1 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
             Credit Applications
           </h1>
           <p className="text-sm text-slate-500">
             {pendingCount} pending · {applications.length} total submissions
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
           {(["all", "pending", "approved", "rejected"] as const).map((key) => (
             <button
               key={key}
               type="button"
               onClick={() => setFilter(key)}
-              className={`rounded-full border px-3 py-1.5 text-xs font-bold capitalize ${
+              className={`shrink-0 touch-manipulation rounded-full border px-3 py-1.5 text-xs font-bold capitalize ${
                 filter === key
                   ? "border-blue-600 bg-blue-600 text-white"
                   : "border-slate-200 bg-white text-slate-600"
@@ -207,7 +207,51 @@ export function AdminCreditApplicationsView({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      {/* Mobile card list */}
+      <div className="space-y-2.5 md:hidden">
+        {filtered.length === 0 ? (
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
+            No credit applications found.
+          </div>
+        ) : (
+          filtered.map((app) => (
+            <button
+              key={app.id}
+              type="button"
+              onClick={() => openDetail(app)}
+              className="flex w-full touch-manipulation flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-3.5 text-left shadow-sm active:bg-slate-50"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-slate-900">
+                    {app.legalBusinessName || app.companyName}
+                  </p>
+                  <p className="truncate text-xs text-slate-500">{app.workEmail}</p>
+                </div>
+                <span
+                  className={`shrink-0 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusBadgeClass(app.status)}`}
+                >
+                  {statusLabel(app.status)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-xs text-slate-600">
+                <span>
+                  {formatMoney(app.creditLimitRequested)} ·{" "}
+                  {app.paymentTermsRequested || "Net 30"}
+                </span>
+                <span>{formatDate(app.createdAt)}</span>
+              </div>
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-sky-700">
+                <Eye className="h-3.5 w-3.5" />
+                Review
+              </span>
+            </button>
+          ))
+        )}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
@@ -271,13 +315,13 @@ export function AdminCreditApplicationsView({
 
       {selected ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-6">
-          <div className="flex max-h-[95vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-3xl border border-slate-200 bg-white shadow-2xl sm:rounded-3xl">
-            <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-4 sm:px-6">
-              <div>
+          <div className="flex max-h-[92dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-3xl border border-slate-200 bg-white shadow-2xl sm:max-h-[95vh] sm:rounded-3xl">
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-3 py-3.5 sm:px-6 sm:py-4">
+              <div className="min-w-0">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                   Application detail
                 </p>
-                <h2 className="text-lg font-black text-slate-900">
+                <h2 className="truncate text-base font-black text-slate-900 sm:text-lg">
                   {selected.legalBusinessName || selected.companyName}
                 </h2>
                 <p className="text-xs text-slate-500">
@@ -288,14 +332,14 @@ export function AdminCreditApplicationsView({
               <button
                 type="button"
                 onClick={() => setSelected(null)}
-                className="rounded-full border border-slate-200 p-2 text-slate-500 hover:bg-slate-50"
+                className="shrink-0 touch-manipulation rounded-full border border-slate-200 p-2.5 text-slate-500 hover:bg-slate-50"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <InfoCard
                   title="Business"
@@ -500,15 +544,20 @@ function InfoCard({
   rows: Array<[string, string]>;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3.5 sm:p-4">
       <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">
         {title}
       </p>
-      <dl className="space-y-1.5 text-sm">
+      <dl className="space-y-2 text-sm">
         {rows.map(([label, value]) => (
-          <div key={label} className="flex justify-between gap-3">
-            <dt className="text-slate-500">{label}</dt>
-            <dd className="text-right font-medium text-slate-900">{value}</dd>
+          <div
+            key={label}
+            className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-3"
+          >
+            <dt className="shrink-0 text-slate-500">{label}</dt>
+            <dd className="break-words font-medium text-slate-900 sm:text-right">
+              {value}
+            </dd>
           </div>
         ))}
       </dl>
