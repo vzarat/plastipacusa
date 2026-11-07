@@ -12,11 +12,13 @@ import { AdminCreditApplicationsView } from "@/components/admin/AdminCreditAppli
 interface AdminCreditApplicationsClientProps {
   profile: UserProfile;
   initialApplications: AdminCreditApplication[];
+  initialSelectedId?: string | null;
 }
 
 export function AdminCreditApplicationsClient({
   profile,
   initialApplications,
+  initialSelectedId = null,
 }: AdminCreditApplicationsClientProps) {
   const router = useRouter();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -74,6 +76,7 @@ export function AdminCreditApplicationsClient({
         <main className="flex-1 min-w-0 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
           <AdminCreditApplicationsView
             initialApplications={initialApplications}
+            initialSelectedId={initialSelectedId}
           />
         </main>
       </div>

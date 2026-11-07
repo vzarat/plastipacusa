@@ -7,6 +7,8 @@ import {
   ORDERS_EMAIL,
   ORDERS_FROM,
   PAYABLES_EMAIL,
+  SUPPORT_EMAIL,
+  SUPPORT_FROM,
 } from "@/lib/company-email";
 import { logEmailDispatch } from "@/lib/resend-usage";
 
@@ -138,95 +140,219 @@ export async function sendEmail(
   }
 }
 
+export interface CreditTradeReferenceEmail {
+  companyName?: string;
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+  creditTerms?: string;
+}
+
 export interface CreditApplicationNotifyInput {
+  applicationId?: string | null;
   customerName: string;
   companyName: string;
+  legalBusinessName?: string;
+  dbaName?: string;
   taxIdEin: string;
-  requestedCreditLimit?: string;
+  yearsInBusiness?: string | number | null;
+  businessType?: string;
+  businessAddress?: string;
+  billingAddress?: string;
+  website?: string;
+  requestedCreditLimit?: string | number;
+  paymentTermsRequested?: string;
   workEmail?: string;
   phone?: string;
+  apContactName?: string;
+  apPhone?: string;
+  apEmail?: string;
+  purchasingContactName?: string;
+  purchasingPhone?: string;
+  purchasingEmail?: string;
+  references?: CreditTradeReferenceEmail[];
+  bankName?: string;
+  bankContactPerson?: string;
+  bankPhone?: string;
+  authorizedRepresentativeName?: string;
+  authorizedTitle?: string;
+  eSignature?: string;
+  signatureDate?: string;
   /** auth.users / profiles id for dossier deep-link */
   userId?: string | null;
   notes?: string;
 }
 
+function formatCreditLimitDisplay(value: string | number | undefined): string {
+  if (value == null || value === "") return "Not specified";
+  const raw = String(value).replace(/[$,\s]/g, "");
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return `$${String(value).replace(/^\$/, "")}`;
+  return `$${n.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function emailSection(title: string, rows: Array<[string, string | undefined | null]>): string {
+  const body = rows
+    .map(([label, value]) => {
+      const display = String(value ?? "").trim() || "—";
+      return `<tr>
+        <td style="padding:6px 0;color:#64748b;font-size:13px;width:42%;vertical-align:top">${escapeEmailHtml(label)}</td>
+        <td style="padding:6px 0;color:#0f172a;font-size:13px;font-weight:600;vertical-align:top">${escapeEmailHtml(display)}</td>
+      </tr>`;
+    })
+    .join("");
+  return `
+    <div style="margin:0 0 18px">
+      <h3 style="margin:0 0 8px;font-size:13px;letter-spacing:0.06em;text-transform:uppercase;color:#0369a1">${escapeEmailHtml(title)}</h3>
+      <table style="width:100%;border-collapse:collapse">${body}</table>
+    </div>`;
+}
+
 /**
- * Alert contact@ + payables@ (and optional ADMIN_NOTIFICATION_EMAIL)
- * when a B2B Net 30 credit application is submitted.
+ * Simultaneous Resend dispatch to payables@ + contact@ after a successful
+ * credit_applications insert. Email failures are logged; callers should still
+ * treat DB persistence as success.
  */
 export async function notifyAdminCreditApplication(
   payload: CreditApplicationNotifyInput
 ): Promise<SendEmailResult> {
-  const recipients = mailboxRecipients(
-    CONTACT_EMAIL,
-    PAYABLES_EMAIL,
-    getAdminNotificationEmail()
-  );
+  const recipients = mailboxRecipients(PAYABLES_EMAIL, CONTACT_EMAIL);
   if (recipients.length === 0) {
     console.warn("[email] No credit-application recipient — alert skipped.");
     return { success: false, skipped: true, error: "No credit-application recipient." };
   }
 
   const base = getAppBaseUrl();
-  const queueUrl = `${base}/admin/credit-applications`;
-  const dossierUrl = payload.userId
-    ? `${base}/admin/customers/${payload.userId}`
-    : queueUrl;
+  const legalName =
+    String(payload.legalBusinessName || payload.companyName || "Applicant").trim();
+  const limitDisplay = formatCreditLimitDisplay(payload.requestedCreditLimit);
+  const reviewUrl = payload.applicationId
+    ? `${base}/admin/credit-applications/${payload.applicationId}`
+    : `${base}/admin/credit-applications`;
 
-  const limitDisplay = payload.requestedCreditLimit
-    ? `$${String(payload.requestedCreditLimit).replace(/^\$/, "")}`
-    : "Not specified";
+  const refs = (payload.references || []).slice(0, 3);
+  while (refs.length < 3) refs.push({});
 
-  const lines = [
-    "New B2B Net 30 Credit Application",
+  const subject = `[Credit Application] New Submission - ${legalName} (Requested: ${limitDisplay})`;
+
+  const textLines = [
+    "New B2B Commercial Credit Application",
     "",
-    `Customer Name: ${payload.customerName}`,
-    `Company Name: ${payload.companyName}`,
-    `TAX ID / FEIN: ${payload.taxIdEin || "—"}`,
-    `Requested Credit Limit: ${limitDisplay}`,
-    payload.workEmail ? `Work Email: ${payload.workEmail}` : null,
-    payload.phone ? `Phone: ${payload.phone}` : null,
-    payload.notes ? `Notes:\n${payload.notes}` : null,
+    `Legal business name: ${legalName}`,
+    payload.dbaName ? `DBA: ${payload.dbaName}` : null,
+    `Tax ID / EIN: ${payload.taxIdEin || "—"}`,
+    `Business address: ${payload.businessAddress || "—"}`,
+    `Years in business: ${payload.yearsInBusiness ?? "—"}`,
+    `Business type: ${payload.businessType || "—"}`,
     "",
-    `Credit Applications Queue: ${queueUrl}`,
-    `View Customer Dossier: ${dossierUrl}`,
-  ].filter(Boolean) as string[];
+    `Payment terms requested: ${payload.paymentTermsRequested || "—"}`,
+    `Credit limit requested: ${limitDisplay}`,
+    "",
+    `AP contact: ${payload.apContactName || "—"} · ${payload.apEmail || "—"} · ${payload.apPhone || "—"}`,
+    `Purchasing contact: ${payload.purchasingContactName || "—"} · ${payload.purchasingEmail || "—"} · ${payload.purchasingPhone || "—"}`,
+    `Business phone: ${payload.phone || "—"}`,
+    `Business email: ${payload.workEmail || "—"}`,
+    "",
+    ...refs.flatMap((ref, i) => [
+      `Trade reference #${i + 1}: ${ref.companyName || "—"} · ${ref.contactPerson || "—"} · ${ref.phone || "—"} · ${ref.email || "—"} · ${ref.creditTerms || "—"}`,
+    ]),
+    "",
+    `Bank: ${payload.bankName || "—"} · ${payload.bankContactPerson || "—"} · ${payload.bankPhone || "—"}`,
+    `Authorized representative: ${payload.authorizedRepresentativeName || payload.customerName || "—"}`,
+    `Title: ${payload.authorizedTitle || "—"}`,
+    `E-signature: ${payload.eSignature || "—"}`,
+    `Signature date: ${payload.signatureDate || "—"}`,
+    "",
+    `Review in admin: ${reviewUrl}`,
+  ].filter((line) => line !== null) as string[];
 
-  const text = lines.join("\n");
   const html = `
-    <div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;line-height:1.5;max-width:640px">
-      <h2 style="margin:0 0 12px;font-size:18px">New B2B Net 30 Credit Application</h2>
-      <p style="margin:0 0 6px"><strong>Customer:</strong> ${escapeEmailHtml(payload.customerName)}</p>
-      <p style="margin:0 0 6px"><strong>Company:</strong> ${escapeEmailHtml(payload.companyName)}</p>
-      <p style="margin:0 0 6px"><strong>TAX ID / FEIN:</strong> ${escapeEmailHtml(payload.taxIdEin || "—")}</p>
-      <p style="margin:0 0 6px"><strong>Requested Credit Limit:</strong> ${escapeEmailHtml(limitDisplay)}</p>
-      ${payload.workEmail ? `<p style="margin:0 0 6px"><strong>Work Email:</strong> ${escapeEmailHtml(payload.workEmail)}</p>` : ""}
-      ${payload.phone ? `<p style="margin:0 0 6px"><strong>Phone:</strong> ${escapeEmailHtml(payload.phone)}</p>` : ""}
-      ${payload.notes ? `<p style="margin:12px 0 6px"><strong>Notes</strong></p><pre style="white-space:pre-wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin:0;font-family:Arial,Helvetica,sans-serif">${escapeEmailHtml(payload.notes)}</pre>` : ""}
-      <p style="margin:16px 0 0">
-        <a href="${queueUrl}" style="color:#0369a1;font-weight:700">Open Credit Applications Queue</a>
-      </p>
-      <p style="margin:8px 0 0">
-        <a href="${dossierUrl}" style="color:#0369a1;font-weight:700">View Customer Dossier</a>
-      </p>
+    <div style="font-family:Arial,Helvetica,sans-serif;background:#f8fafc;padding:24px">
+      <div style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden">
+        <div style="background:#0f172a;color:#ffffff;padding:20px 24px">
+          <p style="margin:0 0 4px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.75">Plastipac USA · Credit Desk</p>
+          <h1 style="margin:0;font-size:20px;line-height:1.3">New Credit Application Submission</h1>
+          <p style="margin:8px 0 0;font-size:14px;opacity:0.9">${escapeEmailHtml(legalName)} · ${escapeEmailHtml(limitDisplay)}</p>
+        </div>
+        <div style="padding:24px">
+          ${emailSection("Business Details", [
+            ["Legal business name", legalName],
+            ["DBA", payload.dbaName],
+            ["Tax ID / EIN", payload.taxIdEin],
+            ["Business address", payload.businessAddress],
+            ["Billing address", payload.billingAddress],
+            ["Years in business", payload.yearsInBusiness != null ? String(payload.yearsInBusiness) : null],
+            ["Business type", payload.businessType],
+            ["Website", payload.website],
+            ["Phone", payload.phone],
+            ["Email", payload.workEmail],
+          ])}
+          ${emailSection("Requested Terms", [
+            ["Payment terms", payload.paymentTermsRequested],
+            ["Requested credit limit", limitDisplay],
+          ])}
+          ${emailSection("Contact Information", [
+            ["AP contact name", payload.apContactName],
+            ["AP email", payload.apEmail],
+            ["AP phone", payload.apPhone],
+            ["Purchasing contact name", payload.purchasingContactName],
+            ["Purchasing email", payload.purchasingEmail],
+            ["Purchasing phone", payload.purchasingPhone],
+          ])}
+          ${refs
+            .map((ref, i) =>
+              emailSection(`Commercial / Trade Reference #${i + 1}`, [
+                ["Company", ref.companyName],
+                ["Contact person", ref.contactPerson],
+                ["Phone", ref.phone],
+                ["Email", ref.email],
+                ["Credit terms", ref.creditTerms],
+              ])
+            )
+            .join("")}
+          ${emailSection("Bank Details", [
+            ["Bank name", payload.bankName],
+            ["Bank contact", payload.bankContactPerson],
+            ["Bank phone", payload.bankPhone],
+          ])}
+          ${emailSection("Authorized Representative & E-Signature", [
+            ["Representative", payload.authorizedRepresentativeName || payload.customerName],
+            ["Title", payload.authorizedTitle],
+            ["E-signature", payload.eSignature],
+            ["Signature date", payload.signatureDate],
+          ])}
+          <div style="margin:24px 0 0;text-align:center">
+            <a href="${reviewUrl}"
+               style="display:inline-block;background:#0369a1;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px">
+              Open in Admin Dashboard
+            </a>
+            <p style="margin:10px 0 0;font-size:12px;color:#64748b">${escapeEmailHtml(reviewUrl)}</p>
+          </div>
+        </div>
+      </div>
     </div>
   `;
 
   const result = await sendEmail({
     to: recipients,
-    subject: `B2B Credit Application — ${payload.companyName}`,
-    text,
+    subject,
+    text: textLines.join("\n"),
     html,
-    replyTo: payload.workEmail,
+    replyTo: payload.workEmail || payload.apEmail,
     from: CONTACT_FROM,
   });
 
   if (!result.success) {
     console.error(
       "[email] credit application notify failed:",
-      result.error || "unknown",
+      result.error || (result.skipped ? "skipped" : "unknown"),
       "recipients:",
-      recipients.join(", ")
+      recipients.join(", "),
+      "applicationId:",
+      payload.applicationId || "n/a"
     );
   }
 
@@ -239,6 +365,106 @@ function escapeEmailHtml(value: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+export interface CreditStatusChangeNotifyInput {
+  companyName: string;
+  workEmail?: string;
+  contactName?: string;
+  status: "approved" | "rejected";
+  approvedCreditLimit?: number;
+  approvedPaymentTerms?: string;
+  adminComments?: string;
+}
+
+/**
+ * Notify internal desks + applicant when credit application is approved/denied.
+ */
+export async function notifyCreditApplicationStatusChange(
+  payload: CreditStatusChangeNotifyInput
+): Promise<SendEmailResult> {
+  const statusLabel = payload.status === "approved" ? "Approved" : "Denied";
+  const limitDisplay =
+    payload.approvedCreditLimit != null && Number.isFinite(payload.approvedCreditLimit)
+      ? `$${Number(payload.approvedCreditLimit).toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}`
+      : "—";
+
+  const internalRecipients = mailboxRecipients(
+    ORDERS_EMAIL,
+    SUPPORT_EMAIL,
+    CONTACT_EMAIL,
+    PAYABLES_EMAIL,
+    getAdminNotificationEmail()
+  );
+
+  const lines = [
+    `B2B Credit Application ${statusLabel}`,
+    "",
+    `Company: ${payload.companyName}`,
+    payload.contactName ? `Contact: ${payload.contactName}` : null,
+    payload.workEmail ? `Applicant email: ${payload.workEmail}` : null,
+    `Status: ${statusLabel}`,
+    payload.status === "approved"
+      ? `Approved credit limit: ${limitDisplay}`
+      : null,
+    payload.status === "approved"
+      ? `Approved payment terms: ${payload.approvedPaymentTerms || "Net 30"}`
+      : null,
+    payload.adminComments ? `Admin comments: ${payload.adminComments}` : null,
+  ].filter(Boolean) as string[];
+
+  const internal = await sendEmail({
+    to: internalRecipients,
+    subject: `Credit Application ${statusLabel} — ${payload.companyName}`,
+    text: lines.join("\n"),
+    from: ORDERS_FROM,
+    replyTo: payload.workEmail,
+  });
+
+  if (payload.workEmail) {
+    const applicantText =
+      payload.status === "approved"
+        ? [
+            `Hello${payload.contactName ? ` ${payload.contactName}` : ""},`,
+            "",
+            `Your Plastipac USA commercial credit application for ${payload.companyName} has been approved.`,
+            "",
+            `Approved credit limit: ${limitDisplay}`,
+            `Payment terms: ${payload.approvedPaymentTerms || "Net 30"}`,
+            payload.adminComments ? `Notes: ${payload.adminComments}` : null,
+            "",
+            "Our team will follow up if any additional onboarding steps are required.",
+            "",
+            "Plastipac USA Credit Desk",
+          ]
+            .filter(Boolean)
+            .join("\n")
+        : [
+            `Hello${payload.contactName ? ` ${payload.contactName}` : ""},`,
+            "",
+            `Thank you for applying for commercial credit with Plastipac USA.`,
+            `After review, we are unable to approve credit terms for ${payload.companyName} at this time.`,
+            payload.adminComments ? `Notes: ${payload.adminComments}` : null,
+            "",
+            `Questions? Email ${SUPPORT_EMAIL} or call our sales desk.`,
+            "",
+            "Plastipac USA Credit Desk",
+          ]
+            .filter(Boolean)
+            .join("\n");
+
+    await sendEmail({
+      to: payload.workEmail,
+      subject: `Plastipac USA Credit Application ${statusLabel}`,
+      text: applicantText,
+      from: SUPPORT_FROM,
+    });
+  }
+
+  return internal;
 }
 
 export interface TaxExemptionNotifyInput {
