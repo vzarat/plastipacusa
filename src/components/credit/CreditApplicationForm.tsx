@@ -22,6 +22,12 @@ import {
   TurnstileField,
 } from "@/components/security/TurnstileField";
 import { submitCommercialCreditApplication } from "@/actions/credit-applications";
+import {
+  emailMatchesWebsiteDomain,
+  isValidCorporateEmail,
+  isValidUsEin,
+  validateCreditApplicationIdentityFields,
+} from "@/lib/credit-application-validation";
 import { US_STATES } from "@/lib/us-states";
 import { SUPPORT_EMAIL } from "@/lib/company-email";
 import {
@@ -194,6 +200,7 @@ export function CreditApplicationForm() {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [fieldError, setFieldError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     creditLimitRequested: "",
@@ -251,17 +258,41 @@ export function CreditApplicationForm() {
       toast.error("Please complete the bot check.");
       return;
     }
+
+    const identity = validateCreditApplicationIdentityFields({
+      email: form.email,
+      apEmail: form.apEmail,
+      taxIdEin: form.taxIdEin,
+      website: form.website,
+    });
+    if (!identity.ok) {
+      setFieldError(identity.error || "Please fix the verification fields.");
+      toast.error(identity.error || "Please use a valid corporate email and EIN.");
+      return;
+    }
+    setFieldError(null);
+
+    const normalizedForm = {
+      ...form,
+      taxIdEin: identity.normalizedEin || form.taxIdEin,
+    };
+    if (normalizedForm.taxIdEin !== form.taxIdEin) {
+      update("taxIdEin", normalizedForm.taxIdEin);
+    }
+
     setSubmitting(true);
     try {
       const result = await submitCommercialCreditApplication({
-        ...form,
+        ...normalizedForm,
         references: refs,
         turnstileToken: turnstileToken || undefined,
       });
       if (!result.success) {
         toast.error(result.error || "Unable to submit credit application.");
+        setFieldError(result.error || null);
         return;
       }
+      setFieldError(null);
       setSubmitted(true);
       toast.success(result.message || "Form sent successfully.");
     } catch {
@@ -385,10 +416,31 @@ export function CreditApplicationForm() {
             <Input
               required
               value={form.taxIdEin}
-              onChange={(e) => update("taxIdEin", e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value.replace(/[^\d-]/g, "").slice(0, 10);
+                update("taxIdEin", next);
+              }}
+              onBlur={(e) => {
+                const raw = e.target.value.trim();
+                if (!raw) return;
+                const ein = isValidUsEin(raw);
+                if (ein.ok && ein.normalized) {
+                  update("taxIdEin", ein.normalized);
+                  setFieldError(null);
+                  return;
+                }
+                setFieldError(ein.error || null);
+              }}
               placeholder="XX-XXXXXXX"
+              inputMode="numeric"
+              pattern="(\d{2}-\d{7}|\d{9})"
+              title="US IRS EIN format: XX-XXXXXXX or 9 digits"
               className={inputClass}
+              autoComplete="off"
             />
+            <span className="block text-[11px] leading-snug text-slate-500">
+              IRS format required: XX-XXXXXXX (or 9 digits).
+            </span>
           </label>
           <label className="block space-y-1.5">
             <span className={fieldLabel}>Years in Business</span>
@@ -488,9 +540,19 @@ export function CreditApplicationForm() {
               type="email"
               value={form.email}
               onChange={(e) => update("email", e.target.value)}
+              onBlur={(e) => {
+                const value = e.target.value.trim();
+                if (!value) return;
+                const check = isValidCorporateEmail(value);
+                setFieldError(check.ok ? null : check.error || null);
+              }}
+              placeholder="name@company.com"
               className={inputClass}
               autoComplete="email"
             />
+            <span className="block text-[11px] leading-snug text-slate-500">
+              Corporate domain required. Gmail, Yahoo, Outlook, Hotmail, etc. are not accepted.
+            </span>
           </label>
           <label className="block space-y-1.5 sm:col-span-2">
             <span className={fieldLabel}>Website</span>
@@ -498,10 +560,19 @@ export function CreditApplicationForm() {
               type="url"
               value={form.website}
               onChange={(e) => update("website", e.target.value)}
-              placeholder="https://"
+              onBlur={(e) => {
+                const website = e.target.value.trim();
+                if (!website || !form.email.trim()) return;
+                const check = emailMatchesWebsiteDomain(form.email, website);
+                setFieldError(check.ok ? null : check.error || null);
+              }}
+              placeholder="https://www.company.com"
               className={inputClass}
               inputMode="url"
             />
+            <span className="block text-[11px] leading-snug text-slate-500">
+              Optional. If provided, the site domain should match your corporate email domain.
+            </span>
           </label>
         </div>
       </section>
@@ -526,14 +597,31 @@ export function CreditApplicationForm() {
             placeholder="AP phone"
             className={inputClass}
           />
-          <Input
-            required
-            type="email"
-            value={form.apEmail}
-            onChange={(e) => update("apEmail", e.target.value)}
-            placeholder="AP email"
-            className={inputClass}
-          />
+          <div className="space-y-1.5">
+            <Input
+              required
+              type="email"
+              value={form.apEmail}
+              onChange={(e) => update("apEmail", e.target.value)}
+              onBlur={(e) => {
+                const value = e.target.value.trim();
+                if (!value) return;
+                const check = isValidCorporateEmail(value);
+                setFieldError(
+                  check.ok
+                    ? null
+                    : check.error?.includes("webmail")
+                      ? "Accounts Payable email must be a company address (not Gmail, Yahoo, Outlook, etc.)."
+                      : check.error || null
+                );
+              }}
+              placeholder="ap@company.com"
+              className={inputClass}
+            />
+            <span className="block text-[11px] leading-snug text-slate-500">
+              AP email must also be a company domain (no free webmail).
+            </span>
+          </div>
 
           <p className={`${fieldLabel} pt-1 sm:col-span-3 sm:pt-2`}>Purchasing Contact</p>
           <Input
@@ -700,6 +788,14 @@ export function CreditApplicationForm() {
       </section>
 
       <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-3.5 sm:p-4">
+        {fieldError ? (
+          <p
+            role="alert"
+            className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-[13px] leading-snug text-rose-800"
+          >
+            {fieldError}
+          </p>
+        ) : null}
         <div className="overflow-x-auto">
           <TurnstileField onToken={setTurnstileToken} />
         </div>

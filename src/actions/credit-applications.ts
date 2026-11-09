@@ -9,6 +9,7 @@ import {
 } from "@/lib/supabase/admin";
 import { notifyAdminCreditApplication, notifyCreditApplicationStatusChange } from "@/lib/email";
 import { PRIMARY_PHONE_DISPLAY } from "@/lib/company-contact";
+import { validateCreditApplicationIdentityFields } from "@/lib/credit-application-validation";
 import { requireTurnstileToken } from "@/lib/turnstile";
 import { formatUsAddress } from "@/lib/us-states";
 
@@ -297,9 +298,18 @@ export async function submitCommercialCreditApplication(
       error: "Please complete legal business name, Tax ID / EIN, phone, and email.",
     };
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return { success: false, error: "Please enter a valid business email address." };
+
+  const identity = validateCreditApplicationIdentityFields({
+    email,
+    apEmail,
+    taxIdEin,
+    website: str(input.website),
+  });
+  if (!identity.ok) {
+    return { success: false, error: identity.error };
   }
+  const normalizedTaxIdEin = identity.normalizedEin || taxIdEin;
+
   if (!businessStreet || !businessCity || !businessState || !businessZip) {
     return { success: false, error: "Please complete the full business address." };
   }
@@ -372,7 +382,7 @@ export async function submitCommercialCreditApplication(
     legal_business_name: legalBusinessName,
     company_name: legalBusinessName,
     dba_name: str(input.dbaName) || null,
-    tax_id_ein: taxIdEin,
+    tax_id_ein: normalizedTaxIdEin,
     years_in_business: numOrNull(input.yearsInBusiness),
     business_street: businessStreet,
     business_city: businessCity,
@@ -460,7 +470,7 @@ export async function submitCommercialCreditApplication(
           email: currentUser.user.email || email,
           company_name: legalBusinessName,
           phone,
-          tax_id: taxIdEin,
+          tax_id: normalizedTaxIdEin,
           credit_application_status: "pending",
         });
       } catch {
@@ -476,7 +486,7 @@ export async function submitCommercialCreditApplication(
         companyName: legalBusinessName,
         legalBusinessName,
         dbaName: str(input.dbaName) || undefined,
-        taxIdEin,
+        taxIdEin: normalizedTaxIdEin,
         yearsInBusiness: numOrNull(input.yearsInBusiness),
         businessType,
         businessAddress: businessAddress || undefined,
@@ -560,13 +570,19 @@ export async function submitCreditApplication(
   const contactName = str(input.contactName);
   const workEmail = str(input.workEmail).toLowerCase();
   const phone = str(input.phone);
-  const taxIdEin = str(input.taxIdEin) || "Pending — to be provided";
+  const taxIdEin = str(input.taxIdEin);
   const desiredCreditLimit = str(input.desiredCreditLimit);
 
   if (!companyName || !contactName || !workEmail || !phone) {
     return {
       success: false,
       error: "Please provide company name, contact name, email, and phone.",
+    };
+  }
+  if (!taxIdEin) {
+    return {
+      success: false,
+      error: "Please provide a valid Tax ID / EIN (XX-XXXXXXX).",
     };
   }
 
