@@ -226,13 +226,20 @@ function lowestVariantUnit(variants: Record<string, unknown>[]): number | null {
   return units.length > 0 ? Math.min(...units) : null;
 }
 
-/** Hand-film catalog unit: the 64-box variant price, else the lowest positive variant price. */
+/** Hand-film catalog unit: full-pallet per-box price, else the lowest positive variant price. */
 export function handCatalogUnitPrice(product: unknown): number | null {
   const row = product && typeof product === "object" ? (product as Record<string, unknown>) : {};
   if (isMachineCatalogRecord(row)) return null;
   const variants = variantRecords(row);
-  const variant64 = variants.find((variant) => variantBoxCount(variant) === HAND_FULL_PALLET_BOXES);
-  const fromPallet = variant64 ? variantUnitPrice(variant64) : null;
+  const prices = readBoxTierPrices(row);
+  if (prices.price64Boxes != null && prices.price64Boxes > 0) return prices.price64Boxes;
+  const fullBoxes =
+    Math.floor(Number(row.boxesPerPallet ?? row.boxes_per_pallet) || 0) || HAND_FULL_PALLET_BOXES;
+  const variantFull =
+    variants.find((variant) => variantBoxCount(variant) === fullBoxes) ||
+    variants.find((variant) => variantBoxCount(variant) === HAND_FULL_PALLET_BOXES) ||
+    variants.find((variant) => [24, 48, 64].includes(variantBoxCount(variant) || -1));
+  const fromPallet = variantFull ? variantUnitPrice(variantFull) : null;
   if (fromPallet != null) return fromPallet;
   return lowestVariantUnit(variants);
 }

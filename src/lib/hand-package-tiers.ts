@@ -1,6 +1,6 @@
 /**
  * Manual / hand stretch film storefront packaging.
- * Only three purchase options: 1 Box, Half Pallet, Full Pallet.
+ * Strict 2-tier purchase model: 1 Box + Full Pallet only.
  */
 
 import { formatBoxRollLabel } from "@/lib/products";
@@ -14,7 +14,7 @@ import {
 export const HAND_PALLET_WEIGHT_NOTE =
   "Includes wooden pallet weight (~29.2 lbs) for LTL freight accuracy.";
 
-export type HandManualTierKey = "box" | "half" | "full";
+export type HandManualTierKey = "box" | "full";
 
 export interface HandManualPackageTier {
   key: HandManualTierKey;
@@ -49,21 +49,16 @@ export function handFullPalletBoxes(input: HandPalletLayoutInput): number {
   return Math.max(2, full);
 }
 
-/** Half of the product's full pallet, always at least 1 box. */
-export function handHalfPalletBoxes(input: HandPalletLayoutInput): number {
-  return Math.max(1, Math.floor(handFullPalletBoxes(input) / 2));
-}
-
 /**
- * Strict 3-tier menu for every manual product page.
- * Intermediate packs (e.g. 16-box layers) are intentionally omitted.
+ * Strict 2-tier menu for every manual product page:
+ * 1 Box (sample / single) and Full Pallet (boxes_per_pallet).
  */
 export function buildHandManualPackageTiers(
   input: HandPalletLayoutInput
 ): HandManualPackageTier[] {
   const fullBoxes = handFullPalletBoxes(input);
-  const halfBoxes = handHalfPalletBoxes(input);
   const rollsPerBox = HAND_ROLLS_PER_BOX;
+  const fullRolls = fullBoxes * rollsPerBox;
 
   return [
     {
@@ -74,25 +69,18 @@ export function buildHandManualPackageTiers(
       subtext: `${rollsPerBox} Rolls included · Sample / single box purchase`,
     },
     {
-      key: "half",
-      boxes: halfBoxes,
-      rolls: halfBoxes * rollsPerBox,
-      title: `Half Pallet · ${formatBoxRollLabel(halfBoxes, halfBoxes * rollsPerBox)}`,
-      subtext: `${formatBoxRollLabel(halfBoxes, halfBoxes * rollsPerBox)}. ${HAND_PALLET_WEIGHT_NOTE}`,
-    },
-    {
       key: "full",
       boxes: fullBoxes,
-      rolls: fullBoxes * rollsPerBox,
-      title: `Full Pallet · ${formatBoxRollLabel(fullBoxes, fullBoxes * rollsPerBox)}`,
-      subtext: `${formatBoxRollLabel(fullBoxes, fullBoxes * rollsPerBox)}. ${HAND_PALLET_WEIGHT_NOTE}`,
+      rolls: fullRolls,
+      title: `Full Pallet · ${formatBoxRollLabel(fullBoxes, fullRolls)}`,
+      subtext: `${formatBoxRollLabel(fullBoxes, fullRolls)}. ${HAND_PALLET_WEIGHT_NOTE}`,
     },
   ];
 }
 
 /**
  * Resolve the per-box rate for a manual tier.
- * Uses exact box-count columns when present, then nearest volume bracket.
+ * Box → 1-box unit price. Full → full-pallet discounted per-box price.
  */
 export function unitPriceForHandManualTier(
   prices: BoxTierPrices | null | undefined,
@@ -105,29 +93,18 @@ export function unitPriceForHandManualTier(
       ? prices.price1Box
       : unitBoxPriceForCount(prices, 1);
   }
-  if (tier === "half") {
-    return (
-      unitBoxPriceForCount(prices, boxes) ??
-      (prices.price32Boxes != null && prices.price32Boxes > 0
-        ? prices.price32Boxes
-        : null) ??
-      (prices.price16Boxes != null && prices.price16Boxes > 0
-        ? prices.price16Boxes
-        : null)
-    );
-  }
   return (
-    unitBoxPriceForCount(prices, boxes) ??
     (prices.price64Boxes != null && prices.price64Boxes > 0
       ? prices.price64Boxes
       : null) ??
+    unitBoxPriceForCount(prices, boxes) ??
     (prices.price32Boxes != null && prices.price32Boxes > 0
       ? prices.price32Boxes
       : null)
   );
 }
 
-/** True when a box/roll count is one of the three allowed manual tiers for that SKU. */
+/** True when a box/roll count is one of the two allowed manual tiers for that SKU. */
 export function isAllowedHandManualPack(
   input: HandPalletLayoutInput,
   boxes: number,

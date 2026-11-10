@@ -207,17 +207,10 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
       ? 'FORCE ELITE™ 15" Hand Stretch Film'
       : 'FORCE™ 18" Hand Stretch Film');
 
-  // Build the volume tier pill from whichever tier prices the admin has configured
-  const availableTiers: string[] = [];
-  if (product.priceCase !== null && product.priceCase !== undefined) {
-    availableTiers.push(isGenesis ? "Rolls" : "Boxes");
-  }
-  if (product.priceHalfPallet !== null && product.priceHalfPallet !== undefined) {
-    availableTiers.push("Half Pallet");
-  }
-  if (product.pricePallet !== null && product.pricePallet !== undefined) {
-    availableTiers.push("Pallet");
-  }
+  // Manual storefront: only 1 Box + Full Pallet purchase options.
+  const availableTiers: string[] = isGenesis
+    ? []
+    : ["1 Box", "Full Pallet"];
   const isSoldOut = !isCatalogInStock(product);
   const palletCount = Number(product.stockQuantity) || 0;
   const boxesPerPallet = boxesPerPalletForProduct({

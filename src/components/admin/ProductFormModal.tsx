@@ -74,18 +74,11 @@ function packageSku(baseSku: string, suffix: string): string {
   return base ? `${base}-${suffix}` : "";
 }
 
-/** Manual admin tiers: 1 Box / Half Pallet / Full Pallet (no intermediate packs). */
+/** Manual admin tiers: 1 Box + Full Pallet only. */
 function manualPackageOptions(fullBoxes = HAND_FULL_PALLET_BOXES) {
   const full = Math.max(2, Math.floor(Number(fullBoxes) || HAND_FULL_PALLET_BOXES));
-  const half = Math.max(1, Math.floor(full / 2));
   return [
     { label: "1 BOX WITH 4 ROLLS", rollsCount: 4, boxesCount: 1, suffix: "1B" },
-    {
-      label: `HALF PALLET · ${half} BOXES (${half * 4} ROLLS)`,
-      rollsCount: half * 4,
-      boxesCount: half,
-      suffix: "HALF",
-    },
     {
       label: `FULL PALLET · ${full} BOXES (${full * 4} ROLLS)`,
       rollsCount: full * 4,
@@ -111,10 +104,9 @@ function defaultPackageTiers(
 function columnPriceForBoxes(source: unknown, boxes: number): number | null {
   const prices = readBoxTierPrices(source);
   if (boxes === 1) return prices.price1Box;
-  if (boxes === 16) return prices.price16Boxes;
-  if (boxes === 32 || boxes === 12) return prices.price32Boxes ?? prices.price16Boxes;
-  if (boxes === 64 || boxes === 24 || boxes === 48) {
-    return prices.price64Boxes ?? prices.price32Boxes;
+  // Full-pallet discounted unit (any boxes_per_pallet count).
+  if (boxes > 1) {
+    return prices.price64Boxes ?? prices.price32Boxes ?? prices.price16Boxes;
   }
   return null;
 }
@@ -778,7 +770,7 @@ export function ProductFormModal({
             <div>
               <h3 className="text-sm font-black text-slate-900">{t("admin.packageOptionsTitle")}</h3>
               <p className="text-[10px] text-slate-400 mt-0.5">
-                Price per box for 1 Box, Half Pallet, and Full Pallet only. Saving writes each rate to product variants. The storefront multiplies it by the box count.
+                Price per box for 1 Box and Full Pallet only. Saving writes each rate to product variants. The storefront multiplies it by the box count.
               </p>
             </div>
 

@@ -1009,8 +1009,14 @@ function applicationFromRecord(raw: any, categorySlug: string): "hand" | "machin
   return getApplicationForCategory(categorySlug);
 }
 
-const BOX_TIER_COUNTS = [1, 16, 32, 64] as const;
-const ROLLS_FOR_BOX_TIER: Record<number, number> = { 4: 1, 64: 16, 128: 32, 256: 64 };
+/** Manual 2-tier + legacy full-pallet box counts still seen in warehouse data. */
+const BOX_TIER_COUNTS = [1, 24, 48, 64] as const;
+const ROLLS_FOR_BOX_TIER: Record<number, number> = {
+  4: 1,
+  96: 24,
+  192: 48,
+  256: 64,
+};
 
 /** Resolve a variant row to one of the sellable box counts. */
 function inferVariantBoxes(variant: any): number | null {
@@ -1104,16 +1110,19 @@ async function insertPackageVariant(
 }
 
 function boxPriceColumnPatch(tiers: ProductFormValues["packageTiers"] | undefined) {
-  const patch: Record<string, number> = {};
+  const patch: Record<string, number | null> = {
+    // Intermediate hand tiers are retired on the Manual 2-tier storefront.
+    price_16_boxes: null,
+    price_32_boxes: null,
+  };
   for (const tier of tiers || []) {
     const boxes = Number(tier.boxesCount);
     const price = Number(tier.price);
     if (!Number.isFinite(price) || price <= 0) continue;
     const amount = Number(price.toFixed(2));
     if (boxes === 1) patch.price_1_box = amount;
-    if (boxes === 16) patch.price_16_boxes = amount;
-    if (boxes === 32) patch.price_32_boxes = amount;
-    if (boxes === 64) patch.price_64_boxes = amount;
+    // Any full-pallet box count writes the discounted full-pallet unit column.
+    if (boxes > 1) patch.price_64_boxes = amount;
   }
   return patch;
 }

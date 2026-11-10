@@ -85,30 +85,41 @@ export function packageTotalWeightLbs(input: PackageWeightInput): number | null 
     return storedPackageWeight(input.weightLbs);
   }
 
-  const isFullPallet = rolls === 256 || boxes === 64;
-  const isHalfPallet = rolls === 128 || boxes === 32;
-  const isLayer = rolls === 64 || boxes === 16;
   const isBox = rolls === 4 || boxes === 1;
+  // Full pallet = boxes_per_pallet for the SKU (commonly 24 / 48 / 64).
+  const isFullPallet =
+    boxes === 24 ||
+    boxes === 48 ||
+    boxes === 64 ||
+    rolls === 96 ||
+    rolls === 192 ||
+    rolls === 256;
 
   if (isFullPallet) {
     if (palletWeight != null) return roundLbs(palletWeight, 2);
-    if (boxWeight != null) return roundLbs(boxWeight * 64 + HAND_WOODEN_PALLET_LBS, 2);
-    if (perRoll != null) return roundLbs(perRoll * 256 + HAND_WOODEN_PALLET_LBS, 2);
-  }
-
-  if (isHalfPallet) {
-    if (boxWeight != null) return roundLbs(boxWeight * 32 + HAND_WOODEN_PALLET_LBS, 2);
-    if (perRoll != null) return roundLbs(perRoll * 128 + HAND_WOODEN_PALLET_LBS, 2);
-  }
-
-  if (isLayer) {
-    if (boxWeight != null) return roundLbs(boxWeight * 16 + HAND_WOODEN_PALLET_LBS, 2);
-    if (perRoll != null) return roundLbs(perRoll * 64 + HAND_WOODEN_PALLET_LBS, 2);
+    const fullBoxes = boxes > 0 ? boxes : rolls > 0 ? Math.round(rolls / 4) : 64;
+    if (boxWeight != null) {
+      return roundLbs(boxWeight * fullBoxes + HAND_WOODEN_PALLET_LBS, 2);
+    }
+    if (perRoll != null) {
+      const fullRolls = rolls > 0 ? rolls : fullBoxes * 4;
+      return roundLbs(perRoll * fullRolls + HAND_WOODEN_PALLET_LBS, 2);
+    }
   }
 
   if (isBox) {
     if (boxWeight != null) return roundLbs(boxWeight, 2);
     if (perRoll != null) return roundLbs(perRoll * 4, 2);
+  }
+
+  // Non-box packs still include wooden pallet tare for LTL accuracy.
+  if (boxes > 1 || rolls > 4) {
+    if (boxWeight != null && boxes > 0) {
+      return roundLbs(boxWeight * boxes + HAND_WOODEN_PALLET_LBS, 2);
+    }
+    if (perRoll != null && rolls > 0) {
+      return roundLbs(perRoll * rolls + HAND_WOODEN_PALLET_LBS, 2);
+    }
   }
 
   if (perRoll != null && rolls > 0) {

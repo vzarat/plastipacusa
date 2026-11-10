@@ -221,7 +221,7 @@ function isSingleBoxSource(option: any): boolean {
   return boxes === 1 || rolls === 4 || label.includes("1 BOX");
 }
 
-/** Manual storefront: only 1 Box / Half Pallet / Full Pallet. */
+/** Manual storefront: only 1 Box / Full Pallet. */
 function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
   const prices = readBoxTierPrices(product);
   const single = sourceOptions.find((option) => isSingleBoxSource(option));
