@@ -62,7 +62,7 @@ export const productVariants = pgTable("product_variants", {
   gauge: integer("gauge").notNull(),
   lengthFeet: integer("length_feet").notNull(),
   rollsPerBox: integer("rolls_per_box").notNull().default(4),
-  rollsPerPallet: integer("rolls_per_pallet").notNull().default(256),
+  rollsPerPallet: integer("rolls_per_pallet").notNull().default(192),
   weightLbs: numeric("weight_lbs", { precision: 6, scale: 2 }).notNull(),
   rollWeightLbs: numeric("roll_weight_lbs", { precision: 12, scale: 6 }),
   boxWeightLbs: numeric("box_weight_lbs", { precision: 8, scale: 2 }),

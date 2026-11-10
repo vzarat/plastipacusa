@@ -5,9 +5,7 @@ import type { AdminPackageTier, AdminProduct } from "@/types/product";
 
 const HAND_TIERS = [
   { boxes: 1, rolls: 4, key: "box" },
-  { boxes: 16, rolls: 64, key: "layer" },
-  { boxes: 32, rolls: 128, key: "half" },
-  { boxes: 64, rolls: 256, key: "full" },
+  { boxes: 48, rolls: 192, key: "full" },
 ] as const;
 
 export const PACKAGING_SPECS_CSV_HEADERS = [

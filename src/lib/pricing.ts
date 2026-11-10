@@ -140,9 +140,7 @@ function variantBoxCount(record: Record<string, unknown>): number | null {
 
   const rolls = Math.floor(Number(record.rolls_count ?? record.rollsCount ?? record.rolls) || 0);
   if (rolls === 4) return 1;
-  if (rolls === 64) return 16;
-  if (rolls === 128) return 32;
-  if (rolls === 256) return 64;
+  if (rolls === HAND_FULL_PALLET_ROLLS || rolls === 256) return HAND_FULL_PALLET_BOXES;
 
   const label = String(record.title || record.package_size || record.packageSize || record.label || "");
   const boxMatch = label.match(/(\d+)\s*BOX/i);
