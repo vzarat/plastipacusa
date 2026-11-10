@@ -322,18 +322,16 @@ function displayPackageTitle(variant: any, isMachine: boolean): string {
   }
 
   const kind = getPackageTierKind(variant, false);
-  const rolls = Math.max(0, getRollsCount(variant));
   const boxes = getBoxesCount(variant, false);
   if (kind === "full_pallet" || boxes === HAND_FULL_PALLET.boxes || boxes === 64) {
-    return formatBoxRollLabel(HAND_FULL_PALLET.boxes, HAND_FULL_PALLET.rolls);
+    return `Full Pallet (${HAND_FULL_PALLET.rolls} Rolls / ${HAND_FULL_PALLET.boxes} Boxes)`;
   }
-  if (boxes > 0) {
-    const rollCount = rolls > 0 ? rolls : boxes * 4;
-    return formatBoxRollLabel(boxes, rollCount);
+  if (kind === "single_unit" || boxes === 1) return "1 Box";
+  if (variant?.tierKey === "full") {
+    return `Full Pallet (${HAND_FULL_PALLET.rolls} Rolls / ${HAND_FULL_PALLET.boxes} Boxes)`;
   }
-  if (kind === "single_unit") return "1 Box (4 Rolls)";
-  if (rolls > 0) return `${rolls} Rolls`;
-  return raw;
+  if (variant?.tierKey === "box") return "1 Box";
+  return raw || "1 Box";
 }
 
 function displayPackageSubtext(variant: any, isMachine: boolean): string {
@@ -360,13 +358,10 @@ function displayPackageSubtext(variant: any, isMachine: boolean): string {
       : "";
   if (houston) return `${houston}${palletNote}`;
   if (kind === "full_pallet" || boxes === HAND_FULL_PALLET.boxes || rolls === HAND_FULL_PALLET.rolls) {
-    return `${HAND_FULL_PALLET.boxes} Boxes · ${HAND_FULL_PALLET.rolls} Rolls.${palletNote}`;
+    return `${HAND_FULL_PALLET.rolls} Rolls · ${HAND_FULL_PALLET.boxes} master boxes.${palletNote}`;
   }
   if (kind === "single_unit" || boxes === 1) {
-    const rollCount = rolls > 0 ? rolls : 4;
-    return rollCount === 4
-      ? "4 Rolls included · Sample / standard box"
-      : `${rollCount} Rolls included`;
+    return "Sample / Single box purchase · 4 Rolls";
   }
   return rolls > 0 ? `${rolls} Rolls included` : "";
 }
@@ -379,8 +374,8 @@ function compactPackageSubtext(full: string, isMachine: boolean): string {
   const withoutPallet = full.replace(HAND_PALLET_WEIGHT_NOTE, "").replace(/\s+/g, " ").trim();
   if (/Houston Friday Freight/i.test(withoutPallet)) return "Houston Friday Freight";
   if (/Free RGV Freight/i.test(withoutPallet)) return "Free RGV Freight";
-  if (/Standard package/i.test(withoutPallet)) return "Standard package";
-  // Title already shows box/roll counts — omit redundant "N Rolls included" lines.
+  if (/Sample|Single box/i.test(withoutPallet)) return "Sample / Single box";
+  if (/master boxes|192 Rolls/i.test(withoutPallet)) return "192 Rolls / 48 Boxes";
   if (/Rolls included|Boxes ·/i.test(withoutPallet)) return "";
   return withoutPallet.replace(/[.\s]+$/g, "").trim();
 }
@@ -933,9 +928,9 @@ export function VariantSelector({
               </>
             ) : (
               <>
-                {hasActiveDiscount && listPackageUnit !== unitPrice && (
+                {hasActiveDiscount && listBoxUnit !== discountedBoxUnit && listBoxUnit > 0 && (
                   <span className="text-lg sm:text-xl font-bold text-slate-400 line-through tracking-tight">
-                    {formatCurrency(listPackageUnit)}
+                    {formatCurrency(listBoxUnit)} USD / box
                   </span>
                 )}
                 <span
@@ -943,14 +938,14 @@ export function VariantSelector({
                     hasActiveDiscount ? "text-emerald-700" : "text-slate-900"
                   }`}
                 >
-                  {unitPrice > 0 ? formatCurrency(unitPrice) : "—"}
+                  {discountedBoxUnit > 0 ? formatCurrency(discountedBoxUnit) : "—"}
                 </span>
-                {unitPrice > 0 && (
-                  <span className="text-sm font-bold text-slate-500">USD</span>
-                )}
                 {discountedBoxUnit > 0 && (
+                  <span className="text-sm font-bold text-slate-500">USD / box</span>
+                )}
+                {unitPrice > 0 && (
                   <span className="basis-full text-sm font-semibold text-slate-500">
-                    {formatCurrency(discountedBoxUnit)} USD / box
+                    Total: {formatCurrency(unitPrice)} USD
                   </span>
                 )}
               </>
@@ -1130,7 +1125,7 @@ export function VariantSelector({
                       <>
                         {optionBoxUnit !== optionBoxUnitDiscounted && (
                           <span className="block text-xs font-semibold text-slate-400 line-through">
-                            {formatCurrency(totalForBoxes(optionBoxUnit, boxesCount))} USD
+                            {formatCurrency(optionBoxUnit)} USD / box
                           </span>
                         )}
                         <p
@@ -1140,10 +1135,11 @@ export function VariantSelector({
                               : "text-slate-900"
                           }`}
                         >
-                          {formatCurrency(totalForBoxes(optionBoxUnitDiscounted, boxesCount))} USD
+                          {formatCurrency(optionBoxUnitDiscounted)} USD / box
                         </p>
                         <p className="mt-0.5 whitespace-nowrap text-[11px] font-semibold text-slate-500">
-                          {formatCurrency(optionBoxUnitDiscounted)} USD / box
+                          Total: {formatCurrency(totalForBoxes(optionBoxUnitDiscounted, boxesCount))}{" "}
+                          USD
                         </p>
                       </>
                     ) : (
@@ -1326,6 +1322,7 @@ export function VariantSelector({
                 hasActiveDiscount ? "text-emerald-700" : "text-slate-900"
               }`}
             >
+              {isMachineFilm ? "" : "Total: "}
               {formatCurrency(totalPrice)}{" "}
               <span className="text-xs font-semibold text-slate-500">USD</span>
             </span>

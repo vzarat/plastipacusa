@@ -3,7 +3,6 @@
  * Strict 2-tier purchase model: 1 Box + Full Pallet (48 boxes / 192 rolls).
  */
 
-import { formatBoxRollLabel } from "@/lib/products";
 import {
   HAND_FULL_PALLET_BOXES,
   HAND_FULL_PALLET_ROLLS,
@@ -57,15 +56,15 @@ export function buildHandManualPackageTiers(
       key: "box",
       boxes: 1,
       rolls: rollsPerBox,
-      title: formatBoxRollLabel(1, rollsPerBox),
-      subtext: `${rollsPerBox} Rolls included · Sample / single box purchase`,
+      title: "1 Box",
+      subtext: `Sample / Single box purchase · ${rollsPerBox} Rolls`,
     },
     {
       key: "full",
       boxes: fullBoxes,
       rolls: fullRolls,
-      title: `Full Pallet · ${formatBoxRollLabel(fullBoxes, fullRolls)}`,
-      subtext: `${formatBoxRollLabel(fullBoxes, fullRolls)}. ${HAND_PALLET_WEIGHT_NOTE}`,
+      title: `Full Pallet (${fullRolls} Rolls / ${fullBoxes} Boxes)`,
+      subtext: `${fullRolls} Rolls · ${fullBoxes} master boxes. ${HAND_PALLET_WEIGHT_NOTE}`,
     },
   ];
 }

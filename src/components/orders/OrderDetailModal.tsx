@@ -256,6 +256,9 @@ export default function OrderDetailModal({ open, order, onClose }: OrderDetailMo
                             {(item.packageSize || item.package_size)
                               ? ` • ${presentPackageLabel({
                                   label: item.packageSize || item.package_size,
+                                  boxes: item.totalBoxes ?? item.total_boxes ?? item.boxes,
+                                  rolls: item.totalRolls ?? item.total_rolls ?? item.rolls,
+                                  application: item.application,
                                 })}`
                               : ""}
                           </p>

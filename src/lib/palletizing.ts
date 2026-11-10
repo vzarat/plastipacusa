@@ -111,7 +111,7 @@ export function resolvePalletizingSpecs(input: PalletizingInput): PalletizingSpe
 /** Full-pallet package label derived from warehouse pack-out. */
 export function fullPalletPackageLabel(specs: PalletizingSpecs): string {
   if (specs.fullPalletRolls === 40) {
-    return `FULL PALLET = ${specs.fullPalletRolls} ROLLS`;
+    return `Full Pallet (${specs.fullPalletRolls} Rolls)`;
   }
-  return `${specs.boxesPerFullPallet} BOXES = ${specs.fullPalletRolls} ROLLS (FULL PALLET)`;
+  return `Full Pallet (${specs.fullPalletRolls} Rolls / ${specs.boxesPerFullPallet} Boxes)`;
 }

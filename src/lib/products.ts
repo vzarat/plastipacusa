@@ -164,7 +164,7 @@ export function formatBoxRollLabel(boxes: number, rolls: number): string {
   return `${boxCount} ${boxWord} (${rollCount} ${rollWord})`;
 }
 
-/** Customer-facing package name. Hand film leads with boxes; machine film stays in rolls. */
+/** Customer-facing package name for cart, checkout, and order summaries. */
 export function presentPackageLabel(input: {
   label?: string | null;
   boxes?: number | null;
@@ -190,39 +190,32 @@ export function presentPackageLabel(input: {
     }
   }
 
-  const boxMatch = upper.match(/(\d+)\s*BOX/);
-  const rollMatch = upper.match(/(\d+)\s*ROLL/);
-  if (boxMatch && rollMatch) {
-    return formatBoxRollLabel(Number(boxMatch[1]), Number(rollMatch[1]));
-  }
-
-  if (boxes > 0 && rolls > 0 && rolls !== 4) {
-    return formatBoxRollLabel(boxes, rolls);
-  }
-
-  if (rolls === 256 || boxes === 64 || upper.includes("256 ROLL") || upper.includes("64 BOX")) {
-    return formatBoxRollLabel(64, 256);
-  }
-  if (rolls === 192 || boxes === 48 || upper.includes("192 ROLL") || upper.includes("48 BOX")) {
-    return formatBoxRollLabel(48, 192);
-  }
-  if (rolls === 128 || boxes === 32 || upper.includes("128 ROLL") || upper.includes("32 BOX")) {
-    return formatBoxRollLabel(32, 128);
-  }
+  // Manual 2-tier storefront labels.
   if (
-    rolls === 64 ||
-    boxes === 16 ||
-    upper.includes("1 LAYER") ||
-    upper.includes("16 BOX") ||
-    upper.includes("64 ROLL")
+    rolls === HAND_FULL_PALLET.rolls ||
+    rolls === 256 ||
+    boxes === HAND_FULL_PALLET.boxes ||
+    boxes === 64 ||
+    upper.includes("FULL PALLET") ||
+    upper.includes("192 ROLL") ||
+    upper.includes("256 ROLL") ||
+    upper.includes("48 BOX") ||
+    upper.includes("64 BOX")
   ) {
-    return formatBoxRollLabel(16, 64);
+    return `Full Pallet (${HAND_FULL_PALLET.rolls} Rolls)`;
   }
-  if (rolls === 4 || boxes === 1 || upper.includes("1 BOX")) {
-    return formatBoxRollLabel(1, rolls === 4 || rolls <= 0 ? 4 : rolls);
+  if (rolls === 4 || boxes === 1 || upper.includes("1 BOX") || upper.includes("SAMPLE")) {
+    return "1 Box";
   }
 
-  return label;
+  if (boxes > 0 && rolls > 0) {
+    if (rolls >= HAND_FULL_PALLET.rolls || boxes >= HAND_FULL_PALLET.boxes) {
+      return `Full Pallet (${HAND_FULL_PALLET.rolls} Rolls)`;
+    }
+    if (boxes === 1) return "1 Box";
+  }
+
+  return label || "1 Box";
 }
 
 export function unitLabelForProduct(isMachine: boolean): string {

@@ -78,9 +78,9 @@ function packageSku(baseSku: string, suffix: string): string {
 function manualPackageOptions(fullBoxes = HAND_FULL_PALLET_BOXES) {
   const full = Math.max(2, Math.floor(Number(fullBoxes) || HAND_FULL_PALLET_BOXES));
   return [
-    { label: "1 BOX WITH 4 ROLLS", rollsCount: 4, boxesCount: 1, suffix: "1B" },
+    { label: "1 Box", rollsCount: 4, boxesCount: 1, suffix: "1B" },
     {
-      label: `FULL PALLET · ${full} BOXES (${full * 4} ROLLS)`,
+      label: `Full Pallet (${full * 4} Rolls / ${full} Boxes)`,
       rollsCount: full * 4,
       boxesCount: full,
       suffix: "FULL",

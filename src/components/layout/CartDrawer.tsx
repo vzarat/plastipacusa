@@ -263,16 +263,18 @@ export function CartDrawer() {
                     {presentPackageLabel({
                       label: item.packageSize || item.pricingTier,
                       boxes: item.totalBoxes,
-                      rolls: item.rollsPerBox,
+                      rolls: item.totalRolls || item.rollsPerBox,
                       application: item.application,
                     })}
                   </Badge>
                   <span className="text-slate-500 text-[11px]">
                     {item.application === "machine" && item.totalRolls
                       ? `${item.totalRolls} rolls`
-                      : item.totalRolls
-                        ? `${item.totalRolls} rolls / unit`
-                        : `${item.rollsPerBox} rolls`}
+                      : Number(item.totalBoxes) >= 48 || Number(item.totalRolls) >= 192
+                        ? "192 rolls / 48 boxes"
+                        : item.totalRolls
+                          ? `${item.totalRolls} rolls / unit`
+                          : `${item.rollsPerBox} rolls`}
                   </span>
                 </div>
 

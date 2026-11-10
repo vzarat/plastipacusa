@@ -112,7 +112,7 @@ function handMatrixRows(
     title: product?.title || product?.name,
     application: "hand",
   });
-  const fullBoxes = manualTiers.find((tier) => tier.key === "full")?.boxes || 64;
+  const fullBoxes = manualTiers.find((tier) => tier.key === "full")?.boxes || 48;
 
   return manualTiers.map((tier) => {
     const match =
@@ -191,15 +191,17 @@ const HAND_PALLET_WEIGHT_NOTE =
   "Includes wooden pallet weight (~29.2 lbs) for LTL freight accuracy.";
 
 function packageTierLabel(variant: ProductVariant): string {
+  const titled = String(variant.title || variant.packageSize || "").trim();
+  if (titled) return titled;
   const explicit = Number(variant.rolls_count ?? variant.rollsCount);
   const rolls = Number.isFinite(explicit) && explicit > 0 ? explicit : 0;
   const boxes = Number(variant.boxes_count ?? variant.boxesCount) || 0;
-  if (rolls === 256 || boxes === 64) return formatBoxRollLabel(64, 256);
+  if (rolls === 192 || boxes === 48 || rolls === 256 || boxes === 64) {
+    return "Full Pallet (192 Rolls / 48 Boxes)";
+  }
+  if (rolls === 4 || boxes === 1) return "1 Box";
   if (boxes > 0 && rolls > 0) return formatBoxRollLabel(boxes, rolls);
-  if (rolls === 128 || boxes === 32) return formatBoxRollLabel(32, 128);
-  if (rolls === 64 || boxes === 16) return formatBoxRollLabel(16, 64);
-  if (rolls === 4 || boxes === 1) return formatBoxRollLabel(1, 4);
-  return variant.title || variant.packageSize || variant.sku || "—";
+  return variant.sku || "—";
 }
 
 function safeLocaleNumber(value: unknown, suffix = ""): string {
@@ -305,10 +307,11 @@ function matrixRowView(
   ) : Number((variant as { boxUnitPrice?: number }).boxUnitPrice) > 0 && boxes > 0 ? (
     <span className="block whitespace-normal text-right">
       <span className="block">
-        {formatCurrency(Number((variant as { boxUnitPrice?: number }).boxUnitPrice) * boxes)} USD
+        {formatCurrency((variant as { boxUnitPrice?: number }).boxUnitPrice)} USD / box
       </span>
       <span className="block text-xs font-semibold text-slate-500">
-        {formatCurrency((variant as { boxUnitPrice?: number }).boxUnitPrice)} USD / box
+        Total:{" "}
+        {formatCurrency(Number((variant as { boxUnitPrice?: number }).boxUnitPrice) * boxes)} USD
       </span>
     </span>
   ) : (
@@ -336,9 +339,16 @@ function matrixRowView(
       storedDimensions ||
       (matrixDimensions ? formatHandMatrixDimensions(matrixDimensions) : formatFreightDimensions(unit)),
     weight: weightLabel,
-    rolls: rollCount > 0 ? `${rollCount} rolls` : "—",
+    rolls:
+      !machine && (rollCount >= 192 || boxes >= 48)
+        ? "192 rolls (48 master boxes)"
+        : !machine && (rollCount === 4 || boxes === 1)
+          ? "4 rolls / box"
+          : rollCount > 0
+            ? `${rollCount} rolls`
+            : "—",
     price: priceNode,
-    note: !machine && boxes >= 16 ? HAND_PALLET_WEIGHT_NOTE : null,
+    note: !machine && boxes >= 48 ? HAND_PALLET_WEIGHT_NOTE : null,
   };
 }
 

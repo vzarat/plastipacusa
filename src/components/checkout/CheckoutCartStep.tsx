@@ -124,7 +124,7 @@ export function CheckoutCartStep({
                         {presentPackageLabel({
                           label: item.packageSize || item.pricingTier,
                           boxes: item.totalBoxes,
-                          rolls: item.rollsPerBox,
+                          rolls: item.totalRolls || item.rollsPerBox,
                           application: item.application,
                         })}
                       </p>

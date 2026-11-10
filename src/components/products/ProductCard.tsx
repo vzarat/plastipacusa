@@ -263,7 +263,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
 
   const volumeTierLabel =
     !isGenesis && handQuote != null
-    ? "Volume tiers: 1 Box & Full Pallet (48 boxes)"
+    ? "Volume tiers: 1 Box & Full Pallet (192 rolls)"
     : availableTiers.length > 0
       ? `Volume tiers: ${availableTiers.join(" & ")}`
       : isGenesis

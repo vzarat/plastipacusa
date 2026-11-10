@@ -42,6 +42,11 @@ export function PalletizingSpecsPanel({
           <span className="text-xl font-black text-slate-900 mt-1 block">
             {specs.fullPalletRolls}
           </span>
+          {specs.fullPalletRolls === 192 && (
+            <span className="mt-0.5 block text-[10px] font-semibold text-slate-500">
+              48 master boxes
+            </span>
+          )}
         </div>
         <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">

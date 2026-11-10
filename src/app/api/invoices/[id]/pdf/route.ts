@@ -44,8 +44,8 @@ function mapOrderItems(rawItems: unknown, fallbackTotal: number): InvoicePdfItem
         : "";
     const packageSize = presentPackageLabel({
       label: item?.packageSize || item?.package_size || item?.pricingTier || "",
-      boxes: item?.totalBoxes,
-      rolls: item?.rollsPerBox,
+      boxes: item?.totalBoxes ?? item?.total_boxes,
+      rolls: item?.totalRolls ?? item?.total_rolls ?? item?.rollsPerBox,
       application: item?.application,
     });
     const description = customerLineDescription({
