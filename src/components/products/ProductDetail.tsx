@@ -4,12 +4,12 @@ import React, { useMemo, useState, useEffect, useRef } from "react";
 import { trackViewContent } from "@/lib/meta-pixel";
 import { ProductWithVariants, ProductVariant } from "@/types";
 import { VariantSelector } from "@/components/products/VariantSelector";
-import { buildMachineFilmSelectorTiers, isMachineFilm } from "@/lib/products";
+import { isMachineFilm } from "@/lib/products";
+import { HAND_ROLLS_PER_BOX } from "@/lib/pricing";
 import {
-  HAND_FULL_PALLET_BOXES,
-  HAND_FULL_PALLET_ROLLS,
-  HAND_ROLLS_PER_BOX,
-} from "@/lib/pricing";
+  buildHandManualPackageTiers,
+  handFullPalletBoxes,
+} from "@/lib/hand-package-tiers";
 import { PhoneCall } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { isCatalogInStock } from "@/lib/products";
@@ -29,14 +29,29 @@ function buildInitialVariant(product: ProductWithVariants): ProductVariant | any
   const lengthValue = Number(product?.length_feet);
   const lengthFeet = Number.isFinite(lengthValue) && lengthValue > 0 ? lengthValue : undefined;
 
+  // Machine film is not sold on the Manual-only storefront.
   if (isMachineFilm(product)) {
-    return buildMachineFilmSelectorTiers(product)[0];
+    return null;
   }
+
+  const layout = {
+    boxesPerPallet: (product as { boxesPerPallet?: number | null }).boxesPerPallet,
+    widthInches: product?.widthInches ?? product?.width_inches,
+    gauge: product?.gauge,
+    lengthFeet: product?.lengthFeet ?? product?.length_feet,
+    slug: product?.slug,
+    name: product?.title || product?.name,
+    title: product?.title || product?.name,
+    application: "hand" as const,
+  };
+  const fullBoxes = handFullPalletBoxes(layout);
+  const fullTier = buildHandManualPackageTiers(layout).find((tier) => tier.key === "full");
+  const fullRolls = fullTier?.rolls || fullBoxes * HAND_ROLLS_PER_BOX;
 
   const packageOptions = product.packageOptions || [];
   const fullPackage =
-    packageOptions.find((option) => Number(option.boxes) === HAND_FULL_PALLET_BOXES) ||
-    packageOptions.find((option) => Number(option.rolls) === HAND_FULL_PALLET_ROLLS);
+    packageOptions.find((option) => Number(option.boxes) === fullBoxes) ||
+    packageOptions.find((option) => Number(option.rolls) === fullRolls);
   if (fullPackage) {
     const unit =
       Number(fullPackage.boxUnitPrice) > 0
@@ -46,20 +61,20 @@ function buildInitialVariant(product: ProductWithVariants): ProductVariant | any
       id: fullPackage.sku,
       sku: fullPackage.sku,
       tierKey: "full",
-      packageSize: fullPackage.label,
-      title: fullPackage.label,
+      packageSize: fullPackage.label || fullTier?.title,
+      title: fullPackage.label || fullTier?.title,
       price: unit,
       boxUnitPrice: unit,
-      boxes: HAND_FULL_PALLET_BOXES,
-      boxes_count: HAND_FULL_PALLET_BOXES,
-      boxesCount: HAND_FULL_PALLET_BOXES,
+      boxes: fullBoxes,
+      boxes_count: fullBoxes,
+      boxesCount: fullBoxes,
       rollsPerBox: HAND_ROLLS_PER_BOX,
-      rolls_count: HAND_FULL_PALLET_ROLLS,
-      rollsCount: HAND_FULL_PALLET_ROLLS,
+      rolls_count: fullRolls,
+      rollsCount: fullRolls,
       widthInches,
       gauge,
       lengthFeet,
-      rollsPerPallet: HAND_FULL_PALLET_ROLLS,
+      rollsPerPallet: fullRolls,
       weightLbs: "",
     };
   }
@@ -67,10 +82,10 @@ function buildInitialVariant(product: ProductWithVariants): ProductVariant | any
   if (product.variants?.length) {
     return (
       product.variants.find(
-        (variant) => Number(variant.boxes_count ?? variant.boxesCount) === HAND_FULL_PALLET_BOXES
+        (variant) => Number(variant.boxes_count ?? variant.boxesCount) === fullBoxes
       ) ||
       product.variants.find(
-        (variant) => Number(variant.rolls_count ?? variant.rollsCount) === HAND_FULL_PALLET_ROLLS
+        (variant) => Number(variant.rolls_count ?? variant.rollsCount) === fullRolls
       ) ||
       product.variants[0]
     );
@@ -87,7 +102,7 @@ function buildInitialVariant(product: ProductWithVariants): ProductVariant | any
       widthInches,
       gauge,
       lengthFeet,
-      rollsPerPallet: HAND_FULL_PALLET_ROLLS,
+      rollsPerPallet: fullRolls,
       weightLbs: "",
     };
   }

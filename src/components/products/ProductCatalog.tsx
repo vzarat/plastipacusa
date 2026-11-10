@@ -340,7 +340,7 @@ function CatalogPagination({
 
 export function ProductCatalog({
   allProducts,
-  initialApp = "all",
+  initialApp = "hand",
   initialCategory = "all",
   initialWidth = "all",
   initialGauge = "all",
@@ -496,6 +496,10 @@ export function ProductCatalog({
           return false;
         }
 
+        // Manual-only storefront: never list machine / automatic film.
+        if (product.application === "machine" || isMachineFilm(product)) {
+          return false;
+        }
         if (selectedAppType !== "all" && product.application !== selectedAppType) {
           return false;
         }

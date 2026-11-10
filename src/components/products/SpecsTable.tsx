@@ -26,12 +26,14 @@ import { machineFilmTierSku } from "@/lib/machine-film-sku";
 import { machineFilmPackagePrice, machineFilmPerRollPrice } from "@/lib/machine-film-pricing";
 import { buildMachineFilmSelectorTiers, formatBoxRollLabel, isMachineFilm } from "@/lib/products";
 import {
-  BOX_PRICE_PRESETS,
   readBoxTierPrices,
   totalForBoxes,
   perBoxPriceFromVariant,
-  unitBoxPriceForCount,
 } from "@/lib/pricing";
+import {
+  buildHandManualPackageTiers,
+  unitPriceForHandManualTier,
+} from "@/lib/hand-package-tiers";
 
 interface SpecsTableProps {
   variants?: ProductVariant[] | null;
@@ -100,11 +102,28 @@ function handMatrixRows(
         variantRollCount(variant) === 4 || Number(variant.boxes_count ?? variant.boxesCount) === 1
     ) || null;
 
-  return BOX_PRICE_PRESETS.map((tier) => {
+  const manualTiers = buildHandManualPackageTiers({
+    boxesPerPallet: product?.boxesPerPallet ?? product?.boxes_per_pallet,
+    widthInches: product?.widthInches ?? product?.width_inches,
+    gauge: product?.gauge,
+    lengthFeet: product?.lengthFeet ?? product?.length_feet,
+    slug: product?.slug,
+    name: product?.title || product?.name,
+    title: product?.title || product?.name,
+    application: "hand",
+  });
+  const fullBoxes = manualTiers.find((tier) => tier.key === "full")?.boxes || 64;
+
+  return manualTiers.map((tier) => {
     const match =
-      variants.find((variant) => variantRollCount(variant) === tier.rolls) || null;
+      variants.find((variant) => variantRollCount(variant) === tier.rolls) ||
+      variants.find(
+        (variant) => Number(variant.boxes_count ?? variant.boxesCount) === tier.boxes
+      ) ||
+      null;
     const unit =
-      perBoxPriceFromVariant(match, tier.boxes) ?? unitBoxPriceForCount(prices, tier.boxes);
+      perBoxPriceFromVariant(match, tier.boxes) ??
+      unitPriceForHandManualTier(prices, tier.key, tier.boxes);
     const price = unit != null ? totalForBoxes(unit, tier.boxes) : 0;
     return {
       ...(match || boxVariant || sample),
@@ -128,15 +147,15 @@ function handMatrixRows(
         match?.sku ||
         boxVariant?.sku ||
         "",
-      title: formatBoxRollLabel(tier.boxes, tier.rolls),
-      packageSize: formatBoxRollLabel(tier.boxes, tier.rolls),
+      title: tier.title,
+      packageSize: tier.title,
       boxUnitPrice: unit,
       rolls_count: tier.rolls,
       rollsCount: tier.rolls,
       rollsPerBox: tier.rolls,
       boxes_count: tier.boxes,
       boxesCount: tier.boxes,
-      rollsPerPallet: 256,
+      rollsPerPallet: fullBoxes * 4,
       rollWeightLbs: match?.rollWeightLbs || boxVariant?.rollWeightLbs || rollWeight,
       boxWeightLbs: boxWeight || match?.boxWeightLbs || boxVariant?.boxWeightLbs,
       palletWeightLbs: match?.palletWeightLbs || boxVariant?.palletWeightLbs || palletWeight,

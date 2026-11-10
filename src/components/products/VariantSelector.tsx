@@ -17,7 +17,6 @@ import { boxStockLabel, boxesPerPalletForProduct, palletStockLabel } from "@/lib
 import { usesCompact1880Pallets } from "@/lib/palletizing";
 import {
   HAND_FULL_PALLET,
-  buildMachineFilmSelectorTiers,
   isMachineFilm as detectMachineFilm,
   normalizeMachinePackageLabel,
   formatBoxRollLabel,
@@ -36,8 +35,12 @@ import {
   perBoxPriceFromVariant,
   readBoxTierPrices,
   totalForBoxes,
-  unitBoxPriceForCount,
 } from "@/lib/pricing";
+import {
+  HAND_PALLET_WEIGHT_NOTE,
+  buildHandManualPackageTiers,
+  unitPriceForHandManualTier,
+} from "@/lib/hand-package-tiers";
 
 type PackageTierKind =
   | "single_unit"
@@ -209,41 +212,6 @@ function getPackageSavings(variant: any, baseUnitPrice: number, isMachine: boole
   return { unitCount, savingsPercent, perUnitPrice };
 }
 
-const HAND_PALLET_WEIGHT_NOTE =
-  "Includes wooden pallet weight (~29.2 lbs) for LTL freight accuracy.";
-
-/** Official hand-film presets. Totals come from the live per-box bracket, not a stored pallet rate. */
-const STANDARD_HAND_PACKAGE_TIERS = [
-  {
-    key: "box",
-    title: "1 Box (4 Rolls)",
-    rolls: 4,
-    boxes: 1,
-    subtext: "4 Rolls included · Standard package",
-  },
-  {
-    key: "layer",
-    title: "16 Boxes (64 Rolls)",
-    rolls: 64,
-    boxes: 16,
-    subtext: `64 Rolls included · Free RGV Freight Eligible. ${HAND_PALLET_WEIGHT_NOTE}`,
-  },
-  {
-    key: "half",
-    title: "32 Boxes (128 Rolls)",
-    rolls: 128,
-    boxes: 32,
-    subtext: `128 Rolls included. ${HAND_PALLET_WEIGHT_NOTE}`,
-  },
-  {
-    key: "full",
-    title: "64 Boxes (256 Rolls)",
-    rolls: 256,
-    boxes: 64,
-    subtext: `64 Boxes · 256 Rolls. ${HAND_PALLET_WEIGHT_NOTE}`,
-  },
-] as const;
-
 function isSingleBoxSource(option: any): boolean {
   const rolls = Number(
     option?.rolls ?? option?.rolls_count ?? option?.rollsCount ?? option?.rollsPerBox ?? 0
@@ -253,19 +221,28 @@ function isSingleBoxSource(option: any): boolean {
   return boxes === 1 || rolls === 4 || label.includes("1 BOX");
 }
 
+/** Manual storefront: only 1 Box / Half Pallet / Full Pallet. */
 function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
   const prices = readBoxTierPrices(product);
   const single = sourceOptions.find((option) => isSingleBoxSource(option));
-  const baseBoxPrice = unitBoxPriceForCount(prices, 1);
+  const layout = {
+    boxesPerPallet: product?.boxesPerPallet ?? product?.boxes_per_pallet,
+    widthInches: product?.width_inches || product?.widthInches || single?.widthInches,
+    gauge: product?.gauge || single?.gauge,
+    lengthFeet: product?.length_feet || product?.lengthFeet || single?.lengthFeet,
+    slug: product?.slug,
+    name: product?.title || product?.name,
+    title: product?.title || product?.name,
+    application: "hand" as const,
+  };
+  const manualTiers = buildHandManualPackageTiers(layout);
+  const baseBoxPrice = unitPriceForHandManualTier(prices, "box", 1);
 
-  const widthInches = String(
-    product?.width_inches || product?.widthInches || single?.widthInches || "18.00"
-  );
-  const gauge = Number(product?.gauge || single?.gauge || 60);
-  const lengthFeet = Number(
-    product?.length_feet || product?.lengthFeet || single?.lengthFeet || 1000
-  );
+  const widthInches = String(layout.widthInches || "18.00");
+  const gauge = Number(layout.gauge || 60);
+  const lengthFeet = Number(layout.lengthFeet || 1000);
   const baseSku = String(single?.sku || product?.partNumber || product?.slug || "SKU");
+  const fullBoxes = manualTiers.find((tier) => tier.key === "full")?.boxes || HAND_FULL_PALLET_BOXES;
   const weightSources = [product, ...(product?.variants || []), ...sourceOptions];
   const storedWeight = (keys: string[]) => {
     for (const source of weightSources) {
@@ -285,7 +262,7 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
   const sharedBoxWeight = positiveBoxes.length > 0 ? Math.min(...positiveBoxes) : null;
   const sharedPalletWeight = storedWeight(["palletWeightLbs", "pallet_weight_lbs"]);
 
-  return STANDARD_HAND_PACKAGE_TIERS.flatMap((tier) => {
+  return manualTiers.flatMap((tier) => {
     const matched = sourceOptions.find((option) => {
       const boxes = Number(option?.boxes_count ?? option?.boxesCount ?? option?.boxes ?? 0);
       const rolls = Number(
@@ -297,8 +274,9 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
     const catalogRolls = Number(
       matched?.rolls_count ?? matched?.rollsCount ?? matched?.rolls ?? tier.rolls
     );
-    const columnUnit = unitBoxPriceForCount(prices, tier.boxes);
-    const unit = perBoxPriceFromVariant(matched, tier.boxes) ?? columnUnit;
+    const unit =
+      perBoxPriceFromVariant(matched, tier.boxes) ??
+      unitPriceForHandManualTier(prices, tier.key, tier.boxes);
     if (unit == null || !(unit > 0)) return [];
     const savings =
       baseBoxPrice && tier.boxes > 1 && unit < baseBoxPrice
@@ -341,7 +319,7 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
           ? `${houston} ${HAND_PALLET_WEIGHT_NOTE}`
           : tier.subtext,
         tierBadges: savings > 0 ? [`Save ${savings}% OFF`] : [],
-        tierTag: tier.boxes >= 64 && savings > 0 ? "BEST VALUE" : "",
+        tierTag: tier.key === "full" && savings > 0 ? "BEST VALUE" : "",
         boxUnitPrice: unit,
         priceUsd: unit.toFixed(2),
         price: unit,
@@ -350,7 +328,7 @@ function buildStandardHandTiers(product: any, sourceOptions: any[]): any[] {
         rollsCount: tier.rolls,
         boxes_count: tier.boxes,
         boxesCount: tier.boxes,
-        rollsPerPallet: 256,
+        rollsPerPallet: fullBoxes * 4,
         widthInches,
         gauge,
         lengthFeet,
@@ -464,9 +442,9 @@ export function VariantSelector({
   const unitLabel = unitLabelForProduct(isMachineFilm);
   const unitLabelPlural = isMachineFilm ? "Rolls" : "Boxes";
 
-  // Prefer configured package tiers when they carry real prices; otherwise use SKU variants.
+  // Manual-only storefront: three package options. Machine SKUs are excluded upstream.
   const variants = useMemo(() => {
-    if (isMachineFilm) return buildMachineFilmSelectorTiers(product);
+    if (isMachineFilm) return [];
 
     const mapped = (() => {
       if (product?.packageOptions?.length) {
@@ -484,10 +462,7 @@ export function VariantSelector({
               slug: product?.slug,
               name: product?.title || product?.name,
             });
-            if (isMachineFilm && rolls !== 20 && rolls !== 40) return null;
-            const label = isMachineFilm
-              ? normalizeMachinePackageLabel(rolls, opt?.label)
-              : opt?.label;
+            const label = opt?.label;
             return {
               id: opt.sku,
               sku: opt.sku,
@@ -498,20 +473,18 @@ export function VariantSelector({
               boxUnitPrice: price,
               boxes: Number(opt?.boxes) > 0 ? Number(opt.boxes) : undefined,
               rollsPerBox: rolls,
-              rollsPerPallet: product?.fullPalletRolls || (isMachineFilm ? 40 : 192),
+              rollsPerPallet: product?.fullPalletRolls || HAND_FULL_PALLET.rolls,
               widthInches:
                 product?.width_inches ||
                 product?.widthInches ||
-                (isMachineFilm ? "20.00" : "18.00"),
+                "18.00",
               gauge: product?.gauge || 60,
               lengthFeet: product?.length_feet || product?.lengthFeet || 1000,
               weightLbs: "",
               stockStatus: "in_stock",
               createdAt: new Date().toISOString(),
               rolls_count: rolls,
-              boxes_count: isMachineFilm
-                ? 0
-                : keepStoredLabel
+              boxes_count: keepStoredLabel
                   ? Math.max(1, Math.round(rolls / 4))
                   : rolls <= 4
                     ? 1
@@ -527,24 +500,7 @@ export function VariantSelector({
           const price = parseFloat(String(v.priceUsd ?? v.price ?? ""));
           return Number.isFinite(price) && price > 0;
         })
-        .map((v: any) => {
-          if (!isMachineFilm) return v;
-          const rolls = getRollsCount(v);
-          const canonicalRolls = rolls === 20 || rolls === 40 ? rolls : 0;
-          if (!canonicalRolls) return null;
-          const label = normalizeMachinePackageLabel(canonicalRolls, v.title || v.packageSize);
-          const normalizedRolls = canonicalRolls;
-          return {
-            ...v,
-            packageSize: label,
-            title: label,
-            rollsPerBox: normalizedRolls,
-            rolls_count: normalizedRolls,
-            boxes_count: 0,
-            boxesCount: 0,
-          };
-        })
-        .filter(Boolean);
+        .map((v: any) => v);
     })();
 
     return buildStandardHandTiers(product, mapped);
@@ -666,8 +622,8 @@ export function VariantSelector({
     packageTier === "full_pallet";
   const packageBoxes = getBoxesCount(selectedVariant, isMachineFilm);
   const packageRolls = getRollsCount(selectedVariant);
-  const midTierVariant = findTierVariant(variants, "fixed_mid", isMachineFilm);
-  const hasMidTierUpgrade = Boolean(midTierVariant) && !isMachineFilm;
+  const midTierVariant = null;
+  const hasMidTierUpgrade = false;
   const baseUnitPrice = useMemo(
     () => getBaseUnitPrice(variants, isMachineFilm),
     [variants, isMachineFilm]

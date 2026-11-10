@@ -44,7 +44,6 @@ import {
   buildMachinePackageOptions,
   formatBoxRollLabel,
   manualFilmGallery,
-  ensureGenesisMachineProducts,
   isMachineFilm as detectMachineFilm,
   normalizeMachinePackageLabel,
   resolvePublicProductImageUrl,
@@ -837,10 +836,16 @@ export async function getProducts(
   };
 
   const finalizeCatalog = (items: ProductWithVariants[]) => {
-    let next = ensureGenesisMachineProducts(
-      items.filter((p) => p.isActive !== false)
+    // Storefront is Manual Stretch Film only — machine / automatic SKUs stay out of the shop.
+    let next = items.filter(
+      (p) =>
+        p.isActive !== false &&
+        p.application !== "machine" &&
+        !detectMachineFilm(p)
     );
-    if (applicationFilter && applicationFilter !== "all") {
+    if (applicationFilter === "machine") {
+      next = [];
+    } else if (applicationFilter && applicationFilter !== "all") {
       next = next.filter((p) => p.application === applicationFilter);
     }
     if (categoryFilter && categoryFilter !== "all") {
@@ -908,7 +913,16 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
         } else if (data) {
           const [row] = await attachCatalogRelations(supabase, [data]);
           const product = formatProduct(row);
-          return isFiftyGaugeStorefrontProduct(product) ? null : product;
+          if (isFiftyGaugeStorefrontProduct(product)) return null;
+          // Manual-only storefront: hide machine / automatic PDP routes.
+          if (
+            product.application === "machine" ||
+            detectMachineFilm(product) ||
+            product.isActive === false
+          ) {
+            return null;
+          }
+          return product;
         }
       } catch (sbErr: any) {
         console.error("Supabase getProductBySlug exception:", sbErr?.message || sbErr);

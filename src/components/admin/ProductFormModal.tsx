@@ -69,20 +69,37 @@ function parseDecimalInput(raw: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-const DEFAULT_PACKAGE_OPTIONS = [
-  { label: "1 BOX WITH 4 ROLLS", rollsCount: 4, boxesCount: 1, suffix: "1B" },
-  { label: "16 BOXES = 64 ROLLS", rollsCount: 64, boxesCount: 16, suffix: "16B" },
-  { label: "32 BOXES = 128 ROLLS (HALF PALLET)", rollsCount: 128, boxesCount: 32, suffix: "32B" },
-  { label: "64 BOXES = 256 ROLLS (FULL PALLET)", rollsCount: 256, boxesCount: 64, suffix: "64B" },
-] as const;
-
 function packageSku(baseSku: string, suffix: string): string {
   const base = baseSku.trim();
   return base ? `${base}-${suffix}` : "";
 }
 
-function defaultPackageTiers(baseSku: string): AdminPackageTier[] {
-  return DEFAULT_PACKAGE_OPTIONS.map((option) => ({
+/** Manual admin tiers: 1 Box / Half Pallet / Full Pallet (no intermediate packs). */
+function manualPackageOptions(fullBoxes = HAND_FULL_PALLET_BOXES) {
+  const full = Math.max(2, Math.floor(Number(fullBoxes) || HAND_FULL_PALLET_BOXES));
+  const half = Math.max(1, Math.floor(full / 2));
+  return [
+    { label: "1 BOX WITH 4 ROLLS", rollsCount: 4, boxesCount: 1, suffix: "1B" },
+    {
+      label: `HALF PALLET · ${half} BOXES (${half * 4} ROLLS)`,
+      rollsCount: half * 4,
+      boxesCount: half,
+      suffix: "HALF",
+    },
+    {
+      label: `FULL PALLET · ${full} BOXES (${full * 4} ROLLS)`,
+      rollsCount: full * 4,
+      boxesCount: full,
+      suffix: "FULL",
+    },
+  ] as const;
+}
+
+function defaultPackageTiers(
+  baseSku: string,
+  fullBoxes = HAND_FULL_PALLET_BOXES
+): AdminPackageTier[] {
+  return manualPackageOptions(fullBoxes).map((option) => ({
     label: option.label,
     sku: packageSku(baseSku, option.suffix),
     price: 0,
@@ -95,8 +112,10 @@ function columnPriceForBoxes(source: unknown, boxes: number): number | null {
   const prices = readBoxTierPrices(source);
   if (boxes === 1) return prices.price1Box;
   if (boxes === 16) return prices.price16Boxes;
-  if (boxes === 32) return prices.price32Boxes;
-  if (boxes === 64) return prices.price64Boxes;
+  if (boxes === 32 || boxes === 12) return prices.price32Boxes ?? prices.price16Boxes;
+  if (boxes === 64 || boxes === 24 || boxes === 48) {
+    return prices.price64Boxes ?? prices.price32Boxes;
+  }
   return null;
 }
 
@@ -104,13 +123,14 @@ function withDefaultPackageTiers(
   tiers: AdminPackageTier[] | undefined,
   baseSku: string,
   application: "hand" | "machine" = "hand",
-  columnSource?: unknown
+  columnSource?: unknown,
+  fullBoxes = HAND_FULL_PALLET_BOXES
 ): AdminPackageTier[] {
   const saved = Array.isArray(tiers) ? tiers : [];
   if (application === "machine") {
-    return saved.length > 0 ? saved : defaultPackageTiers(baseSku);
+    return saved.length > 0 ? saved : defaultPackageTiers(baseSku, fullBoxes);
   }
-  return DEFAULT_PACKAGE_OPTIONS.map((option) => {
+  return manualPackageOptions(fullBoxes).map((option) => {
     const match =
       saved.find((tier) => Number(tier.boxesCount) === option.boxesCount) ||
       saved.find((tier) => Number(tier.rollsCount) === option.rollsCount);
@@ -184,7 +204,9 @@ function productToForm(product: AdminProduct): ProductFormValues {
         : [],
       textValue(raw.partNumber, raw.part_number, raw.sku),
       application,
-      raw
+      raw,
+      Math.floor(Number(raw.boxesPerPallet ?? raw.boxes_per_pallet) || 0) ||
+        HAND_FULL_PALLET_BOXES
     ),
     stockQuantity: numberOrNull(raw.stockQuantity, raw.stock_quantity, raw.stock_qty) ?? 0,
     stockBoxes,
@@ -756,7 +778,7 @@ export function ProductFormModal({
             <div>
               <h3 className="text-sm font-black text-slate-900">{t("admin.packageOptionsTitle")}</h3>
               <p className="text-[10px] text-slate-400 mt-0.5">
-                Price per box for 1, 16, 32, and 64 boxes. Saving writes each rate to product variants. The storefront multiplies it by the box count.
+                Price per box for 1 Box, Half Pallet, and Full Pallet only. Saving writes each rate to product variants. The storefront multiplies it by the box count.
               </p>
             </div>
 
