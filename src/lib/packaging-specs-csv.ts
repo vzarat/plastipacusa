@@ -129,7 +129,7 @@ function tierWeight(product: AdminProduct, boxes: number, rolls: number): number
 
 function packageVolume(product: AdminProduct): string {
   if (product.application === "machine") return "6 / 12 / 20 / 40 rolls";
-  return "1 / 16 / 32 / 64 boxes";
+  return "1 Box / Full Pallet (48 boxes)";
 }
 
 function productSku(product: AdminProduct): string {

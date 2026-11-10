@@ -121,9 +121,7 @@ export function auditCatalogProduct(product: CatalogAuditProduct): CatalogAuditR
       ]
     : [
         { tier: "box", boxesOrRolls: "1 box", weight: product.boxWeightLbs != null, dimTier: "box" },
-        { tier: "layer", boxesOrRolls: "16 boxes", weight: product.palletWeightLbs != null && product.boxWeightLbs != null, dimTier: "layer" },
-        { tier: "half pallet", boxesOrRolls: "32 boxes", weight: product.palletWeightLbs != null, dimTier: "half" },
-        { tier: "full pallet", boxesOrRolls: "64 boxes", weight: product.palletWeightLbs != null, dimTier: "full" },
+        { tier: "full pallet", boxesOrRolls: "48 boxes", weight: product.palletWeightLbs != null, dimTier: "full" },
       ];
   const height = resolveFullPalletHeight({
     palletDimensions: product.dimensions.pallet_dimensions,

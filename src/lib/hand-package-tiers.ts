@@ -1,11 +1,12 @@
 /**
  * Manual / hand stretch film storefront packaging.
- * Strict 2-tier purchase model: 1 Box + Full Pallet only.
+ * Strict 2-tier purchase model: 1 Box + Full Pallet (48 boxes / 192 rolls).
  */
 
 import { formatBoxRollLabel } from "@/lib/products";
-import { boxesPerPalletForProduct } from "@/lib/pallet-stock";
 import {
+  HAND_FULL_PALLET_BOXES,
+  HAND_FULL_PALLET_ROLLS,
   HAND_ROLLS_PER_BOX,
   type BoxTierPrices,
   unitBoxPriceForCount,
@@ -35,30 +36,21 @@ export interface HandPalletLayoutInput {
   application?: string | null;
 }
 
-/** Full-pallet box count for a manual SKU (stored boxes_per_pallet wins). */
-export function handFullPalletBoxes(input: HandPalletLayoutInput): number {
-  const full = boxesPerPalletForProduct({
-    application: "hand",
-    boxesPerPallet: input.boxesPerPallet,
-    widthInches: input.widthInches,
-    gauge: input.gauge,
-    lengthFeet: input.lengthFeet,
-    slug: input.slug,
-    name: input.name || input.title,
-  });
-  return Math.max(2, full);
+/** Standardized manual full pallet: always 48 boxes / 192 rolls. */
+export function handFullPalletBoxes(_input?: HandPalletLayoutInput): number {
+  return HAND_FULL_PALLET_BOXES;
 }
 
 /**
  * Strict 2-tier menu for every manual product page:
- * 1 Box (sample / single) and Full Pallet (boxes_per_pallet).
+ * 1 Box + Full Pallet (48 boxes / 192 rolls).
  */
 export function buildHandManualPackageTiers(
-  input: HandPalletLayoutInput
+  _input?: HandPalletLayoutInput
 ): HandManualPackageTier[] {
-  const fullBoxes = handFullPalletBoxes(input);
+  const fullBoxes = HAND_FULL_PALLET_BOXES;
+  const fullRolls = HAND_FULL_PALLET_ROLLS;
   const rollsPerBox = HAND_ROLLS_PER_BOX;
-  const fullRolls = fullBoxes * rollsPerBox;
 
   return [
     {
@@ -96,21 +88,17 @@ export function unitPriceForHandManualTier(
   return (
     (prices.price64Boxes != null && prices.price64Boxes > 0
       ? prices.price64Boxes
-      : null) ??
-    unitBoxPriceForCount(prices, boxes) ??
-    (prices.price32Boxes != null && prices.price32Boxes > 0
-      ? prices.price32Boxes
-      : null)
+      : null) ?? unitBoxPriceForCount(prices, boxes)
   );
 }
 
-/** True when a box/roll count is one of the two allowed manual tiers for that SKU. */
+/** True when a box/roll count is one of the two allowed manual tiers. */
 export function isAllowedHandManualPack(
-  input: HandPalletLayoutInput,
+  _input: HandPalletLayoutInput,
   boxes: number,
   rolls?: number
 ): boolean {
-  const tiers = buildHandManualPackageTiers(input);
+  const tiers = buildHandManualPackageTiers();
   const boxCount = Math.floor(Number(boxes) || 0);
   const rollCount = Math.floor(Number(rolls) || 0);
   return tiers.some(

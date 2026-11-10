@@ -2,7 +2,8 @@ import { ORDERS_EMAIL } from "@/lib/company-email";
 import { freeRgvDelivery, RGV_FREE_DELIVERY_ROLLS } from "@/lib/shipping/rgv-delivery";
 
 export const RGV_FREE_DELIVERY_BOXES = 16;
-export const HOUSTON_FREE_DELIVERY_BOXES = 64;
+/** One standardized Manual full pallet (48 boxes / 192 rolls). */
+export const HOUSTON_FREE_DELIVERY_BOXES = 48;
 export const RGV_FREE_DELIVERY_LABEL = "Free Local Delivery (Plastipac Fleet)";
 export const HOUSTON_FRIDAY_LABEL = "Free Houston Delivery (Fridays Only)";
 export const HOUSTON_FRIDAY_NOTE = "Free Houston Delivery — Friday Route Only";
@@ -60,7 +61,7 @@ function zipDigits(postalCode: string): string | null {
   return match ? match[0] : null;
 }
 
-/** Preset box count comes from the catalog. The Houston Friday minimum is 64 of those boxes. */
+/** Preset box count comes from the catalog. Houston Friday unlocks at one full pallet (48 boxes). */
 export function qualifiesForHoustonFriday(boxes: number): boolean {
   return Math.floor(Number(boxes) || 0) >= HOUSTON_FREE_DELIVERY_BOXES;
 }

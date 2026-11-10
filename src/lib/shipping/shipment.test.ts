@@ -6,17 +6,17 @@ import { freeRgvDelivery } from "./rgv-delivery";
 import { ShipmentDataError, shipmentFreightFromCatalog, type FreightVariant } from "./shipment";
 
 const HAND_80 = {
-  sku: "HAND-80-64",
-  rolls_count: 256,
-  boxes_count: 64,
+  sku: "HAND-80-48",
+  rolls_count: 192,
+  boxes_count: 48,
   roll_weight_lbs: 8.66,
   box_weight_lbs: 34.65,
-  pallet_weight_lbs: 2240.2,
+  pallet_weight_lbs: 1692.38,
   products: {
     slug: "stretch-film-18-x-80-ga-x-1000ft",
     application: "hand",
     roll_weight_lbs: 8.66,
-    pallet_weight_lbs: 2240.2,
+    pallet_weight_lbs: 1692.38,
     pallet_dimensions: "48 x 48 x 78",
     pallet_length_in: 48,
     pallet_width_in: 48,
@@ -104,27 +104,26 @@ describe("catalog shipment freight", () => {
     });
     const cases = [
       { name: "1 box", lines: [line("b1")], rows: [variant("b1", 1)], weight: 34.65 },
-      { name: "16 boxes", lines: [line("b16")], rows: [variant("b16", 16)], weight: 583.58 },
-      { name: "32 boxes", lines: [line("b32")], rows: [variant("b32", 32)], weight: 1137.98 },
-      { name: "64 boxes", lines: [line("b64")], rows: [variant("b64", 64)], weight: 2240.2 },
+      { name: "16 boxes", lines: [line("b16")], rows: [variant("b16", 16)], weight: 554.4 },
+      { name: "48 boxes", lines: [line("b48")], rows: [variant("b48", 48)], weight: 1692.38 },
       {
         name: "16+16",
         lines: [line("a16"), line("b16")],
         rows: [variant("a16", 16), variant("b16", 16)],
-        weight: 1167.16,
+        weight: 1108.8,
       },
       {
-        name: "64+16",
-        lines: [line("b64"), line("b16")],
-        rows: [variant("b64", 64), variant("b16", 16)],
-        weight: 2823.78,
+        name: "48+16",
+        lines: [line("b48"), line("b16")],
+        rows: [variant("b48", 48), variant("b16", 16)],
+        weight: 2246.78,
       },
-      { name: "2x64", lines: [line("b64", 2)], rows: [variant("b64", 64)], weight: 4480.4 },
+      { name: "2x48", lines: [line("b48", 2)], rows: [variant("b48", 48)], weight: 3384.76 },
       {
-        name: "loose plus a layer",
+        name: "loose plus boxes",
         lines: [line("b16"), line("b1", 3)],
         rows: [variant("b16", 16), variant("b1", 1)],
-        weight: 687.53,
+        weight: 658.35,
       },
     ];
     const loose = [
@@ -149,18 +148,18 @@ describe("catalog shipment freight", () => {
     }
     const mixed = shipmentFreightFromCatalog(
       [line("full", 1), line("extra", 5)],
-      [variant("full", 64), variant("extra", 1)],
+      [variant("full", 48), variant("extra", 1)],
       new Map()
     );
     assert.equal(mixed.pieces.length, 2);
     assert.equal(mixed.pieces[0]?.heightIn, 78);
-    assert.equal(mixed.pieces[0]?.weightLbs, 2240.2);
+    assert.equal(mixed.pieces[0]?.weightLbs, 1692.38);
     assert.equal(mixed.pieces[1]?.lengthIn, 11);
     assert.equal(mixed.pieces[1]?.widthIn, 11);
     assert.equal(mixed.pieces[1]?.heightIn, 19.5);
     assert.equal(mixed.pieces[1]?.quantity, 5);
     assert.equal(mixed.pieces[1]?.weightLbs, 173.25);
-    assert.equal(mixed.weightLbs, 2413.45);
+    assert.equal(mixed.weightLbs, 1865.63);
 
     for (const item of cases) {
       const freight = shipmentFreightFromCatalog(item.lines, item.rows, new Map());
@@ -392,7 +391,7 @@ describe("catalog shipment freight", () => {
       slug: "stretch-film-15-x-40-ga-x-1500ft",
       application: "hand",
       roll_weight_lbs: 4.5,
-      pallet_weight_lbs: 1175.74,
+      pallet_weight_lbs: 893.18,
       pallet_dimensions: "48 x 48 x 66",
       rolls_per_box: 4,
       width_inches: 15,
@@ -409,7 +408,7 @@ describe("catalog shipment freight", () => {
             boxes_count: boxes,
             roll_weight_lbs: null,
             box_weight_lbs: 18,
-            pallet_weight_lbs: 1175.74,
+            pallet_weight_lbs: 893.18,
             products: product,
           },
         ],
@@ -421,24 +420,23 @@ describe("catalog shipment freight", () => {
     assert.equal(one.pieces[0]?.heightIn, 19.5);
     assert.equal(one.pieces[0]?.weightLbs, 18);
     assert.equal(one.pieces[0]?.packaging, "box");
-    const layer = quote(16);
-    assert.equal(layer.pieces[0]?.lengthIn, 48);
-    assert.equal(layer.pieces[0]?.widthIn, 48);
-    assert.equal(layer.pieces[0]?.heightIn, 29.5);
-    assert.equal(layer.pieces[0]?.weightLbs, 317.18);
-    const half = quote(32);
-    assert.equal(half.pieces[0]?.heightIn, 39);
-    assert.equal(half.pieces[0]?.weightLbs, 605.18);
-    const full = quote(64);
+    const mid = quote(16);
+    assert.equal(mid.pieces[0]?.packaging, "box");
+    assert.equal(mid.pieces[0]?.lengthIn, 11);
+    assert.equal(mid.pieces[0]?.weightLbs, 288);
+    const full = quote(48);
+    assert.equal(full.pieces[0]?.lengthIn, 48);
+    assert.equal(full.pieces[0]?.widthIn, 48);
     assert.equal(full.pieces[0]?.heightIn, 78);
-    assert.equal(full.pieces[0]?.weightLbs, 1175.74);
+    assert.equal(full.pieces[0]?.weightLbs, 893.18);
+    assert.equal(full.pieces[0]?.packaging, "pallet");
     const sent = marketItemsFromPieces(one.pieces)[0];
     assert.equal(sent?.lengthIn, 11);
     assert.equal(sent?.widthIn, 11);
     assert.equal(sent?.heightIn, 19.5);
     assert.equal(sent?.weightLbsPerPallet, 18);
-    const layerSent = marketItemsFromPieces(layer.pieces)[0];
-    assert.equal(layerSent?.heightIn, 29.5);
-    assert.equal(layerSent?.weightLbsPerPallet, 318);
+    const fullSent = marketItemsFromPieces(full.pieces)[0];
+    assert.equal(fullSent?.heightIn, 78);
+    assert.equal(fullSent?.weightLbsPerPallet, 894);
   });
 });

@@ -9,9 +9,9 @@ describe("purchase order email details", () => {
         widthInches: 18,
         gauge: 80,
         lengthFeet: 1500,
-        boxes: 64,
+        boxes: 48,
       }),
-      '18" × 80 Ga × 1500 ft · 64 boxes'
+      '18" × 80 Ga × 1500 ft · 48 boxes'
     );
   });
 
@@ -39,7 +39,7 @@ describe("purchase order email details", () => {
       },
       items: [
         {
-          sku: "ELT-SF188015-64B",
+          sku: "ELT-SF188015-48B",
           productName: 'FORCE Hand Film 18" × 80 Ga',
           quantity: 1,
           unitPrice: 1356.8,
@@ -47,13 +47,13 @@ describe("purchase order email details", () => {
           widthInches: 18,
           gauge: 80,
           lengthFeet: 1500,
-          boxes: 64,
+          boxes: 48,
         },
       ],
     });
 
-    assert.match(details.lineItems[0]?.description || "", /ELT-SF188015-64B/);
-    assert.equal(details.lineItems[0]?.detail, '18" × 80 Ga × 1500 ft · 64 boxes');
+    assert.match(details.lineItems[0]?.description || "", /FORCE Hand Film/);
+    assert.equal(details.lineItems[0]?.detail, '18" × 80 Ga × 1500 ft · 48 boxes');
     assert.equal(details.shippingSelection?.price, 48.65);
     assert.match(details.shippingSelection?.logoUrl || "", /XPO/);
     assert.equal(details.shippingSelection?.pieces[0]?.dimensions, '48" W x 48" L x 66.0" H');

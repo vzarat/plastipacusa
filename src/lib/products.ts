@@ -149,7 +149,7 @@ function officialMachineTierSku(
   return machineFilmTierSku({ widthInches: width, gauge, lengthFeet: length, rolls });
 }
 
-/** Canonical hand film full-pallet pack-out (3 layers × 64 rolls). */
+/** Canonical hand film full-pallet pack-out (48 boxes × 4 rolls). */
 export const HAND_FULL_PALLET = {
   boxes: 48,
   rolls: 192,

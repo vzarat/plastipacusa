@@ -1,7 +1,7 @@
 /** Older 10 kg tare still shown on the packaging CSV pallet column. */
 export const WOODEN_PALLET_LBS = 22.05;
 
-/** Wooden pallet added once to every 16-, 32-, and 64-box hand-film shipment. */
+/** Wooden pallet added once to every full-pallet (48-box) hand-film shipment. */
 export const HAND_WOODEN_PALLET_LBS = 29.18;
 
 /** Official 20" automated machine film weights, including the wooden pallet on half and full pallets. */
@@ -86,24 +86,16 @@ export function packageTotalWeightLbs(input: PackageWeightInput): number | null 
   }
 
   const isBox = rolls === 4 || boxes === 1;
-  // Full pallet = boxes_per_pallet for the SKU (commonly 24 / 48 / 64).
-  const isFullPallet =
-    boxes === 24 ||
-    boxes === 48 ||
-    boxes === 64 ||
-    rolls === 96 ||
-    rolls === 192 ||
-    rolls === 256;
+  // Standardized manual full pallet: 48 boxes / 192 rolls (+ wooden pallet tare).
+  const isFullPallet = boxes === 48 || rolls === 192;
 
   if (isFullPallet) {
     if (palletWeight != null) return roundLbs(palletWeight, 2);
-    const fullBoxes = boxes > 0 ? boxes : rolls > 0 ? Math.round(rolls / 4) : 64;
     if (boxWeight != null) {
-      return roundLbs(boxWeight * fullBoxes + HAND_WOODEN_PALLET_LBS, 2);
+      return roundLbs(boxWeight * 48 + HAND_WOODEN_PALLET_LBS, 2);
     }
     if (perRoll != null) {
-      const fullRolls = rolls > 0 ? rolls : fullBoxes * 4;
-      return roundLbs(perRoll * fullRolls + HAND_WOODEN_PALLET_LBS, 2);
+      return roundLbs(perRoll * 192 + HAND_WOODEN_PALLET_LBS, 2);
     }
   }
 
@@ -143,7 +135,7 @@ export function packagePalletTareLbs(boxWeightLbs: number, layerWeightLbs: numbe
   return tare;
 }
 
-/** Split a hand-film box count into full, half, layer, and loose units using the package-table weights. */
+/** Split a hand-film box count into full pallets + loose boxes (2-tier Manual model). */
 export function packHandShippingUnits(input: {
   boxes: number;
   boxWeightLbs: number | null;
@@ -159,28 +151,28 @@ export function packHandShippingUnits(input: {
       palletWeightLbs: input.palletWeightLbs,
     });
   const box = tier(1, 4);
-  const layer = tier(16, 64);
-  const half = tier(32, 128);
-  const full = tier(64, 256);
-  if (box == null || layer == null || half == null || full == null) return null;
+  const full = tier(48, 192);
+  if (box == null || full == null) return null;
 
   const units: HandShippingUnit[] = [];
   let left = boxes;
-  const fullCount = Math.floor(left / 64);
+  const fullCount = Math.floor(left / 48);
   if (fullCount > 0) {
-    units.push({ boxes: 64, quantity: fullCount, weightLbs: roundLbs(full * fullCount, 2), tier: "full" });
-    left -= fullCount * 64;
-  }
-  if (left >= 32) {
-    units.push({ boxes: 32, quantity: 1, weightLbs: half, tier: "half" });
-    left -= 32;
-  }
-  if (left >= 16) {
-    units.push({ boxes: 16, quantity: 1, weightLbs: layer, tier: "layer" });
-    left -= 16;
+    units.push({
+      boxes: 48,
+      quantity: fullCount,
+      weightLbs: roundLbs(full * fullCount, 2),
+      tier: "full",
+    });
+    left -= fullCount * 48;
   }
   if (left > 0) {
-    units.push({ boxes: left, quantity: left, weightLbs: roundLbs(box * left, 2), tier: "loose" });
+    units.push({
+      boxes: left,
+      quantity: left,
+      weightLbs: roundLbs(box * left, 2),
+      tier: "loose",
+    });
   }
   return units;
 }

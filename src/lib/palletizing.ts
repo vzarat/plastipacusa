@@ -93,42 +93,18 @@ export function resolvePalletizingSpecs(input: PalletizingInput): PalletizingSpe
     };
   }
 
-  // 15" Width Films — 40, 60, 70, and 80 GA @ 1500 FT
-  if (width === 15) {
-    return {
-      fullPalletRolls: 256,
-      palletLayers: 4,
-      rollsPerLayer: 64,
-      rollsPerBox: 4,
-      boxesPerFullPallet: 64,
-      packOutSummary: "256 rolls / full pallet · 4 layers × 64 rolls · 4 rolls/box",
-      familyLabel: '15" Hand Stretch Film',
-    };
-  }
-
-  // 18" × 80 GA @ 1000 FT and 1500 FT — half pallet 12 boxes, full pallet 24 boxes
-  if (usesCompact1880Pallets({ ...input, widthInches: width, gauge, lengthFeet: length })) {
-    return {
-      fullPalletRolls: 96,
-      palletLayers: 2,
-      rollsPerLayer: 48,
-      rollsPerBox: 4,
-      boxesPerFullPallet: 24,
-      packOutSummary: "96 rolls / full pallet · 24 boxes · 4 rolls/box",
-      familyLabel: '18" 80 GA Hand Stretch Film',
-    };
-  }
-
-  // 18" Width Films — 60/70 GA @ 1000 FT & 1500 FT
-  // Default / FORCE standard hand film
+  // All Manual / hand stretch film: standardized 48 boxes / 192 rolls full pallet.
+  void width;
+  void gauge;
+  void length;
   return {
     fullPalletRolls: 192,
     palletLayers: 3,
     rollsPerLayer: 64,
     rollsPerBox: 4,
     boxesPerFullPallet: 48,
-    packOutSummary: "192 rolls / full pallet · 3 layers × 64 rolls · 4 rolls/box (48 boxes)",
-    familyLabel: '18" Hand Stretch Film',
+    packOutSummary: "192 rolls / full pallet · 48 boxes · 4 rolls/box",
+    familyLabel: 'Hand Stretch Film',
   };
 }
 

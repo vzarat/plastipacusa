@@ -642,7 +642,7 @@ export const SAMPLE_ORDER_CONTENT: OrderConfirmationContent = {
       quantity: 1,
       unitPrice: 1356.8,
       total: 1356.8,
-      detail: '18" × 80 Ga × 1500 ft · 64 boxes',
+      detail: '18" × 80 Ga × 1500 ft · 48 boxes',
     },
     {
       description: "GENESIS Machine Roll 20\" × 70 Ga × 5000 ft · HPF-SF207050-HLP",

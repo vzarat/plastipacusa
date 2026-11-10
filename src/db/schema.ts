@@ -38,8 +38,8 @@ export const products = pgTable("products", {
   price32Boxes: numeric("price_32_boxes", { precision: 10, scale: 2 }),
   price64Boxes: numeric("price_64_boxes", { precision: 10, scale: 2 }),
   stockQuantity: integer("stock_quantity").notNull().default(0),
-  /** Boxes in one full pallet. Display ratio only. */
-  boxesPerPallet: integer("boxes_per_pallet"),
+  /** Boxes in one full Manual pallet (standardized to 48 / 192 rolls). */
+  boxesPerPallet: integer("boxes_per_pallet").default(48),
   /** Total boxes on hand. NULL is untracked. 0 is sold out. */
   stockBoxes: integer("stock_boxes"),
   isSoldOut: boolean("is_sold_out").notNull().default(false),

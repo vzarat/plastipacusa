@@ -14,9 +14,7 @@ export const HAND_FREIGHT_DIMENSIONS_IN = {
 export type HandFreightTier = keyof typeof HAND_FREIGHT_DIMENSIONS_IN;
 
 export function handFreightTier(boxes: number): HandFreightTier {
-  if (boxes >= 64) return "full";
-  if (boxes >= 32) return "half";
-  if (boxes >= 16) return "layer";
+  if (boxes >= 48) return "full";
   return "loose";
 }
 
@@ -35,35 +33,14 @@ export interface HandlingUnit {
 
 export function handHandlingUnit(boxes: number): HandlingUnit {
   const count = Math.max(0, boxes);
-  if (count >= 64) {
+  if (count >= 48) {
     return {
       lengthIn: 48,
       widthIn: 48,
       heightIn: 78,
-      quantity: Math.ceil(count / 64),
+      quantity: Math.ceil(count / 48),
       includesPalletTare: true,
       packaging: "pallet",
-    };
-  }
-  if (count >= 32) {
-    return {
-      lengthIn: 48,
-      widthIn: 48,
-      heightIn: 39,
-      quantity: 1,
-      includesPalletTare: true,
-      packaging: "pallet",
-    };
-  }
-  if (count >= 16) {
-    const layers = Math.ceil(count / 16);
-    return {
-      lengthIn: 48,
-      widthIn: 48,
-      heightIn: roundInches(HAND_LAYER_HEIGHT_IN * layers),
-      quantity: 1,
-      includesPalletTare: false,
-      packaging: "box",
     };
   }
   const cols = Math.min(4, Math.max(1, count));
@@ -142,14 +119,14 @@ function roundLbs(amount: number): number {
   return Math.round(amount * 100) / 100;
 }
 
-/** 16, 32, and 64 boxes include one wooden pallet. A single box does not. */
+/** Full-pallet box counts include one wooden pallet. A single box does not. */
 export function handPalletTierWeightLbs(boxes: number, boxWeightLbs: number): number {
   return roundLbs(boxWeightLbs * boxes + HAND_WOODEN_PALLET_LBS);
 }
 
 /**
  * Warp handling units for a hand-film box count.
- * Under 16 boxes stay individual cartons. Larger counts are quarter, half, and full pallets.
+ * Manual 2-tier model: loose cartons under one full pallet, then 48-box full pallets.
  */
 export function warpHandPieces(input: {
   boxes: number;
@@ -163,16 +140,17 @@ export function warpHandPieces(input: {
   const palletWeight = Number(input.palletWeightLbs);
   const boxOk = Number.isFinite(boxWeight) && boxWeight > 0;
   const palletOk = Number.isFinite(palletWeight) && palletWeight > 0;
+  const fullPalletBoxes = 48;
   const palletTierWeight = (count: number): number | null => {
-    if (count >= 64 && palletOk) return roundLbs(palletWeight);
+    if (count >= fullPalletBoxes && palletOk) return roundLbs(palletWeight);
     if (boxOk) return handPalletTierWeightLbs(count, boxWeight);
     return null;
   };
   const pieces: WarpHandPiece[] = [];
   let left = boxes;
-  const fullCount = Math.floor(left / 64);
+  const fullCount = Math.floor(left / fullPalletBoxes);
   if (fullCount > 0) {
-    const each = palletTierWeight(64);
+    const each = palletTierWeight(fullPalletBoxes);
     if (each == null) return null;
     pieces.push({
       lengthIn: 48,
@@ -182,33 +160,7 @@ export function warpHandPieces(input: {
       quantity: fullCount,
       packaging: "pallet",
     });
-    left -= fullCount * 64;
-  }
-  if (left >= 32) {
-    const weightLbs = palletTierWeight(32);
-    if (weightLbs == null) return null;
-    pieces.push({
-      lengthIn: 48,
-      widthIn: 48,
-      heightIn: 39,
-      weightLbs,
-      quantity: 1,
-      packaging: "pallet",
-    });
-    left -= 32;
-  }
-  if (left >= 16) {
-    const weightLbs = palletTierWeight(16);
-    if (weightLbs == null) return null;
-    pieces.push({
-      lengthIn: 48,
-      widthIn: 48,
-      heightIn: 29.5,
-      weightLbs,
-      quantity: 1,
-      packaging: "pallet",
-    });
-    left -= 16;
+    left -= fullCount * fullPalletBoxes;
   }
   if (left > 0) {
     if (!boxOk) return null;
@@ -244,8 +196,8 @@ function parseStoredPalletInches(value: string | null | undefined): {
 }
 
 /**
- * Specs-table sizes. One box stays a carton. Pallet tiers add a 10 in deck.
- * The 64-box height is products.pallet_dimensions when that text is set.
+ * Specs-table sizes. One box stays a carton.
+ * Full pallet (48 boxes) uses products.pallet_dimensions when that text is set.
  */
 export function handMatrixDimensions(
   boxes: number,
@@ -253,19 +205,13 @@ export function handMatrixDimensions(
   widthInches?: number | null
 ): { lengthIn: number; widthIn: number; heightIn: number } {
   const count = Math.max(0, Math.floor(Number(boxes) || 0));
-  if (count >= 64) {
+  if (count >= 48) {
     return parseStoredPalletInches(palletDimensions) ?? { lengthIn: 48, widthIn: 48, heightIn: 78 };
-  }
-  if (count >= 32) {
-    return { lengthIn: 48, widthIn: 48, heightIn: roundInches(39 + HAND_MATRIX_PALLET_BASE_IN) };
-  }
-  if (count >= 16) {
-    return { lengthIn: 48, widthIn: 48, heightIn: roundInches(HAND_LAYER_HEIGHT_IN + HAND_MATRIX_PALLET_BASE_IN) };
   }
   return { lengthIn: HAND_BOX_EDGE_IN, widthIn: HAND_BOX_EDGE_IN, heightIn: handBoxHeightIn(widthInches) };
 }
 
-/** 1 box is box_weight_lbs. 16, 32, and 64 boxes add one 29.18 lb wooden pallet. */
+/** 1 box is box_weight_lbs. Full pallet (48 boxes) adds one 29.18 lb wooden pallet. */
 export function handMatrixWeightLbs(
   boxes: number,
   boxWeightLbs: number | null,
@@ -276,13 +222,11 @@ export function handMatrixWeightLbs(
   const pallet = Number(palletWeightLbs);
   const boxOk = Number.isFinite(box) && box > 0;
   const palletOk = Number.isFinite(pallet) && pallet > 0;
-  if (count >= 64) {
+  if (count >= 48) {
     if (palletOk) return Math.round(pallet * 100) / 100;
-    if (boxOk) return handPalletTierWeightLbs(64, box);
+    if (boxOk) return handPalletTierWeightLbs(48, box);
     return null;
   }
-  if (count >= 32) return boxOk ? handPalletTierWeightLbs(32, box) : null;
-  if (count >= 16) return boxOk ? handPalletTierWeightLbs(16, box) : null;
   if (count >= 1) return boxOk ? Math.round(box * count * 100) / 100 : null;
   return null;
 }

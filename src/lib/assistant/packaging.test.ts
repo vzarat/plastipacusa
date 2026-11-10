@@ -124,16 +124,20 @@ describe("palletCalculator", () => {
     assert.equal(result.ok, false);
   });
 
-  it("blocks 16 hand-film boxes", () => {
-    const result = palletCalculator({
-      film: "hand",
-      widthInches: 18,
-      tier: "box",
-      quantity: 16,
-    });
-    assert.equal(result.ok, false);
-    if (!result.ok) {
-      assert.match(result.error, /16 Boxes \(64 Rolls\)/);
+  it("allows 16 hand-film boxes at the 1-box tier", () => {
+    const result = palletCalculator(
+      {
+        film: "hand",
+        widthInches: 18,
+        tier: "box",
+        quantity: 16,
+      },
+      boxCatalog
+    );
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.boxes, 16);
+      assert.equal(result.rolls, 64);
     }
   });
 
@@ -154,46 +158,19 @@ describe("palletCalculator", () => {
     }
   });
 
-  it("quotes one hand-film layer from price_16_boxes and rejects a second", () => {
-    const one = palletCalculator(
+  it("rejects retired hand-film layer and half-pallet tiers", () => {
+    const layer = palletCalculator(
       { film: "hand", widthInches: 18, tier: "layer", quantity: 1 },
       { ...boxCatalog, price16Boxes: 38 }
     );
-    const two = palletCalculator({ film: "hand", widthInches: 18, tier: "layer", quantity: 2 });
-    assert.equal(one.ok, true);
-    if (one.ok) {
-      assert.equal(one.boxes, 16);
-      assert.equal(one.unitPrice, 608);
-      assert.equal(one.totalPrice, 608);
-    }
-    assert.equal(two.ok, false);
-  });
-
-  it("does not apply a cached percent discount when the 16-box rate is missing", () => {
-    const result = palletCalculator(
-      { film: "hand", widthInches: 18, tier: "layer", quantity: 1 },
-      boxCatalog
-    );
-    assert.equal(result.ok, true);
-    if (result.ok) {
-      assert.equal(result.price, "price_unavailable");
-      assert.equal(result.totalPrice, null);
-    }
-  });
-
-  it("quotes one hand half pallet and rejects a second", () => {
-    const one = palletCalculator(
+    const half = palletCalculator(
       { film: "hand", widthInches: 18, tier: "half_pallet", quantity: 1 },
       boxCatalog
     );
-    const two = palletCalculator({ film: "hand", widthInches: 15, tier: "half_pallet", quantity: 2 });
-    assert.equal(one.ok, true);
-    if (one.ok) {
-      assert.equal(one.boxes, 32);
-      assert.equal(one.rolls, 128);
-    }
-    assert.equal(two.ok, false);
-    if (!two.ok) assert.match(two.error, /Half Pallet is limited to 1/);
+    assert.equal(layer.ok, false);
+    assert.equal(half.ok, false);
+    if (!layer.ok) assert.match(layer.error, /1 Box or Full Pallet/);
+    if (!half.ok) assert.match(half.error, /1 Box or Full Pallet/);
   });
 
   it("quotes a hand full pallet above one unit", () => {
@@ -203,8 +180,8 @@ describe("palletCalculator", () => {
     );
     assert.equal(result.ok, true);
     if (result.ok) {
-      assert.equal(result.boxes, 128);
-      assert.equal(result.rolls, 512);
+      assert.equal(result.boxes, 96);
+      assert.equal(result.rolls, 384);
     }
   });
 
@@ -467,15 +444,15 @@ describe("gaugeAdvice", () => {
 });
 
 describe("freightRateCheck", () => {
-  it("includes RGV delivery for one hand-film layer", () => {
+  it("includes RGV delivery for 16 hand-film boxes", () => {
     const result = freightRateCheck({
       postalCode: "78501",
       city: "McAllen",
       state: "TX",
       film: "hand",
       widthInches: 18,
-      tier: "layer",
-      quantity: 1,
+      tier: "box",
+      quantity: 16,
     });
     assert.equal(result.ok, true);
     if (result.ok) {
@@ -492,29 +469,33 @@ describe("freightRateCheck", () => {
       state: "TX",
       film: "hand",
       widthInches: 18,
-      tier: "half_pallet",
-      quantity: 1,
+      tier: "box",
+      quantity: 16,
     });
     assert.equal(result.ok, true);
     if (result.ok) {
-      assert.equal(result.boxCount, 32);
+      assert.equal(result.boxCount, 16);
       assert.equal(result.freeDeliveryEligible, false);
       assert.ok(result.estimatedShippingUsd > 0);
     }
   });
 
-  it("returns a rule error instead of a rate for 16 boxes", () => {
+  it("unlocks Houston Friday on one full pallet", () => {
     const result = freightRateCheck({
-      postalCode: "78501",
-      city: "McAllen",
+      postalCode: "77002",
+      city: "Houston",
       state: "TX",
       film: "hand",
       widthInches: 18,
-      tier: "box",
-      quantity: 16,
+      tier: "full_pallet",
+      quantity: 1,
     });
-    assert.equal(result.ok, false);
-    if (!result.ok) assert.match(result.error, /16 Boxes \(64 Rolls\)/);
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.boxCount, 48);
+      assert.equal(result.freeDeliveryEligible, true);
+      assert.equal(result.estimatedShippingUsd, 0);
+    }
   });
 
   it("rejects an invalid postal code", () => {

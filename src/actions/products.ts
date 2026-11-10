@@ -1009,13 +1009,11 @@ function applicationFromRecord(raw: any, categorySlug: string): "hand" | "machin
   return getApplicationForCategory(categorySlug);
 }
 
-/** Manual 2-tier + legacy full-pallet box counts still seen in warehouse data. */
-const BOX_TIER_COUNTS = [1, 24, 48, 64] as const;
+/** Manual 2-tier only: 1 Box + Full Pallet (48 boxes / 192 rolls). */
+const BOX_TIER_COUNTS = [1, 48] as const;
 const ROLLS_FOR_BOX_TIER: Record<number, number> = {
   4: 1,
-  96: 24,
   192: 48,
-  256: 64,
 };
 
 /** Resolve a variant row to one of the sellable box counts. */

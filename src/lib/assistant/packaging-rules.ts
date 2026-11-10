@@ -4,18 +4,19 @@ import {
   RGV_FREE_DELIVERY_BOXES,
 } from "@/lib/shippingRules";
 
-export const HAND_BOX_MAX_QUANTITY = 15;
+/** Legacy alias kept for imports; 1-box qty now follows MAX_PACKAGE_QUANTITY. */
+export const HAND_BOX_MAX_QUANTITY = 40;
 export const MAX_PACKAGE_QUANTITY = 40;
 export const CATALOG_GAUGES = [40, 51, 60, 70, 80] as const;
 export const MIN_LENGTH_FEET = 500;
 export const MAX_LENGTH_FEET = 12000;
 
-/** Storefront hand-film ladder. Price = tier unit box price × number of boxes. */
+/** Storefront hand-film ladder. Strict 2-tier: 1 Box + Full Pallet (48×192). */
 export const HAND_PACKAGE_LADDER = {
-  box: { boxes: 1, rolls: 4, maxQuantity: HAND_BOX_MAX_QUANTITY },
-  layer: { boxes: 16, rolls: 64, maxQuantity: 1 },
-  half_pallet: { boxes: 32, rolls: 128, maxQuantity: 1 },
-  full_pallet: { boxes: 64, rolls: 256, maxQuantity: null },
+  box: { boxes: 1, rolls: 4, maxQuantity: null },
+  layer: { boxes: 16, rolls: 64, maxQuantity: 0 },
+  half_pallet: { boxes: 32, rolls: 128, maxQuantity: 0 },
+  full_pallet: { boxes: 48, rolls: 192, maxQuantity: null },
 } as const;
 
 export const MACHINE_PACKAGE_LADDER = {
@@ -116,26 +117,27 @@ export function validatePackageQuantity(
     };
   }
 
+  if (input.tier === "layer" || input.tier === "half_pallet") {
+    return {
+      ok: false,
+      error:
+        "Manual film is sold only as 1 Box or Full Pallet (48 boxes / 192 rolls).",
+    };
+  }
+
   const spec = HAND_PACKAGE_LADDER[input.tier];
   if (spec.maxQuantity != null && quantity > spec.maxQuantity) {
     if (input.tier === "box") {
       return {
         ok: false,
         error:
-          "16 boxes equal 16 Boxes (64 Rolls). 1 Box allows 1 to 15 boxes. Switch to the 16 Boxes (64 Rolls) tier.",
-      };
-    }
-    if (input.tier === "layer") {
-      return {
-        ok: false,
-        error:
-          "16 Boxes (64 Rolls) is limited to 1 unit. Select 32 Boxes (128 Rolls) or 64 Boxes (256 Rolls) for higher quantities.",
+          "1 Box allows 1 to 15 boxes. For larger volume, select Full Pallet (48 boxes / 192 rolls).",
       };
     }
     return {
       ok: false,
       error:
-        "Half Pallet is limited to 1 unit. Select Full Pallet to order 2 or more pallets.",
+        "Manual film is sold only as 1 Box or Full Pallet (48 boxes / 192 rolls).",
     };
   }
 

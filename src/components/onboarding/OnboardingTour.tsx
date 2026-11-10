@@ -36,7 +36,7 @@ const MOBILE_STEPS = [
   {
     id: "houston",
     title: "Houston Friday Corridor",
-    body: "Exclusive $0 shipping every Friday to Houston industrial docks on Full Pallet orders (256 rolls).",
+    body: "Exclusive $0 shipping every Friday to Houston industrial docks on Full Pallet orders (192 rolls).",
     selector: "#hero-carousel, [data-tour='hero']",
     slide: null,
   },

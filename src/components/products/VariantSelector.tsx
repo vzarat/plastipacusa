@@ -75,19 +75,9 @@ function getBoxesCount(variant: any, isMachine: boolean): number {
   return Math.round(rolls / 4) || 1;
 }
 
-function isCompact1880Package(variant: any): boolean {
-  return usesCompact1880Pallets({
-    widthInches: variant?.widthInches || variant?.width_inches,
-    gauge: variant?.gauge,
-    lengthFeet: variant?.lengthFeet || variant?.length_feet,
-    slug: variant?.slug,
-    name: variant?.title || variant?.name,
-  });
-}
-
 /** Classify package option into business-rule tiers. */
 const LAYER_LIMIT_NOTE =
-  "Maximum 1 unit of 16 Boxes (64 Rolls). For higher quantities, select 32 Boxes (128 Rolls) or 64 Boxes (256 Rolls).";
+  "Manual film is sold as 1 Box or Full Pallet (48 boxes / 192 rolls).";
 
 function getPackageTierKind(variant: any, isMachine: boolean): PackageTierKind {
   if (!variant) return "other";
@@ -104,49 +94,34 @@ function getPackageTierKind(variant: any, isMachine: boolean): PackageTierKind {
   const rolls = getRollsCount(variant);
   const boxes = getBoxesCount(variant, isMachine);
 
-  if (!isMachine && isCompact1880Package(variant)) {
-    if (label.includes("24 BOXES") || boxes === 24) return "full_pallet";
-    if (label.includes("HALF PALLET") || label.includes("12 BOXES") || boxes === 12) {
-      return "fixed_half";
-    }
-    if (label.includes("1 BOX") || boxes === 1 || rolls <= 4) return "single_unit";
-    return "other";
-  }
-
   if (isMachine) {
     if (label.includes("FULL PALLET") || rolls === 40) return "full_pallet";
     if (label.includes("HALF PALLET") || rolls === 20) return "fixed_half";
     return "other";
   }
 
+  // Manual 2-tier: any legacy mid/half pack-out remaps to Full Pallet.
   if (
     label.includes("FULL PALLET") ||
     label.includes("48 BOXES") ||
     label.includes("64 BOXES") ||
-    rolls === HAND_FULL_PALLET.rolls ||
-    rolls === 256 ||
-    boxes === HAND_FULL_PALLET.boxes ||
-    boxes === 64
-  ) {
-    return "full_pallet";
-  }
-
-  if (
-    label.includes("HALF PALLET") ||
     label.includes("32 BOXES") ||
-    rolls === 128 ||
-    boxes === 32
-  ) {
-    return "fixed_half";
-  }
-
-  if (
+    label.includes("24 BOXES") ||
+    label.includes("HALF PALLET") ||
     label.includes("1 LAYER") ||
     label.includes("16 BOXES") ||
+    rolls === HAND_FULL_PALLET.rolls ||
+    rolls === 256 ||
+    rolls === 128 ||
+    rolls === 96 ||
     rolls === 64 ||
+    boxes === HAND_FULL_PALLET.boxes ||
+    boxes === 64 ||
+    boxes === 32 ||
+    boxes === 24 ||
     boxes === 16
   ) {
-    return "fixed_mid";
+    return "full_pallet";
   }
 
   if (label.includes("1 BOX") || (boxes === 1 && rolls <= 4) || rolls === 4) {
@@ -349,8 +324,8 @@ function displayPackageTitle(variant: any, isMachine: boolean): string {
   const kind = getPackageTierKind(variant, false);
   const rolls = Math.max(0, getRollsCount(variant));
   const boxes = getBoxesCount(variant, false);
-  if (kind === "full_pallet" || boxes === 64) {
-    return formatBoxRollLabel(64, rolls > 0 ? rolls : 256);
+  if (kind === "full_pallet" || boxes === HAND_FULL_PALLET.boxes || boxes === 64) {
+    return formatBoxRollLabel(HAND_FULL_PALLET.boxes, HAND_FULL_PALLET.rolls);
   }
   if (boxes > 0) {
     const rollCount = rolls > 0 ? rolls : boxes * 4;
@@ -372,23 +347,25 @@ function displayPackageSubtext(variant: any, isMachine: boolean): string {
 
   const boxes = Number(variant?.boxes_count ?? variant?.boxesCount ?? 0);
   const catalogRolls = Number(variant?.rolls_count ?? variant?.rollsCount ?? variant?.rolls ?? 0);
-  const houston = houstonFridayPresetLabel(boxes, catalogRolls);
+  const houston = houstonFridayPresetLabel(
+    boxes >= HAND_FULL_PALLET.boxes || catalogRolls >= HAND_FULL_PALLET.rolls
+      ? HAND_FULL_PALLET.boxes
+      : boxes,
+    catalogRolls >= HAND_FULL_PALLET.rolls ? HAND_FULL_PALLET.rolls : catalogRolls
+  );
   const kind = getPackageTierKind(variant, false);
-  const palletNote = boxes >= 16 || kind === "full_pallet" || kind === "fixed_half" || kind === "fixed_mid"
-    ? ` ${HAND_PALLET_WEIGHT_NOTE}`
-    : "";
+  const palletNote =
+    kind === "full_pallet" || boxes >= HAND_FULL_PALLET.boxes
+      ? ` ${HAND_PALLET_WEIGHT_NOTE}`
+      : "";
   if (houston) return `${houston}${palletNote}`;
-  if (kind === "full_pallet" || boxes === 64 || rolls === 256) {
-    return `64 Boxes · 256 Rolls.${palletNote}`;
-  }
-  if (rolls === 128 || boxes === 32) return `128 Rolls included.${palletNote}`;
-  if (kind === "fixed_mid" || rolls === 64 || boxes === 16) {
-    return `64 Rolls included · Free RGV Freight Eligible.${palletNote}`;
+  if (kind === "full_pallet" || boxes === HAND_FULL_PALLET.boxes || rolls === HAND_FULL_PALLET.rolls) {
+    return `${HAND_FULL_PALLET.boxes} Boxes · ${HAND_FULL_PALLET.rolls} Rolls.${palletNote}`;
   }
   if (kind === "single_unit" || boxes === 1) {
     const rollCount = rolls > 0 ? rolls : 4;
     return rollCount === 4
-      ? "4 Rolls included · Standard package"
+      ? "4 Rolls included · Sample / standard box"
       : `${rollCount} Rolls included`;
   }
   return rolls > 0 ? `${rolls} Rolls included` : "";

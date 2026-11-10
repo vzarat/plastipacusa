@@ -1,5 +1,4 @@
 import { HAND_FULL_PALLET_BOXES } from "@/lib/pricing";
-import { resolvePalletizingSpecs } from "@/lib/palletizing";
 
 const MACHINE_FULL_PALLET_ROLLS = 40;
 const PALLET_SCALE = 1_000_000;
@@ -53,26 +52,15 @@ export function fullPalletsForPackage(input: PalletPackageInput): number {
 
 /**
  * Boxes represented by one full pallet.
- * A stored boxes_per_pallet wins. Otherwise hand film uses 24 or 64.
+ * Manual film is standardized to 48 boxes / 192 rolls.
  * Machine film is tracked in rolls, so this returns 0.
  */
 export function boxesPerPalletForProduct(input: PalletPackageInput & { boxesPerPallet?: number | null }): number {
-  const stored = Math.floor(Number(input.boxesPerPallet) || 0);
-  if (stored > 0) return stored;
   const application = String(input.application || "").toLowerCase() === "machine" ? "machine" : "hand";
   if (application === "machine") return 0;
-  const specs = resolvePalletizingSpecs({
-    widthInches: input.widthInches,
-    gauge: input.gauge,
-    lengthFeet: input.lengthFeet,
-    application: "hand",
-    slug: input.slug,
-    name: input.name,
-  });
-  // Compact 18" x 80 GA pallets are 24 boxes. Every other hand film sells a 64-box pallet.
-  return specs.boxesPerFullPallet === 24
-    ? 24
-    : Math.max(specs.boxesPerFullPallet, HAND_FULL_PALLET_BOXES);
+  void input;
+  // All manual film full pallets are standardized to 48 boxes / 192 rolls.
+  return HAND_FULL_PALLET_BOXES;
 }
 
 /** Prefer the stored pallet count. Older orders only have a box count. */
@@ -89,7 +77,7 @@ export function orderLinePallets(line: {
   const boxes = Math.floor(Number(line.boxes) || 0);
   if (boxes < 1 || boxes % quantity !== 0) return 0;
   const perPackage = boxes / quantity;
-  return perPackage === 24 || perPackage === 48 || perPackage === 64 ? quantity : 0;
+  return perPackage === HAND_FULL_PALLET_BOXES ? quantity : 0;
 }
 
 export interface PalletStockParts {

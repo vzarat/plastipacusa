@@ -5,10 +5,8 @@ import { formatCurrency } from "@/lib/utils";
  * Bracket columns are per-box prices, not pallet totals.
  */
 export const BOX_PRICE_PRESETS = [
-  { key: "box", boxes: 1, rolls: 4, minBoxes: 1, maxBoxes: 15 },
-  { key: "layer", boxes: 16, rolls: 64, minBoxes: 16, maxBoxes: 31 },
-  { key: "half", boxes: 32, rolls: 128, minBoxes: 32, maxBoxes: 63 },
-  { key: "full", boxes: 64, rolls: 256, minBoxes: 64, maxBoxes: Number.POSITIVE_INFINITY },
+  { key: "box", boxes: 1, rolls: 4, minBoxes: 1, maxBoxes: 47 },
+  { key: "full", boxes: 48, rolls: 192, minBoxes: 48, maxBoxes: Number.POSITIVE_INFINITY },
 ] as const;
 
 export type BoxPricePreset = (typeof BOX_PRICE_PRESETS)[number];
@@ -16,11 +14,11 @@ export type BoxPricePreset = (typeof BOX_PRICE_PRESETS)[number];
 const handBoxPreset = BOX_PRICE_PRESETS.find((tier) => tier.key === "box");
 const handFullPreset = BOX_PRICE_PRESETS.find((tier) => tier.key === "full");
 
-/** Hand film: 4 rolls in a box, 64 boxes / 256 rolls on a full pallet. */
+/** Hand film: 4 rolls in a box, 48 boxes / 192 rolls on a full pallet. */
 export const HAND_ROLLS_PER_BOX = handBoxPreset?.rolls ?? 4;
-export const HAND_FULL_PALLET_BOXES = handFullPreset?.boxes ?? 64;
-export const HAND_FULL_PALLET_ROLLS = handFullPreset?.rolls ?? 256;
-export const HAND_CATALOG_PALLET_LABEL = "Full pallet · 64 boxes · 256 rolls";
+export const HAND_FULL_PALLET_BOXES = handFullPreset?.boxes ?? 48;
+export const HAND_FULL_PALLET_ROLLS = handFullPreset?.rolls ?? 192;
+export const HAND_CATALOG_PALLET_LABEL = "Full pallet · 48 boxes · 192 rolls";
 
 export interface BoxTierPrices {
   price1Box: number | null;
@@ -70,12 +68,16 @@ export function readBoxTierPrices(raw: unknown): BoxTierPrices {
   };
 }
 
-/** 256 is a roll count on a 64-box pallet, not a box count. */
+/** 192 is a roll count on a 48-box pallet, not a box count. */
 export function normalizeHandPackageBoxes(boxes: unknown, rolls?: unknown): number {
   const boxCount = Math.floor(Number(boxes) || 0);
   const rollCount = Math.floor(Number(rolls) || 0);
-  if (boxCount === 1 || boxCount === 12 || boxCount === 16 || boxCount === 24 || boxCount === 32 || boxCount === 48 || boxCount === 64) {
+  if (boxCount === 1 || boxCount === HAND_FULL_PALLET_BOXES) {
     return boxCount;
+  }
+  // Legacy remaps → standardized full pallet.
+  if (boxCount === 24 || boxCount === 32 || boxCount === 64) {
+    return HAND_FULL_PALLET_BOXES;
   }
   const fromRolls = boxesForStoredRolls(rollCount);
   if (fromRolls) return fromRolls;
@@ -83,10 +85,10 @@ export function normalizeHandPackageBoxes(boxes: unknown, rolls?: unknown): numb
 }
 
 function boxesForStoredRolls(rolls: number): number | null {
-  if (rolls === 96) return 24;
-  if (rolls === 128) return 32;
-  if (rolls === 192) return 48;
-  if (rolls === 256) return 64;
+  if (rolls === 4) return 1;
+  if (rolls === 96 || rolls === 128 || rolls === 192 || rolls === 256) {
+    return HAND_FULL_PALLET_BOXES;
+  }
   return null;
 }
 
@@ -121,7 +123,7 @@ export type CatalogCardPriceSource = "variant" | "price_64_boxes" | "price_1_box
  * A positive product_variants price wins. Otherwise use the product row:
  * price_64_boxes, then price_1_box.
  */
-const CARD_BOX_COUNTS = [1, 16, 32, 64] as const;
+const CARD_BOX_COUNTS = [1, HAND_FULL_PALLET_BOXES] as const;
 
 function variantRecords(product: Record<string, unknown>): Record<string, unknown>[] {
   const groups = [product.product_variants, product.variants, product.packageTiers];
@@ -193,7 +195,8 @@ export function boxTierPricesFromVariants(variants: unknown): BoxTierPrices {
     price1Box: priceFor(1),
     price16Boxes: priceFor(16),
     price32Boxes: priceFor(32),
-    price64Boxes: priceFor(64),
+    // Full-pallet discounted unit: prefer standardized 48-box, accept legacy 64-box rows.
+    price64Boxes: priceFor(HAND_FULL_PALLET_BOXES) ?? priceFor(64),
   };
 }
 
@@ -233,12 +236,9 @@ export function handCatalogUnitPrice(product: unknown): number | null {
   const variants = variantRecords(row);
   const prices = readBoxTierPrices(row);
   if (prices.price64Boxes != null && prices.price64Boxes > 0) return prices.price64Boxes;
-  const fullBoxes =
-    Math.floor(Number(row.boxesPerPallet ?? row.boxes_per_pallet) || 0) || HAND_FULL_PALLET_BOXES;
   const variantFull =
-    variants.find((variant) => variantBoxCount(variant) === fullBoxes) ||
     variants.find((variant) => variantBoxCount(variant) === HAND_FULL_PALLET_BOXES) ||
-    variants.find((variant) => [24, 48, 64].includes(variantBoxCount(variant) || -1));
+    variants.find((variant) => variantBoxCount(variant) === 64);
   const fromPallet = variantFull ? variantUnitPrice(variantFull) : null;
   if (fromPallet != null) return fromPallet;
   return lowestVariantUnit(variants);
@@ -333,7 +333,7 @@ function variantWeightLbs(variant: Record<string, unknown>): string {
 
 /**
  * One full pallet for a hand-film cart.
- * Returns null when width, gauge, length, or the 64-box variant is missing.
+ * Returns null when width, gauge, length, or the full-pallet (48-box) variant is missing.
  */
 export function buildHandFullPalletCartItem(
   product: unknown,
@@ -400,8 +400,8 @@ export function buildHandFullPalletCartItem(
 }
 
 /**
- * Catalog price. Hand film uses the 64-box per-box rate from product_variants.price.
- * Machine film keeps the previous 1-box, then 64-box variant order.
+ * Catalog price. Hand film uses the full-pallet (48-box) per-box rate from product_variants.price.
+ * Machine film keeps the previous 1-box, then full-pallet variant order.
  */
 export function getDisplayPrice(product: unknown): number | null {
   const row = product && typeof product === "object" ? (product as Record<string, unknown>) : {};
@@ -430,7 +430,7 @@ export function getDisplayPrice(product: unknown): number | null {
 }
 
 /**
- * Hand-film catalog package. The 64-box per-box rate is the price shown.
+ * Hand-film catalog package. The full-pallet per-box rate is the price shown.
  * Total = that rate × 64. Machine products return null.
  */
 export function catalogPackageQuote(product: unknown): {
@@ -469,17 +469,18 @@ export function unitBoxPriceForCount(
   boxes: number
 ): number | null {
   if (!prices) return null;
-  const bracket = bracketForBoxCount(boxes);
-  if (!bracket) return null;
-  const value =
-    bracket.key === "box"
-      ? prices.price1Box
-      : bracket.key === "layer"
-        ? prices.price16Boxes
-        : bracket.key === "half"
-          ? prices.price32Boxes
-          : prices.price64Boxes;
-  return value != null && value > 0 ? value : null;
+  const count = Math.floor(Number(boxes) || 0);
+  if (count < 1) return null;
+  const bracket = bracketForBoxCount(count);
+  if (!bracket || bracket.key === "box") {
+    return prices.price1Box != null && prices.price1Box > 0 ? prices.price1Box : null;
+  }
+  // Full pallet discounted unit lives in price_64_boxes historically.
+  return prices.price64Boxes != null && prices.price64Boxes > 0
+    ? prices.price64Boxes
+    : prices.price32Boxes != null && prices.price32Boxes > 0
+      ? prices.price32Boxes
+      : null;
 }
 
 /** Total Item Price = Applicable Unit Box Price × Number of Boxes. */
