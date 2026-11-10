@@ -33,6 +33,13 @@ export interface OrderDetailItem {
   widthInches?: string | null;
   totalPrice?: number | string | null;
   total_price?: number | string | null;
+  totalBoxes?: number | null;
+  total_boxes?: number | null;
+  boxes?: number | null;
+  totalRolls?: number | null;
+  total_rolls?: number | null;
+  rolls?: number | null;
+  application?: string | null;
 }
 
 export interface OrderDetailLike {

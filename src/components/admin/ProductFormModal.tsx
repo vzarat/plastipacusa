@@ -75,7 +75,7 @@ function packageSku(baseSku: string, suffix: string): string {
 }
 
 /** Manual admin tiers: 1 Box + Full Pallet only. */
-function manualPackageOptions(fullBoxes = HAND_FULL_PALLET_BOXES) {
+function manualPackageOptions(fullBoxes: number = HAND_FULL_PALLET_BOXES) {
   const full = Math.max(2, Math.floor(Number(fullBoxes) || HAND_FULL_PALLET_BOXES));
   return [
     { label: "1 Box", rollsCount: 4, boxesCount: 1, suffix: "1B" },
@@ -90,7 +90,7 @@ function manualPackageOptions(fullBoxes = HAND_FULL_PALLET_BOXES) {
 
 function defaultPackageTiers(
   baseSku: string,
-  fullBoxes = HAND_FULL_PALLET_BOXES
+  fullBoxes: number = HAND_FULL_PALLET_BOXES
 ): AdminPackageTier[] {
   return manualPackageOptions(fullBoxes).map((option) => ({
     label: option.label,
@@ -116,7 +116,7 @@ function withDefaultPackageTiers(
   baseSku: string,
   application: "hand" | "machine" = "hand",
   columnSource?: unknown,
-  fullBoxes = HAND_FULL_PALLET_BOXES
+  fullBoxes: number = HAND_FULL_PALLET_BOXES
 ): AdminPackageTier[] {
   const saved = Array.isArray(tiers) ? tiers : [];
   if (application === "machine") {

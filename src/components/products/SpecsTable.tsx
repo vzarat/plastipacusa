@@ -52,6 +52,8 @@ interface SpecsTableProps {
     gauge?: number | null;
     length_feet?: number | null;
     lengthFeet?: number | null;
+    boxesPerPallet?: number | null;
+    boxes_per_pallet?: number | null;
     palletDimensions?: string | null;
     pallet_dimensions?: string | null;
     filmType?: string | null;

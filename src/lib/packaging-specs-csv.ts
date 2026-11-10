@@ -163,9 +163,8 @@ export function packagingSpecsCsv(products: AdminProduct[]): string {
       cells.push(tierFor(product, tier.boxes)?.sku || "");
       if (tier.key === "box") {
         cells.push(unit ? dimensionLabel(unit) : "", weightCell(gross), tier.rolls, money(rate), money(total));
-      } else if (tier.key === "layer") {
-        cells.push(weightCell(gross), unit ? dimensionLabel(unit) : "", money(rate), money(total), money(discount));
       } else {
+        // Full pallet (48 boxes / 192 rolls)
         cells.push(
           weightCell(gross),
           gross != null ? weightCell(HAND_WOODEN_PALLET_LBS) : "",

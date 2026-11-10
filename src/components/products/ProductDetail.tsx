@@ -35,10 +35,12 @@ function buildInitialVariant(product: ProductWithVariants): ProductVariant | any
   }
 
   const layout = {
-    boxesPerPallet: (product as { boxesPerPallet?: number | null }).boxesPerPallet,
+    boxesPerPallet: (product as { boxesPerPallet?: number | null; boxes_per_pallet?: number | null })
+      .boxesPerPallet ?? (product as { boxes_per_pallet?: number | null }).boxes_per_pallet,
     widthInches: product?.widthInches ?? product?.width_inches,
     gauge: product?.gauge,
-    lengthFeet: product?.lengthFeet ?? product?.length_feet,
+    lengthFeet:
+      (product as { lengthFeet?: number | string | null }).lengthFeet ?? product?.length_feet,
     slug: product?.slug,
     name: product?.title || product?.name,
     title: product?.title || product?.name,
