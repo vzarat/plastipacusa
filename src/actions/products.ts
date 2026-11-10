@@ -47,8 +47,10 @@ import {
   ensureGenesisMachineProducts,
   isMachineFilm as detectMachineFilm,
   normalizeMachinePackageLabel,
+  resolvePublicProductImageUrl,
   seriesLabelFromCategorySlug,
   sortProductsByDimensions,
+  STRETCH_FILM_PLACEHOLDER,
 } from "@/lib/products";
 
 /** Optional box rates. A missing column must not discard the product list. */
@@ -1346,14 +1348,53 @@ function formatAdminProduct(raw: any): AdminProduct {
           : Math.max(0, Math.floor(Number(raw.stock_boxes ?? raw.stockBoxes) || 0)),
     boxesPerPallet: Math.floor(Number(raw.boxes_per_pallet ?? raw.boxesPerPallet) || 0) || null,
     isSoldOut: readSoldOut(raw),
-    application: applicationFromRecord(raw, categorySlug),
+    ...(() => {
+      const application = applicationFromRecord(raw, categorySlug);
+      return {
+        application,
+        ...adminCatalogImages(raw, application),
+      };
+    })(),
     categorySlug,
-    imageUrl: String(raw.image_url || raw.imageUrl || (Array.isArray(raw.images) && raw.images[0]) || ""),
-    images: Array.isArray(raw.images) ? raw.images : [],
     isActive: readIsActive(raw),
     packageTiers: mapPackageTiers(raw.product_variants || raw.variants),
     createdAt: raw.created_at || undefined,
     updatedAt: raw.updated_at || undefined,
+  };
+}
+
+/** Admin catalog images: machine never falls back to the hand placeholder. */
+function adminCatalogImages(
+  raw: any,
+  application: "hand" | "machine"
+): { imageUrl: string; images: string[] } {
+  const stored = String(
+    raw.image_url ||
+      raw.imageUrl ||
+      (Array.isArray(raw.images) && raw.images[0]) ||
+      ""
+  ).trim();
+  const resolved = resolvePublicProductImageUrl(stored);
+
+  if (application === "machine") {
+    const machineImage =
+      resolved && !resolved.toLowerCase().includes("productos_plastipac_manual")
+        ? resolved
+        : MACHINE_FILM_IMAGE_URL;
+    return { imageUrl: machineImage, images: [machineImage] };
+  }
+
+  const handImages = Array.isArray(raw.images)
+    ? raw.images
+        .map((item: unknown) =>
+          resolvePublicProductImageUrl(String(item || "").trim())
+        )
+        .filter(Boolean)
+    : [];
+
+  return {
+    imageUrl: resolved || STRETCH_FILM_PLACEHOLDER,
+    images: handImages,
   };
 }
 

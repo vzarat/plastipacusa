@@ -61,6 +61,14 @@ function numberOrNull(...values: unknown[]): number | null {
   return null;
 }
 
+/** Parse decimal weight inputs without HTML step rounding or NaN. */
+function parseDecimalInput(raw: string): number | null {
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 const DEFAULT_PACKAGE_OPTIONS = [
   { label: "1 BOX WITH 4 ROLLS", rollsCount: 4, boxesCount: 1, suffix: "1B" },
   { label: "16 BOXES = 64 ROLLS", rollsCount: 64, boxesCount: 16, suffix: "16B" },
@@ -618,13 +626,14 @@ export function ProductFormModal({
               </label>
               <Input
                 type="number"
-                step="0.01"
+                step="any"
+                inputMode="decimal"
                 min="0"
                 value={form.rollWeightLbs ?? ""}
                 onChange={(e) =>
                   setForm((p) => ({
                     ...p,
-                    rollWeightLbs: e.target.value === "" ? null : Number(e.target.value),
+                    rollWeightLbs: parseDecimalInput(e.target.value),
                   }))
                 }
               />
@@ -635,13 +644,14 @@ export function ProductFormModal({
               </label>
               <Input
                 type="number"
-                step="0.01"
+                step="any"
+                inputMode="decimal"
                 min="0"
                 value={form.palletWeightLbs ?? ""}
                 onChange={(e) =>
                   setForm((p) => ({
                     ...p,
-                    palletWeightLbs: e.target.value === "" ? null : Number(e.target.value),
+                    palletWeightLbs: parseDecimalInput(e.target.value),
                   }))
                 }
               />

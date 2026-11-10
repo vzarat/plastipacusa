@@ -22,7 +22,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminProduct } from "@/types/product";
-import { STRETCH_FILM_PLACEHOLDER } from "@/lib/products";
+import {
+  isMachineFilm,
+  MACHINE_FILM_IMAGE_URL,
+  resolvePublicProductImageUrl,
+  STRETCH_FILM_PLACEHOLDER,
+} from "@/lib/products";
 import {
   deleteProduct,
   testAdminDatabaseConnection,
@@ -86,16 +91,46 @@ function specBadgesFor(item: AdminProduct, labels: { hand: string; machine: stri
   return badges;
 }
 
-function resolveProductImage(item: AdminProduct): string {
-  return item.imageUrl || item.images?.[0] || STRETCH_FILM_PLACEHOLDER;
+function isMachineCatalogProduct(item: AdminProduct): boolean {
+  return item.application === "machine" || isMachineFilm(item);
 }
 
-function ProductThumbnail({ src, alt }: { src: string; alt: string }) {
-  const [currentSrc, setCurrentSrc] = useState(src || STRETCH_FILM_PLACEHOLDER);
+function placeholderForProduct(item: AdminProduct): string {
+  return isMachineCatalogProduct(item)
+    ? MACHINE_FILM_IMAGE_URL
+    : STRETCH_FILM_PLACEHOLDER;
+}
+
+function resolveProductImage(item: AdminProduct): string {
+  const fallback = placeholderForProduct(item);
+  const raw = resolvePublicProductImageUrl(
+    String(item.imageUrl || item.images?.[0] || "").trim()
+  );
+  if (!raw) return fallback;
+  // Machine rows sometimes still store the hand placeholder — never show that for Automatic.
+  if (
+    isMachineCatalogProduct(item) &&
+    raw.toLowerCase().includes("productos_plastipac_manual")
+  ) {
+    return MACHINE_FILM_IMAGE_URL;
+  }
+  return raw;
+}
+
+function ProductThumbnail({
+  src,
+  alt,
+  fallback,
+}: {
+  src: string;
+  alt: string;
+  fallback: string;
+}) {
+  const [currentSrc, setCurrentSrc] = useState(src || fallback);
 
   useEffect(() => {
-    setCurrentSrc(src || STRETCH_FILM_PLACEHOLDER);
-  }, [src]);
+    setCurrentSrc(src || fallback);
+  }, [src, fallback]);
 
   return (
     <Image
@@ -105,8 +140,8 @@ function ProductThumbnail({ src, alt }: { src: string; alt: string }) {
       sizes="(max-width: 768px) 100vw, 25vw"
       className="object-contain p-4"
       onError={() => {
-        if (currentSrc !== STRETCH_FILM_PLACEHOLDER) {
-          setCurrentSrc(STRETCH_FILM_PLACEHOLDER);
+        if (currentSrc !== fallback) {
+          setCurrentSrc(fallback);
         }
       }}
     />
@@ -620,7 +655,11 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
               className="flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs transition-shadow hover:shadow-md"
             >
               <div className="relative flex h-48 items-center justify-center bg-slate-50 p-4">
-                <ProductThumbnail src={resolveProductImage(item)} alt={item.name} />
+                <ProductThumbnail
+                  src={resolveProductImage(item)}
+                  alt={item.name}
+                  fallback={placeholderForProduct(item)}
+                />
 
                 <span className="absolute top-2.5 right-2.5">
                   {item.isActive ? (
