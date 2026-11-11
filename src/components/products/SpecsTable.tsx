@@ -257,7 +257,11 @@ function matrixRowView(
     : handMatrixWeightLbs(boxes, variant.boxWeightLbs ?? null, variant.palletWeightLbs ?? null);
   const unit = machine
     ? machineHandlingUnit(rollCount, Number(variant.widthInches) || 0)
-    : handHandlingUnit(boxes);
+    : handHandlingUnit(
+        boxes,
+        variant.widthInches || product?.widthInches || product?.width_inches,
+        product?.palletDimensions || product?.pallet_dimensions
+      );
   const storedDimensions = machine
     ? null
     : storedOneBoxDimensions(boxes, (variant as { dimensions?: string | null }).dimensions);

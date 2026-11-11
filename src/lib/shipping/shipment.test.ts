@@ -392,7 +392,7 @@ describe("catalog shipment freight", () => {
       application: "hand",
       roll_weight_lbs: 4.5,
       pallet_weight_lbs: 893.18,
-      pallet_dimensions: "48 x 48 x 66",
+      pallet_dimensions: "48 x 40 x 68",
       rolls_per_box: 4,
       width_inches: 15,
       gauge: 40,
@@ -426,8 +426,8 @@ describe("catalog shipment freight", () => {
     assert.equal(mid.pieces[0]?.weightLbs, 288);
     const full = quote(48);
     assert.equal(full.pieces[0]?.lengthIn, 48);
-    assert.equal(full.pieces[0]?.widthIn, 48);
-    assert.equal(full.pieces[0]?.heightIn, 78);
+    assert.equal(full.pieces[0]?.widthIn, 40);
+    assert.equal(full.pieces[0]?.heightIn, 68);
     assert.equal(full.pieces[0]?.weightLbs, 893.18);
     assert.equal(full.pieces[0]?.packaging, "pallet");
     const sent = marketItemsFromPieces(one.pieces)[0];
@@ -436,7 +436,8 @@ describe("catalog shipment freight", () => {
     assert.equal(sent?.heightIn, 19.5);
     assert.equal(sent?.weightLbsPerPallet, 18);
     const fullSent = marketItemsFromPieces(full.pieces)[0];
-    assert.equal(fullSent?.heightIn, 78);
+    assert.equal(fullSent?.heightIn, 68);
+    assert.equal(fullSent?.widthIn, 40);
     assert.equal(fullSent?.weightLbsPerPallet, 894);
   });
 });

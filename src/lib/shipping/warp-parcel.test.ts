@@ -43,17 +43,33 @@ describe("Warp carton versus pallet payload", () => {
     const mid = warpHandPieces({ boxes: 16, widthInches: 15, boxWeightLbs: 18, palletWeightLbs: 1175.74 });
     assert.equal(mid?.[0]?.packaging, "box");
     assert.equal(mid?.[0]?.weightLbs, 288);
-    const full = warpHandPieces({ boxes: 48, widthInches: 18, boxWeightLbs: 34.65, palletWeightLbs: 1692.38 });
+    const full = warpHandPieces({
+      boxes: 48,
+      widthInches: 18,
+      palletDimensions: "48 x 48 x 78",
+      boxWeightLbs: 34.65,
+      palletWeightLbs: 1692.38,
+    });
     assert.equal(full?.[0]?.heightIn, 78);
+    assert.equal(full?.[0]?.widthIn, 48);
     assert.equal(full?.[0]?.packaging, "pallet");
     assert.equal(full?.[0]?.weightLbs, 1692.38);
     const fel = (boxes: number) =>
-      warpHandPieces({ boxes, widthInches: 15, boxWeightLbs: 25.13, palletWeightLbs: 1235.42 });
+      warpHandPieces({
+        boxes,
+        widthInches: 15,
+        palletDimensions: "48 x 40 x 68",
+        boxWeightLbs: 25.13,
+        palletWeightLbs: 1235.42,
+      });
     assert.equal(fel(1)?.[0]?.weightLbs, 25.13);
     assert.equal(fel(1)?.[0]?.packaging, "box");
     assert.equal(fel(16)?.[0]?.packaging, "box");
     assert.equal(fel(48)?.[0]?.weightLbs, 1235.42);
     assert.equal(fel(48)?.[0]?.packaging, "pallet");
+    assert.equal(fel(48)?.[0]?.heightIn, 68);
+    assert.equal(fel(48)?.[0]?.widthIn, 40);
+    assert.equal(fel(48)?.[0]?.lengthIn, 48);
   });
 
   it("quotes fewer than 48 boxes as PARCEL cartons at 11 x 11 x 19.5 and 18 lb", () => {

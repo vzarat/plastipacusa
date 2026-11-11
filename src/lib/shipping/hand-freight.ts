@@ -4,11 +4,17 @@ import { formatPackageWeightLbs, formatPalletizedWeight, HAND_WOODEN_PALLET_LBS 
 const HAND_LAYER_HEIGHT_IN = 19.5;
 const HAND_BOX_EDGE_IN = 11;
 
+/** Official Manual full-pallet footprints. 15" film is shorter; 18" keeps the standard height. */
+export const HAND_FULL_PALLET_DIMS_15 = { lengthIn: 48, widthIn: 40, heightIn: 68 } as const;
+export const HAND_FULL_PALLET_DIMS_18 = { lengthIn: 48, widthIn: 48, heightIn: 78 } as const;
+export const HAND_FULL_PALLET_DIMENSIONS_15 = "48 x 40 x 68";
+export const HAND_FULL_PALLET_DIMENSIONS_18 = "48 x 48 x 78";
+
 export const HAND_FREIGHT_DIMENSIONS_IN = {
   loose: { lengthIn: HAND_BOX_EDGE_IN, widthIn: HAND_BOX_EDGE_IN, heightIn: HAND_LAYER_HEIGHT_IN },
   layer: { lengthIn: 48, widthIn: 48, heightIn: HAND_LAYER_HEIGHT_IN },
   half: { lengthIn: 48, widthIn: 48, heightIn: 39 },
-  full: { lengthIn: 48, widthIn: 48, heightIn: 78 },
+  full: HAND_FULL_PALLET_DIMS_18,
 } as const;
 
 export type HandFreightTier = keyof typeof HAND_FREIGHT_DIMENSIONS_IN;
@@ -31,13 +37,56 @@ export interface HandlingUnit {
   packaging: "pallet" | "box";
 }
 
-export function handHandlingUnit(boxes: number): HandlingUnit {
+function parseStoredPalletInches(value: string | null | undefined): {
+  lengthIn: number;
+  widthIn: number;
+  heightIn: number;
+} | null {
+  const match = String(value || "").match(
+    /(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/i
+  );
+  if (!match) return null;
+  const lengthIn = Number(match[1]);
+  const widthIn = Number(match[2]);
+  const heightIn = Number(match[3]);
+  if (lengthIn <= 0 || widthIn <= 0 || heightIn <= 0) return null;
+  return { lengthIn, widthIn, heightIn };
+}
+
+/** Default Manual full-pallet L×W×H when products.pallet_dimensions is empty. */
+export function handFullPalletFallbackDims(widthInches?: number | string | null): {
+  lengthIn: number;
+  widthIn: number;
+  heightIn: number;
+} {
+  const width = Math.round(Number(widthInches) || 0);
+  if (width === 15) return { ...HAND_FULL_PALLET_DIMS_15 };
+  return { ...HAND_FULL_PALLET_DIMS_18 };
+}
+
+/** Prefer stored products.pallet_dimensions; otherwise width-based Manual defaults. */
+export function resolveHandFullPalletDims(input?: {
+  palletDimensions?: string | null;
+  widthInches?: number | string | null;
+}): { lengthIn: number; widthIn: number; heightIn: number } {
+  return (
+    parseStoredPalletInches(input?.palletDimensions) ??
+    handFullPalletFallbackDims(input?.widthInches)
+  );
+}
+
+export function handHandlingUnit(
+  boxes: number,
+  widthInches?: number | string | null,
+  palletDimensions?: string | null
+): HandlingUnit {
   const count = Math.max(0, boxes);
   if (count >= 48) {
+    const dims = resolveHandFullPalletDims({ palletDimensions, widthInches });
     return {
-      lengthIn: 48,
-      widthIn: 48,
-      heightIn: 78,
+      lengthIn: dims.lengthIn,
+      widthIn: dims.widthIn,
+      heightIn: dims.heightIn,
       quantity: Math.ceil(count / 48),
       includesPalletTare: true,
       packaging: "pallet",
@@ -127,10 +176,12 @@ export function handPalletTierWeightLbs(boxes: number, boxWeightLbs: number): nu
 /**
  * Warp handling units for a hand-film box count.
  * Manual 2-tier model: loose cartons under one full pallet, then 48-box full pallets.
+ * Full-pallet L×W×H comes from products.pallet_dimensions (15" → 48×40×68).
  */
 export function warpHandPieces(input: {
   boxes: number;
   widthInches?: number | null;
+  palletDimensions?: string | null;
   boxWeightLbs: number | null;
   palletWeightLbs: number | null;
 }): WarpHandPiece[] | null {
@@ -141,6 +192,10 @@ export function warpHandPieces(input: {
   const boxOk = Number.isFinite(boxWeight) && boxWeight > 0;
   const palletOk = Number.isFinite(palletWeight) && palletWeight > 0;
   const fullPalletBoxes = 48;
+  const fullDims = resolveHandFullPalletDims({
+    palletDimensions: input.palletDimensions,
+    widthInches: input.widthInches,
+  });
   const palletTierWeight = (count: number): number | null => {
     if (count >= fullPalletBoxes && palletOk) return roundLbs(palletWeight);
     if (boxOk) return handPalletTierWeightLbs(count, boxWeight);
@@ -153,9 +208,9 @@ export function warpHandPieces(input: {
     const each = palletTierWeight(fullPalletBoxes);
     if (each == null) return null;
     pieces.push({
-      lengthIn: 48,
-      widthIn: 48,
-      heightIn: 78,
+      lengthIn: fullDims.lengthIn,
+      widthIn: fullDims.widthIn,
+      heightIn: fullDims.heightIn,
       weightLbs: roundLbs(each * fullCount),
       quantity: fullCount,
       packaging: "pallet",
@@ -179,22 +234,6 @@ export function warpHandPieces(input: {
 /** Deck added under the 16-box and 32-box stacks on the product specs matrix. */
 export const HAND_MATRIX_PALLET_BASE_IN = 10;
 
-function parseStoredPalletInches(value: string | null | undefined): {
-  lengthIn: number;
-  widthIn: number;
-  heightIn: number;
-} | null {
-  const match = String(value || "").match(
-    /(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/i
-  );
-  if (!match) return null;
-  const lengthIn = Number(match[1]);
-  const widthIn = Number(match[2]);
-  const heightIn = Number(match[3]);
-  if (lengthIn <= 0 || widthIn <= 0 || heightIn <= 0) return null;
-  return { lengthIn, widthIn, heightIn };
-}
-
 /**
  * Specs-table sizes. One box stays a carton.
  * Full pallet (48 boxes) uses products.pallet_dimensions when that text is set.
@@ -206,7 +245,7 @@ export function handMatrixDimensions(
 ): { lengthIn: number; widthIn: number; heightIn: number } {
   const count = Math.max(0, Math.floor(Number(boxes) || 0));
   if (count >= 48) {
-    return parseStoredPalletInches(palletDimensions) ?? { lengthIn: 48, widthIn: 48, heightIn: 78 };
+    return resolveHandFullPalletDims({ palletDimensions, widthInches });
   }
   return { lengthIn: HAND_BOX_EDGE_IN, widthIn: HAND_BOX_EDGE_IN, heightIn: handBoxHeightIn(widthInches) };
 }

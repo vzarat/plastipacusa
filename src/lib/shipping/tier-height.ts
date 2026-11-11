@@ -1,8 +1,13 @@
-import { HAND_FREIGHT_DIMENSIONS_IN, machineHandlingUnit } from "@/lib/shipping/hand-freight";
+import {
+  HAND_FREIGHT_DIMENSIONS_IN,
+  HAND_FULL_PALLET_DIMS_15,
+  HAND_FULL_PALLET_DIMS_18,
+  machineHandlingUnit,
+} from "@/lib/shipping/hand-freight";
 
 /**
  * Change these numbers to change every quote.
- * Footprint is 48 x 48 in for every product.
+ * Footprint defaults to 48×48 for 18" Manual; 15" Manual uses 48×40×68.
  * Tier height = PALLET_BASE_HEIGHT_IN + (full height - base) × fraction.
  * Fractions: full 1, half 1/2, layer 1/4. Base stays 0 until the pallet deck is measured.
  * Loose boxes follow LOOSE_BOX_MODE.
@@ -15,8 +20,9 @@ export const LOOSE_BOX_MODE = "pallet" as "pallet" | "carton";
 export const TIER_HEIGHT = {
   footprintLengthIn: 48,
   footprintWidthIn: 48,
-  /** Full-pallet height the hand-film specs table shows when products.pallet_dimensions has no height. */
-  shownHandFullPalletHeightIn: 78,
+  /** Full-pallet height the hand-film specs table shows when products.pallet_dimensions has no height (18"). */
+  shownHandFullPalletHeightIn: HAND_FULL_PALLET_DIMS_18.heightIn,
+  shownHand15FullPalletHeightIn: HAND_FULL_PALLET_DIMS_15.heightIn,
   halfOfFull: 1 / 2,
   layerOfFull: 1 / 4,
 } as const;
@@ -81,7 +87,14 @@ export function resolveFullPalletHeight(input: {
       source: "shown_machine_specs",
     };
   }
-  return { heightIn: TIER_HEIGHT.shownHandFullPalletHeightIn, source: "shown_hand_specs" };
+  const filmWidth = Math.round(positive(input.widthInches) ?? 0);
+  return {
+    heightIn:
+      filmWidth === 15
+        ? TIER_HEIGHT.shownHand15FullPalletHeightIn
+        : TIER_HEIGHT.shownHandFullPalletHeightIn,
+    source: "shown_hand_specs",
+  };
 }
 
 export function tierInchesFromFullHeight(input: {

@@ -265,20 +265,29 @@ export function shipmentFreightFromCatalog(
       const handPieces = warpHandPieces({
         boxes: lineBoxes,
         widthInches: product?.width_inches,
+        palletDimensions: product?.pallet_dimensions,
         boxWeightLbs,
         palletWeightLbs,
       }) ??
         (unitWeight != null && lineBoxes > 0
-          ? [
-              {
-                lengthIn: lineBoxes >= 16 ? 48 : 12,
-                widthIn: lineBoxes >= 16 ? 48 : 12,
-                heightIn: lineBoxes >= 64 ? 78 : lineBoxes >= 32 ? 39 : lineBoxes >= 16 ? 29.5 : 19.5,
-                weightLbs: unitWeight * quantity,
-                quantity: lineBoxes >= 16 ? quantity : lineBoxes,
-                packaging: (lineBoxes >= 16 ? "pallet" : "box") as "pallet" | "box",
-              },
-            ]
+          ? (() => {
+              const dims =
+                parsePalletDimensions(product?.pallet_dimensions) ??
+                (Math.round(Number(product?.width_inches) || 0) === 15
+                  ? { lengthIn: 48, widthIn: 40, heightIn: 68 }
+                  : { lengthIn: 48, widthIn: 48, heightIn: 78 });
+              const isFull = lineBoxes >= 48;
+              return [
+                {
+                  lengthIn: isFull ? dims.lengthIn : 11,
+                  widthIn: isFull ? dims.widthIn : 11,
+                  heightIn: isFull ? dims.heightIn : 19.5,
+                  weightLbs: unitWeight * quantity,
+                  quantity: isFull ? quantity : lineBoxes,
+                  packaging: (isFull ? "pallet" : "box") as "pallet" | "box",
+                },
+              ];
+            })()
           : null);
       if (!handPieces) {
         throw new ShipmentDataError(
