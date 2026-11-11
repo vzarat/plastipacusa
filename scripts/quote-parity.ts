@@ -170,17 +170,17 @@ function printRepoAudit() {
   console.log("Audit source: supabase/migrations/update_product_weights.sql. No tier inches are stored there.");
   console.log("product\tapplication\ttier\tweight\tboxes/rolls\tdimensions\tfields to fill");
   const hand = [
-    ["stretch-film-18-x-60-ga-x-1000ft", 24.6, 1596.7],
-    ["stretch-film-18-x-70-ga-x-1000ft", 27.51, 1783],
-    ["stretch-film-18-x-80-ga-x-1000ft", 34.65, 2240.2],
-    ["stretch-film-18-x-60-ga-x-1500ft", 30.42, 1969.2],
-    ["stretch-film-18-x-70-ga-x-1500ft", 34.74, 2245.8],
-    ["stretch-film-18-x-80-ga-x-1500ft", 39.07, 2522.3],
-    ["stretch-film-15-x-40-ga-x-1500ft", 18, 1173.5],
-    ["stretch-film-15-x-60-ga-x-1000ft", 25.13, 1637.5],
-    ["stretch-film-15-x-60-ga-x-1500ft", 25.13, 1630.5],
-    ["stretch-film-15-x-70-ga-x-1500ft", 28.75, 1862],
-    ["stretch-film-15-x-80-ga-x-1500ft", 32.36, 2093.3],
+    ["stretch-film-18-x-60-ga-x-1000ft", 25.6, 1268.8],
+    ["stretch-film-18-x-70-ga-x-1000ft", 28.51, 1408.48],
+    ["stretch-film-18-x-80-ga-x-1000ft", 35.63, 1750.24],
+    ["stretch-film-18-x-60-ga-x-1500ft", 31.43, 1548.64],
+    ["stretch-film-18-x-70-ga-x-1500ft", 35.75, 1756],
+    ["stretch-film-18-x-80-ga-x-1500ft", 40.08, 1963.84],
+    ["stretch-film-15-x-40-ga-x-1500ft", 18.99, 951.52],
+    ["stretch-film-15-x-60-ga-x-1000ft", 22.67, 1128.16],
+    ["stretch-film-15-x-60-ga-x-1500ft", 26.12, 1293.76],
+    ["stretch-film-15-x-70-ga-x-1500ft", 29.75, 1468],
+    ["stretch-film-15-x-80-ga-x-1500ft", 33.36, 1641.28],
   ] as const;
   for (const [slug, box, pallet] of hand) {
     for (const row of auditCatalogProduct({
@@ -236,12 +236,12 @@ async function quotePackageTableSamples() {
   const pickupDate = nextBusinessPickupDate();
   console.log(`Pickup date from nextBusinessPickupDate: ${pickupDate}`);
   const films = [
-    handFilm("stretch-film-18-x-80-ga-x-1000ft", 8.66, 2240.2, 80),
-    handFilm("stretch-film-18-x-60-ga-x-1000ft", 6.15, 1596.7, 60),
+    handFilm("stretch-film-18-x-80-ga-x-1000ft", 8.66, 1750.24, 80),
+    handFilm("stretch-film-18-x-60-ga-x-1000ft", 6.15, 1268.8, 60),
   ];
   for (const film of films) {
-    for (const boxes of [1, 16, 32, 64]) {
-      const row = handVariant(film, boxes, film.slug?.includes("80") ? 34.65 : 24.6);
+    for (const boxes of [1, 48]) {
+      const row = handVariant(film, boxes, film.slug?.includes("80") ? 35.63 : 25.6);
       for (const zip of ZIPS) {
         await quoteSample(
           config.apiKey,
@@ -255,7 +255,7 @@ async function quotePackageTableSamples() {
       }
     }
   }
-  const mixed = films.map((film) => handVariant(film, 64, film.slug?.includes("80") ? 34.65 : 24.6));
+  const mixed = films.map((film) => handVariant(film, 48, film.slug?.includes("80") ? 35.63 : 25.6));
   for (const zip of ZIPS) {
     await quoteSample(
       config.apiKey,

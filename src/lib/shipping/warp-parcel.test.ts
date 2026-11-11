@@ -47,25 +47,25 @@ describe("Warp carton versus pallet payload", () => {
       boxes: 48,
       widthInches: 18,
       palletDimensions: "48 x 48 x 78",
-      boxWeightLbs: 34.65,
-      palletWeightLbs: 1692.38,
+      boxWeightLbs: 35.63,
+      palletWeightLbs: 1750.24,
     });
     assert.equal(full?.[0]?.heightIn, 78);
     assert.equal(full?.[0]?.widthIn, 48);
     assert.equal(full?.[0]?.packaging, "pallet");
-    assert.equal(full?.[0]?.weightLbs, 1692.38);
+    assert.equal(full?.[0]?.weightLbs, 1750.24);
     const fel = (boxes: number) =>
       warpHandPieces({
         boxes,
         widthInches: 15,
         palletDimensions: "48 x 40 x 68",
-        boxWeightLbs: 25.13,
-        palletWeightLbs: 1235.42,
+        boxWeightLbs: 22.67,
+        palletWeightLbs: 1128.16,
       });
-    assert.equal(fel(1)?.[0]?.weightLbs, 25.13);
+    assert.equal(fel(1)?.[0]?.weightLbs, 22.67);
     assert.equal(fel(1)?.[0]?.packaging, "box");
     assert.equal(fel(16)?.[0]?.packaging, "box");
-    assert.equal(fel(48)?.[0]?.weightLbs, 1235.42);
+    assert.equal(fel(48)?.[0]?.weightLbs, 1128.16);
     assert.equal(fel(48)?.[0]?.packaging, "pallet");
     assert.equal(fel(48)?.[0]?.heightIn, 68);
     assert.equal(fel(48)?.[0]?.widthIn, 40);

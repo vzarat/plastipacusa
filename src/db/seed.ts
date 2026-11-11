@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db, products, productVariants } from "./index";
-import { MANUAL_FILM_OFFICIAL_RATES } from "@/lib/manual-film-rates";
+import { MANUAL_FILM_MASTER } from "@/lib/manual-film-master";
 import * as dotenv from "dotenv";
 
 dotenv.config({ path: ".env.local" });
@@ -60,7 +60,7 @@ async function seed() {
         lengthFeet: 1000,
         rollsPerBox: 4,
         rollsPerPallet: 192,
-        weightLbs: "14.40",
+        weightLbs: "25.60",
         priceUsd: "24.98",
         casePriceUsd: "24.98",
         palletPriceUsd: "1145.28",
@@ -75,7 +75,7 @@ async function seed() {
         lengthFeet: 1000,
         rollsPerBox: 4,
         rollsPerPallet: 192,
-        weightLbs: "921.60",
+        weightLbs: "1268.80",
         priceUsd: "23.86",
         casePriceUsd: "1145.28",
         palletPriceUsd: "1145.28",
@@ -130,7 +130,7 @@ async function seed() {
         lengthFeet: 1000,
         rollsPerBox: 4,
         rollsPerPallet: 192,
-        weightLbs: "16.80",
+        weightLbs: "28.51",
         priceUsd: "28.65",
         casePriceUsd: "28.65",
         palletPriceUsd: "1312.32",
@@ -145,7 +145,7 @@ async function seed() {
         lengthFeet: 1000,
         rollsPerBox: 4,
         rollsPerPallet: 192,
-        weightLbs: "1075.20",
+        weightLbs: "1408.48",
         priceUsd: "27.34",
         casePriceUsd: "1312.32",
         palletPriceUsd: "1312.32",
@@ -200,7 +200,7 @@ async function seed() {
         lengthFeet: 1000,
         rollsPerBox: 4,
         rollsPerPallet: 192,
-        weightLbs: "19.20",
+        weightLbs: "35.63",
         priceUsd: "32.31",
         casePriceUsd: "32.31",
         palletPriceUsd: "1479.36",
@@ -215,7 +215,7 @@ async function seed() {
         lengthFeet: 1000,
         rollsPerBox: 4,
         rollsPerPallet: 192,
-        weightLbs: "1228.80",
+        weightLbs: "1750.24",
         priceUsd: "30.82",
         casePriceUsd: "1479.36",
         palletPriceUsd: "1479.36",
@@ -267,7 +267,7 @@ async function seed() {
         lengthFeet: 1500,
         rollsPerBox: 4,
         rollsPerPallet: 192,
-        weightLbs: "21.60",
+        weightLbs: "31.43",
         priceUsd: "35.98",
         casePriceUsd: "35.98",
         palletPriceUsd: "1645.92",
@@ -282,7 +282,7 @@ async function seed() {
         lengthFeet: 1500,
         rollsPerBox: 4,
         rollsPerPallet: 192,
-        weightLbs: "1382.40",
+        weightLbs: "1548.64",
         priceUsd: "34.29",
         casePriceUsd: "1645.92",
         palletPriceUsd: "1645.92",
@@ -334,7 +334,7 @@ async function seed() {
         lengthFeet: 1500,
         rollsPerBox: 4,
         rollsPerPallet: 192,
-        weightLbs: "25.20",
+        weightLbs: "35.75",
         priceUsd: "41.47",
         casePriceUsd: "41.47",
         palletPriceUsd: "1896.48",
@@ -349,7 +349,7 @@ async function seed() {
         lengthFeet: 1500,
         rollsPerBox: 4,
         rollsPerPallet: 192,
-        weightLbs: "1612.80",
+        weightLbs: "1756.00",
         priceUsd: "39.51",
         casePriceUsd: "1896.48",
         palletPriceUsd: "1896.48",
@@ -401,7 +401,7 @@ async function seed() {
         lengthFeet: 1500,
         rollsPerBox: 4,
         rollsPerPallet: 192,
-        weightLbs: "28.80",
+        weightLbs: "40.08",
         priceUsd: "46.97",
         casePriceUsd: "46.97",
         palletPriceUsd: "2146.56",
@@ -416,7 +416,7 @@ async function seed() {
         lengthFeet: 1500,
         rollsPerBox: 4,
         rollsPerPallet: 192,
-        weightLbs: "1843.20",
+        weightLbs: "1963.84",
         priceUsd: "44.72",
         casePriceUsd: "2146.56",
         palletPriceUsd: "2146.56",
@@ -424,72 +424,108 @@ async function seed() {
       },
     ]);
 
-    const freightSpecs = [
-      { slug: "stretch-film-18-x-60-ga-x-1000ft", gauge: 60, lengthFeet: 1000, roll: "6.15", box: "21.68", pallet: "1416.88" },
-      { slug: "stretch-film-18-x-70-ga-x-1000ft", gauge: 70, lengthFeet: 1000, roll: "6.88", box: "27.51", pallet: "1789.82" },
-      { slug: "stretch-film-18-x-80-ga-x-1000ft", gauge: 80, lengthFeet: 1000, roll: "8.66", box: "34.65", pallet: "2240.20" },
-      { slug: "stretch-film-18-x-60-ga-x-1500ft", gauge: 60, lengthFeet: 1500, roll: "7.61", box: "30.37", pallet: "1973.00" },
-      { slug: "stretch-film-18-x-70-ga-x-1500ft", gauge: 70, lengthFeet: 1500, roll: "8.69", box: "34.74", pallet: "2252.54" },
-      { slug: "stretch-film-18-x-80-ga-x-1500ft", gauge: 80, lengthFeet: 1500, roll: "9.77", box: "40.06", pallet: "2525.13" },
-    ] as const;
-    for (const spec of freightSpecs) {
+    // Excel master: weights, dims, 1-box + full-pallet prices (48×192).
+    for (const row of MANUAL_FILM_MASTER) {
       await db
         .update(products)
         .set({
-          rollWeightLbs: spec.roll,
-          palletWeightLbs: spec.pallet,
-          palletDimensions: "48 x 48 x 78",
+          widthInches: row.widthInches.toFixed(2),
+          gauge: row.gauge,
+          lengthFeet: String(row.lengthFeet),
+          boxesPerPallet: 48,
+          rollWeightLbs: row.rollWeightLbs.toFixed(2),
+          palletWeightLbs: row.fullPalletWeightLbs.toFixed(2),
+          palletDimensions: row.palletDimensions,
+          price1Box: row.price1Box != null ? row.price1Box.toFixed(2) : null,
+          price16Boxes: null,
+          price32Boxes: null,
+          priceHalfPallet: null,
+          price64Boxes: row.priceFullPalletBox != null ? row.priceFullPalletBox.toFixed(2) : null,
+          priceUsd: row.priceFullPalletBox != null ? row.priceFullPalletBox.toFixed(2) : null,
+          pricePallet: row.fullPalletTotal != null ? row.fullPalletTotal.toFixed(2) : null,
         })
-        .where(eq(products.slug, spec.slug));
+        .where(eq(products.slug, row.slug));
+
       await db
         .update(productVariants)
         .set({
-          rollWeightLbs: spec.roll,
-          boxWeightLbs: spec.box,
-          palletWeightLbs: spec.pallet,
+          rollWeightLbs: row.rollWeightLbs.toFixed(2),
+          boxWeightLbs: row.boxWeightLbs.toFixed(2),
+          palletWeightLbs: row.fullPalletWeightLbs.toFixed(2),
+          rollsPerPallet: 192,
         })
         .where(
           and(
-            eq(productVariants.gauge, spec.gauge),
-            eq(productVariants.lengthFeet, spec.lengthFeet),
-            eq(productVariants.widthInches, "18.00")
+            eq(productVariants.gauge, row.gauge),
+            eq(productVariants.lengthFeet, row.lengthFeet),
+            eq(productVariants.widthInches, row.widthInches.toFixed(2))
           )
         );
+
+      if (row.price1Box != null) {
+        await db
+          .update(productVariants)
+          .set({
+            priceUsd: row.price1Box.toFixed(2),
+            weightLbs: row.boxWeightLbs.toFixed(2),
+          })
+          .where(
+            and(
+              eq(productVariants.gauge, row.gauge),
+              eq(productVariants.lengthFeet, row.lengthFeet),
+              eq(productVariants.widthInches, row.widthInches.toFixed(2)),
+              sql`${productVariants.sku} ILIKE '%-1B'`
+            )
+          );
+      } else {
+        await db
+          .update(productVariants)
+          .set({ weightLbs: row.boxWeightLbs.toFixed(2) })
+          .where(
+            and(
+              eq(productVariants.gauge, row.gauge),
+              eq(productVariants.lengthFeet, row.lengthFeet),
+              eq(productVariants.widthInches, row.widthInches.toFixed(2)),
+              sql`${productVariants.sku} ILIKE '%-1B'`
+            )
+          );
+      }
+      if (row.priceFullPalletBox != null) {
+        await db
+          .update(productVariants)
+          .set({
+            priceUsd: row.priceFullPalletBox.toFixed(2),
+            weightLbs: row.fullPalletWeightLbs.toFixed(2),
+            packageSize: "Full Pallet · 48 Boxes (192 Rolls)",
+          })
+          .where(
+            and(
+              eq(productVariants.gauge, row.gauge),
+              eq(productVariants.lengthFeet, row.lengthFeet),
+              eq(productVariants.widthInches, row.widthInches.toFixed(2)),
+              sql`(${productVariants.sku} ILIKE '%-64B' OR ${productVariants.sku} ILIKE '%-48B' OR ${productVariants.sku} ILIKE '%FULL%')`
+            )
+          );
+      } else {
+        await db
+          .update(productVariants)
+          .set({
+            weightLbs: row.fullPalletWeightLbs.toFixed(2),
+            packageSize: "Full Pallet · 48 Boxes (192 Rolls)",
+          })
+          .where(
+            and(
+              eq(productVariants.gauge, row.gauge),
+              eq(productVariants.lengthFeet, row.lengthFeet),
+              eq(productVariants.widthInches, row.widthInches.toFixed(2)),
+              sql`(${productVariants.sku} ILIKE '%-64B' OR ${productVariants.sku} ILIKE '%-48B' OR ${productVariants.sku} ILIKE '%FULL%')`
+            )
+          );
+      }
     }
-
-
-    // Official Manual 2-tier rates on product columns (per box).
-    for (const rate of MANUAL_FILM_OFFICIAL_RATES) {
-      await db
-        .update(products)
-        .set({
-          widthInches: rate.widthInches.toFixed(2),
-          gauge: rate.gauge,
-          lengthFeet: String(rate.lengthFeet),
-          boxesPerPallet: 48,
-          price1Box: rate.price1Box.toFixed(2),
-          price16Boxes: null,
-          price32Boxes: null,
-          price64Boxes: rate.priceFullPalletBox.toFixed(2),
-          priceUsd: rate.priceFullPalletBox.toFixed(2),
-          pricePallet: rate.fullPalletTotal.toFixed(2),
-        })
-        .where(eq(products.slug, rate.slug));
-    }
-
-    await db
-      .update(productVariants)
-      .set({ boxWeightLbs: "25.13", palletWeightLbs: "1637.50" })
-      .where(sql`${productVariants.sku} ILIKE 'FEL-156010%'`);
-    await db
-      .update(products)
-      .set({ palletWeightLbs: "1637.50" })
-      .where(
-        sql`${products.slug} = 'stretch-film-15-x-60-ga-x-1000ft' OR ${products.partNumber} ILIKE 'FEL-156010%'`
-      );
 
     console.log(
-      "✅ Seed completed successfully! Seeded FORCE Manual products with official 1-box + full-pallet (48×192) per-box rates."
+      "✅ Seed completed successfully! Seeded Manual products from Excel master (48×192, 40 lb pallet tare)."
     );
     process.exit(0);
   } catch (error) {

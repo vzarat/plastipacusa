@@ -42,9 +42,9 @@ describe("hand film specs matrix", () => {
       widthIn: 48,
       heightIn: 78,
     });
-    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(1, 18, 893.18)), "18.00 lbs");
-    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(48, 18, 893.18)), "893.18 lbs");
-    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(1, 25.13, 1235.42)), "25.13 lbs");
-    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(48, 25.13, 1235.42)), "1,235.42 lbs");
+    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(1, 18.99, 951.52)), "18.99 lbs");
+    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(48, 18.99, 951.52)), "951.52 lbs");
+    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(1, 22.67, 1128.16)), "22.67 lbs");
+    assert.equal(formatHandMatrixWeight(handMatrixWeightLbs(48, 22.67, 1128.16)), "1,128.16 lbs");
   });
 });

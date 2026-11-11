@@ -1,8 +1,8 @@
-/** Older 10 kg tare still shown on the packaging CSV pallet column. */
+/** Older 10 kg tare still shown on the packaging CSV pallet column (machine / legacy). */
 export const WOODEN_PALLET_LBS = 22.05;
 
-/** Wooden pallet added once to every full-pallet (48-box) hand-film shipment. */
-export const HAND_WOODEN_PALLET_LBS = 29.18;
+/** Wooden pallet added once to every full-pallet (48-box) Manual shipment (Excel master). */
+export const HAND_WOODEN_PALLET_LBS = 40;
 
 /** Official 20" automated machine film weights, including the wooden pallet on half and full pallets. */
 export const MACHINE_FILM_WEIGHT_SPECS = [
@@ -128,9 +128,9 @@ export interface HandShippingUnit {
   tier: "full" | "half" | "layer" | "loose";
 }
 
-/** Wooden pallet implied by the package table: 16-box tier weight minus 16 box weights. */
-export function packagePalletTareLbs(boxWeightLbs: number, layerWeightLbs: number): number | null {
-  const tare = roundLbs(layerWeightLbs - 16 * boxWeightLbs, 2);
+/** Wooden pallet tare implied by a stacked tier weight minus N box weights (legacy audit helper). */
+export function packagePalletTareLbs(boxWeightLbs: number, layerWeightLbs: number, boxes = 16): number | null {
+  const tare = roundLbs(layerWeightLbs - boxes * boxWeightLbs, 2);
   if (!(tare > 0)) return null;
   return tare;
 }

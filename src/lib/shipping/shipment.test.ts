@@ -10,13 +10,13 @@ const HAND_80 = {
   rolls_count: 192,
   boxes_count: 48,
   roll_weight_lbs: 8.66,
-  box_weight_lbs: 34.65,
-  pallet_weight_lbs: 1692.38,
+  box_weight_lbs: 35.63,
+  pallet_weight_lbs: 1750.24,
   products: {
     slug: "stretch-film-18-x-80-ga-x-1000ft",
     application: "hand",
     roll_weight_lbs: 8.66,
-    pallet_weight_lbs: 1692.38,
+    pallet_weight_lbs: 1750.24,
     pallet_dimensions: "48 x 48 x 78",
     pallet_length_in: 48,
     pallet_width_in: 48,
@@ -103,34 +103,34 @@ describe("catalog shipment freight", () => {
       quantity,
     });
     const cases = [
-      { name: "1 box", lines: [line("b1")], rows: [variant("b1", 1)], weight: 34.65 },
-      { name: "16 boxes", lines: [line("b16")], rows: [variant("b16", 16)], weight: 554.4 },
-      { name: "48 boxes", lines: [line("b48")], rows: [variant("b48", 48)], weight: 1692.38 },
+      { name: "1 box", lines: [line("b1")], rows: [variant("b1", 1)], weight: 35.63 },
+      { name: "16 boxes", lines: [line("b16")], rows: [variant("b16", 16)], weight: 570.08 },
+      { name: "48 boxes", lines: [line("b48")], rows: [variant("b48", 48)], weight: 1750.24 },
       {
         name: "16+16",
         lines: [line("a16"), line("b16")],
         rows: [variant("a16", 16), variant("b16", 16)],
-        weight: 1108.8,
+        weight: 1140.16,
       },
       {
         name: "48+16",
         lines: [line("b48"), line("b16")],
         rows: [variant("b48", 48), variant("b16", 16)],
-        weight: 2246.78,
+        weight: 2320.32,
       },
-      { name: "2x48", lines: [line("b48", 2)], rows: [variant("b48", 48)], weight: 3384.76 },
+      { name: "2x48", lines: [line("b48", 2)], rows: [variant("b48", 48)], weight: 3500.48 },
       {
         name: "loose plus boxes",
         lines: [line("b16"), line("b1", 3)],
         rows: [variant("b16", 16), variant("b1", 1)],
-        weight: 658.35,
+        weight: 676.97,
       },
     ];
     const loose = [
-      { boxes: 1, weight: 34.65 },
-      { boxes: 2, weight: 69.3 },
-      { boxes: 5, weight: 173.25 },
-      { boxes: 15, weight: 519.75 },
+      { boxes: 1, weight: 35.63 },
+      { boxes: 2, weight: 71.26 },
+      { boxes: 5, weight: 178.15 },
+      { boxes: 15, weight: 534.45 },
     ];
     for (const item of loose) {
       const freight = shipmentFreightFromCatalog(
@@ -153,13 +153,13 @@ describe("catalog shipment freight", () => {
     );
     assert.equal(mixed.pieces.length, 2);
     assert.equal(mixed.pieces[0]?.heightIn, 78);
-    assert.equal(mixed.pieces[0]?.weightLbs, 1692.38);
+    assert.equal(mixed.pieces[0]?.weightLbs, 1750.24);
     assert.equal(mixed.pieces[1]?.lengthIn, 11);
     assert.equal(mixed.pieces[1]?.widthIn, 11);
     assert.equal(mixed.pieces[1]?.heightIn, 19.5);
     assert.equal(mixed.pieces[1]?.quantity, 5);
-    assert.equal(mixed.pieces[1]?.weightLbs, 173.25);
-    assert.equal(mixed.weightLbs, 1865.63);
+    assert.equal(mixed.pieces[1]?.weightLbs, 178.15);
+    assert.equal(mixed.weightLbs, 1928.39);
 
     for (const item of cases) {
       const freight = shipmentFreightFromCatalog(item.lines, item.rows, new Map());
@@ -181,16 +181,16 @@ describe("catalog shipment freight", () => {
           sku: "FST-154015-64B",
           productSlug: "stretch-film-15-x-40-ga-x-1500ft",
           quantity: 1,
-          totalBoxes: 64,
-          totalRolls: 256,
+          totalBoxes: 48,
+          totalRolls: 192,
           application: "hand",
-          weightLbs: 1173.5,
+          weightLbs: 951.52,
         },
       ],
       [],
       new Map()
     );
-    assert.equal(freight.pieces[0]?.weightLbs, 1173.5);
+    assert.equal(freight.pieces[0]?.weightLbs, 951.52);
     assert.ok(freight.weightLbs > 0);
   });
 
@@ -210,13 +210,13 @@ describe("catalog shipment freight", () => {
           rolls_count: 4,
           boxes_count: 1,
           roll_weight_lbs: 4.5,
-          box_weight_lbs: 18,
-          pallet_weight_lbs: 1181.18,
+          box_weight_lbs: 18.99,
+          pallet_weight_lbs: 951.52,
           products: {
             slug: "force-hand-film-15-40-1500",
             application: "hand",
             roll_weight_lbs: 4.5,
-            pallet_weight_lbs: 1181.18,
+            pallet_weight_lbs: 951.52,
             pallet_dimensions: null,
             rolls_per_box: 4,
             width_inches: 15,
@@ -228,7 +228,7 @@ describe("catalog shipment freight", () => {
       new Map()
     );
     assert.equal(freight.pieces[0]?.packaging, "box");
-    assert.equal(freight.pieces[0]?.weightLbs, 18);
+    assert.equal(freight.pieces[0]?.weightLbs, 18.99);
     assert.equal(freight.pieces[0]?.quantity, 1);
   });
 
@@ -237,12 +237,12 @@ describe("catalog shipment freight", () => {
       packageTotalWeightLbs({
         boxes,
         rolls,
-        boxWeightLbs: 18,
-        palletWeightLbs: 1173.5,
+        boxWeightLbs: 18.99,
+        palletWeightLbs: 951.52,
       });
-    assert.equal(matrix(1, 4), 18);
-    assert.equal(matrix(16, 64), 317.18);
-    assert.equal(matrix(32, 128), 605.18);
+    assert.equal(matrix(1, 4), 18.99);
+    assert.equal(matrix(16, 64), 343.84);
+    assert.equal(matrix(32, 128), 647.68);
 
     const freight = shipmentFreightFromCatalog(
       [{ sku: "FST-1B", productSlug: "stretch-film-15-x-40-ga-x-1500ft", quantity: 1 }],
@@ -252,7 +252,7 @@ describe("catalog shipment freight", () => {
           rolls_count: 4,
           boxes_count: 1,
           roll_weight_lbs: null,
-          box_weight_lbs: null,
+            box_weight_lbs: null,
           pallet_weight_lbs: null,
           products: {
             slug: "stretch-film-15-x-40-ga-x-1500ft",
@@ -268,16 +268,16 @@ describe("catalog shipment freight", () => {
         },
         {
           sku: "FST-64B",
-          rolls_count: 256,
-          boxes_count: 64,
+          rolls_count: 192,
+          boxes_count: 48,
           roll_weight_lbs: null,
-          box_weight_lbs: 18,
-          pallet_weight_lbs: 1173.5,
+          box_weight_lbs: 18.99,
+          pallet_weight_lbs: 951.52,
           products: {
             slug: "stretch-film-15-x-40-ga-x-1500ft",
             application: "hand",
             roll_weight_lbs: null,
-            pallet_weight_lbs: 1173.5,
+            pallet_weight_lbs: 951.52,
             pallet_dimensions: null,
             rolls_per_box: 4,
             width_inches: 15,
@@ -288,7 +288,7 @@ describe("catalog shipment freight", () => {
       ],
       new Map()
     );
-    assert.equal(freight.pieces[0]?.weightLbs, 18);
+    assert.equal(freight.pieces[0]?.weightLbs, 18.99);
     assert.ok(freight.weightLbs > 0);
   });
 
@@ -301,17 +301,17 @@ describe("catalog shipment freight", () => {
       palletWeightLbs: number | null;
       widthInches: number | string;
     }> = [
-      ["stretch-film-18-x-60-ga-x-1000ft", "hand", 24.6, 6.15, 1596.7, "18"],
-      ["stretch-film-18-x-70-ga-x-1000ft", "hand", 27.51, 6.88, 1783, 18],
-      ["stretch-film-18-x-80-ga-x-1000ft", "hand", 34.65, 8.66, 2240.2, "18"],
-      ["stretch-film-18-x-60-ga-x-1500ft", "hand", 30.42, 7.61, 1969.2, 18],
-      ["stretch-film-18-x-70-ga-x-1500ft", "hand", 34.74, 8.69, 2245.8, 18],
-      ["stretch-film-18-x-80-ga-x-1500ft", "hand", 39.07, 9.77, 2522.3, 18],
-      ["stretch-film-15-x-40-ga-x-1500ft", "hand", 18, 4.5, 1173.5, 15],
-      ["stretch-film-15-x-60-ga-x-1000ft", "hand", 25.13, 5.42, 1637.5, 15],
-      ["stretch-film-15-x-60-ga-x-1500ft", "hand", 25.13, 6.28, 1630.5, 15],
-      ["stretch-film-15-x-70-ga-x-1500ft", "hand", 28.75, 7.19, 1862, 15],
-      ["stretch-film-15-x-80-ga-x-1500ft", "hand", 32.36, 8.09, 2093.3, 15],
+      ["stretch-film-18-x-60-ga-x-1000ft", "hand", 25.6, 6.15, 1268.8, "18"],
+      ["stretch-film-18-x-70-ga-x-1000ft", "hand", 28.51, 6.88, 1408.48, 18],
+      ["stretch-film-18-x-80-ga-x-1000ft", "hand", 35.63, 8.66, 1750.24, "18"],
+      ["stretch-film-18-x-60-ga-x-1500ft", "hand", 31.43, 7.61, 1548.64, 18],
+      ["stretch-film-18-x-70-ga-x-1500ft", "hand", 35.75, 8.69, 1756, 18],
+      ["stretch-film-18-x-80-ga-x-1500ft", "hand", 40.08, 9.77, 1963.84, 18],
+      ["stretch-film-15-x-40-ga-x-1500ft", "hand", 18.99, 4.5, 951.52, 15],
+      ["stretch-film-15-x-60-ga-x-1000ft", "hand", 22.67, 5.42, 1128.16, 15],
+      ["stretch-film-15-x-60-ga-x-1500ft", "hand", 26.12, 6.28, 1293.76, 15],
+      ["stretch-film-15-x-70-ga-x-1500ft", "hand", 29.75, 7.19, 1468, 15],
+      ["stretch-film-15-x-80-ga-x-1500ft", "hand", 33.36, 8.09, 1641.28, 15],
       ["stretch-film-20-x-51-ga-x-7000ft", "machine", null, 30.600162, 1250.01, "20"],
       ["stretch-film-20-x-51-ga-x-9000ft", "machine", null, 38.779312, 1577.71, 20],
       ["stretch-film-20-x-60-ga-x-5000ft", "machine", null, 25.9, 1058, 20],

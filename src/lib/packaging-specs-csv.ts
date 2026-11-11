@@ -1,11 +1,11 @@
 import { HAND_WOODEN_PALLET_LBS, packageTotalWeightLbs } from "@/lib/package-weight";
-import { quoteTierPrice, roundMoney } from "@/lib/pricing";
+import { HAND_FULL_PALLET_BOXES, quoteTierPrice, roundMoney } from "@/lib/pricing";
 import { handHandlingUnit } from "@/lib/shipping/hand-freight";
 import type { AdminPackageTier, AdminProduct } from "@/types/product";
 
 const HAND_TIERS = [
   { boxes: 1, rolls: 4, key: "box" },
-  { boxes: 48, rolls: 192, key: "full" },
+  { boxes: HAND_FULL_PALLET_BOXES, rolls: 192, key: "full" },
 ] as const;
 
 export const PACKAGING_SPECS_CSV_HEADERS = [
@@ -22,26 +22,13 @@ export const PACKAGING_SPECS_CSV_HEADERS = [
   "Box Rolls",
   "Box Price per Box (USD)",
   "Box Package Total (USD)",
-  "16-Box SKU",
-  "16-Box Weight (lbs)",
-  "16-Box Dimensions (L x W x H in)",
-  "16-Box Price per Box (USD)",
-  "16-Box Package Total (USD)",
-  "16-Box Discount vs Standard (USD)",
-  "32-Box SKU",
-  "32-Box Weight (lbs)",
-  "32-Box Pallet Tare (lbs)",
-  "32-Box Dimensions (L x W x H in)",
-  "32-Box Price per Box (USD)",
-  "32-Box Package Total (USD)",
-  "32-Box Discount vs Standard (USD)",
-  "64-Box SKU",
-  "64-Box Weight (lbs)",
-  "64-Box Pallet Tare (lbs)",
-  "64-Box Dimensions (L x W x H in)",
-  "64-Box Price per Box (USD)",
-  "64-Box Package Total (USD)",
-  "64-Box Discount vs Standard (USD)",
+  "Full Pallet SKU",
+  "Full Pallet Weight (lbs)",
+  "Full Pallet Wooden Tare (lbs)",
+  "Full Pallet Dimensions (L x W x H in)",
+  "Full Pallet Price per Box (USD)",
+  "Full Pallet Package Total (USD)",
+  "Full Pallet Discount vs Standard (USD)",
   "Standard Price per Box (USD)",
   "Package Volume",
 ] as const;
@@ -94,9 +81,7 @@ function rateFor(product: AdminProduct, boxes: number): number | null {
   const fromTier = positive(tierFor(product, boxes)?.price);
   if (fromTier != null) return fromTier;
   if (boxes === 1) return positive(product.price1Box);
-  if (boxes === 16) return positive(product.price16Boxes);
-  if (boxes === 32) return positive(product.price32Boxes);
-  if (boxes === 64) return positive(product.price64Boxes);
+  if (boxes === HAND_FULL_PALLET_BOXES || boxes === 64) return positive(product.price64Boxes);
   return null;
 }
 
@@ -132,6 +117,7 @@ function packageVolume(product: AdminProduct): string {
 
 function productSku(product: AdminProduct): string {
   return (
+    tierFor(product, HAND_FULL_PALLET_BOXES)?.sku ||
     tierFor(product, 64)?.sku ||
     tierFor(product, 1)?.sku ||
     product.partNumber ||
@@ -156,7 +142,9 @@ export function packagingSpecsCsv(products: AdminProduct[]): string {
     for (const tier of HAND_TIERS) {
       const rate = machine ? null : rateFor(product, tier.boxes);
       const gross = machine ? null : tierWeight(product, tier.boxes, tier.rolls);
-      const unit = machine ? null : handHandlingUnit(tier.boxes);
+      const unit = machine
+        ? null
+        : handHandlingUnit(tier.boxes, product.widthInches, product.palletDimensions);
       const total = rate != null ? quoteTierPrice(rate, tier.boxes).total : null;
       const discount =
         standard != null && rate != null ? roundMoney(standard - rate) : null;
@@ -164,7 +152,6 @@ export function packagingSpecsCsv(products: AdminProduct[]): string {
       if (tier.key === "box") {
         cells.push(unit ? dimensionLabel(unit) : "", weightCell(gross), tier.rolls, money(rate), money(total));
       } else {
-        // Full pallet (48 boxes / 192 rolls)
         cells.push(
           weightCell(gross),
           gross != null ? weightCell(HAND_WOODEN_PALLET_LBS) : "",

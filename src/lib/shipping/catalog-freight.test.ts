@@ -7,11 +7,11 @@ const complete = {
   slug: "film-a",
   application: "hand",
   roll_weight_lbs: 8.66,
-  pallet_weight_lbs: 2240.2,
+  pallet_weight_lbs: 1750.24,
   pallet_dimensions: null as string | null,
   pallet_length_in: 48,
   pallet_width_in: 48,
-  pallet_height_in: 80 as number | null,
+  pallet_height_in: 78 as number | null,
   half_pallet_length_in: 48,
   half_pallet_width_in: 48,
   half_pallet_height_in: 42,
@@ -33,15 +33,15 @@ function variant(sku: string, boxes: number) {
     rolls_count: boxes * 4,
     boxes_count: boxes,
     roll_weight_lbs: 8.66,
-    box_weight_lbs: 34.65,
-    pallet_weight_lbs: 2240.2,
+    box_weight_lbs: 35.63,
+    pallet_weight_lbs: 1750.24,
     products: { ...complete, slug: sku },
   };
 }
 
 describe("catalog freight", () => {
   it("builds every hand tier from that product's own weights and inches", () => {
-    for (const boxes of [1, 16, 32, 64]) {
+    for (const boxes of [1, 48]) {
       const freight = shipmentFreightFromCatalog(
         [{ sku: `b${boxes}`, productSlug: `b${boxes}`, quantity: 1 }],
         [variant(`b${boxes}`, boxes)],
@@ -61,43 +61,39 @@ describe("catalog freight", () => {
         { sku: "a", productSlug: "a", quantity: 1 },
         { sku: "b", productSlug: "b", quantity: 1 },
       ],
-      [variant("a", 64), variant("b", 16)],
+      [variant("a", 48), variant("b", 1)],
       new Map()
     );
     assert.equal(freight.pieces.length, 2);
-    assert.equal(freight.weightLbs, 2823.78);
+    assert.equal(freight.weightLbs, 1785.87);
   });
 
-  it("uses a product's own full-pallet height and derives the other tiers", () => {
-    const row = variant("tall", 64);
+  it("uses a product's own full-pallet height from pallet_dimensions", () => {
+    const row = variant("tall", 48);
     row.products = { ...complete, slug: "tall-film", pallet_dimensions: "48 x 48 x 60" };
     const full = shipmentFreightFromCatalog([{ sku: "tall", productSlug: "tall-film", quantity: 1 }], [row], new Map());
-    assert.equal(full.pieces[0]?.heightIn, 78);
-    const halfRow = variant("tall-half", 32);
-    halfRow.products = row.products;
-    const half = shipmentFreightFromCatalog(
-      [{ sku: "tall-half", productSlug: "tall-film", quantity: 1 }],
-      [halfRow],
+    assert.equal(full.pieces[0]?.heightIn, 60);
+    const boxRow = variant("tall-box", 1);
+    boxRow.products = row.products;
+    const box = shipmentFreightFromCatalog(
+      [{ sku: "tall-box", productSlug: "tall-film", quantity: 1 }],
+      [boxRow],
       new Map()
     );
-    assert.equal(half.pieces[0]?.heightIn, 39);
-    const layerRow = variant("tall-layer", 16);
-    layerRow.products = row.products;
-    const layer = shipmentFreightFromCatalog(
-      [{ sku: "tall-layer", productSlug: "tall-film", quantity: 1 }],
-      [layerRow],
-      new Map()
-    );
-    assert.equal(layer.pieces[0]?.heightIn, 29.5);
+    assert.equal(box.pieces[0]?.heightIn, 19.5);
+    assert.equal(box.pieces[0]?.packaging, "box");
   });
 
   it("uses a 46 in pallet for both automatic film tiers", () => {
     const fullRow = variant("auto-full", 1);
     fullRow.rolls_count = 40;
+    fullRow.box_weight_lbs = null;
+    fullRow.pallet_weight_lbs = 2240.2;
     fullRow.products = {
       ...complete,
       slug: "auto-film",
       application: "machine",
+      pallet_weight_lbs: 2240.2,
       pallet_dimensions: null,
       pallet_height_in: null,
     };
@@ -110,6 +106,8 @@ describe("catalog freight", () => {
     assert.equal(full.pieces[0]?.weightLbs, 2240);
     const halfRow = variant("auto-half", 1);
     halfRow.rolls_count = 20;
+    halfRow.box_weight_lbs = null;
+    halfRow.pallet_weight_lbs = 2240.2;
     halfRow.products = fullRow.products;
     const half = shipmentFreightFromCatalog(
       [{ sku: "auto-half", productSlug: "auto-film", quantity: 1 }],
@@ -131,9 +129,11 @@ describe("catalog freight", () => {
       rollsCount: null,
       dimensions: {},
     });
-    assert.equal(rows.length, 4);
+    assert.equal(rows.length, 2);
     assert.ok(rows.every((row) => row.weight === "missing" && row.dimensions === "present"));
     assert.match(rows[0]?.fieldsToFill || "", /box_weight_lbs/);
+    assert.equal(rows[0]?.boxesOrRolls, "1 box");
+    assert.equal(rows[1]?.boxesOrRolls, "48 boxes");
   });
 
   it("packs the same sku together and leaves different skus apart", () => {

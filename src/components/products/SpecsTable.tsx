@@ -190,7 +190,7 @@ function boxesForRolls(rolls: number): number {
 }
 
 const HAND_PALLET_WEIGHT_NOTE =
-  "Includes wooden pallet weight (~29.2 lbs) for LTL freight accuracy.";
+  "Includes wooden pallet weight (40 lbs) for LTL freight accuracy.";
 
 function packageTierLabel(variant: ProductVariant): string {
   const titled = String(variant.title || variant.packageSize || "").trim();

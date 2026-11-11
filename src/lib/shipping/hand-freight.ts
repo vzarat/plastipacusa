@@ -231,7 +231,7 @@ export function warpHandPieces(input: {
   return pieces;
 }
 
-/** Deck added under the 16-box and 32-box stacks on the product specs matrix. */
+/** Deck height reserved when deriving legacy stacked-pallet inches from full height. */
 export const HAND_MATRIX_PALLET_BASE_IN = 10;
 
 /**
@@ -250,7 +250,7 @@ export function handMatrixDimensions(
   return { lengthIn: HAND_BOX_EDGE_IN, widthIn: HAND_BOX_EDGE_IN, heightIn: handBoxHeightIn(widthInches) };
 }
 
-/** 1 box is box_weight_lbs. Full pallet (48 boxes) adds one 29.18 lb wooden pallet. */
+/** 1 box is box_weight_lbs. Full pallet (48 boxes) adds one 40 lb wooden pallet. */
 export function handMatrixWeightLbs(
   boxes: number,
   boxWeightLbs: number | null,
