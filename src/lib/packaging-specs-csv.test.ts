@@ -63,11 +63,14 @@ describe("packaging specs csv", () => {
     assert.match(row, /40\.00/);
     assert.match(row, /11 x 11 x 19\.5/);
     assert.match(row, /48 x 40 x 68/);
+    assert.match(row, /2\.14/);
+    assert.match(row, /75\.56/);
     assert.match(row, /28\.21/);
     assert.match(row, /1017\.60/);
     assert.match(row, /7\.01/);
     assert.doesNotMatch(csv, /Hidden/);
     assert.doesNotMatch(header, /16-Box/);
     assert.doesNotMatch(header, /32-Box/);
+    assert.match(header, /Full Pallet Volume \(CBM\)/);
   });
 });

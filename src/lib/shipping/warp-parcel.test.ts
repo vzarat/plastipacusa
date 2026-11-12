@@ -108,18 +108,23 @@ describe("Warp carton versus pallet payload", () => {
     assert.equal(item?.width, 11);
     assert.equal(item?.height, 19.5);
     assert.equal(item?.totalWeight, 18);
+    assert.equal(item?.weightUnit, "lbs");
+    assert.equal(item?.sizeUnit, "IN");
     assert.equal(item?.quantity, 1);
   });
 
-  it("keeps 16 or more boxes on an LTL pallet payload", () => {
+  it("keeps Manual full pallets on LTL with inches + whole pounds for density", () => {
     const piece: FreightPiece = {
-      ...carton(1, 293.94),
       lengthIn: 48,
-      widthIn: 48,
-      heightIn: 29.5,
+      widthIn: 40,
+      heightIn: 68,
+      weightLbs: 1128.16,
+      quantity: 1,
       packaging: "pallet",
+      dimensionLabel: '40" W x 48" L x 68" H',
+      weightLabel: "1128.16 lbs",
     };
-    const shipment = freight([piece], 16);
+    const shipment = freight([piece], 48);
     assert.equal(usesWarpParcel(shipment), false);
     const body = warpFreightQuoteBody({
       pickupDate: "2026-10-19",
@@ -134,7 +139,10 @@ describe("Warp carton versus pallet payload", () => {
     const item = (body.listItems as Array<Record<string, unknown>>)[0];
     assert.equal(item?.packaging, "pallet");
     assert.equal(item?.length, 48);
-    assert.equal(item?.height, 29.5);
-    assert.equal(item?.totalWeight, 293.94);
+    assert.equal(item?.width, 40);
+    assert.equal(item?.height, 68);
+    assert.equal(item?.sizeUnit, "IN");
+    assert.equal(item?.weightUnit, "lbs");
+    assert.equal(item?.totalWeight, 1129);
   });
 });

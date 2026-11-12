@@ -10,6 +10,101 @@ export const HAND_FULL_PALLET_DIMS_18 = { lengthIn: 48, widthIn: 48, heightIn: 7
 export const HAND_FULL_PALLET_DIMENSIONS_15 = "48 x 40 x 68";
 export const HAND_FULL_PALLET_DIMENSIONS_18 = "48 x 48 x 78";
 
+/** Cubic conversion factors for LTL density (Warp uses inches + lbs; CBM/cu ft are derived). */
+export const CU_IN_PER_CU_FT = 1728;
+export const CU_FT_PER_CBM = 35.3146667215;
+export const INCH_TO_METER = 0.0254;
+
+export interface FreightVolume {
+  lengthIn: number;
+  widthIn: number;
+  heightIn: number;
+  cubicInches: number;
+  cubicFeet: number;
+  cbm: number;
+}
+
+/**
+ * Published Manual full-pallet volumes for Warp LTL density.
+ * 15" 48×40×68 → 2.14 CBM (~75.56 cu ft)
+ * 18" 48×48×78 → 2.95 CBM (~104.00 cu ft)
+ */
+export const HAND_FULL_PALLET_VOLUME_15: FreightVolume = {
+  ...HAND_FULL_PALLET_DIMS_15,
+  cubicInches: 48 * 40 * 68,
+  cubicFeet: 75.56,
+  cbm: 2.14,
+};
+
+export const HAND_FULL_PALLET_VOLUME_18: FreightVolume = {
+  ...HAND_FULL_PALLET_DIMS_18,
+  cubicInches: 48 * 48 * 78,
+  cubicFeet: 104,
+  cbm: 2.95,
+};
+
+function publishedManualFullPalletVolume(input: {
+  lengthIn: number;
+  widthIn: number;
+  heightIn: number;
+}): FreightVolume | null {
+  const { lengthIn, widthIn, heightIn } = input;
+  if (
+    lengthIn === HAND_FULL_PALLET_DIMS_15.lengthIn &&
+    widthIn === HAND_FULL_PALLET_DIMS_15.widthIn &&
+    heightIn === HAND_FULL_PALLET_DIMS_15.heightIn
+  ) {
+    return { ...HAND_FULL_PALLET_VOLUME_15 };
+  }
+  if (
+    lengthIn === HAND_FULL_PALLET_DIMS_18.lengthIn &&
+    widthIn === HAND_FULL_PALLET_DIMS_18.widthIn &&
+    heightIn === HAND_FULL_PALLET_DIMS_18.heightIn
+  ) {
+    return { ...HAND_FULL_PALLET_VOLUME_18 };
+  }
+  return null;
+}
+
+/** Exact L×W×H → volume. Manual full-pallet footprints use the published CBM / cu ft sheet. */
+export function freightVolumeFromInches(input: {
+  lengthIn: number;
+  widthIn: number;
+  heightIn: number;
+}): FreightVolume | null {
+  const lengthIn = Number(input.lengthIn);
+  const widthIn = Number(input.widthIn);
+  const heightIn = Number(input.heightIn);
+  if (!(lengthIn > 0 && widthIn > 0 && heightIn > 0)) return null;
+  const published = publishedManualFullPalletVolume({ lengthIn, widthIn, heightIn });
+  if (published) return published;
+  const cubicInches = lengthIn * widthIn * heightIn;
+  const cubicFeet = cubicInches / CU_IN_PER_CU_FT;
+  const cbm =
+    lengthIn * INCH_TO_METER * (widthIn * INCH_TO_METER) * (heightIn * INCH_TO_METER);
+  return {
+    lengthIn,
+    widthIn,
+    heightIn,
+    cubicInches,
+    cubicFeet: Math.round(cubicFeet * 100) / 100,
+    cbm: Math.round(cbm * 100) / 100,
+  };
+}
+
+export function handFullPalletVolume(input?: {
+  palletDimensions?: string | null;
+  widthInches?: number | string | null;
+}): FreightVolume {
+  const dims = resolveHandFullPalletDims(input);
+  return freightVolumeFromInches(dims) ?? { ...HAND_FULL_PALLET_VOLUME_18 };
+}
+
+export function formatFreightVolume(volume: FreightVolume | null | undefined): string {
+  if (!volume) return "—";
+  return `${volume.cbm.toFixed(2)} CBM (${volume.cubicFeet.toFixed(2)} cu ft)`;
+}
+
 export const HAND_FREIGHT_DIMENSIONS_IN = {
   loose: { lengthIn: HAND_BOX_EDGE_IN, widthIn: HAND_BOX_EDGE_IN, heightIn: HAND_LAYER_HEIGHT_IN },
   layer: { lengthIn: 48, widthIn: 48, heightIn: HAND_LAYER_HEIGHT_IN },
@@ -295,4 +390,16 @@ export function formatHandMatrixDimensions(unit: {
     maximumFractionDigits: 1,
   });
   return `${formatInches(unit.widthIn)}" W x ${formatInches(unit.lengthIn)}" L x ${height}" H`;
+}
+
+/** Full-pallet matrix cell: L×W×H plus CBM / cu ft for LTL density. */
+export function formatHandFullPalletDimensionsWithVolume(unit: {
+  lengthIn: number;
+  widthIn: number;
+  heightIn: number;
+}): string {
+  const volume = freightVolumeFromInches(unit);
+  const dims = formatHandMatrixDimensions(unit);
+  if (!volume) return dims;
+  return `${dims} · ${formatFreightVolume(volume)}`;
 }

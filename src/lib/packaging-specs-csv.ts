@@ -1,6 +1,6 @@
 import { HAND_WOODEN_PALLET_LBS, packageTotalWeightLbs } from "@/lib/package-weight";
 import { HAND_FULL_PALLET_BOXES, quoteTierPrice, roundMoney } from "@/lib/pricing";
-import { handHandlingUnit } from "@/lib/shipping/hand-freight";
+import { freightVolumeFromInches, handHandlingUnit } from "@/lib/shipping/hand-freight";
 import type { AdminPackageTier, AdminProduct } from "@/types/product";
 
 const HAND_TIERS = [
@@ -26,6 +26,8 @@ export const PACKAGING_SPECS_CSV_HEADERS = [
   "Full Pallet Weight (lbs)",
   "Full Pallet Wooden Tare (lbs)",
   "Full Pallet Dimensions (L x W x H in)",
+  "Full Pallet Volume (CBM)",
+  "Full Pallet Volume (cu ft)",
   "Full Pallet Price per Box (USD)",
   "Full Pallet Package Total (USD)",
   "Full Pallet Discount vs Standard (USD)",
@@ -152,10 +154,13 @@ export function packagingSpecsCsv(products: AdminProduct[]): string {
       if (tier.key === "box") {
         cells.push(unit ? dimensionLabel(unit) : "", weightCell(gross), tier.rolls, money(rate), money(total));
       } else {
+        const volume = unit ? freightVolumeFromInches(unit) : null;
         cells.push(
           weightCell(gross),
           gross != null ? weightCell(HAND_WOODEN_PALLET_LBS) : "",
           unit ? dimensionLabel(unit) : "",
+          volume ? volume.cbm.toFixed(2) : "",
+          volume ? volume.cubicFeet.toFixed(2) : "",
           money(rate),
           money(total),
           money(discount)

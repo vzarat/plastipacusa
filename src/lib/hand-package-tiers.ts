@@ -12,7 +12,7 @@ import {
 } from "@/lib/pricing";
 
 export const HAND_PALLET_WEIGHT_NOTE =
-  "Includes wooden pallet weight (40 lbs) for LTL freight accuracy.";
+  "Includes wooden pallet weight (40 lbs). Warp LTL quotes use inches + total lbs (product + tare) for density.";
 
 export type HandManualTierKey = "box" | "full";
 

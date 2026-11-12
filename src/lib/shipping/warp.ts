@@ -1,10 +1,15 @@
 import { nextBusinessPickupDate } from "@/lib/shipping/dates";
 import { SHIPPING_MARKUP_PERCENT, getWarpConfig } from "@/lib/shipping/config";
+import { ceilWarpWeightLbs } from "@/lib/shipping/market-options";
 import { warpDeliveryInfo, warpPickupInfo, type WarpDestinationAddress } from "@/lib/shipping/origin";
 import { ensureWarehouseOriginLoaded } from "@/lib/shipping/warehouse-origin";
 import "@/lib/shipping/warehouse-origin-store";
 import { redactSecrets } from "@/lib/shipping/diagnostics";
 import type { FreightPiece, ShipmentFreight, ShippingOption } from "@/lib/shipping/types";
+
+/** Warp freight quote units. Density = lbs ÷ cubic inches derived from L×W×H. */
+export const WARP_SIZE_UNIT = "IN" as const;
+export const WARP_WEIGHT_UNIT = "lbs" as const;
 
 const QUOTE_TIMEOUT_MS = 12000;
 
@@ -72,32 +77,39 @@ export function usesWarpParcel(freight: Pick<ShipmentFreight, "boxes" | "pieces"
   return freight.pieces.every((piece) => piece.packaging === "box");
 }
 
-/** Warp list item. Cartons use packaging "carton"; pallet tiers use "pallet". */
+/**
+ * Warp list item for /freights/quote.
+ * Always inches + pounds. Pallet weights are whole lbs (product + wooden tare);
+ * carton parcel weights keep one decimal.
+ */
 export function warpListItem(piece: FreightPiece): {
   name: string;
   length: number;
   width: number;
   height: number;
-  sizeUnit: "IN";
+  sizeUnit: typeof WARP_SIZE_UNIT;
   totalWeight: number;
-  weightUnit: "lbs";
+  weightUnit: typeof WARP_WEIGHT_UNIT;
   quantity: number;
   packaging: "carton" | "pallet";
   stackable: false;
 } {
   const quantity = Math.max(1, wholeNumber(piece.quantity));
   const lineWeight = finiteNumber(piece.weightLbs);
-  const totalWeight = quantity > 1 ? Math.round((lineWeight / quantity) * 10) / 10 : lineWeight;
+  const perUnit = quantity > 1 ? lineWeight / quantity : lineWeight;
+  const packaging = piece.packaging === "box" ? "carton" : "pallet";
+  const totalWeight =
+    packaging === "pallet" ? ceilWarpWeightLbs(perUnit) : Math.round(perUnit * 10) / 10;
   return {
     name: "Stretch film",
     length: finiteNumber(piece.lengthIn),
     width: finiteNumber(piece.widthIn),
     height: finiteNumber(piece.heightIn),
-    sizeUnit: "IN",
+    sizeUnit: WARP_SIZE_UNIT,
     totalWeight,
-    weightUnit: "lbs",
+    weightUnit: WARP_WEIGHT_UNIT,
     quantity,
-    packaging: piece.packaging === "box" ? "carton" : "pallet",
+    packaging,
     stackable: false,
   };
 }
@@ -406,9 +418,9 @@ export async function probeWarpConnection(
             length: PROBE_PIECE.lengthIn,
             width: PROBE_PIECE.widthIn,
             height: PROBE_PIECE.heightIn,
-            sizeUnit: "IN",
-            totalWeight: PROBE_FREIGHT.weightLbs,
-            weightUnit: "lbs",
+            sizeUnit: WARP_SIZE_UNIT,
+            totalWeight: ceilWarpWeightLbs(PROBE_FREIGHT.weightLbs),
+            weightUnit: WARP_WEIGHT_UNIT,
             quantity: PROBE_PIECE.quantity,
             packaging: PROBE_PIECE.packaging,
             stackable: false,

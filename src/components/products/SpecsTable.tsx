@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { packageTotalWeightLbs } from "@/lib/package-weight";
 import {
   formatFreightDimensions,
+  formatHandFullPalletDimensionsWithVolume,
   formatHandMatrixDimensions,
   formatHandMatrixWeight,
   handHandlingUnit,
@@ -32,6 +33,7 @@ import {
 } from "@/lib/pricing";
 import {
   buildHandManualPackageTiers,
+  HAND_PALLET_WEIGHT_NOTE,
   unitPriceForHandManualTier,
 } from "@/lib/hand-package-tiers";
 
@@ -189,9 +191,6 @@ function boxesForRolls(rolls: number): number {
   return 0;
 }
 
-const HAND_PALLET_WEIGHT_NOTE =
-  "Includes wooden pallet weight (40 lbs) for LTL freight accuracy.";
-
 function packageTierLabel(variant: ProductVariant): string {
   const titled = String(variant.title || variant.packageSize || "").trim();
   if (titled) return titled;
@@ -341,9 +340,14 @@ function matrixRowView(
     width: safeNumberDisplay(variant.widthInches, '"'),
     gauge: variant.gauge != null ? `${variant.gauge} Ga` : "—",
     length: safeLocaleNumber(variant.lengthFeet, " ft"),
-    dimensions:
-      storedDimensions ||
-      (matrixDimensions ? formatHandMatrixDimensions(matrixDimensions) : formatFreightDimensions(unit)),
+    dimensions: (() => {
+      if (storedDimensions) return storedDimensions;
+      if (!machine && boxes >= 48 && matrixDimensions) {
+        return formatHandFullPalletDimensionsWithVolume(matrixDimensions);
+      }
+      if (matrixDimensions) return formatHandMatrixDimensions(matrixDimensions);
+      return formatFreightDimensions(unit);
+    })(),
     weight: weightLabel,
     rolls:
       !machine && (rollCount >= 192 || boxes >= 48)
@@ -414,7 +418,7 @@ export function SpecsTable({ variants, product }: SpecsTableProps) {
             Package Dimensions & Volume Price Matrix
           </h3>
           <p className="text-xs text-slate-500">
-            Official production packaging sizes, roll count, and tier pricing.
+            Official packaging sizes, CBM / cu ft for LTL density, roll count, and tier pricing.
           </p>
         </div>
         <Badge variant="default" className="font-mono text-xs font-bold self-start">

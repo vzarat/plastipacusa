@@ -1,12 +1,18 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  formatFreightVolume,
+  formatHandFullPalletDimensionsWithVolume,
   formatHandMatrixDimensions,
   formatHandMatrixWeight,
+  freightVolumeFromInches,
   HAND_BOX_CM,
   HAND_BOX_SKYDROPX_M,
   HAND_FULL_PALLET_DIMENSIONS_15,
   HAND_FULL_PALLET_DIMENSIONS_18,
+  HAND_FULL_PALLET_VOLUME_15,
+  HAND_FULL_PALLET_VOLUME_18,
+  handFullPalletVolume,
   handMatrixDimensions,
   handMatrixWeightLbs,
   resolveHandFullPalletDims,
@@ -14,6 +20,25 @@ import {
 } from "./hand-freight";
 
 describe("hand film specs matrix", () => {
+  it("publishes Manual full-pallet CBM and cu ft for Warp LTL density", () => {
+    assert.equal(HAND_FULL_PALLET_VOLUME_15.cbm, 2.14);
+    assert.equal(HAND_FULL_PALLET_VOLUME_15.cubicFeet, 75.56);
+    assert.equal(HAND_FULL_PALLET_VOLUME_18.cbm, 2.95);
+    assert.equal(HAND_FULL_PALLET_VOLUME_18.cubicFeet, 104);
+    assert.equal(formatFreightVolume(HAND_FULL_PALLET_VOLUME_15), "2.14 CBM (75.56 cu ft)");
+    assert.equal(formatFreightVolume(HAND_FULL_PALLET_VOLUME_18), "2.95 CBM (104.00 cu ft)");
+    assert.equal(handFullPalletVolume({ widthInches: 15 }).cbm, 2.14);
+    assert.equal(handFullPalletVolume({ widthInches: 18 }).cbm, 2.95);
+    assert.equal(
+      formatHandFullPalletDimensionsWithVolume({ lengthIn: 48, widthIn: 40, heightIn: 68 }),
+      '40" W x 48" L x 68.0" H · 2.14 CBM (75.56 cu ft)'
+    );
+    assert.deepEqual(
+      freightVolumeFromInches({ lengthIn: 48, widthIn: 48, heightIn: 78 }),
+      HAND_FULL_PALLET_VOLUME_18
+    );
+  });
+
   it("uses width-specific full-pallet dimensions for Manual film", () => {
     const box = handMatrixDimensions(1);
     const full18 = handMatrixDimensions(48, HAND_FULL_PALLET_DIMENSIONS_18, 18);
