@@ -84,38 +84,47 @@ describe("catalog freight", () => {
     assert.equal(box.pieces[0]?.packaging, "box");
   });
 
-  it("uses a 46 in pallet for both automatic film tiers", () => {
+  it("uses a 46 in pallet and tier scale weights for automatic film", () => {
     const fullRow = variant("auto-full", 1);
     fullRow.rolls_count = 40;
     fullRow.box_weight_lbs = null;
-    fullRow.pallet_weight_lbs = 2240.2;
+    fullRow.pallet_weight_lbs = 1250.01;
     fullRow.products = {
       ...complete,
-      slug: "auto-film",
+      slug: "stretch-film-20-x-51-ga-x-7000ft",
       application: "machine",
-      pallet_weight_lbs: 2240.2,
-      pallet_dimensions: null,
-      pallet_height_in: null,
+      width_inches: 20,
+      gauge: 51,
+      length_feet: 7000,
+      roll_weight_lbs: 30.600162,
+      pallet_weight_lbs: 1250.01,
+      pallet_dimensions: "48 x 40 x 46",
+      pallet_height_in: 46,
     };
     const full = shipmentFreightFromCatalog(
-      [{ sku: "auto-full", productSlug: "auto-film", quantity: 1 }],
+      [{ sku: "auto-full", productSlug: "stretch-film-20-x-51-ga-x-7000ft", quantity: 1 }],
       [fullRow],
       new Map()
     );
     assert.equal(full.pieces[0]?.heightIn, 46);
-    assert.equal(full.pieces[0]?.weightLbs, 2240);
+    assert.equal(full.pieces[0]?.widthIn, 40);
+    assert.equal(full.pieces[0]?.lengthIn, 48);
+    assert.equal(full.pieces[0]?.weightLbs, 1250.01);
     const halfRow = variant("auto-half", 1);
     halfRow.rolls_count = 20;
     halfRow.box_weight_lbs = null;
-    halfRow.pallet_weight_lbs = 2240.2;
+    halfRow.pallet_weight_lbs = 638;
+    halfRow.roll_weight_lbs = 30.600162;
     halfRow.products = fullRow.products;
     const half = shipmentFreightFromCatalog(
-      [{ sku: "auto-half", productSlug: "auto-film", quantity: 1 }],
+      [{ sku: "auto-half", productSlug: "stretch-film-20-x-51-ga-x-7000ft", quantity: 1 }],
       [halfRow],
       new Map()
     );
     assert.equal(half.pieces[0]?.heightIn, 46);
-    assert.equal(half.pieces[0]?.weightLbs, 1120);
+    assert.equal(half.pieces[0]?.widthIn, 40);
+    // Master half scale weight — not full÷2 (625).
+    assert.equal(half.pieces[0]?.weightLbs, 638);
   });
 
   it("lists missing package-table fields without inventing them", () => {

@@ -67,14 +67,18 @@ export function packageTotalWeightLbs(input: PackageWeightInput): number | null 
   if (input.machine) {
     const machineRoll = rollWeight ?? boxWeight;
     const spec = machineFilmSpec(input);
-    if (rolls >= 40 && spec) return spec.full;
-    if (rolls === 20 && spec) return spec.half;
-    if (rolls === 40) {
+    // Prefer official scale sheet (tare already included). Else use tier-stored
+    // pallet_weight_lbs. Fallback formula adds 10 kg / 22.05 lb wooden tare —
+    // Automatic does NOT use the Manual 40 lb tare.
+    if (rolls >= 40) {
+      if (spec) return spec.full;
       if (palletWeight != null) return roundLbs(palletWeight, 2);
       if (machineRoll != null) return roundLbs(machineRoll * 40 + WOODEN_PALLET_LBS, 1);
     }
-    if (rolls === 20 && machineRoll != null) {
-      return roundLbs(machineRoll * 20 + WOODEN_PALLET_LBS, 1);
+    if (rolls === 20) {
+      if (spec) return spec.half;
+      if (palletWeight != null) return roundLbs(palletWeight, 2);
+      if (machineRoll != null) return roundLbs(machineRoll * 20 + WOODEN_PALLET_LBS, 1);
     }
     if ((rolls === 1 || rolls === 0) && spec) return spec.roll;
     if (machineRoll != null) return roundLbs(machineRoll, 2);

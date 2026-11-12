@@ -318,24 +318,17 @@ export function shipmentFreightFromCatalog(
           `MISSING_DIMS: ${productLabel} is not a half pallet (20 rolls) or full pallet (40 rolls).`
         );
       }
-      const machineTier = packageRolls === 40 ? "full" : "half";
-      const machineHeight = 46;
-      const palletEach =
-        palletWeightLbs != null
-          ? Math.round(machineTier === "full" ? palletWeightLbs : palletWeightLbs / 2)
-          : null;
+      // Automatic matrix: 48" L × 40" W × 46" H. Use packageTotalWeightLbs
+      // (master scale half/full weights with tare) — never full÷2.
       const unit = {
         lengthIn: 48,
-        widthIn: 48,
-        heightIn: machineHeight,
+        widthIn: 40,
+        heightIn: 46,
         quantity,
         includesPalletTare: true,
         packaging: "pallet" as const,
       };
-      const lineWeight =
-        palletEach != null
-          ? palletEach * quantity
-          : Math.round(unitWeight * quantity * 100) / 100;
+      const lineWeight = Math.round(unitWeight * quantity * 100) / 100;
       if (!(lineWeight > 0)) {
         throw new ShipmentDataError(
           "missing_weight",
