@@ -52,11 +52,20 @@ const selectClass =
 const inputErrorClass =
   "border-rose-500 bg-rose-50/60 text-rose-950 ring-2 ring-rose-200 focus-visible:border-rose-500 focus-visible:ring-rose-300";
 
+const inputOkClass =
+  "border-emerald-500 bg-emerald-50/40 text-slate-900 ring-2 ring-emerald-200 focus-visible:border-emerald-500 focus-visible:ring-emerald-300";
+
 const selectErrorClass =
   "border-rose-500 bg-rose-50/60 text-rose-950 ring-2 ring-rose-200 focus-visible:border-rose-500 focus-visible:ring-rose-300";
 
 const sectionShell =
   "min-w-0 space-y-3.5 rounded-2xl border border-slate-200 bg-white p-3.5 sm:space-y-4 sm:p-5";
+
+/** Identity fields that get a loading → green check after blur. */
+type VerifyField = "email" | "website" | "taxIdEin" | "apEmail";
+type VerifyStatus = "idle" | "checking" | "ok" | "error";
+
+const VERIFY_DELAY_MS = 500;
 
 const AUTHORIZATION_TEXT =
   "The applicant requests establishment of a commercial credit account and certifies that all information supplied is true and complete. The applicant authorizes Plastipac USA LLC and its agents to verify the information provided, including contacting trade and bank references, and agrees to the seller’s standard commercial terms. The undersigned is authorized to execute this application on behalf of the applicant.";
@@ -81,10 +90,20 @@ function fieldControlClass(
   base: string,
   errorField: CreditApplicationErrorField | null,
   field: CreditApplicationErrorField,
-  kind: "input" | "select" = "input"
+  kind: "input" | "select" = "input",
+  verifyStatus: VerifyStatus = "idle"
 ) {
-  if (errorField !== field) return base;
-  return `${base} ${kind === "select" ? selectErrorClass : inputErrorClass}`;
+  const pad = verifyStatus === "checking" || verifyStatus === "ok" ? "pr-10" : "";
+  if (errorField === field || verifyStatus === "error") {
+    return `${base} ${pad} ${kind === "select" ? selectErrorClass : inputErrorClass}`;
+  }
+  if (verifyStatus === "ok") {
+    return `${base} ${pad} ${inputOkClass}`;
+  }
+  if (verifyStatus === "checking") {
+    return `${base} ${pad}`;
+  }
+  return base;
 }
 
 function FieldErrorText({
@@ -106,6 +125,37 @@ function FieldErrorText({
     >
       <span className="font-black">{label}:</span> {message}
     </p>
+  );
+}
+
+function VerifiedInputShell({
+  status,
+  children,
+}: {
+  status: VerifyStatus;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative">
+      {children}
+      {status === "checking" || status === "ok" ? (
+        <span
+          className="pointer-events-none absolute inset-y-0 right-0 flex w-10 items-center justify-center"
+          aria-hidden
+        >
+          {status === "checking" ? (
+            <Loader2 className="h-4 w-4 animate-spin text-sky-600" />
+          ) : (
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" strokeWidth={2.5} />
+          )}
+        </span>
+      ) : null}
+      {status === "ok" ? (
+        <span className="sr-only">Verified</span>
+      ) : status === "checking" ? (
+        <span className="sr-only">Checking</span>
+      ) : null}
+    </div>
   );
 }
 
@@ -279,7 +329,9 @@ export function CreditApplicationForm() {
   const [submitted, setSubmitted] = useState(false);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [errorField, setErrorField] = useState<CreditApplicationErrorField | null>(null);
+  const [verifyStatus, setVerifyStatus] = useState<Partial<Record<VerifyField, VerifyStatus>>>({});
   const errorBannerRef = useRef<HTMLParagraphElement | null>(null);
+  const verifyTimersRef = useRef<Partial<Record<VerifyField, number>>>({});
 
   const [form, setForm] = useState({
     creditLimitRequested: "",
@@ -327,9 +379,55 @@ export function CreditApplicationForm() {
 
   const clearFieldIssue = () => setFieldIssue(null, null);
 
+  const setVerify = (field: VerifyField, status: VerifyStatus) => {
+    setVerifyStatus((prev) => ({ ...prev, [field]: status }));
+  };
+
+  const resetVerify = (field: VerifyField) => {
+    const timer = verifyTimersRef.current[field];
+    if (timer) window.clearTimeout(timer);
+    verifyTimersRef.current[field] = undefined;
+    setVerify(field, "idle");
+  };
+
+  const runVerify = (
+    field: VerifyField,
+    validate: () => { ok: boolean; error?: string; onOk?: () => void }
+  ) => {
+    const timer = verifyTimersRef.current[field];
+    if (timer) window.clearTimeout(timer);
+    setVerify(field, "checking");
+    if (errorField === field) clearFieldIssue();
+    verifyTimersRef.current[field] = window.setTimeout(() => {
+      const result = validate();
+      if (result.ok) {
+        result.onOk?.();
+        setVerify(field, "ok");
+        if (errorField === field) clearFieldIssue();
+        return;
+      }
+      setVerify(field, "error");
+      setFieldIssue(field, result.error || "Please fix this field.");
+    }, VERIFY_DELAY_MS) as unknown as number;
+  };
+
+  useEffect(() => {
+    return () => {
+      for (const timer of Object.values(verifyTimersRef.current)) {
+        if (timer) window.clearTimeout(timer);
+      }
+    };
+  }, []);
+
   const update = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (errorField === (key as CreditApplicationErrorField)) clearFieldIssue();
+    if (key === "email" || key === "website" || key === "taxIdEin" || key === "apEmail") {
+      resetVerify(key);
+    }
+    if (key === "email") {
+      resetVerify("website");
+    }
   };
 
   const updateRef = (index: 0 | 1 | 2, key: keyof RefState, value: string) => {
@@ -555,34 +653,54 @@ export function CreditApplicationForm() {
           </label>
           <label className="block space-y-1.5">
             <span className={fieldLabel}>Tax ID / EIN *</span>
-            <Input
-              id="credit-field-taxIdEin"
-              required
-              value={form.taxIdEin}
-              onChange={(e) => {
-                const next = e.target.value.replace(/[^\d-]/g, "").slice(0, 10);
-                update("taxIdEin", next);
-              }}
-              onBlur={(e) => {
-                const raw = e.target.value.trim();
-                if (!raw) return;
-                const ein = isValidUsEin(raw);
-                if (ein.ok && ein.normalized) {
-                  update("taxIdEin", ein.normalized);
-                  clearFieldIssue();
-                  return;
-                }
-                setFieldIssue("taxIdEin", ein.error || null);
-              }}
-              placeholder="XX-XXXXXXX"
-              inputMode="numeric"
-              pattern="(\d{2}-\d{7}|\d{9})"
-              title="US IRS EIN format: XX-XXXXXXX or 9 digits"
-              className={fieldControlClass(inputClass, errorField, "taxIdEin")}
-              aria-invalid={errorField === "taxIdEin"}
-              aria-describedby={errorField === "taxIdEin" ? "credit-error-taxIdEin" : undefined}
-              autoComplete="off"
-            />
+            <VerifiedInputShell status={verifyStatus.taxIdEin || "idle"}>
+              <Input
+                id="credit-field-taxIdEin"
+                required
+                value={form.taxIdEin}
+                onChange={(e) => {
+                  const next = e.target.value.replace(/[^\d-]/g, "").slice(0, 10);
+                  update("taxIdEin", next);
+                }}
+                onBlur={(e) => {
+                  const raw = e.target.value.trim();
+                  if (!raw) {
+                    resetVerify("taxIdEin");
+                    return;
+                  }
+                  runVerify("taxIdEin", () => {
+                    const ein = isValidUsEin(raw);
+                    if (ein.ok && ein.normalized) {
+                      return {
+                        ok: true,
+                        onOk: () => {
+                          setForm((prev) =>
+                            prev.taxIdEin === ein.normalized
+                              ? prev
+                              : { ...prev, taxIdEin: ein.normalized || prev.taxIdEin }
+                          );
+                        },
+                      };
+                    }
+                    return { ok: false, error: ein.error };
+                  });
+                }}
+                placeholder="XX-XXXXXXX"
+                inputMode="numeric"
+                pattern="(\d{2}-\d{7}|\d{9})"
+                title="US IRS EIN format: XX-XXXXXXX or 9 digits"
+                className={fieldControlClass(
+                  inputClass,
+                  errorField,
+                  "taxIdEin",
+                  "input",
+                  verifyStatus.taxIdEin || "idle"
+                )}
+                aria-invalid={errorField === "taxIdEin" || verifyStatus.taxIdEin === "error"}
+                aria-describedby={errorField === "taxIdEin" ? "credit-error-taxIdEin" : undefined}
+                autoComplete="off"
+              />
+            </VerifiedInputShell>
             <span className="block text-[11px] leading-snug text-slate-500">
               IRS format required: XX-XXXXXXX (or 9 digits).
             </span>
@@ -703,28 +821,50 @@ export function CreditApplicationForm() {
           </label>
           <label className="block space-y-1.5">
             <span className={fieldLabel}>Email Address *</span>
-            <Input
-              id="credit-field-email"
-              required
-              type="email"
-              value={form.email}
-              onChange={(e) => update("email", e.target.value)}
-              onBlur={(e) => {
-                const value = e.target.value.trim();
-                if (!value) return;
-                const check = isValidCorporateEmail(value);
-                if (check.ok) {
-                  clearFieldIssue();
-                  return;
-                }
-                setFieldIssue("email", check.error || null);
-              }}
-              placeholder="name@company.com"
-              className={fieldControlClass(inputClass, errorField, "email")}
-              aria-invalid={errorField === "email"}
-              aria-describedby={errorField === "email" ? "credit-error-email" : undefined}
-              autoComplete="email"
-            />
+            <VerifiedInputShell status={verifyStatus.email || "idle"}>
+              <Input
+                id="credit-field-email"
+                required
+                type="email"
+                value={form.email}
+                onChange={(e) => update("email", e.target.value)}
+                onBlur={(e) => {
+                  const value = e.target.value.trim();
+                  if (!value) {
+                    resetVerify("email");
+                    return;
+                  }
+                  runVerify("email", () => {
+                    const check = isValidCorporateEmail(value);
+                    if (!check.ok) return { ok: false, error: check.error };
+                    return {
+                      ok: true,
+                      onOk: () => {
+                        const website = form.website.trim();
+                        if (!website) return;
+                        runVerify("website", () => {
+                          const match = emailMatchesWebsiteDomain(value, website);
+                          return match.ok
+                            ? { ok: true }
+                            : { ok: false, error: match.error };
+                        });
+                      },
+                    };
+                  });
+                }}
+                placeholder="name@company.com"
+                className={fieldControlClass(
+                  inputClass,
+                  errorField,
+                  "email",
+                  "input",
+                  verifyStatus.email || "idle"
+                )}
+                aria-invalid={errorField === "email" || verifyStatus.email === "error"}
+                aria-describedby={errorField === "email" ? "credit-error-email" : undefined}
+                autoComplete="email"
+              />
+            </VerifiedInputShell>
             <span className="block text-[11px] leading-snug text-slate-500">
               Corporate domain required. Gmail, Yahoo, Outlook, Hotmail, etc. are not accepted.
             </span>
@@ -732,27 +872,45 @@ export function CreditApplicationForm() {
           </label>
           <label className="block space-y-1.5 sm:col-span-2">
             <span className={fieldLabel}>Website</span>
-            <Input
-              id="credit-field-website"
-              type="url"
-              value={form.website}
-              onChange={(e) => update("website", e.target.value)}
-              onBlur={(e) => {
-                const website = e.target.value.trim();
-                if (!website || !form.email.trim()) return;
-                const check = emailMatchesWebsiteDomain(form.email, website);
-                if (check.ok) {
-                  clearFieldIssue();
-                  return;
-                }
-                setFieldIssue("website", check.error || null);
-              }}
-              placeholder="https://www.company.com"
-              className={fieldControlClass(inputClass, errorField, "website")}
-              aria-invalid={errorField === "website"}
-              aria-describedby={errorField === "website" ? "credit-error-website" : undefined}
-              inputMode="url"
-            />
+            <VerifiedInputShell status={verifyStatus.website || "idle"}>
+              <Input
+                id="credit-field-website"
+                type="url"
+                value={form.website}
+                onChange={(e) => update("website", e.target.value)}
+                onBlur={(e) => {
+                  const website = e.target.value.trim();
+                  if (!website) {
+                    resetVerify("website");
+                    if (errorField === "website") clearFieldIssue();
+                    return;
+                  }
+                  runVerify("website", () => {
+                    const emailCheck = isValidCorporateEmail(form.email);
+                    if (!emailCheck.ok) {
+                      return {
+                        ok: false,
+                        error:
+                          "Enter a valid corporate email first so we can match your website domain.",
+                      };
+                    }
+                    const check = emailMatchesWebsiteDomain(form.email, website);
+                    return check.ok ? { ok: true } : { ok: false, error: check.error };
+                  });
+                }}
+                placeholder="https://www.company.com"
+                className={fieldControlClass(
+                  inputClass,
+                  errorField,
+                  "website",
+                  "input",
+                  verifyStatus.website || "idle"
+                )}
+                aria-invalid={errorField === "website" || verifyStatus.website === "error"}
+                aria-describedby={errorField === "website" ? "credit-error-website" : undefined}
+                inputMode="url"
+              />
+            </VerifiedInputShell>
             <span className="block text-[11px] leading-snug text-slate-500">
               Optional. If provided, the site domain should match your corporate email domain.
             </span>
@@ -796,32 +954,42 @@ export function CreditApplicationForm() {
             <FieldErrorText errorField={errorField} field="apPhone" message={fieldError} />
           </div>
           <div className="space-y-1.5">
-            <Input
-              id="credit-field-apEmail"
-              required
-              type="email"
-              value={form.apEmail}
-              onChange={(e) => update("apEmail", e.target.value)}
-              onBlur={(e) => {
-                const value = e.target.value.trim();
-                if (!value) return;
-                const check = isValidCorporateEmail(value);
-                if (check.ok) {
-                  clearFieldIssue();
-                  return;
-                }
-                setFieldIssue(
+            <VerifiedInputShell status={verifyStatus.apEmail || "idle"}>
+              <Input
+                id="credit-field-apEmail"
+                required
+                type="email"
+                value={form.apEmail}
+                onChange={(e) => update("apEmail", e.target.value)}
+                onBlur={(e) => {
+                  const value = e.target.value.trim();
+                  if (!value) {
+                    resetVerify("apEmail");
+                    return;
+                  }
+                  runVerify("apEmail", () => {
+                    const check = isValidCorporateEmail(value);
+                    if (check.ok) return { ok: true };
+                    return {
+                      ok: false,
+                      error: check.error?.includes("webmail")
+                        ? "Accounts Payable email must be a company address (not Gmail, Yahoo, Outlook, etc.)."
+                        : check.error,
+                    };
+                  });
+                }}
+                placeholder="ap@company.com"
+                className={fieldControlClass(
+                  inputClass,
+                  errorField,
                   "apEmail",
-                  check.error?.includes("webmail")
-                    ? "Accounts Payable email must be a company address (not Gmail, Yahoo, Outlook, etc.)."
-                    : check.error || null
-                );
-              }}
-              placeholder="ap@company.com"
-              className={fieldControlClass(inputClass, errorField, "apEmail")}
-              aria-invalid={errorField === "apEmail"}
-              aria-describedby={errorField === "apEmail" ? "credit-error-apEmail" : undefined}
-            />
+                  "input",
+                  verifyStatus.apEmail || "idle"
+                )}
+                aria-invalid={errorField === "apEmail" || verifyStatus.apEmail === "error"}
+                aria-describedby={errorField === "apEmail" ? "credit-error-apEmail" : undefined}
+              />
+            </VerifiedInputShell>
             <span className="block text-[11px] leading-snug text-slate-500">
               AP email must also be a company domain (no free webmail).
             </span>
