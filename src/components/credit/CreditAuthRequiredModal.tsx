@@ -4,6 +4,7 @@ import React, { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
+  CheckCircle2,
   CreditCard,
   Eye,
   EyeOff,
@@ -13,7 +14,6 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import { toast } from "sonner";
 import { signIn, signUp } from "@/actions/auth";
 import {
   isBrowserTurnstileEnabled,
@@ -21,6 +21,9 @@ import {
 } from "@/components/security/TurnstileField";
 
 type AuthTab = "login" | "signup";
+type AuthPhase = "form" | "success";
+
+export const CREDIT_POST_AUTH_KEY = "plastipac_credit_post_auth_v1";
 
 interface CreditAuthRequiredModalProps {
   open: boolean;
@@ -31,11 +34,15 @@ interface CreditAuthRequiredModalProps {
   defaultCompanyName?: string;
   /** When true, closing is disabled — user must authenticate. */
   dismissible?: boolean;
-  /** Called after a session is established so the parent can submit. */
+  /**
+   * Called after a session is established (before success animation + reload).
+   * Parent should persist form draft / autosubmit intent — page will reload.
+   */
   onAuthenticated: (info: {
     email: string;
     fullName?: string;
     companyName?: string;
+    kind: "login" | "signup";
   }) => void | Promise<void>;
 }
 
@@ -64,6 +71,8 @@ export function CreditAuthRequiredModal({
   const [showPassword, setShowPassword] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [phase, setPhase] = useState<AuthPhase>("form");
+  const [successKind, setSuccessKind] = useState<"login" | "signup">("signup");
   const [isPending, startTransition] = useTransition();
   const turnstileRequired = isBrowserTurnstileEnabled();
 
@@ -79,6 +88,7 @@ export function CreditAuthRequiredModal({
     setError(null);
     setTurnstileToken(null);
     setAcceptTerms(false);
+    setPhase("form");
     setTab(defaultEmail ? "login" : "signup");
   }, [open, defaultEmail, defaultFullName]);
 
@@ -89,12 +99,17 @@ export function CreditAuthRequiredModal({
     fullName?: string;
     companyName?: string;
   }) => {
-    toast.success(
-      tab === "signup"
-        ? "Account ready — submitting your application…"
-        : "Logged in — submitting your application…"
-    );
-    await onAuthenticated(info);
+    const kind = tab === "signup" ? "signup" : "login";
+    setSuccessKind(kind);
+    setPhase("success");
+    try {
+      await onAuthenticated({ ...info, kind });
+    } catch {
+      // Still reload — session cookies should already be set.
+    }
+    window.setTimeout(() => {
+      window.location.reload();
+    }, 1800);
   };
 
   const handleLogin = () => {
@@ -148,14 +163,28 @@ export function CreditAuthRequiredModal({
         setError(result.error || "Unable to create account.");
         return;
       }
-      if (!result.hasSession) {
-        setError(
-          result.message ||
-            "Account created. Please verify your email, then log in to submit your credit application."
-        );
-        setTab("login");
-        return;
+
+      // Prefer staying logged in after signup. If confirm-email blocked the session,
+      // signUp already tries to confirm + sign in; fall back to an explicit login once.
+      let hasSession = Boolean(result.hasSession);
+      if (!hasSession) {
+        const login = await signIn({
+          email,
+          password,
+          turnstileToken: turnstileToken || undefined,
+        });
+        hasSession = Boolean(login.success);
+        if (!hasSession) {
+          setError(
+            login.error ||
+              result.message ||
+              "Account created, but we could not start your session. Please log in."
+          );
+          setTab("login");
+          return;
+        }
       }
+
       await finishAuth({
         email: email.trim().toLowerCase(),
         fullName: fullName.trim(),
@@ -164,6 +193,8 @@ export function CreditAuthRequiredModal({
     });
   };
 
+  const canDismiss = dismissible && phase === "form";
+
   return createPortal(
     <div
       key="credit-auth-backdrop"
@@ -171,14 +202,14 @@ export function CreditAuthRequiredModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="credit-auth-title"
-      onClick={dismissible ? onClose : undefined}
+      onClick={canDismiss ? onClose : undefined}
     >
       <div
         key="credit-auth-panel"
         className="relative max-h-[92dvh] w-full max-w-md origin-bottom animate-creditModalPanel overflow-y-auto overflow-x-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl will-change-transform sm:origin-center sm:animate-creditModalPanelDesktop"
         onClick={(e) => e.stopPropagation()}
       >
-        {dismissible && onClose ? (
+        {canDismiss && onClose ? (
           <button
             type="button"
             onClick={onClose}
@@ -189,6 +220,37 @@ export function CreditAuthRequiredModal({
           </button>
         ) : null}
 
+        {phase === "success" ? (
+          <div className="flex flex-col items-center px-6 py-12 text-center">
+            <div className="relative mb-5 flex h-20 w-20 items-center justify-center">
+              <span
+                className="absolute inset-0 rounded-full bg-emerald-400/30 animate-creditAuthSuccessRing"
+                aria-hidden
+              />
+              <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/30 animate-creditAuthSuccessPop">
+                <CheckCircle2 className="h-10 w-10" strokeWidth={2.5} />
+              </div>
+            </div>
+            <h2
+              id="credit-auth-title"
+              className="text-xl font-black tracking-tight text-slate-900"
+            >
+              {successKind === "signup"
+                ? "¡Registrado correctamente!"
+                : "¡Sesión iniciada!"}
+            </h2>
+            <p className="mt-2 max-w-xs text-sm leading-relaxed text-slate-600">
+              {successKind === "signup"
+                ? "Tu cuenta quedó creada y ya estás dentro. Recargamos la página para continuar con tu solicitud."
+                : "Ya estás dentro. Recargamos la página para continuar con tu solicitud de crédito."}
+            </p>
+            <div className="mt-6 inline-flex items-center gap-2 text-xs font-semibold text-slate-500">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-600" />
+              Cargando sesión…
+            </div>
+          </div>
+        ) : (
+          <>
         <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-800 px-6 py-5 text-white">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 animate-[creditModalPanel_0.55s_cubic-bezier(0.16,1,0.3,1)_0.08s_both] items-center justify-center rounded-xl border border-white/25 bg-white/10">
@@ -202,7 +264,7 @@ export function CreditAuthRequiredModal({
                 id="credit-auth-title"
                 className="text-base font-extrabold leading-snug"
               >
-                Log in or sign up to submit
+                Login or sign up to submit
               </h2>
             </div>
           </div>
@@ -405,6 +467,8 @@ export function CreditAuthRequiredModal({
             )}
           </button>
         </div>
+          </>
+        )}
       </div>
     </div>,
     document.body

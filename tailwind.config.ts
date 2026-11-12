@@ -117,6 +117,15 @@ const config: Config = {
           "0%": { opacity: "0", transform: "translateY(16px) scale(0.94)" },
           "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
         },
+        creditAuthSuccessPop: {
+          "0%": { opacity: "0", transform: "scale(0.55)" },
+          "60%": { opacity: "1", transform: "scale(1.08)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        creditAuthSuccessRing: {
+          "0%": { opacity: "0.7", transform: "scale(0.7)" },
+          "100%": { opacity: "0", transform: "scale(1.45)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -128,6 +137,9 @@ const config: Config = {
           "creditModalPanel 0.42s cubic-bezier(0.16, 1, 0.3, 1) forwards",
         creditModalPanelDesktop:
           "creditModalPanelDesktop 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        creditAuthSuccessPop:
+          "creditAuthSuccessPop 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        creditAuthSuccessRing: "creditAuthSuccessRing 0.9s ease-out forwards",
       },
     },
   },

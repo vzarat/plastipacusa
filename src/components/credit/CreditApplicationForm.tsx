@@ -23,8 +23,10 @@ import {
 } from "@/components/security/TurnstileField";
 import type { UserProfile } from "@/actions/auth";
 import { submitCommercialCreditApplication } from "@/actions/credit-applications";
-import { CreditAuthRequiredModal } from "@/components/credit/CreditAuthRequiredModal";
-import { useRouter } from "next/navigation";
+import {
+  CREDIT_POST_AUTH_KEY,
+  CreditAuthRequiredModal,
+} from "@/components/credit/CreditAuthRequiredModal";
 import {
   CREDIT_APPLICATION_FIELD_LABELS,
   emailMatchesWebsiteDomain,
@@ -404,7 +406,6 @@ export function CreditApplicationForm({
 }: {
   profile: UserProfile | null;
 }) {
-  const router = useRouter();
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const turnstileRequired = isBrowserTurnstileEnabled();
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -630,28 +631,70 @@ export function CreditApplicationForm({
     email: string;
     fullName?: string;
     companyName?: string;
+    kind: "login" | "signup";
   }) => {
-    setIsAuthenticated(true);
-    setAuthOpen(false);
-    // Fill only blank identity fields from the new session — never wipe guest answers.
-    setForm((prev) => ({
-      ...prev,
-      email: prev.email || info.email || "",
-      apEmail: prev.apEmail || info.email || "",
-      legalBusinessName: prev.legalBusinessName || info.companyName || "",
-      apContactName: prev.apContactName || info.fullName || "",
-      authorizedRepresentativeName:
-        prev.authorizedRepresentativeName || info.fullName || "",
-      eSignature: prev.eSignature || info.fullName || "",
-    }));
-    router.refresh();
-    if (autoSubmitAfterAuthRef.current) {
-      autoSubmitAfterAuthRef.current = false;
-      // Let cookie session settle before the server action.
-      await new Promise((resolve) => window.setTimeout(resolve, 150));
-      await submitApplication();
-    }
+    // Persist draft + post-auth intent; modal shows success animation then reloads this tab.
+    const autoSubmit = autoSubmitAfterAuthRef.current;
+    autoSubmitAfterAuthRef.current = false;
+    setForm((prev) => {
+      const next = {
+        ...prev,
+        email: prev.email || info.email || "",
+        apEmail: prev.apEmail || info.email || "",
+        legalBusinessName: prev.legalBusinessName || info.companyName || "",
+        apContactName: prev.apContactName || info.fullName || "",
+        authorizedRepresentativeName:
+          prev.authorizedRepresentativeName || info.fullName || "",
+        eSignature: prev.eSignature || info.fullName || "",
+      };
+      try {
+        sessionStorage.setItem(
+          CREDIT_DRAFT_KEY,
+          JSON.stringify({ form: next, refs })
+        );
+        sessionStorage.setItem(
+          CREDIT_POST_AUTH_KEY,
+          JSON.stringify({
+            autoSubmit,
+            kind: info.kind,
+            email: info.email,
+            fullName: info.fullName,
+            companyName: info.companyName,
+          })
+        );
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
   };
+
+  // After login/signup success animation + same-tab reload, resume autosubmit if intended.
+  useEffect(() => {
+    if (!draftReady || !isAuthenticated) return;
+    let shouldAutoSubmit = false;
+    try {
+      const raw = sessionStorage.getItem(CREDIT_POST_AUTH_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { autoSubmit?: boolean };
+      sessionStorage.removeItem(CREDIT_POST_AUTH_KEY);
+      shouldAutoSubmit = Boolean(parsed.autoSubmit);
+    } catch {
+      return;
+    }
+    if (!shouldAutoSubmit) return;
+    let cancelled = false;
+    const run = async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+      if (cancelled) return;
+      await submitApplication();
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once after post-auth reload
+  }, [draftReady, isAuthenticated]);
 
   if (submitted) {
     return (

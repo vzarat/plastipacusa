@@ -3,6 +3,10 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { EMAIL_RATE_LIMIT_MESSAGE, isEmailRateLimitError } from "@/lib/auth/email-rate-limit";
+import {
+  createServiceRoleClient,
+  isServiceRoleConfigured,
+} from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireTurnstileToken } from "@/lib/turnstile";
 
@@ -51,6 +55,31 @@ export interface CurrentUserResponse {
 
 const ACCESS_COOKIE = "sb-access-token";
 const REFRESH_COOKIE = "sb-refresh-token";
+
+async function persistAuthSession(session: {
+  access_token: string;
+  refresh_token?: string | null;
+  expires_in?: number;
+}) {
+  const cookieStore = await cookies();
+  cookieStore.set(ACCESS_COOKIE, session.access_token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: session.expires_in || 3600 * 24 * 7,
+  });
+
+  if (session.refresh_token) {
+    cookieStore.set(REFRESH_COOKIE, session.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 3600 * 24 * 30,
+    });
+  }
+}
 
 /**
  * Sign in existing user with email and password.
@@ -105,24 +134,7 @@ export async function signIn({
       };
     }
 
-    const cookieStore = await cookies();
-    cookieStore.set(ACCESS_COOKIE, data.session.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: data.session.expires_in || 3600 * 24 * 7,
-    });
-
-    if (data.session.refresh_token) {
-      cookieStore.set(REFRESH_COOKIE, data.session.refresh_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: 3600 * 24 * 30, // 30 days
-      });
-    }
+    await persistAuthSession(data.session);
 
     // Fetch user role from public.profiles or user metadata
     let userRole: "client" | "admin" | "specialist" = "client";
@@ -318,32 +330,37 @@ export async function signUp({
       }
     }
 
-    // If session is immediately returned (auto-confirm enabled)
-    if (data.session) {
-      const cookieStore = await cookies();
-      cookieStore.set(ACCESS_COOKIE, data.session.access_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: data.session.expires_in || 3600 * 24 * 7,
-      });
+    let session = data.session;
 
-      if (data.session.refresh_token) {
-        cookieStore.set(REFRESH_COOKIE, data.session.refresh_token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          path: "/",
-          maxAge: 3600 * 24 * 30,
+    // Email confirmation can return a user without a session. For credit/checkout
+    // flows, confirm the user and sign them in immediately so they stay logged in.
+    if (!session && data.user?.id && isServiceRoleConfigured()) {
+      try {
+        const admin = createServiceRoleClient();
+        await admin.auth.admin.updateUserById(data.user.id, {
+          email_confirm: true,
         });
+        const { data: signedIn, error: signInError } =
+          await supabase.auth.signInWithPassword({
+            email: normalizedEmail,
+            password,
+          });
+        if (!signInError && signedIn.session) {
+          session = signedIn.session;
+        }
+      } catch (autoLoginError) {
+        console.warn("[auth] signUp auto-login after confirm failed:", autoLoginError);
       }
+    }
+
+    if (session) {
+      await persistAuthSession(session);
     }
 
     return {
       success: true,
-      hasSession: Boolean(data.session),
-      message: data.session
+      hasSession: Boolean(session),
+      message: session
         ? "Account created successfully!"
         : "Account created! Please check your email inbox to verify your account before logging in.",
     };
