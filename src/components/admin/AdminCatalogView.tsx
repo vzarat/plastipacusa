@@ -47,9 +47,9 @@ type ApplicationFilter = "all" | "hand" | "machine";
 type StatusFilter = "all" | "active" | "inactive";
 type SpecFilter = number | "all";
 
-const CATALOG_WIDTHS = [15, 18, 20, 30];
-const CATALOG_GAUGES = [60, 70, 80];
-const CATALOG_LENGTHS = [1000, 1500, 5000, 6000];
+const CATALOG_WIDTHS = [15, 18, 20];
+const CATALOG_GAUGES = [40, 51, 60, 70, 80];
+const CATALOG_LENGTHS = [1000, 1500, 5000, 7000, 9000];
 
 // Resolves the best available image source across the various field shapes a product row may have
 function formatSpecInches(value: number): string {

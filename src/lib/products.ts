@@ -631,7 +631,7 @@ export function ensureGenesisMachineProducts(
         `${product.categorySlug || ""} ${product.series || ""} ${title}`
       );
 
-    // Drop retired machine SKUs; hand film passes through unchanged.
+    // Strict purge: Automatic catalog is only the 4 master specs (20"+51/70/80).
     if (isMachineRow && !isOfficialMachineFilmProduct(product)) {
       continue;
     }

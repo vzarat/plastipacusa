@@ -27,6 +27,10 @@ describe("machine film Automatic matrix", () => {
         [20, 80, 5000],
       ]
     );
+    assert.equal(
+      MACHINE_FILM_MASTER.some((row) => row.lengthFeet === 6000 || row.gauge === 60),
+      false
+    );
   });
 
   it("prices Tarima 20 and Tarima 40 from the master spreadsheet", () => {

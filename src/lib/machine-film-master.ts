@@ -155,3 +155,14 @@ export const MACHINE_FILM_WEIGHT_SPECS = MACHINE_FILM_MASTER.map((row) => ({
   full: row.fullPalletWeightLbs,
   ...(row.palletTareLbs != null ? { tare: row.palletTareLbs } : {}),
 }));
+
+export const AUTHORIZED_AUTOMATIC_SLUGS = new Set(
+  MACHINE_FILM_MASTER.map((row) => row.slug.toLowerCase())
+);
+
+export const AUTHORIZED_AUTOMATIC_PART_NUMBERS = new Set(
+  MACHINE_FILM_MASTER.flatMap((row) => [
+    row.partNumber.toUpperCase(),
+    row.partNumber.replace(/-/g, "").toUpperCase(),
+  ])
+);

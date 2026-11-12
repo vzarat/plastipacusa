@@ -619,7 +619,7 @@ async function seed() {
     }
 
     console.log(
-      "✅ Seed completed successfully! Manual Excel master + Automatic 20/40-roll matrix."
+      "✅ Seed completed: Manual Excel master + exactly 4 Automatic specs (20/40-roll pallets only)."
     );
     process.exit(0);
   } catch (error) {

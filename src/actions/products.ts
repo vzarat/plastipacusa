@@ -46,6 +46,7 @@ import {
   manualFilmGallery,
   ensureGenesisMachineProducts,
   isMachineFilm as detectMachineFilm,
+  isOfficialMachineFilmProduct,
   normalizeMachinePackageLabel,
   resolvePublicProductImageUrl,
   seriesLabelFromCategorySlug,
@@ -909,7 +910,12 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
           const [row] = await attachCatalogRelations(supabase, [data]);
           const product = formatProduct(row);
           if (product.isActive === false) return null;
-          return isFiftyGaugeStorefrontProduct(product) ? null : product;
+          if (isFiftyGaugeStorefrontProduct(product)) return null;
+          // Storefront Automatic catalog is exactly the 4 master specs (20/40 roll pallets).
+          if (detectMachineFilm(product) && !isOfficialMachineFilmProduct(product)) {
+            return null;
+          }
+          return product;
         }
       } catch (sbErr: any) {
         console.error("Supabase getProductBySlug exception:", sbErr?.message || sbErr);
