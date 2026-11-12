@@ -1,33 +1,160 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { CreditCard, Lock, LogIn, UserPlus, X } from "lucide-react";
+import {
+  Building2,
+  CreditCard,
+  Eye,
+  EyeOff,
+  Loader2,
+  Lock,
+  LogIn,
+  UserPlus,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
+import { signIn, signUp } from "@/actions/auth";
+import {
+  isBrowserTurnstileEnabled,
+  TurnstileField,
+} from "@/components/security/TurnstileField";
+
+type AuthTab = "signin" | "signup";
 
 interface CreditAuthRequiredModalProps {
   open: boolean;
   onClose?: () => void;
-  /** Path to return to after auth */
-  redirectTo?: string;
+  /** Prefill signup/signin email from the credit form when available */
+  defaultEmail?: string;
+  defaultFullName?: string;
+  defaultCompanyName?: string;
   /** When true, closing is disabled — user must sign in or register. */
   dismissible?: boolean;
+  /** Called after a session is established so the parent can submit. */
+  onAuthenticated: (info: {
+    email: string;
+    fullName?: string;
+    companyName?: string;
+  }) => void | Promise<void>;
 }
 
+const fieldClass =
+  "h-11 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 text-sm text-slate-900 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/20";
+
 /**
- * Lightweight B2B auth gate for the commercial credit application.
+ * Inline B2B auth gate for the commercial credit application — Sign In / Quick Sign Up.
  */
 export function CreditAuthRequiredModal({
   open,
   onClose,
-  redirectTo = "/credit-application",
-  dismissible = false,
+  defaultEmail = "",
+  defaultFullName = "",
+  defaultCompanyName = "",
+  dismissible = true,
+  onAuthenticated,
 }: CreditAuthRequiredModalProps) {
-  if (!open || typeof document === "undefined") return null;
+  const [mounted, setMounted] = useState(false);
+  const [tab, setTab] = useState<AuthTab>("signup");
+  const [email, setEmail] = useState(defaultEmail);
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState(defaultFullName);
+  const [companyName, setCompanyName] = useState(defaultCompanyName);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const turnstileRequired = isBrowserTurnstileEnabled();
 
-  const redirect = encodeURIComponent(redirectTo);
-  const loginHref = `/login?redirect=${redirect}`;
-  const registerHref = `/register?redirect=${redirect}`;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    setEmail(defaultEmail || "");
+    setFullName(defaultFullName || "");
+    setCompanyName(defaultCompanyName || "");
+    setPassword("");
+    setError(null);
+    setTurnstileToken(null);
+    setAcceptTerms(false);
+    setTab(defaultEmail ? "signin" : "signup");
+  }, [open, defaultEmail, defaultFullName, defaultCompanyName]);
+
+  if (!open || !mounted || typeof document === "undefined") return null;
+
+  const finishAuth = async (info: {
+    email: string;
+    fullName?: string;
+    companyName?: string;
+  }) => {
+    toast.success(
+      tab === "signup" ? "B2B account ready — submitting your application…" : "Signed in — submitting your application…"
+    );
+    await onAuthenticated(info);
+  };
+
+  const handleSignIn = () => {
+    setError(null);
+    if (turnstileRequired && !turnstileToken) {
+      setError("Please complete the bot check.");
+      return;
+    }
+    startTransition(async () => {
+      const result = await signIn({
+        email,
+        password,
+        turnstileToken: turnstileToken || undefined,
+      });
+      if (!result.success) {
+        setError(result.error || "Unable to sign in.");
+        return;
+      }
+      await finishAuth({ email: email.trim().toLowerCase() });
+    });
+  };
+
+  const handleSignUp = () => {
+    setError(null);
+    if (turnstileRequired && !turnstileToken) {
+      setError("Please complete the bot check.");
+      return;
+    }
+    if (!acceptTerms) {
+      setError("Please accept the Terms of Service and Privacy Policy.");
+      return;
+    }
+    startTransition(async () => {
+      const result = await signUp({
+        email,
+        password,
+        fullName,
+        companyName,
+        acceptTerms: true,
+        turnstileToken: turnstileToken || undefined,
+      });
+      if (!result.success) {
+        setError(result.error || "Unable to create account.");
+        return;
+      }
+      if (!result.hasSession) {
+        setError(
+          result.message ||
+            "Account created. Please verify your email, then sign in to submit your credit application."
+        );
+        setTab("signin");
+        return;
+      }
+      await finishAuth({
+        email: email.trim().toLowerCase(),
+        fullName: fullName.trim(),
+        companyName: companyName.trim(),
+      });
+    });
+  };
 
   return createPortal(
     <div
@@ -38,14 +165,14 @@ export function CreditAuthRequiredModal({
       onClick={dismissible ? onClose : undefined}
     >
       <div
-        className="relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+        className="relative max-h-[92dvh] w-full max-w-md overflow-y-auto overflow-x-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {dismissible && onClose ? (
           <button
             type="button"
             onClick={onClose}
-            className="absolute right-3 top-3 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
+            className="absolute right-3 top-3 z-10 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
@@ -65,7 +192,7 @@ export function CreditAuthRequiredModal({
                 id="credit-auth-title"
                 className="text-base font-extrabold leading-snug"
               >
-                Sign in to apply for commercial credit
+                Sign in to submit your credit application
               </h2>
             </div>
           </div>
@@ -75,27 +202,203 @@ export function CreditAuthRequiredModal({
           <div className="flex items-start gap-2.5 rounded-xl border border-sky-100 bg-sky-50/80 px-3 py-2.5 text-[13px] leading-relaxed text-sky-900">
             <CreditCard className="mt-0.5 h-4 w-4 shrink-0 text-sky-700" aria-hidden />
             <p>
-              Net 30 credit applications are linked to your Plastipac B2B account so you can
-              track review status in your dashboard.
+              Your form answers stay on this page. After you sign in or create a B2B account,
+              we link the application to your user and submit it automatically.
             </p>
           </div>
 
-          <div className="flex flex-col gap-2.5 pt-1">
-            <Link
-              href={loginHref}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 px-4 py-3 text-sm font-bold text-white shadow-md shadow-sky-500/20 transition-opacity hover:opacity-95"
+          <div className="grid grid-cols-2 gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
+            <button
+              type="button"
+              onClick={() => {
+                setTab("signin");
+                setError(null);
+              }}
+              className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${
+                tab === "signin"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
             >
-              <LogIn className="h-4 w-4" aria-hidden />
+              <LogIn className="h-3.5 w-3.5" />
               Sign In
-            </Link>
-            <Link
-              href={registerHref}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 transition-colors hover:bg-slate-50"
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTab("signup");
+                setError(null);
+              }}
+              className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${
+                tab === "signup"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
             >
-              <UserPlus className="h-4 w-4" aria-hidden />
-              Create B2B Account
-            </Link>
+              <UserPlus className="h-3.5 w-3.5" />
+              Quick B2B Sign Up
+            </button>
           </div>
+
+          {tab === "signup" ? (
+            <div className="space-y-3">
+              <label className="block space-y-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Full name
+                </span>
+                <input
+                  className={fieldClass}
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  autoComplete="name"
+                  required
+                />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Company
+                </span>
+                <div className="relative">
+                  <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    className={`${fieldClass} pl-9`}
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    autoComplete="organization"
+                  />
+                </div>
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Work email
+                </span>
+                <input
+                  type="email"
+                  className={fieldClass}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  required
+                />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Password
+                </span>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    className={`${fieldClass} pr-10`}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="new-password"
+                    required
+                    minLength={6}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-700"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </label>
+              <label className="flex items-start gap-2 text-[12px] leading-relaxed text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={acceptTerms}
+                  onChange={(e) => setAcceptTerms(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-sky-600"
+                />
+                <span>
+                  I agree to the{" "}
+                  <Link href="/terms-of-service" target="_blank" className="font-semibold text-sky-700 hover:underline">
+                    Terms of Service
+                  </Link>{" "}
+                  and{" "}
+                  <Link href="/privacy-policy" target="_blank" className="font-semibold text-sky-700 hover:underline">
+                    Privacy Policy
+                  </Link>
+                  .
+                </span>
+              </label>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <label className="block space-y-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Work email
+                </span>
+                <input
+                  type="email"
+                  className={fieldClass}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  required
+                />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Password
+                </span>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    className={`${fieldClass} pr-10`}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-700"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </label>
+            </div>
+          )}
+
+          {turnstileRequired ? (
+            <TurnstileField onToken={setTurnstileToken} />
+          ) : null}
+
+          {error ? (
+            <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800" role="alert">
+              {error}
+            </p>
+          ) : null}
+
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => (tab === "signup" ? handleSignUp() : handleSignIn())}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 px-4 py-3 text-sm font-bold text-white shadow-md shadow-sky-500/20 transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {tab === "signup" ? "Creating account…" : "Signing in…"}
+              </>
+            ) : tab === "signup" ? (
+              <>
+                <UserPlus className="h-4 w-4" />
+                Create account & submit application
+              </>
+            ) : (
+              <>
+                <LogIn className="h-4 w-4" />
+                Sign in & submit application
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>,

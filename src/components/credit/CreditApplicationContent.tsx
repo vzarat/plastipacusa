@@ -24,13 +24,17 @@ const FloatingCreditCards = dynamic(
   { ssr: false }
 );
 
-export function CreditApplicationContent({ profile }: { profile: UserProfile }) {
+export function CreditApplicationContent({
+  profile,
+}: {
+  profile: UserProfile | null;
+}) {
   const { t } = useLanguage();
+  const isSignedIn = Boolean(profile?.id);
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-slate-50/60">
       <section className="relative w-full overflow-hidden bg-[#000d23] px-4 py-8 text-white sm:px-6 sm:py-14 md:px-16 md:py-16">
-        {/* Full-bleed Beams background */}
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-none">
           <div className="pointer-events-none absolute -inset-16 z-0 scale-125 overflow-hidden rounded-none opacity-100">
             <Beams
@@ -49,7 +53,6 @@ export function CreditApplicationContent({ profile }: { profile: UserProfile }) 
         </div>
 
         <div className="relative z-10 mx-auto grid max-w-7xl grid-cols-1 items-center gap-6 lg:grid-cols-2 lg:gap-12">
-          {/* Left — Copy & CTAs */}
           <div className="flex w-full min-w-0 flex-col items-start space-y-3.5 text-left sm:space-y-5">
             <Badge className="border border-white/20 bg-white/10 text-[10px] font-bold uppercase tracking-[0.14em] text-sky-100 backdrop-blur-md sm:text-[11px] sm:tracking-[0.16em]">
               <CreditCard className="mr-1.5 h-3.5 w-3.5" />
@@ -89,7 +92,6 @@ export function CreditApplicationContent({ profile }: { profile: UserProfile }) 
             </Link>
           </div>
 
-          {/* Right — Floating cards over beams (desktop/tablet) */}
           <div className="relative hidden min-h-[280px] items-center justify-end sm:flex lg:min-h-[340px]">
             <FloatingCreditCards className="ml-auto w-full max-w-md" />
           </div>
@@ -100,13 +102,27 @@ export function CreditApplicationContent({ profile }: { profile: UserProfile }) 
         <div className="flex items-start gap-2.5 rounded-2xl border border-blue-100 bg-blue-50/70 px-3 py-3 text-[12px] text-blue-900 sm:gap-3 sm:px-4 sm:text-xs">
           <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" />
           <p className="min-w-0 leading-relaxed">
-            Signed in as <span className="font-bold">{profile.email || profile.fullName}</span>
-            {profile.companyName ? ` · ${profile.companyName}` : ""}. Your application is linked to
-            this B2B account and status is tracked in{" "}
-            <Link href="/dashboard/credit" className="font-bold underline underline-offset-2">
-              Dashboard → Credit
-            </Link>
-            . {t("credit.notice")}
+            {isSignedIn ? (
+              <>
+                Signed in as{" "}
+                <span className="font-bold">{profile?.email || profile?.fullName}</span>
+                {profile?.companyName ? ` · ${profile.companyName}` : ""}. Your application is
+                linked to this B2B account and status is tracked in{" "}
+                <Link
+                  href="/dashboard/credit"
+                  className="font-bold underline underline-offset-2"
+                >
+                  Dashboard → Credit
+                </Link>
+                . {t("credit.notice")}
+              </>
+            ) : (
+              <>
+                You can review and fill out the full commercial credit application as a guest.
+                When you submit (or start editing fields), a quick B2B sign-in / sign-up modal
+                keeps your answers and links the application to your account. {t("credit.notice")}
+              </>
+            )}
           </p>
         </div>
 

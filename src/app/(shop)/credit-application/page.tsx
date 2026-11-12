@@ -1,6 +1,5 @@
 import React from "react";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/actions/auth";
 import { CreditApplicationContent } from "@/components/credit/CreditApplicationContent";
 
@@ -12,9 +11,7 @@ export const metadata: Metadata = {
 
 export default async function CreditApplicationPage() {
   const currentUser = await getCurrentUser();
-  if (!currentUser) {
-    redirect("/login?redirect=/credit-application");
-  }
-
-  return <CreditApplicationContent profile={currentUser.profile} />;
+  return (
+    <CreditApplicationContent profile={currentUser?.profile ?? null} />
+  );
 }

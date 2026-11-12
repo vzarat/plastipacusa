@@ -23,6 +23,8 @@ import {
 } from "@/components/security/TurnstileField";
 import type { UserProfile } from "@/actions/auth";
 import { submitCommercialCreditApplication } from "@/actions/credit-applications";
+import { CreditAuthRequiredModal } from "@/components/credit/CreditAuthRequiredModal";
+import { useRouter } from "next/navigation";
 import {
   CREDIT_APPLICATION_FIELD_LABELS,
   emailMatchesWebsiteDomain,
@@ -322,12 +324,27 @@ function ContactHelpLinks() {
   );
 }
 
-function prefillFromProfile(profile: UserProfile) {
-  const company = String(profile.companyName || "").trim();
-  const fullName = String(profile.fullName || "").trim();
-  const email = String(profile.email || "").trim().toLowerCase();
-  const phone = String(profile.phone || "").trim();
-  const taxId = String(profile.taxId || "").trim();
+const CREDIT_DRAFT_KEY = "plastipac_credit_application_draft_v1";
+
+function emptyProfile(): UserProfile {
+  return {
+    id: "",
+    fullName: "",
+    companyName: "",
+    role: "client",
+    email: "",
+    phone: "",
+    taxId: "",
+  };
+}
+
+function prefillFromProfile(profile: UserProfile | null) {
+  const p = profile || emptyProfile();
+  const company = String(p.companyName || "").trim();
+  const fullName = String(p.fullName || "").trim();
+  const email = String(p.email || "").trim().toLowerCase();
+  const phone = String(p.phone || "").trim();
+  const taxId = String(p.taxId || "").trim();
   return {
     creditLimitRequested: "",
     paymentTermsRequested: "Net 30",
@@ -363,7 +380,31 @@ function prefillFromProfile(profile: UserProfile) {
   };
 }
 
-export function CreditApplicationForm({ profile }: { profile: UserProfile }) {
+function readDraft(): {
+  form: ReturnType<typeof prefillFromProfile>;
+  refs: [RefState, RefState, RefState];
+} | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(CREDIT_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      form?: ReturnType<typeof prefillFromProfile>;
+      refs?: [RefState, RefState, RefState];
+    };
+    if (!parsed?.form || !parsed?.refs) return null;
+    return { form: parsed.form, refs: parsed.refs };
+  } catch {
+    return null;
+  }
+}
+
+export function CreditApplicationForm({
+  profile,
+}: {
+  profile: UserProfile | null;
+}) {
+  const router = useRouter();
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const turnstileRequired = isBrowserTurnstileEnabled();
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -372,15 +413,45 @@ export function CreditApplicationForm({ profile }: { profile: UserProfile }) {
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [errorField, setErrorField] = useState<CreditApplicationErrorField | null>(null);
   const [verifyStatus, setVerifyStatus] = useState<Partial<Record<VerifyField, VerifyStatus>>>({});
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(profile?.id));
+  const [authOpen, setAuthOpen] = useState(false);
   const errorBannerRef = useRef<HTMLParagraphElement | null>(null);
   const verifyTimersRef = useRef<Partial<Record<VerifyField, number>>>({});
+  const autoSubmitAfterAuthRef = useRef(false);
+  const promptedAuthOnInteractRef = useRef(false);
+
+  useEffect(() => {
+    if (profile?.id) setIsAuthenticated(true);
+  }, [profile?.id]);
 
   const [form, setForm] = useState(() => prefillFromProfile(profile));
-  const [refs, setRefs] = useState<[RefState, RefState, RefState]>([
+  const [refs, setRefs] = useState<[RefState, RefState, RefState]>(() => [
     emptyRef(),
     emptyRef(),
     emptyRef(),
   ]);
+  const [draftReady, setDraftReady] = useState(false);
+
+  useEffect(() => {
+    const draft = readDraft();
+    if (draft) {
+      setForm(draft.form);
+      setRefs(draft.refs);
+    }
+    setDraftReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    try {
+      sessionStorage.setItem(
+        CREDIT_DRAFT_KEY,
+        JSON.stringify({ form, refs })
+      );
+    } catch {
+      // ignore quota / private mode
+    }
+  }, [form, refs, draftReady]);
 
   const setFieldIssue = (field: CreditApplicationErrorField | null, message: string | null) => {
     setErrorField(field);
@@ -471,13 +542,24 @@ export function CreditApplicationForm({ profile }: { profile: UserProfile }) {
     }
   }, [errorField, fieldError]);
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const openAuthGate = (opts?: { autoSubmit?: boolean }) => {
+    autoSubmitAfterAuthRef.current = opts?.autoSubmit !== false;
+    setAuthOpen(true);
+  };
+
+  const handleGuestInteract = () => {
+    if (isAuthenticated || authOpen || promptedAuthOnInteractRef.current) return;
+    promptedAuthOnInteractRef.current = true;
+    // Soft prompt on first field interaction — guest can dismiss and keep filling.
+    openAuthGate({ autoSubmit: false });
+  };
+
+  const submitApplication = async () => {
     if (turnstileRequired && !turnstileToken) {
       const message = "Please complete the bot check.";
       setFieldIssue("turnstile", message);
       toast.error(message);
-      return;
+      return false;
     }
 
     const identity = validateCreditApplicationIdentityFields({
@@ -490,7 +572,7 @@ export function CreditApplicationForm({ profile }: { profile: UserProfile }) {
       const message = identity.error || "Please fix the verification fields.";
       setFieldIssue(identity.field || inferCreditApplicationErrorField(message), message);
       toast.error(message);
-      return;
+      return false;
     }
     clearFieldIssue();
 
@@ -516,15 +598,58 @@ export function CreditApplicationForm({ profile }: { profile: UserProfile }) {
           message
         );
         toast.error(message);
-        return;
+        return false;
       }
       clearFieldIssue();
       setSubmitted(true);
+      try {
+        sessionStorage.removeItem(CREDIT_DRAFT_KEY);
+      } catch {
+        /* ignore */
+      }
       toast.success(result.message || "Form sent successfully.");
+      return true;
     } catch {
       toast.error("Unable to submit credit application. Please try again.");
+      return false;
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!isAuthenticated) {
+      openAuthGate({ autoSubmit: true });
+      return;
+    }
+    await submitApplication();
+  };
+
+  const handleAuthenticated = async (info: {
+    email: string;
+    fullName?: string;
+    companyName?: string;
+  }) => {
+    setIsAuthenticated(true);
+    setAuthOpen(false);
+    // Fill only blank identity fields from the new session — never wipe guest answers.
+    setForm((prev) => ({
+      ...prev,
+      email: prev.email || info.email || "",
+      apEmail: prev.apEmail || info.email || "",
+      legalBusinessName: prev.legalBusinessName || info.companyName || "",
+      apContactName: prev.apContactName || info.fullName || "",
+      authorizedRepresentativeName:
+        prev.authorizedRepresentativeName || info.fullName || "",
+      eSignature: prev.eSignature || info.fullName || "",
+    }));
+    router.refresh();
+    if (autoSubmitAfterAuthRef.current) {
+      autoSubmitAfterAuthRef.current = false;
+      // Let cookie session settle before the server action.
+      await new Promise((resolve) => window.setTimeout(resolve, 150));
+      await submitApplication();
     }
   };
 
@@ -561,7 +686,35 @@ export function CreditApplicationForm({ profile }: { profile: UserProfile }) {
   const summaryLabel = errorField ? CREDIT_APPLICATION_FIELD_LABELS[errorField] : null;
 
   return (
-    <form onSubmit={handleSubmit} className="min-w-0 space-y-3.5 sm:space-y-5" noValidate>
+    <>
+    <CreditAuthRequiredModal
+      open={authOpen}
+      dismissible
+      onClose={() => {
+        autoSubmitAfterAuthRef.current = false;
+        setAuthOpen(false);
+      }}
+      defaultEmail={form.email || form.apEmail}
+      defaultFullName={form.authorizedRepresentativeName || form.apContactName}
+      defaultCompanyName={form.legalBusinessName}
+      onAuthenticated={handleAuthenticated}
+    />
+    <form
+      onSubmit={handleSubmit}
+      onFocusCapture={handleGuestInteract}
+      className="min-w-0 space-y-3.5 sm:space-y-5"
+      noValidate
+    >
+      {!isAuthenticated ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-3.5 py-3 text-[12px] leading-relaxed text-amber-950 sm:text-xs">
+          <p className="font-semibold">Guest preview</p>
+          <p className="mt-1 text-amber-900/85">
+            Fill out the application now. When you submit, a quick B2B sign-in / sign-up modal
+            appears — your answers stay on this page and we submit automatically after you
+            authenticate.
+          </p>
+        </div>
+      ) : null}
       {/* Header / Request Setup */}
       <section className={sectionShell}>
         <SectionTitle
@@ -1256,7 +1409,7 @@ export function CreditApplicationForm({ profile }: { profile: UserProfile }) {
             )}
           </p>
         ) : null}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" data-credit-auth-ignore="true">
           <TurnstileField onToken={setTurnstileToken} />
         </div>
         <FieldErrorText errorField={errorField} field="turnstile" message={fieldError} />
@@ -1289,5 +1442,6 @@ export function CreditApplicationForm({ profile }: { profile: UserProfile }) {
         </p>
       </div>
     </form>
+    </>
   );
 }
