@@ -1,7 +1,16 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db, products, productVariants } from "./index";
 import { MANUAL_FILM_MASTER } from "@/lib/manual-film-master";
+import {
+  MACHINE_FILM_MASTER,
+  MACHINE_PALLET_DIMENSIONS,
+  machineFilmPackageTotal,
+  machineFilmTierSkuFor,
+} from "@/lib/machine-film-master";
 import * as dotenv from "dotenv";
+
+const MACHINE_FILM_IMAGE_URL =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PRODUCTOS/AUTOMATIC_STRETCH_FILM.png";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config({ path: ".env" });
@@ -524,8 +533,93 @@ async function seed() {
       }
     }
 
+    // Automatic / GENESIS machine film — official 4-spec matrix (20 + 40 roll pallets).
+    for (const row of MACHINE_FILM_MASTER) {
+      const halfTotal = machineFilmPackageTotal(row, 20);
+      const fullTotal = machineFilmPackageTotal(row, 40);
+      const [machineProduct] = await db
+        .insert(products)
+        .values({
+          slug: row.slug,
+          name: row.title,
+          brand: "GENESIS",
+          partNumber: row.partNumber,
+          application: "machine",
+          filmType: "Cast Machine Stretch Film",
+          color: "Ultra Clear",
+          shortDescription:
+            "Automatic high-performance machine film sold as half pallet (20 rolls) or full pallet (40 rolls).",
+          description:
+            "Plastipac GENESIS™ Automatic Stretch Film for high-throughput pallet wrappers. Sold by the roll on wooden pallets — Tarima con 20 Rolls or Tarima c/40 Rolls.",
+          features: [
+            "Official Automatic matrix: 20\" machine film",
+            "Half pallet = 20 rolls · Full pallet = 40 rolls",
+            "Scale weights include wooden pallet tare",
+            `Pallet footprint ${MACHINE_PALLET_DIMENSIONS}`,
+          ],
+          gauge: row.gauge,
+          widthInches: row.widthInches.toFixed(2),
+          lengthFeet: String(row.lengthFeet),
+          rollsPerBox: 1,
+          rollWeightLbs: row.rollWeightLbs.toFixed(6),
+          palletWeightLbs: row.fullPalletWeightLbs.toFixed(2),
+          palletDimensions: MACHINE_PALLET_DIMENSIONS,
+          priceUsd: fullTotal.toFixed(2),
+          priceHalfPallet: halfTotal.toFixed(2),
+          pricePallet: fullTotal.toFixed(2),
+          price20Rolls: halfTotal.toFixed(2),
+          price40Rolls: fullTotal.toFixed(2),
+          stockQuantity: 20,
+          isActive: true,
+          imageUrl: MACHINE_FILM_IMAGE_URL,
+          images: [MACHINE_FILM_IMAGE_URL],
+          recommendedUsage:
+            "High-speed turntable and power pre-stretch automatic wrappers.",
+        })
+        .returning();
+
+      await db.insert(productVariants).values([
+        {
+          productId: machineProduct.id,
+          sku: machineFilmTierSkuFor(row, 20),
+          packageSize: "Half Pallet (20 Rolls)",
+          widthInches: "20.00",
+          gauge: row.gauge,
+          lengthFeet: row.lengthFeet,
+          rollsPerBox: 20,
+          rollsPerPallet: 40,
+          weightLbs: row.halfPalletWeightLbs.toFixed(2),
+          rollWeightLbs: row.rollWeightLbs.toFixed(6),
+          boxWeightLbs: null,
+          palletWeightLbs: row.halfPalletWeightLbs.toFixed(2),
+          priceUsd: halfTotal.toFixed(2),
+          casePriceUsd: halfTotal.toFixed(2),
+          palletPriceUsd: halfTotal.toFixed(2),
+          stockStatus: "in_stock",
+        },
+        {
+          productId: machineProduct.id,
+          sku: machineFilmTierSkuFor(row, 40),
+          packageSize: "Full Pallet (40 Rolls)",
+          widthInches: "20.00",
+          gauge: row.gauge,
+          lengthFeet: row.lengthFeet,
+          rollsPerBox: 40,
+          rollsPerPallet: 40,
+          weightLbs: row.fullPalletWeightLbs.toFixed(2),
+          rollWeightLbs: row.rollWeightLbs.toFixed(6),
+          boxWeightLbs: null,
+          palletWeightLbs: row.fullPalletWeightLbs.toFixed(2),
+          priceUsd: fullTotal.toFixed(2),
+          casePriceUsd: fullTotal.toFixed(2),
+          palletPriceUsd: fullTotal.toFixed(2),
+          stockStatus: "in_stock",
+        },
+      ]);
+    }
+
     console.log(
-      "✅ Seed completed successfully! Seeded Manual products from Excel master (48×192, 40 lb pallet tare)."
+      "✅ Seed completed successfully! Manual Excel master + Automatic 20/40-roll matrix."
     );
     process.exit(0);
   } catch (error) {

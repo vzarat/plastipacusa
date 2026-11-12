@@ -1,3 +1,5 @@
+import { MACHINE_FILM_WEIGHT_SPECS as MASTER_MACHINE_WEIGHTS } from "@/lib/machine-film-master";
+
 /** Older 10 kg tare still shown on the packaging CSV pallet column (machine / legacy). */
 export const WOODEN_PALLET_LBS = 22.05;
 
@@ -5,13 +7,7 @@ export const WOODEN_PALLET_LBS = 22.05;
 export const HAND_WOODEN_PALLET_LBS = 40;
 
 /** Official 20" automated machine film weights, including the wooden pallet on half and full pallets. */
-export const MACHINE_FILM_WEIGHT_SPECS = [
-  { width: 20, gauge: 51, length: 7000, roll: 30.600162, half: 638, full: 1250.01, tare: 25.99352 },
-  { width: 20, gauge: 51, length: 9000, roll: 38.779312, half: 802.13, full: 1577.71 },
-  { width: 20, gauge: 60, length: 5000, roll: 25.9, half: 540.0, full: 1058.0 },
-  { width: 20, gauge: 70, length: 5000, roll: 30.049006, half: 627.19, full: 1228.17 },
-  { width: 20, gauge: 80, length: 5000, roll: 34.06142, half: 707.28, full: 1288.51 },
-] as const;
+export const MACHINE_FILM_WEIGHT_SPECS = MASTER_MACHINE_WEIGHTS;
 
 export interface PackageWeightInput {
   rolls?: number | null;

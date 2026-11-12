@@ -1,3 +1,9 @@
+import {
+  findMachineFilmMaster,
+  MACHINE_PALLET_DIMENSIONS,
+  machineFilmPackageTotal,
+  machineFilmTierSkuFor,
+} from "@/lib/machine-film-master";
 import { HAND_WOODEN_PALLET_LBS, packageTotalWeightLbs } from "@/lib/package-weight";
 import { HAND_FULL_PALLET_BOXES, quoteTierPrice, roundMoney } from "@/lib/pricing";
 import { freightVolumeFromInches, handHandlingUnit } from "@/lib/shipping/hand-freight";
@@ -7,6 +13,8 @@ const HAND_TIERS = [
   { boxes: 1, rolls: 4, key: "box" },
   { boxes: HAND_FULL_PALLET_BOXES, rolls: 192, key: "full" },
 ] as const;
+
+const MACHINE_PALLET_UNIT = { lengthIn: 48, widthIn: 40, heightIn: 46 };
 
 export const PACKAGING_SPECS_CSV_HEADERS = [
   "Product SKU",
@@ -113,11 +121,17 @@ function tierWeight(product: AdminProduct, boxes: number, rolls: number): number
 }
 
 function packageVolume(product: AdminProduct): string {
-  if (product.application === "machine") return "6 / 12 / 20 / 40 rolls";
+  if (product.application === "machine") {
+    return "Half Pallet (20 Rolls) / Full Pallet (40 Rolls)";
+  }
   return "1 Box / Full Pallet (48 boxes)";
 }
 
 function productSku(product: AdminProduct): string {
+  if (product.application === "machine") {
+    const master = findMachineFilmMaster(product);
+    if (master) return machineFilmTierSkuFor(master, 40);
+  }
   return (
     tierFor(product, HAND_FULL_PALLET_BOXES)?.sku ||
     tierFor(product, 64)?.sku ||
@@ -127,10 +141,62 @@ function productSku(product: AdminProduct): string {
   );
 }
 
+function machineCsvCells(product: AdminProduct): Array<string | number | null> {
+  const master = findMachineFilmMaster(product);
+  const halfSku = master ? machineFilmTierSkuFor(master, 20) : "";
+  const fullSku = master ? machineFilmTierSkuFor(master, 40) : "";
+  const halfWeight = master
+    ? master.halfPalletWeightLbs
+    : packageTotalWeightLbs({
+        rolls: 20,
+        machine: true,
+        rollWeightLbs: product.rollWeightLbs,
+        widthInches: product.widthInches,
+        gauge: product.gauge,
+        lengthFeet: product.lengthFeet,
+      });
+  const fullWeight = master
+    ? master.fullPalletWeightLbs
+    : packageTotalWeightLbs({
+        rolls: 40,
+        machine: true,
+        rollWeightLbs: product.rollWeightLbs,
+        palletWeightLbs: product.palletWeightLbs,
+        widthInches: product.widthInches,
+        gauge: product.gauge,
+        lengthFeet: product.lengthFeet,
+      });
+  const halfTotal = master ? machineFilmPackageTotal(master, 20) : positive(product.price20Rolls);
+  const fullTotal = master ? machineFilmPackageTotal(master, 40) : positive(product.price40Rolls);
+  const halfPerRoll = halfTotal != null ? roundMoney(halfTotal / 20) : null;
+  const fullPerRoll = fullTotal != null ? roundMoney(fullTotal / 40) : null;
+  const volume = freightVolumeFromInches(MACHINE_PALLET_UNIT);
+  const dims =
+    String(product.palletDimensions || "").trim() || MACHINE_PALLET_DIMENSIONS.replace(/x/gi, "x");
+  return [
+    halfSku,
+    dims.includes("x") ? dims.replace(/\s*x\s*/gi, " x ") : dimensionLabel(MACHINE_PALLET_UNIT),
+    weightCell(halfWeight),
+    20,
+    money(halfPerRoll),
+    money(halfTotal),
+    weightCell(fullWeight),
+    master?.palletTareLbs != null ? weightCell(master.palletTareLbs) : "",
+    dimensionLabel(MACHINE_PALLET_UNIT),
+    volume ? volume.cbm.toFixed(2) : "",
+    volume ? volume.cubicFeet.toFixed(2) : "",
+    money(fullPerRoll),
+    money(fullTotal),
+    halfPerRoll != null && fullPerRoll != null ? money(roundMoney(halfPerRoll - fullPerRoll)) : "",
+  ];
+}
+
 export function packagingSpecsCsv(products: AdminProduct[]): string {
   const rows = products.filter((product) => product.isActive).map((product) => {
     const machine = product.application === "machine";
-    const standard = rateFor(product, 1) ?? positive(product.priceUsd);
+    const standard = machine
+      ? findMachineFilmMaster(product)?.halfPerRoll ?? positive(product.priceUsd)
+      : rateFor(product, 1) ?? positive(product.priceUsd);
     const cells: Array<string | number | null> = [
       productSku(product),
       product.storefrontTitle || product.name,
@@ -138,33 +204,35 @@ export function packagingSpecsCsv(products: AdminProduct[]): string {
       product.widthInches ?? "",
       product.gauge ?? "",
       product.lengthFeet ?? "",
-      product.rollsPerBox ?? (machine ? "" : 4),
+      machine ? 1 : product.rollsPerBox ?? 4,
     ];
 
-    for (const tier of HAND_TIERS) {
-      const rate = machine ? null : rateFor(product, tier.boxes);
-      const gross = machine ? null : tierWeight(product, tier.boxes, tier.rolls);
-      const unit = machine
-        ? null
-        : handHandlingUnit(tier.boxes, product.widthInches, product.palletDimensions);
-      const total = rate != null ? quoteTierPrice(rate, tier.boxes).total : null;
-      const discount =
-        standard != null && rate != null ? roundMoney(standard - rate) : null;
-      cells.push(tierFor(product, tier.boxes)?.sku || "");
-      if (tier.key === "box") {
-        cells.push(unit ? dimensionLabel(unit) : "", weightCell(gross), tier.rolls, money(rate), money(total));
-      } else {
-        const volume = unit ? freightVolumeFromInches(unit) : null;
-        cells.push(
-          weightCell(gross),
-          gross != null ? weightCell(HAND_WOODEN_PALLET_LBS) : "",
-          unit ? dimensionLabel(unit) : "",
-          volume ? volume.cbm.toFixed(2) : "",
-          volume ? volume.cubicFeet.toFixed(2) : "",
-          money(rate),
-          money(total),
-          money(discount)
-        );
+    if (machine) {
+      cells.push(...machineCsvCells(product));
+    } else {
+      for (const tier of HAND_TIERS) {
+        const rate = rateFor(product, tier.boxes);
+        const gross = tierWeight(product, tier.boxes, tier.rolls);
+        const unit = handHandlingUnit(tier.boxes, product.widthInches, product.palletDimensions);
+        const total = rate != null ? quoteTierPrice(rate, tier.boxes).total : null;
+        const discount =
+          standard != null && rate != null ? roundMoney(standard - rate) : null;
+        cells.push(tierFor(product, tier.boxes)?.sku || "");
+        if (tier.key === "box") {
+          cells.push(unit ? dimensionLabel(unit) : "", weightCell(gross), tier.rolls, money(rate), money(total));
+        } else {
+          const volume = unit ? freightVolumeFromInches(unit) : null;
+          cells.push(
+            weightCell(gross),
+            gross != null ? weightCell(HAND_WOODEN_PALLET_LBS) : "",
+            unit ? dimensionLabel(unit) : "",
+            volume ? volume.cbm.toFixed(2) : "",
+            volume ? volume.cubicFeet.toFixed(2) : "",
+            money(rate),
+            money(total),
+            money(discount)
+          );
+        }
       }
     }
 

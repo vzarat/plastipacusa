@@ -10,6 +10,7 @@ export {
 } from "@/lib/palletizing";
 
 import type { ProductWithVariants } from "@/types";
+import { MACHINE_FILM_MASTER } from "@/lib/machine-film-master";
 import { machineFilmTierSku } from "@/lib/machine-film-sku";
 import { machineFilmPackagePrice, machineFilmPerRollPrice } from "@/lib/machine-film-pricing";
 import { MACHINE_FILM_WEIGHT_SPECS, packageTotalWeightLbs } from "@/lib/package-weight";
@@ -454,12 +455,12 @@ export type FeaturedSeriesLabel =
   | typeof SERIES_GENESIS_HP;
 
 /** Official Machine Film catalog — only these four width × gauge × length specs. */
-export const OFFICIAL_MACHINE_FILM_SPECS = [
-  { width: 20, gauge: 51, length: 7000, slug: "stretch-film-20-x-51-ga-x-7000ft" },
-  { width: 20, gauge: 51, length: 9000, slug: "stretch-film-20-x-51-ga-x-9000ft" },
-  { width: 20, gauge: 70, length: 5000, slug: "stretch-film-20-x-70-ga-x-5000ft" },
-  { width: 20, gauge: 80, length: 5000, slug: "stretch-film-20-x-80-ga-x-5000ft" },
-] as const;
+export const OFFICIAL_MACHINE_FILM_SPECS = MACHINE_FILM_MASTER.map((row) => ({
+  width: row.widthInches,
+  gauge: row.gauge,
+  length: row.lengthFeet,
+  slug: row.slug,
+}));
 
 const OFFICIAL_MACHINE_SLUGS = new Set<string>(
   OFFICIAL_MACHINE_FILM_SPECS.map((spec) => spec.slug)
