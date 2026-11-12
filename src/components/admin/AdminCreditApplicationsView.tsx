@@ -12,12 +12,14 @@ import {
   X,
 } from "lucide-react";
 import {
-  CREDIT_APPLICATION_STATUSES,
   reviewCreditApplication,
   type AdminCreditApplication,
+} from "@/actions/credit-applications";
+import {
+  CREDIT_APPLICATION_STATUSES,
   type CreditApplicationStatus,
   type ReferenceVerifyStatus,
-} from "@/actions/credit-applications";
+} from "@/lib/credit-application-status";
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";

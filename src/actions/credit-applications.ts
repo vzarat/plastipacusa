@@ -22,29 +22,12 @@ import {
 } from "@/lib/credit-application-validation";
 import { requireTurnstileToken } from "@/lib/turnstile";
 import { formatUsAddress } from "@/lib/us-states";
+import type {
+  CreditApplicationStatus,
+  ReferenceVerifyStatus,
+} from "@/lib/credit-application-status";
 
-export type CreditApplicationStatus =
-  | "pending"
-  | "verifying_references"
-  | "action_required"
-  | "approved"
-  | "rejected";
-
-export type ReferenceVerifyStatus = "pending_check" | "verified" | "unreachable";
-
-export const CREDIT_APPLICATION_STATUSES: CreditApplicationStatus[] = [
-  "pending",
-  "verifying_references",
-  "action_required",
-  "approved",
-  "rejected",
-];
-
-export const REFERENCE_VERIFY_STATUSES: ReferenceVerifyStatus[] = [
-  "pending_check",
-  "verified",
-  "unreachable",
-];
+export type { CreditApplicationStatus, ReferenceVerifyStatus };
 
 export type PaymentTermsOption = "Net 15" | "Net 30" | "Net 45" | "Other";
 
