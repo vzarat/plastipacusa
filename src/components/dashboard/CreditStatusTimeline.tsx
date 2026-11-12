@@ -14,6 +14,7 @@ export type CreditTimelineStatus =
   | "pending"
   | "under_review"
   | "verifying_references"
+  | "action_required"
   | "approved"
   | "rejected";
 
@@ -25,14 +26,16 @@ interface CreditStatusTimelineProps {
   applicationId?: string | null;
 }
 
-/** Map dashboard/DB credit status onto the 5-stage B2B timeline. */
+/** Map dashboard/DB credit status onto the B2B timeline. */
 export function mapMyCreditStatusToTimeline(
   status: MyCreditStatus
 ): CreditTimelineStatus | null {
   if (status === "not_applied") return null;
   if (status === "approved") return "approved";
   if (status === "rejected") return "rejected";
-  // Submitted apps sit in finance review until admin decision.
+  if (status === "verifying_references") return "verifying_references";
+  if (status === "action_required") return "action_required";
+  // Submitted / finance queue.
   return "under_review";
 }
 
@@ -44,6 +47,8 @@ function progressPercent(status: CreditTimelineStatus): number {
       return 40;
     case "verifying_references":
       return 60;
+    case "action_required":
+      return 55;
     case "rejected":
       return 80;
     case "approved":
@@ -60,6 +65,7 @@ function activeStepIndex(status: CreditTimelineStatus): number {
     case "under_review":
       return 1;
     case "verifying_references":
+    case "action_required":
       return 2;
     case "rejected":
     case "approved":
@@ -97,9 +103,11 @@ export function CreditStatusTimeline({
   const barTone =
     status === "rejected"
       ? "from-rose-500 via-rose-400 to-amber-400"
-      : status === "approved"
-        ? "from-blue-600 via-cyan-400 to-emerald-500"
-        : "from-blue-600 via-cyan-400 to-sky-500";
+      : status === "action_required"
+        ? "from-amber-500 via-amber-400 to-orange-400"
+        : status === "approved"
+          ? "from-blue-600 via-cyan-400 to-emerald-500"
+          : "from-blue-600 via-cyan-400 to-sky-500";
 
   return (
     <div className="w-full rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -136,6 +144,12 @@ export function CreditStatusTimeline({
             <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
               <Building2 className="mr-1 h-3.5 w-3.5 animate-bounce" />
               Verifying Trade References
+            </span>
+          )}
+          {status === "action_required" && (
+            <span className="inline-flex items-center rounded-full border border-orange-200 bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-900">
+              <AlertCircle className="mr-1 h-3.5 w-3.5" />
+              Additional Information Required
             </span>
           )}
           {(status === "pending" || status === "under_review") && (

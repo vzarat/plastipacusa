@@ -4,18 +4,19 @@ import React, { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   Building2,
-  CheckCircle2,
   Eye,
   Loader2,
   Mail,
   Phone,
+  Save,
   X,
-  XCircle,
 } from "lucide-react";
 import {
+  CREDIT_APPLICATION_STATUSES,
   reviewCreditApplication,
   type AdminCreditApplication,
   type CreditApplicationStatus,
+  type ReferenceVerifyStatus,
 } from "@/actions/credit-applications";
 
 function formatDate(iso: string | null): string {
@@ -42,13 +43,70 @@ function formatMoney(value: number | null): string {
 function statusBadgeClass(status: CreditApplicationStatus): string {
   if (status === "approved") return "bg-emerald-50 text-emerald-800 border-emerald-200";
   if (status === "rejected") return "bg-rose-50 text-rose-800 border-rose-200";
-  return "bg-amber-50 text-amber-900 border-amber-200";
+  if (status === "verifying_references")
+    return "bg-amber-50 text-amber-900 border-amber-200";
+  if (status === "action_required")
+    return "bg-orange-50 text-orange-900 border-orange-200";
+  return "bg-sky-50 text-sky-900 border-sky-200";
 }
 
 function statusLabel(status: CreditApplicationStatus): string {
-  if (status === "approved") return "Approved";
-  if (status === "rejected") return "Denied";
-  return "Pending";
+  switch (status) {
+    case "approved":
+      return "Approved";
+    case "rejected":
+      return "Rejected";
+    case "verifying_references":
+      return "Verifying References";
+    case "action_required":
+      return "Action Required";
+    default:
+      return "Pending / In Review";
+  }
+}
+
+function verifyLabel(status: ReferenceVerifyStatus): string {
+  if (status === "verified") return "Verified";
+  if (status === "unreachable") return "Unreachable";
+  return "Pending Check";
+}
+
+function verifyBadgeClass(status: ReferenceVerifyStatus): string {
+  if (status === "verified") return "bg-emerald-50 text-emerald-800 border-emerald-200";
+  if (status === "unreachable") return "bg-rose-50 text-rose-800 border-rose-200";
+  return "bg-slate-100 text-slate-700 border-slate-200";
+}
+
+interface OfficeState {
+  stage: CreditApplicationStatus;
+  approvedCreditLimit: string;
+  approvedPaymentTerms: string;
+  adminNotes: string;
+  ref1VerifyStatus: ReferenceVerifyStatus;
+  ref2VerifyStatus: ReferenceVerifyStatus;
+  ref3VerifyStatus: ReferenceVerifyStatus;
+  bankVerifyStatus: ReferenceVerifyStatus;
+  notifyApplicant: boolean;
+}
+
+function officeFromApp(app: AdminCreditApplication): OfficeState {
+  return {
+    stage: app.status,
+    approvedCreditLimit:
+      app.approvedCreditLimit != null
+        ? String(app.approvedCreditLimit)
+        : app.creditLimitRequested != null
+          ? String(app.creditLimitRequested)
+          : "",
+    approvedPaymentTerms:
+      app.approvedPaymentTerms || app.paymentTermsRequested || "Net 30",
+    adminNotes: app.adminNotes || app.adminComments || "",
+    ref1VerifyStatus: app.ref1VerifyStatus || "pending_check",
+    ref2VerifyStatus: app.ref2VerifyStatus || "pending_check",
+    ref3VerifyStatus: app.ref3VerifyStatus || "pending_check",
+    bankVerifyStatus: app.bankVerifyStatus || "pending_check",
+    notifyApplicant: true,
+  };
 }
 
 interface AdminCreditApplicationsViewProps {
@@ -65,11 +123,7 @@ export function AdminCreditApplicationsView({
   const [filter, setFilter] = useState<"all" | CreditApplicationStatus>("all");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [office, setOffice] = useState({
-    approvedCreditLimit: "",
-    approvedPaymentTerms: "Net 30",
-    adminComments: "",
-  });
+  const [office, setOffice] = useState<OfficeState | null>(null);
   const [didAutoOpen, setDidAutoOpen] = useState(false);
 
   const filtered = useMemo(() => {
@@ -77,45 +131,29 @@ export function AdminCreditApplicationsView({
     return applications.filter((app) => app.status === filter);
   }, [applications, filter]);
 
-  const pendingCount = applications.filter((a) => a.status === "pending").length;
+  const pendingCount = applications.filter(
+    (a) =>
+      a.status === "pending" ||
+      a.status === "verifying_references" ||
+      a.status === "action_required"
+  ).length;
 
   const openDetail = (app: AdminCreditApplication) => {
     setSelected(app);
-    setOffice({
-      approvedCreditLimit:
-        app.approvedCreditLimit != null
-          ? String(app.approvedCreditLimit)
-          : app.creditLimitRequested != null
-            ? String(app.creditLimitRequested)
-            : "",
-      approvedPaymentTerms:
-        app.approvedPaymentTerms || app.paymentTermsRequested || "Net 30",
-      adminComments: app.adminComments || "",
-    });
+    setOffice(officeFromApp(app));
   };
 
   React.useEffect(() => {
     if (didAutoOpen || !initialSelectedId) return;
     const match = applications.find((app) => app.id === initialSelectedId);
     if (!match) return;
-    setSelected(match);
-    setOffice({
-      approvedCreditLimit:
-        match.approvedCreditLimit != null
-          ? String(match.approvedCreditLimit)
-          : match.creditLimitRequested != null
-            ? String(match.creditLimitRequested)
-            : "",
-      approvedPaymentTerms:
-        match.approvedPaymentTerms || match.paymentTermsRequested || "Net 30",
-      adminComments: match.adminComments || "",
-    });
+    openDetail(match);
     setDidAutoOpen(true);
   }, [applications, didAutoOpen, initialSelectedId]);
 
-  const handleReview = (status: "approved" | "rejected") => {
-    if (!selected) return;
-    if (status === "approved" && !office.approvedCreditLimit.trim()) {
+  const handleSaveStage = () => {
+    if (!selected || !office) return;
+    if (office.stage === "approved" && !office.approvedCreditLimit.trim()) {
       toast.error("Set an approved credit limit before approving.");
       return;
     }
@@ -123,10 +161,16 @@ export function AdminCreditApplicationsView({
     startTransition(async () => {
       const result = await reviewCreditApplication({
         id: selected.id,
-        status,
+        status: office.stage,
         approvedCreditLimit: office.approvedCreditLimit,
         approvedPaymentTerms: office.approvedPaymentTerms,
-        adminComments: office.adminComments,
+        adminNotes: office.adminNotes,
+        adminComments: office.adminNotes,
+        ref1VerifyStatus: office.ref1VerifyStatus,
+        ref2VerifyStatus: office.ref2VerifyStatus,
+        ref3VerifyStatus: office.ref3VerifyStatus,
+        bankVerifyStatus: office.bankVerifyStatus,
+        notifyApplicant: office.notifyApplicant,
       });
       setBusyId(null);
       if (!result.success) {
@@ -134,49 +178,47 @@ export function AdminCreditApplicationsView({
         return;
       }
       const now = new Date().toISOString();
+      const nextApp: AdminCreditApplication = {
+        ...selected,
+        status: office.stage,
+        reviewedAt: now,
+        approvalDate: office.stage === "approved" ? now : null,
+        approvedCreditLimit:
+          office.stage === "approved"
+            ? Number(office.approvedCreditLimit.replace(/[$,\s]/g, "")) || null
+            : office.stage === "rejected"
+              ? null
+              : selected.approvedCreditLimit,
+        approvedPaymentTerms:
+          office.stage === "approved"
+            ? office.approvedPaymentTerms
+            : office.stage === "rejected"
+              ? null
+              : selected.approvedPaymentTerms,
+        adminComments: office.adminNotes || null,
+        adminNotes: office.adminNotes || null,
+        ref1VerifyStatus: office.ref1VerifyStatus,
+        ref2VerifyStatus: office.ref2VerifyStatus,
+        ref3VerifyStatus: office.ref3VerifyStatus,
+        bankVerifyStatus: office.bankVerifyStatus,
+      };
       setApplications((prev) =>
-        prev.map((app) =>
-          app.id === selected.id
-            ? {
-                ...app,
-                status,
-                reviewedAt: now,
-                approvalDate: status === "approved" ? now : null,
-                approvedCreditLimit:
-                  status === "approved"
-                    ? Number(office.approvedCreditLimit.replace(/[$,\s]/g, "")) || null
-                    : null,
-                approvedPaymentTerms:
-                  status === "approved" ? office.approvedPaymentTerms : null,
-                adminComments: office.adminComments || null,
-              }
-            : app
-        )
+        prev.map((app) => (app.id === selected.id ? nextApp : app))
       );
-      setSelected((prev) =>
-        prev
-          ? {
-              ...prev,
-              status,
-              reviewedAt: now,
-              approvalDate: status === "approved" ? now : null,
-              approvedCreditLimit:
-                status === "approved"
-                  ? Number(office.approvedCreditLimit.replace(/[$,\s]/g, "")) || null
-                  : null,
-              approvedPaymentTerms:
-                status === "approved" ? office.approvedPaymentTerms : null,
-              adminComments: office.adminComments || null,
-            }
-          : prev
-      );
+      setSelected(nextApp);
+      setOffice(officeFromApp(nextApp));
       toast.success(
-        status === "approved"
-          ? "Application approved. Notifications sent."
-          : "Application denied. Notifications sent."
+        office.stage === "verifying_references" && office.notifyApplicant
+          ? "Stage updated. Applicant notified that references are under review."
+          : `Application updated to ${statusLabel(office.stage)}.`
       );
     });
   };
+
+  const filterKeys: Array<"all" | CreditApplicationStatus> = [
+    "all",
+    ...CREDIT_APPLICATION_STATUSES,
+  ];
 
   return (
     <div className="min-w-0 space-y-4 sm:space-y-5">
@@ -186,28 +228,27 @@ export function AdminCreditApplicationsView({
             Credit Applications
           </h1>
           <p className="text-sm text-slate-500">
-            {pendingCount} pending · {applications.length} total submissions
+            {pendingCount} in pipeline · {applications.length} total submissions
           </p>
         </div>
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
-          {(["all", "pending", "approved", "rejected"] as const).map((key) => (
+          {filterKeys.map((key) => (
             <button
               key={key}
               type="button"
               onClick={() => setFilter(key)}
-              className={`shrink-0 touch-manipulation rounded-full border px-3 py-1.5 text-xs font-bold capitalize ${
+              className={`shrink-0 touch-manipulation rounded-full border px-3 py-1.5 text-xs font-bold ${
                 filter === key
                   ? "border-blue-600 bg-blue-600 text-white"
                   : "border-slate-200 bg-white text-slate-600"
               }`}
             >
-              {key === "rejected" ? "Denied" : key}
+              {key === "all" ? "all" : statusLabel(key)}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Mobile card list */}
       <div className="space-y-2.5 md:hidden">
         {filtered.length === 0 ? (
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
@@ -250,7 +291,6 @@ export function AdminCreditApplicationsView({
         )}
       </div>
 
-      {/* Desktop table */}
       <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
@@ -313,7 +353,7 @@ export function AdminCreditApplicationsView({
         </div>
       </div>
 
-      {selected ? (
+      {selected && office ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-6">
           <div className="flex max-h-[92dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-3xl border border-slate-200 bg-white shadow-2xl sm:max-h-[95vh] sm:rounded-3xl">
             <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-3 py-3.5 sm:px-6 sm:py-4">
@@ -331,7 +371,10 @@ export function AdminCreditApplicationsView({
               </div>
               <button
                 type="button"
-                onClick={() => setSelected(null)}
+                onClick={() => {
+                  setSelected(null);
+                  setOffice(null);
+                }}
                 className="shrink-0 touch-manipulation rounded-full border border-slate-200 p-2.5 text-slate-500 hover:bg-slate-50"
                 aria-label="Close"
               >
@@ -381,130 +424,263 @@ export function AdminCreditApplicationsView({
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-600">
-                  Trade references
+                <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-600">
+                  Trade & Bank Reference Verification
                 </p>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {[1, 2, 3].map((n) => {
-                    const company =
-                      selected[
-                        `ref${n}CompanyName` as keyof AdminCreditApplication
-                      ];
-                    const contact =
-                      selected[
-                        `ref${n}ContactPerson` as keyof AdminCreditApplication
-                      ];
-                    const phone =
-                      selected[`ref${n}Phone` as keyof AdminCreditApplication];
+                    const key = `ref${n}VerifyStatus` as
+                      | "ref1VerifyStatus"
+                      | "ref2VerifyStatus"
+                      | "ref3VerifyStatus";
+                    const company = selected[
+                      `ref${n}CompanyName` as keyof AdminCreditApplication
+                    ];
+                    const contact = selected[
+                      `ref${n}ContactPerson` as keyof AdminCreditApplication
+                    ];
+                    const phone = selected[
+                      `ref${n}Phone` as keyof AdminCreditApplication
+                    ];
+                    const email = selected[
+                      `ref${n}Email` as keyof AdminCreditApplication
+                    ];
                     return (
                       <div
                         key={n}
                         className="rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700"
                       >
-                        <p className="font-bold text-slate-900">Reference #{n}</p>
+                        <div className="mb-2 flex items-start justify-between gap-2">
+                          <p className="font-bold text-slate-900">Trade Reference #{n}</p>
+                          <span
+                            className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${verifyBadgeClass(office[key])}`}
+                          >
+                            {verifyLabel(office[key])}
+                          </span>
+                        </div>
                         <p>{String(company || "—")}</p>
                         <p>{String(contact || "—")}</p>
                         <p>{String(phone || "—")}</p>
+                        <p>{String(email || "—")}</p>
+                        <label className="mt-2 block space-y-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                            Checklist status
+                          </span>
+                          <select
+                            value={office[key]}
+                            onChange={(e) =>
+                              setOffice((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      [key]: e.target.value as ReferenceVerifyStatus,
+                                    }
+                                  : prev
+                              )
+                            }
+                            className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs"
+                          >
+                            <option value="pending_check">Pending Check</option>
+                            <option value="verified">Verified</option>
+                            <option value="unreachable">Unreachable</option>
+                          </select>
+                        </label>
                       </div>
                     );
                   })}
+                  <div className="rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700">
+                    <div className="mb-2 flex items-start justify-between gap-2">
+                      <p className="font-bold text-slate-900">Bank Reference</p>
+                      <span
+                        className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${verifyBadgeClass(office.bankVerifyStatus)}`}
+                      >
+                        {verifyLabel(office.bankVerifyStatus)}
+                      </span>
+                    </div>
+                    <p>{selected.bankName || "—"}</p>
+                    <p>{selected.bankContactPerson || "—"}</p>
+                    <p>{selected.bankPhone || "—"}</p>
+                    <label className="mt-2 block space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Checklist status
+                      </span>
+                      <select
+                        value={office.bankVerifyStatus}
+                        onChange={(e) =>
+                          setOffice((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  bankVerifyStatus: e.target
+                                    .value as ReferenceVerifyStatus,
+                                }
+                              : prev
+                          )
+                        }
+                        className="min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs"
+                      >
+                        <option value="pending_check">Pending Check</option>
+                        <option value="verified">Verified</option>
+                        <option value="unreachable">Unreachable</option>
+                      </select>
+                    </label>
+                  </div>
                 </div>
               </div>
 
-              {/* FOR OFFICE USE ONLY */}
               <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 sm:p-5">
                 <div className="mb-3 flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-amber-800" />
                   <h3 className="text-sm font-black uppercase tracking-wide text-amber-950">
-                    For Office Use Only
+                    Timeline Stage & Office Use
                   </h3>
                 </div>
+
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <label className="block space-y-1.5">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900/80">
-                      Approved Credit Limit (USD)
-                    </span>
-                    <input
-                      value={office.approvedCreditLimit}
-                      onChange={(e) =>
-                        setOffice((prev) => ({
-                          ...prev,
-                          approvedCreditLimit: e.target.value,
-                        }))
-                      }
-                      className="min-h-11 w-full rounded-xl border border-amber-200 bg-white px-3 text-sm"
-                      placeholder="10000"
-                    />
-                  </label>
-                  <label className="block space-y-1.5">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900/80">
-                      Approved Payment Terms
-                    </span>
-                    <select
-                      value={office.approvedPaymentTerms}
-                      onChange={(e) =>
-                        setOffice((prev) => ({
-                          ...prev,
-                          approvedPaymentTerms: e.target.value,
-                        }))
-                      }
-                      className="min-h-11 w-full rounded-xl border border-amber-200 bg-white px-3 text-sm"
-                    >
-                      <option value="Net 15">Net 15</option>
-                      <option value="Net 30">Net 30</option>
-                      <option value="Net 45">Net 45</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </label>
                   <label className="block space-y-1.5 sm:col-span-2">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900/80">
-                      Admin Comments
+                      Application Stage
+                    </span>
+                    <select
+                      value={office.stage}
+                      onChange={(e) =>
+                        setOffice((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                stage: e.target.value as CreditApplicationStatus,
+                              }
+                            : prev
+                        )
+                      }
+                      className="min-h-11 w-full rounded-xl border border-amber-200 bg-white px-3 text-sm font-semibold"
+                    >
+                      <option value="pending">
+                        Pending — Solicitud Recibida / En Revisión
+                      </option>
+                      <option value="verifying_references">
+                        Verifying References — Verificando Referencias
+                      </option>
+                      <option value="action_required">
+                        Action Required — Requiere Información Adicional
+                      </option>
+                      <option value="approved">Approved — Aprobado</option>
+                      <option value="rejected">Rejected — Rechazado</option>
+                    </select>
+                  </label>
+
+                  {office.stage === "approved" ? (
+                    <>
+                      <label className="block space-y-1.5">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900/80">
+                          Approved Credit Limit (USD)
+                        </span>
+                        <input
+                          value={office.approvedCreditLimit}
+                          onChange={(e) =>
+                            setOffice((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    approvedCreditLimit: e.target.value,
+                                  }
+                                : prev
+                            )
+                          }
+                          className="min-h-11 w-full rounded-xl border border-amber-200 bg-white px-3 text-sm"
+                          placeholder="10000"
+                        />
+                      </label>
+                      <label className="block space-y-1.5">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900/80">
+                          Approved Payment Terms
+                        </span>
+                        <select
+                          value={office.approvedPaymentTerms}
+                          onChange={(e) =>
+                            setOffice((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    approvedPaymentTerms: e.target.value,
+                                  }
+                                : prev
+                            )
+                          }
+                          className="min-h-11 w-full rounded-xl border border-amber-200 bg-white px-3 text-sm"
+                        >
+                          <option value="Net 15">Net 15</option>
+                          <option value="Net 30">Net 30</option>
+                          <option value="Net 45">Net 45</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </label>
+                    </>
+                  ) : null}
+
+                  <label className="block space-y-1.5 sm:col-span-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900/80">
+                      Admin Notes (internal)
                     </span>
                     <textarea
-                      value={office.adminComments}
+                      value={office.adminNotes}
                       onChange={(e) =>
-                        setOffice((prev) => ({
-                          ...prev,
-                          adminComments: e.target.value,
-                        }))
+                        setOffice((prev) =>
+                          prev ? { ...prev, adminNotes: e.target.value } : prev
+                        )
                       }
-                      rows={3}
+                      rows={4}
                       className="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm"
-                      placeholder="Internal review notes…"
+                      placeholder="Credit check feedback, trade reference call notes, bank verification details…"
                     />
                   </label>
+
+                  {(office.stage === "verifying_references" ||
+                    office.stage === "action_required" ||
+                    office.stage === "approved" ||
+                    office.stage === "rejected") && (
+                    <label className="flex items-start gap-2 rounded-xl border border-amber-200 bg-white/70 px-3 py-2.5 text-xs text-amber-950 sm:col-span-2">
+                      <input
+                        type="checkbox"
+                        checked={office.notifyApplicant}
+                        onChange={(e) =>
+                          setOffice((prev) =>
+                            prev
+                              ? { ...prev, notifyApplicant: e.target.checked }
+                              : prev
+                          )
+                        }
+                        className="mt-0.5 h-4 w-4 rounded border-amber-300 text-amber-700"
+                      />
+                      <span>
+                        {office.stage === "verifying_references"
+                          ? "Email applicant that their references are being validated by finance (Resend)."
+                          : office.stage === "action_required"
+                            ? "Email applicant that additional information is required."
+                            : "Email applicant with the approve / deny decision."}
+                      </span>
+                    </label>
+                  )}
                 </div>
 
-                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <div className="mt-4">
                   <button
                     type="button"
                     disabled={busyId === selected.id || isPending}
-                    onClick={() => handleReview("approved")}
-                    className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60"
+                    onClick={handleSaveStage}
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-bold text-white hover:bg-blue-950 disabled:opacity-60 sm:w-auto"
                   >
                     {busyId === selected.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <CheckCircle2 className="h-4 w-4" />
+                      <Save className="h-4 w-4" />
                     )}
-                    Approve Application
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busyId === selected.id || isPending}
-                    onClick={() => handleReview("rejected")}
-                    className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 text-sm font-bold text-white hover:bg-rose-700 disabled:opacity-60"
-                  >
-                    {busyId === selected.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <XCircle className="h-4 w-4" />
-                    )}
-                    Deny Application
+                    Save Stage & Notes
                   </button>
                 </div>
                 <p className="mt-2 text-[11px] text-amber-900/70">
-                  Status changes notify orders@, support@, contact@, payables@, and the applicant email.
+                  Stage changes sync to <code>profiles.credit_application_status</code>.
+                  Approving also sets credit limit, payment terms, and available credit.
                 </p>
               </div>
 

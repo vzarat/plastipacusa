@@ -280,7 +280,9 @@ export function AdminCustomerDossierView({
                   }
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold bg-white"
                 >
-                  <option value="pending">Pending</option>
+                  <option value="pending">Pending / In Review</option>
+                  <option value="verifying_references">Verifying References</option>
+                  <option value="action_required">Action Required</option>
                   <option value="approved">Approved</option>
                   <option value="rejected">Rejected</option>
                 </select>

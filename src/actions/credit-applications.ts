@@ -10,6 +10,8 @@ import {
 import {
   notifyAdminCreditApplication,
   notifyApplicantCreditApplicationReceived,
+  notifyApplicantActionRequired,
+  notifyApplicantReferencesUnderReview,
   notifyCreditApplicationStatusChange,
 } from "@/lib/email";
 import { PRIMARY_PHONE_DISPLAY } from "@/lib/company-contact";
@@ -21,7 +23,28 @@ import {
 import { requireTurnstileToken } from "@/lib/turnstile";
 import { formatUsAddress } from "@/lib/us-states";
 
-export type CreditApplicationStatus = "pending" | "approved" | "rejected";
+export type CreditApplicationStatus =
+  | "pending"
+  | "verifying_references"
+  | "action_required"
+  | "approved"
+  | "rejected";
+
+export type ReferenceVerifyStatus = "pending_check" | "verified" | "unreachable";
+
+export const CREDIT_APPLICATION_STATUSES: CreditApplicationStatus[] = [
+  "pending",
+  "verifying_references",
+  "action_required",
+  "approved",
+  "rejected",
+];
+
+export const REFERENCE_VERIFY_STATUSES: ReferenceVerifyStatus[] = [
+  "pending_check",
+  "verified",
+  "unreachable",
+];
 
 export type PaymentTermsOption = "Net 15" | "Net 30" | "Net 45" | "Other";
 
@@ -168,13 +191,34 @@ export interface AdminCreditApplication {
   approvedPaymentTerms: string | null;
   approvalDate: string | null;
   adminComments: string | null;
+  adminNotes: string | null;
+  ref1VerifyStatus: ReferenceVerifyStatus;
+  ref2VerifyStatus: ReferenceVerifyStatus;
+  ref3VerifyStatus: ReferenceVerifyStatus;
+  bankVerifyStatus: ReferenceVerifyStatus;
   reviewedBy: string | null;
 }
 
 function normalizeStatus(value: unknown): CreditApplicationStatus {
   const raw = String(value || "pending").toLowerCase();
-  if (raw === "approved" || raw === "rejected") return raw;
+  if (
+    raw === "approved" ||
+    raw === "rejected" ||
+    raw === "verifying_references" ||
+    raw === "action_required" ||
+    raw === "pending"
+  ) {
+    return raw;
+  }
+  // Legacy / unknown mid-pipeline values collapse to pending review.
+  if (raw === "under_review") return "pending";
   return "pending";
+}
+
+function normalizeVerifyStatus(value: unknown): ReferenceVerifyStatus {
+  const raw = String(value || "pending_check").toLowerCase();
+  if (raw === "verified" || raw === "unreachable") return raw;
+  return "pending_check";
 }
 
 function str(value: unknown): string {
@@ -265,6 +309,14 @@ function mapCreditApplicationRow(row: Record<string, unknown>): AdminCreditAppli
     approvedPaymentTerms: (row.approved_payment_terms as string | null) || null,
     approvalDate: row.approval_date ? String(row.approval_date) : null,
     adminComments: (row.admin_comments as string | null) || null,
+    adminNotes:
+      (row.admin_notes as string | null) ||
+      (row.admin_comments as string | null) ||
+      null,
+    ref1VerifyStatus: normalizeVerifyStatus(row.ref1_verify_status),
+    ref2VerifyStatus: normalizeVerifyStatus(row.ref2_verify_status),
+    ref3VerifyStatus: normalizeVerifyStatus(row.ref3_verify_status),
+    bankVerifyStatus: normalizeVerifyStatus(row.bank_verify_status),
     reviewedBy: row.reviewed_by ? String(row.reviewed_by) : null,
   };
 }
@@ -769,10 +821,18 @@ export async function getAdminCreditApplications(): Promise<AdminCreditApplicati
 
 export interface ReviewCreditApplicationInput {
   id: string;
-  status: Extract<CreditApplicationStatus, "approved" | "rejected">;
+  status: CreditApplicationStatus;
   approvedCreditLimit?: string;
   approvedPaymentTerms?: string;
+  /** @deprecated Prefer adminNotes — still synced to admin_comments */
   adminComments?: string;
+  adminNotes?: string;
+  ref1VerifyStatus?: ReferenceVerifyStatus;
+  ref2VerifyStatus?: ReferenceVerifyStatus;
+  ref3VerifyStatus?: ReferenceVerifyStatus;
+  bankVerifyStatus?: ReferenceVerifyStatus;
+  /** When true (default for verifying_references), email the applicant. */
+  notifyApplicant?: boolean;
 }
 
 export async function reviewCreditApplication(
@@ -786,6 +846,11 @@ export async function reviewCreditApplication(
       return { success: false, error: "Database is not configured." };
     }
 
+    const nextStatus = normalizeStatus(input.status);
+    if (nextStatus === "approved" && !str(input.approvedCreditLimit)) {
+      return { success: false, error: "Set an approved credit limit before approving." };
+    }
+
     const supabase = await getAdminCreditDbClient();
     const { data: application } = await supabase
       .from("credit_applications")
@@ -797,35 +862,84 @@ export async function reviewCreditApplication(
       return { success: false, error: "Application not found." };
     }
 
+    const previousStatus = normalizeStatus(application.status);
     const approvedLimit = numOrNull(
       String(input.approvedCreditLimit || "").replace(/[$,\s]/g, "")
     );
     const approvedTerms = str(input.approvedPaymentTerms);
     const nowIso = new Date().toISOString();
+    const notes =
+      str(input.adminNotes) || str(input.adminComments) || null;
 
     const patch: Record<string, unknown> = {
-      status: input.status,
+      status: nextStatus,
       reviewed_at: nowIso,
       reviewed_by: currentUser.user.id,
-      admin_comments: str(input.adminComments) || null,
-      approval_date: input.status === "approved" ? nowIso : null,
-      approved_credit_limit:
-        input.status === "approved" ? approvedLimit : null,
-      approved_payment_terms:
-        input.status === "approved" ? approvedTerms || "Net 30" : null,
+      admin_comments: notes,
+      admin_notes: notes,
     };
 
-    const { error } = await supabase
+    if (input.ref1VerifyStatus) {
+      patch.ref1_verify_status = normalizeVerifyStatus(input.ref1VerifyStatus);
+    }
+    if (input.ref2VerifyStatus) {
+      patch.ref2_verify_status = normalizeVerifyStatus(input.ref2VerifyStatus);
+    }
+    if (input.ref3VerifyStatus) {
+      patch.ref3_verify_status = normalizeVerifyStatus(input.ref3VerifyStatus);
+    }
+    if (input.bankVerifyStatus) {
+      patch.bank_verify_status = normalizeVerifyStatus(input.bankVerifyStatus);
+    }
+
+    if (nextStatus === "approved") {
+      patch.approval_date = nowIso;
+      patch.approved_credit_limit = approvedLimit;
+      patch.approved_payment_terms = approvedTerms || "Net 30";
+    } else if (nextStatus === "rejected") {
+      patch.approval_date = null;
+      patch.approved_credit_limit = null;
+      patch.approved_payment_terms = null;
+    }
+
+    let { error } = await supabase
       .from("credit_applications")
       .update(patch)
       .eq("id", input.id);
 
-    if (error) {
+    // Retry without newer columns if schema not migrated yet.
+    if (error && /admin_notes|verify_status|verifying_references|action_required/i.test(error.message)) {
+      const legacyPatch: Record<string, unknown> = {
+        status:
+          nextStatus === "approved" || nextStatus === "rejected"
+            ? nextStatus
+            : "pending",
+        reviewed_at: nowIso,
+        reviewed_by: currentUser.user.id,
+        admin_comments: notes,
+        approval_date: nextStatus === "approved" ? nowIso : null,
+        approved_credit_limit: nextStatus === "approved" ? approvedLimit : null,
+        approved_payment_terms:
+          nextStatus === "approved" ? approvedTerms || "Net 30" : null,
+      };
+      const retry = await supabase
+        .from("credit_applications")
+        .update(legacyPatch)
+        .eq("id", input.id);
+      error = retry.error;
+      if (error) {
+        return {
+          success: false,
+          error:
+            "Database schema needs the credit timeline migration. Run 20261112190000_credit_application_timeline_stages.sql",
+        };
+      }
+    } else if (error) {
       console.warn("reviewCreditApplication failed:", error.message);
       return { success: false, error: error.message || "Failed to update status." };
     }
 
-    // Sync profile credit fields when approved
+    // Sync profile credit fields for every stage change
     try {
       let profileId = application.user_id as string | null;
       if (!profileId && application.work_email) {
@@ -838,44 +952,92 @@ export async function reviewCreditApplication(
       }
       if (profileId) {
         const profilePatch: Record<string, unknown> = {
-          credit_application_status: input.status,
+          credit_application_status: nextStatus,
         };
-        if (input.status === "approved") {
+        if (nextStatus === "approved") {
           const limit = Math.max(0, approvedLimit || 10000);
           const terms = approvedTerms || "Net 30";
           profilePatch.credit_terms = terms;
           profilePatch.payment_terms = terms;
           profilePatch.credit_limit = limit;
-          // Fresh approval resets usable balance to the approved limit.
           profilePatch.available_credit = limit;
-        } else if (input.status === "rejected") {
+        } else if (nextStatus === "rejected") {
           profilePatch.available_credit = 0;
         }
-        await supabase.from("profiles").update(profilePatch).eq("id", profileId);
+        const profileUpdate = await supabase
+          .from("profiles")
+          .update(profilePatch)
+          .eq("id", profileId);
+        if (
+          profileUpdate.error &&
+          /verifying_references|action_required|check/i.test(
+            profileUpdate.error.message
+          )
+        ) {
+          // Fall back to pending for mid-pipeline statuses if constraint not migrated.
+          await supabase
+            .from("profiles")
+            .update({
+              credit_application_status:
+                nextStatus === "approved" || nextStatus === "rejected"
+                  ? nextStatus
+                  : "pending",
+              ...(nextStatus === "approved" ? profilePatch : {}),
+              ...(nextStatus === "rejected" ? { available_credit: 0 } : {}),
+            })
+            .eq("id", profileId);
+        }
       }
     } catch {
       // non-fatal
     }
 
+    const contactName = String(
+      application.authorized_representative_name ||
+        application.contact_name ||
+        application.ap_contact_name ||
+        ""
+    );
+    const companyName = String(
+      application.legal_business_name || application.company_name || "Applicant"
+    );
+    const workEmail = String(application.work_email || application.ap_email || "");
+    const shouldNotify =
+      input.notifyApplicant !== false &&
+      (nextStatus !== previousStatus ||
+        nextStatus === "approved" ||
+        nextStatus === "rejected");
+
     try {
-      await notifyCreditApplicationStatusChange({
-        companyName: String(
-          application.legal_business_name || application.company_name || "Applicant"
-        ),
-        workEmail: String(application.work_email || application.ap_email || ""),
-        status: input.status,
-        approvedCreditLimit:
-          input.status === "approved" ? approvedLimit ?? undefined : undefined,
-        approvedPaymentTerms:
-          input.status === "approved" ? approvedTerms || "Net 30" : undefined,
-        adminComments: str(input.adminComments) || undefined,
-        contactName: String(
-          application.authorized_representative_name ||
-            application.contact_name ||
-            application.ap_contact_name ||
-            ""
-        ),
-      });
+      if (shouldNotify && nextStatus === "verifying_references") {
+        await notifyApplicantReferencesUnderReview({
+          workEmail,
+          contactName,
+          companyName,
+        });
+      } else if (
+        shouldNotify &&
+        (nextStatus === "approved" || nextStatus === "rejected")
+      ) {
+        await notifyCreditApplicationStatusChange({
+          companyName,
+          workEmail,
+          status: nextStatus,
+          approvedCreditLimit:
+            nextStatus === "approved" ? approvedLimit ?? undefined : undefined,
+          approvedPaymentTerms:
+            nextStatus === "approved" ? approvedTerms || "Net 30" : undefined,
+          adminComments: notes || undefined,
+          contactName,
+        });
+      } else if (shouldNotify && nextStatus === "action_required") {
+        await notifyApplicantActionRequired({
+          workEmail,
+          contactName,
+          companyName,
+          adminNotes: notes || undefined,
+        });
+      }
     } catch (emailError) {
       console.error("credit status email failed:", emailError);
     }
@@ -898,15 +1060,14 @@ export async function updateCreditApplicationStatus(
   id: string,
   status: CreditApplicationStatus
 ): Promise<{ success: boolean; error?: string }> {
-  if (status === "pending") {
-    return { success: false, error: "Invalid status." };
-  }
   return reviewCreditApplication({ id, status });
 }
 
 export type MyCreditStatus =
   | "not_applied"
   | "pending"
+  | "verifying_references"
+  | "action_required"
   | "approved"
   | "rejected";
 
@@ -962,19 +1123,16 @@ export async function getMyCreditStatus(): Promise<MyCreditStatusInfo> {
     const appStatus = application ? normalizeStatus(application.status) : null;
 
     let status: MyCreditStatus = "not_applied";
-    if (application) {
-      status =
-        appStatus === "approved"
-          ? "approved"
-          : appStatus === "rejected"
-            ? "rejected"
-            : "pending";
-    } else if (profileStatus === "approved") {
-      status = "approved";
-    } else if (profileStatus === "rejected") {
-      status = "rejected";
-    } else if (profileStatus === "pending") {
-      status = "pending";
+    if (application && appStatus) {
+      status = appStatus;
+    } else if (
+      profileStatus === "approved" ||
+      profileStatus === "rejected" ||
+      profileStatus === "pending" ||
+      profileStatus === "verifying_references" ||
+      profileStatus === "action_required"
+    ) {
+      status = profileStatus as MyCreditStatus;
     }
 
     return {

@@ -377,6 +377,104 @@ export interface CreditStatusChangeNotifyInput {
   adminComments?: string;
 }
 
+/** Applicant notice when finance begins validating trade/bank references. */
+export async function notifyApplicantReferencesUnderReview(payload: {
+  workEmail?: string;
+  contactName?: string;
+  companyName: string;
+}): Promise<SendEmailResult> {
+  const email = String(payload.workEmail || "").trim().toLowerCase();
+  if (!email) {
+    return { success: false, skipped: true, error: "No applicant email." };
+  }
+
+  const base = getAppBaseUrl();
+  const dashboardUrl = `${base}/dashboard/credit`;
+  const greeting = payload.contactName ? `Hello ${payload.contactName},` : "Hello,";
+
+  const text = [
+    greeting,
+    "",
+    `Our finance team is currently validating the trade and bank references on your Plastipac USA commercial credit application for ${payload.companyName}.`,
+    "",
+    "Status: Verifying references",
+    "No action is required from you right now. We will email you if we need additional information.",
+    "",
+    `Track progress anytime: ${dashboardUrl}`,
+    "",
+    `Questions? Email ${SUPPORT_EMAIL}.`,
+    "",
+    "Plastipac USA Credit Desk",
+  ].join("\n");
+
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;background:#f8fafc;padding:24px">
+      <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden">
+        <div style="background:#0f172a;color:#ffffff;padding:20px 24px">
+          <p style="margin:0 0 4px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.75">Plastipac USA · Credit Desk</p>
+          <h1 style="margin:0;font-size:20px;line-height:1.3">References Under Review</h1>
+        </div>
+        <div style="padding:24px;color:#0f172a;font-size:14px;line-height:1.6">
+          <p style="margin:0 0 12px">${escapeEmailHtml(greeting)}</p>
+          <p style="margin:0 0 12px">Our finance team is validating trade and bank references for <strong>${escapeEmailHtml(payload.companyName)}</strong>.</p>
+          <p style="margin:0 0 16px">No action is required right now. We will contact you if we need additional information.</p>
+          <p style="margin:0">
+            <a href="${escapeEmailHtml(dashboardUrl)}" style="display:inline-block;background:#0284c7;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:10px">
+              View credit status
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>`;
+
+  return sendEmail({
+    to: email,
+    subject: `Your Plastipac USA credit references are being verified — ${payload.companyName}`,
+    text,
+    html,
+    from: SUPPORT_FROM,
+  });
+}
+
+/** Applicant notice when finance needs more information. */
+export async function notifyApplicantActionRequired(payload: {
+  workEmail?: string;
+  contactName?: string;
+  companyName: string;
+  adminNotes?: string;
+}): Promise<SendEmailResult> {
+  const email = String(payload.workEmail || "").trim().toLowerCase();
+  if (!email) {
+    return { success: false, skipped: true, error: "No applicant email." };
+  }
+
+  const base = getAppBaseUrl();
+  const dashboardUrl = `${base}/dashboard/credit`;
+  const greeting = payload.contactName ? `Hello ${payload.contactName},` : "Hello,";
+  const notes = String(payload.adminNotes || "").trim();
+
+  const text = [
+    greeting,
+    "",
+    `We need additional information to continue reviewing your Plastipac USA commercial credit application for ${payload.companyName}.`,
+    notes ? `\nNotes from our credit desk:\n${notes}\n` : "",
+    "",
+    `Please reply to this email or contact ${SUPPORT_EMAIL}.`,
+    `Track status: ${dashboardUrl}`,
+    "",
+    "Plastipac USA Credit Desk",
+  ]
+    .filter((line) => line !== "")
+    .join("\n");
+
+  return sendEmail({
+    to: email,
+    subject: `Action required — Plastipac USA credit application (${payload.companyName})`,
+    text,
+    from: SUPPORT_FROM,
+  });
+}
+
 /**
  * Notify internal desks + applicant when credit application is approved/denied.
  */

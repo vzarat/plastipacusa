@@ -24,7 +24,13 @@ export interface UserProfile {
   isTaxExempt?: boolean | null;
   taxExemptionNumber?: string;
   taxCertificateUrl?: string | null;
-  creditApplicationStatus?: "pending" | "approved" | "rejected" | null;
+  creditApplicationStatus?:
+    | "pending"
+    | "verifying_references"
+    | "action_required"
+    | "approved"
+    | "rejected"
+    | null;
   creditLimit?: number;
   creditTerms?: string;
   /** Payment terms label (e.g. Net 30) — mirrors payment_terms column */
@@ -546,8 +552,15 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
     const creditApplicationStatus =
       creditApplicationStatusRaw === "approved" ||
       creditApplicationStatusRaw === "rejected" ||
-      creditApplicationStatusRaw === "pending"
-        ? (creditApplicationStatusRaw as "pending" | "approved" | "rejected")
+      creditApplicationStatusRaw === "pending" ||
+      creditApplicationStatusRaw === "verifying_references" ||
+      creditApplicationStatusRaw === "action_required"
+        ? (creditApplicationStatusRaw as
+            | "pending"
+            | "verifying_references"
+            | "action_required"
+            | "approved"
+            | "rejected")
         : null;
     const creditLimit = Number(profileData?.credit_limit || 0);
     const creditTerms = String(profileData?.credit_terms || "Registered");

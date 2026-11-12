@@ -57,6 +57,26 @@ function statusPresentation(
       icon: "text-emerald-700",
     };
   }
+  if (status === "verifying_references") {
+    return {
+      label: isSpanish ? "Verificando referencias" : "Verifying References",
+      Icon: Building2,
+      shell:
+        "border-amber-300 bg-gradient-to-br from-amber-50 via-amber-50/80 to-white text-amber-950",
+      badge: "bg-amber-600 text-white",
+      icon: "text-amber-700",
+    };
+  }
+  if (status === "action_required") {
+    return {
+      label: isSpanish ? "Acción requerida" : "Action Required",
+      Icon: XCircle,
+      shell:
+        "border-orange-300 bg-gradient-to-br from-orange-50 via-orange-50/80 to-white text-orange-950",
+      badge: "bg-orange-600 text-white",
+      icon: "text-orange-700",
+    };
+  }
   if (status === "pending") {
     return {
       label: isSpanish ? "En revisión" : "Under Review",
@@ -571,13 +591,17 @@ export function DashboardCreditClient({
               </div>
             </form>
           </section>
-        ) : creditStatus.status === "pending" ? (
+        ) : creditStatus.status === "pending" ||
+          creditStatus.status === "verifying_references" ||
+          creditStatus.status === "action_required" ? (
           <section className="w-full rounded-3xl border border-sky-100 bg-sky-50/60 p-5 text-sm text-sky-950 shadow-sm">
             <p className="font-semibold">What happens next</p>
             <p className="mt-1 text-xs leading-relaxed text-sky-900/80">
-              A credit specialist typically responds within 24–48 business hours. You will also
-              receive email updates at your work address — refresh this page anytime to see
-              progress on the timeline above.
+              {creditStatus.status === "action_required"
+                ? "Our credit desk needs additional information. Check your work email and reply so we can continue the review."
+                : creditStatus.status === "verifying_references"
+                  ? "Finance is validating your trade and bank references. No action is required unless we email you."
+                  : "A credit specialist typically responds within 24–48 business hours. You will also receive email updates at your work address — refresh this page anytime to see progress on the timeline above."}
             </p>
           </section>
         ) : null}

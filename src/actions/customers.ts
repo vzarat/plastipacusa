@@ -8,7 +8,12 @@ import {
 } from "@/lib/supabase/admin";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
-export type CreditApplicationStatus = "pending" | "approved" | "rejected";
+export type CreditApplicationStatus =
+  | "pending"
+  | "verifying_references"
+  | "action_required"
+  | "approved"
+  | "rejected";
 
 export interface CustomerDossier {
   id: string;
@@ -49,7 +54,15 @@ async function requireAdmin() {
 
 function normalizeCreditStatus(value: unknown): CreditApplicationStatus {
   const raw = String(value || "pending").toLowerCase();
-  if (raw === "approved" || raw === "rejected") return raw;
+  if (
+    raw === "approved" ||
+    raw === "rejected" ||
+    raw === "verifying_references" ||
+    raw === "action_required" ||
+    raw === "pending"
+  ) {
+    return raw;
+  }
   return "pending";
 }
 
