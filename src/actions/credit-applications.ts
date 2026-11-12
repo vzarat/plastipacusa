@@ -9,7 +9,11 @@ import {
 } from "@/lib/supabase/admin";
 import { notifyAdminCreditApplication, notifyCreditApplicationStatusChange } from "@/lib/email";
 import { PRIMARY_PHONE_DISPLAY } from "@/lib/company-contact";
-import { validateCreditApplicationIdentityFields } from "@/lib/credit-application-validation";
+import {
+  inferCreditApplicationErrorField,
+  validateCreditApplicationIdentityFields,
+  type CreditApplicationErrorField,
+} from "@/lib/credit-application-validation";
 import { requireTurnstileToken } from "@/lib/turnstile";
 import { formatUsAddress } from "@/lib/us-states";
 
@@ -89,6 +93,8 @@ export interface CreditApplicationResult {
   success: boolean;
   message?: string;
   error?: string;
+  /** Which form control failed, when known. */
+  field?: CreditApplicationErrorField;
 }
 
 export interface AdminCreditApplication {
@@ -268,7 +274,7 @@ export async function submitCommercialCreditApplication(
 ): Promise<CreditApplicationResult> {
   const turnstileError = await requireTurnstileToken(input.turnstileToken);
   if (turnstileError) {
-    return { success: false, error: turnstileError };
+    return { success: false, error: turnstileError, field: "turnstile" };
   }
 
   const legalBusinessName = str(input.legalBusinessName);
@@ -292,11 +298,21 @@ export async function submitCommercialCreditApplication(
   const businessType = str(input.businessType);
   const refs = input.references || [];
 
-  if (!legalBusinessName || !taxIdEin || !email || !phone) {
+  if (!legalBusinessName) {
     return {
       success: false,
-      error: "Please complete legal business name, Tax ID / EIN, phone, and email.",
+      field: "legalBusinessName",
+      error: "Please enter the legal business name.",
     };
+  }
+  if (!taxIdEin) {
+    return { success: false, field: "taxIdEin", error: "Please enter your Tax ID / EIN." };
+  }
+  if (!email) {
+    return { success: false, field: "email", error: "Please enter a corporate email address." };
+  }
+  if (!phone) {
+    return { success: false, field: "phone", error: "Please enter a phone number." };
   }
 
   const identity = validateCreditApplicationIdentityFields({
@@ -306,36 +322,94 @@ export async function submitCommercialCreditApplication(
     website: str(input.website),
   });
   if (!identity.ok) {
-    return { success: false, error: identity.error };
+    return {
+      success: false,
+      error: identity.error,
+      field: identity.field || inferCreditApplicationErrorField(identity.error),
+    };
   }
   const normalizedTaxIdEin = identity.normalizedEin || taxIdEin;
 
-  if (!businessStreet || !businessCity || !businessState || !businessZip) {
-    return { success: false, error: "Please complete the full business address." };
+  if (!businessStreet) {
+    return { success: false, field: "businessStreet", error: "Please enter the business street address." };
+  }
+  if (!businessCity) {
+    return { success: false, field: "businessCity", error: "Please enter the business city." };
+  }
+  if (!businessState) {
+    return { success: false, field: "businessState", error: "Please select the business state." };
+  }
+  if (!businessZip) {
+    return { success: false, field: "businessZip", error: "Please enter the business ZIP code." };
   }
   if (!businessType) {
-    return { success: false, error: "Please select a business type." };
+    return { success: false, field: "businessType", error: "Please select a business type." };
   }
-  if (!apContactName || !apPhone || !apEmail) {
-    return { success: false, error: "Please complete Accounts Payable contact details." };
+  if (!apContactName) {
+    return {
+      success: false,
+      field: "apContactName",
+      error: "Please enter the Accounts Payable contact name.",
+    };
+  }
+  if (!apPhone) {
+    return {
+      success: false,
+      field: "apPhone",
+      error: "Please enter the Accounts Payable phone number.",
+    };
+  }
+  if (!apEmail) {
+    return {
+      success: false,
+      field: "apEmail",
+      error: "Please enter the Accounts Payable email address.",
+    };
   }
   if (!Number.isFinite(creditLimitRequested) || creditLimitRequested <= 0) {
-    return { success: false, error: "Please enter a valid credit limit requested (USD)." };
+    return {
+      success: false,
+      field: "creditLimitRequested",
+      error: "Please enter a valid credit limit requested (USD).",
+    };
   }
   for (let i = 0; i < 3; i += 1) {
     const ref = refs[i];
-    if (!ref || !str(ref.companyName) || !str(ref.contactPerson) || !str(ref.phone)) {
+    const n = (i + 1) as 1 | 2 | 3;
+    if (!ref || !str(ref.companyName)) {
       return {
         success: false,
-        error: `Please complete Commercial Reference #${i + 1} (company, contact, and phone).`,
+        field: `ref${n}CompanyName` as CreditApplicationErrorField,
+        error: `Please enter company name for Commercial Reference #${n}.`,
+      };
+    }
+    if (!str(ref.contactPerson)) {
+      return {
+        success: false,
+        field: `ref${n}ContactPerson` as CreditApplicationErrorField,
+        error: `Please enter contact person for Commercial Reference #${n}.`,
+      };
+    }
+    if (!str(ref.phone)) {
+      return {
+        success: false,
+        field: `ref${n}Phone` as CreditApplicationErrorField,
+        error: `Please enter phone for Commercial Reference #${n}.`,
       };
     }
   }
-  if (!authorizedRepresentativeName || !title || !eSignature) {
+  if (!authorizedRepresentativeName) {
     return {
       success: false,
-      error: "Please complete authorized representative name, title, and e-signature.",
+      field: "authorizedRepresentativeName",
+      error: "Please enter the authorized representative name.",
     };
+  }
+  if (!title) {
+    return { success: false, field: "title", error: "Please enter the representative title." };
+  }
+  if (!eSignature) {
+    return { success: false, field: "eSignature", error: "Please type your full legal name as e-signature." };
   }
 
   if (!isSupabaseConfigured) {
@@ -351,8 +425,17 @@ export async function submitCommercialCreditApplication(
   const billingState = billingSame ? businessState : str(input.billingState);
   const billingZip = billingSame ? businessZip : str(input.billingZip);
 
-  if (!billingSame && (!billingStreet || !billingCity || !billingState || !billingZip)) {
-    return { success: false, error: "Please complete the full billing address." };
+  if (!billingSame && !billingStreet) {
+    return { success: false, field: "billingStreet", error: "Please enter the billing street address." };
+  }
+  if (!billingSame && !billingCity) {
+    return { success: false, field: "billingCity", error: "Please enter the billing city." };
+  }
+  if (!billingSame && !billingState) {
+    return { success: false, field: "billingState", error: "Please select the billing state." };
+  }
+  if (!billingSame && !billingZip) {
+    return { success: false, field: "billingZip", error: "Please enter the billing ZIP code." };
   }
 
   const businessAddress = formatUsAddress({

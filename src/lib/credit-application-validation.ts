@@ -170,6 +170,75 @@ export function emailMatchesWebsiteDomain(
   };
 }
 
+export type CreditApplicationErrorField =
+  | "email"
+  | "apEmail"
+  | "taxIdEin"
+  | "website"
+  | "creditLimitRequested"
+  | "legalBusinessName"
+  | "phone"
+  | "businessStreet"
+  | "businessCity"
+  | "businessState"
+  | "businessZip"
+  | "billingStreet"
+  | "billingCity"
+  | "billingState"
+  | "billingZip"
+  | "businessType"
+  | "apContactName"
+  | "apPhone"
+  | "authorizedRepresentativeName"
+  | "title"
+  | "eSignature"
+  | "ref1CompanyName"
+  | "ref1ContactPerson"
+  | "ref1Phone"
+  | "ref2CompanyName"
+  | "ref2ContactPerson"
+  | "ref2Phone"
+  | "ref3CompanyName"
+  | "ref3ContactPerson"
+  | "ref3Phone"
+  | "turnstile"
+  | "form";
+
+export const CREDIT_APPLICATION_FIELD_LABELS: Record<CreditApplicationErrorField, string> = {
+  email: "Email Address",
+  apEmail: "Accounts Payable Email",
+  taxIdEin: "Tax ID / EIN",
+  website: "Website",
+  creditLimitRequested: "Credit Limit Requested",
+  legalBusinessName: "Legal Business Name",
+  phone: "Phone Number",
+  businessStreet: "Business Street",
+  businessCity: "Business City",
+  businessState: "Business State",
+  businessZip: "Business ZIP",
+  billingStreet: "Billing Street",
+  billingCity: "Billing City",
+  billingState: "Billing State",
+  billingZip: "Billing ZIP",
+  businessType: "Business Type",
+  apContactName: "Accounts Payable Name",
+  apPhone: "Accounts Payable Phone",
+  authorizedRepresentativeName: "Authorized Representative Name",
+  title: "Title",
+  eSignature: "E-Signature",
+  ref1CompanyName: "Commercial Reference #1 — Company",
+  ref1ContactPerson: "Commercial Reference #1 — Contact",
+  ref1Phone: "Commercial Reference #1 — Phone",
+  ref2CompanyName: "Commercial Reference #2 — Company",
+  ref2ContactPerson: "Commercial Reference #2 — Contact",
+  ref2Phone: "Commercial Reference #2 — Phone",
+  ref3CompanyName: "Commercial Reference #3 — Company",
+  ref3ContactPerson: "Commercial Reference #3 — Contact",
+  ref3Phone: "Commercial Reference #3 — Phone",
+  turnstile: "Bot check",
+  form: "Form",
+};
+
 export interface CreditApplicationFieldValidationInput {
   email: string;
   apEmail: string;
@@ -180,6 +249,7 @@ export interface CreditApplicationFieldValidationInput {
 export interface CreditApplicationFieldValidationResult {
   ok: boolean;
   error?: string;
+  field?: CreditApplicationErrorField;
   normalizedEin?: string;
 }
 
@@ -189,13 +259,14 @@ export function validateCreditApplicationIdentityFields(
 ): CreditApplicationFieldValidationResult {
   const emailCheck = isValidCorporateEmail(input.email);
   if (!emailCheck.ok) {
-    return { ok: false, error: emailCheck.error };
+    return { ok: false, field: "email", error: emailCheck.error };
   }
 
   const apCheck = isValidCorporateEmail(input.apEmail);
   if (!apCheck.ok) {
     return {
       ok: false,
+      field: "apEmail",
       error: apCheck.error?.includes("webmail")
         ? "Accounts Payable email must be a company address (not Gmail, Yahoo, Outlook, etc.)."
         : `Accounts Payable email: ${apCheck.error}`,
@@ -204,16 +275,66 @@ export function validateCreditApplicationIdentityFields(
 
   const einCheck = isValidUsEin(input.taxIdEin);
   if (!einCheck.ok) {
-    return { ok: false, error: einCheck.error };
+    return { ok: false, field: "taxIdEin", error: einCheck.error };
   }
 
   const website = String(input.website || "").trim();
   if (website) {
     const match = emailMatchesWebsiteDomain(input.email, website);
     if (!match.ok) {
-      return { ok: false, error: match.error };
+      return { ok: false, field: "website", error: match.error };
     }
   }
 
   return { ok: true, normalizedEin: einCheck.normalized };
+}
+
+/** Map server/client error text to the related input when possible. */
+export function inferCreditApplicationErrorField(
+  message: string | null | undefined
+): CreditApplicationErrorField {
+  const text = String(message || "").toLowerCase();
+  if (!text) return "form";
+  if (text.includes("bot check") || text.includes("turnstile")) return "turnstile";
+  if (text.includes("tax id") || text.includes("ein")) return "taxIdEin";
+  if (text.includes("accounts payable email") || text.includes("ap email")) return "apEmail";
+  if (text.includes("website")) return "website";
+  if (text.includes("corporate email") || text.includes("email address") || text.includes("webmail")) {
+    return "email";
+  }
+  if (text.includes("credit limit")) return "creditLimitRequested";
+  if (text.includes("legal business") || text.includes("business name")) return "legalBusinessName";
+  if (text.includes("billing")) {
+    if (text.includes("street") || text.includes("address")) return "billingStreet";
+    return "billingStreet";
+  }
+  if (text.includes("business address") || text.includes("full business")) return "businessStreet";
+  if (text.includes("business type")) return "businessType";
+  if (text.includes("accounts payable")) {
+    if (text.includes("phone")) return "apPhone";
+    if (text.includes("name") || text.includes("contact")) return "apContactName";
+    return "apContactName";
+  }
+  if (text.includes("phone")) return "phone";
+  if (text.includes("authorized") || text.includes("e-signature") || text.includes("signature")) {
+    if (text.includes("title")) return "title";
+    if (text.includes("signature")) return "eSignature";
+    return "authorizedRepresentativeName";
+  }
+  if (text.includes("reference #1") || text.includes("reference 1")) {
+    if (text.includes("phone")) return "ref1Phone";
+    if (text.includes("contact")) return "ref1ContactPerson";
+    return "ref1CompanyName";
+  }
+  if (text.includes("reference #2") || text.includes("reference 2")) {
+    if (text.includes("phone")) return "ref2Phone";
+    if (text.includes("contact")) return "ref2ContactPerson";
+    return "ref2CompanyName";
+  }
+  if (text.includes("reference #3") || text.includes("reference 3")) {
+    if (text.includes("phone")) return "ref3Phone";
+    if (text.includes("contact")) return "ref3ContactPerson";
+    return "ref3CompanyName";
+  }
+  return "form";
 }
