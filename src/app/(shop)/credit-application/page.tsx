@@ -1,5 +1,7 @@
 import React from "react";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/actions/auth";
 import { CreditApplicationContent } from "@/components/credit/CreditApplicationContent";
 
 export const metadata: Metadata = {
@@ -8,6 +10,11 @@ export const metadata: Metadata = {
     "Apply for Plastipac USA B2B credit with Net 30 commercial terms, PO checkout, and dedicated lines of credit for verified corporate accounts.",
 };
 
-export default function CreditApplicationPage() {
-  return <CreditApplicationContent />;
+export default async function CreditApplicationPage() {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    redirect("/login?redirect=/credit-application");
+  }
+
+  return <CreditApplicationContent profile={currentUser.profile} />;
 }

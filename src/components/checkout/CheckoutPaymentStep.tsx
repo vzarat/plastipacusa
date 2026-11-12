@@ -1,8 +1,13 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { MapPin, Truck } from "lucide-react";
+import { Building2, CreditCard, MapPin, Truck } from "lucide-react";
 import { toast } from "sonner";
+import {
+  CommercialCreditCheckout,
+  type CommercialCreditAccount,
+} from "@/components/checkout/CommercialCreditCheckout";
 import { StripeEmbeddedCheckout } from "@/components/checkout/StripeEmbeddedCheckout";
 import { Button } from "@/components/ui/button";
 import { useCheckoutState } from "@/components/checkout/CheckoutStateContext";
@@ -25,6 +30,8 @@ interface CheckoutPaymentStepProps {
   onCheckoutEmailChange: (email: string) => void;
   shipping: CheckoutShippingAddress;
   shippingAmount: number;
+  orderTotal: number;
+  creditAccount?: CommercialCreditAccount | null;
   onBack: () => void;
   onEditAddress: () => void;
   onEditMethod: () => void;
@@ -38,6 +45,8 @@ export function CheckoutPaymentStep({
   onCheckoutEmailChange,
   shipping,
   shippingAmount,
+  orderTotal,
+  creditAccount = null,
   onBack,
   onEditAddress,
   onEditMethod,
@@ -45,6 +54,13 @@ export function CheckoutPaymentStep({
 }: CheckoutPaymentStepProps) {
   const items = useCartStore((state) => state.items);
   const { selectedAddress, deliveryMethod, selectedShippingOption } = useCheckoutState();
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "credit">("card");
+
+  const creditEnabled =
+    Boolean(creditAccount?.approved) &&
+    orderTotal > 0 &&
+    orderTotal <= Number(creditAccount?.availableCredit || 0);
+
   const boxCount = countCartBoxes(items);
   const cartRolls = items.reduce((total, item) => total + (Number(item.totalRolls) || 0), 0);
   const shippingLabel =
@@ -66,6 +82,17 @@ export function CheckoutPaymentStep({
     !fridayIso && selectedShippingOption
       ? estimatedShipmentWindow(selectedShippingOption.transitDays)
       : null;
+
+  const creditDisabledReason = useMemo(() => {
+    if (!creditAccount?.approved) {
+      return "Approved commercial credit required.";
+    }
+    if (orderTotal > Number(creditAccount.availableCredit || 0)) {
+      return "Order total exceeds available credit.";
+    }
+    return null;
+  }, [creditAccount, orderTotal]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -74,7 +101,7 @@ export function CheckoutPaymentStep({
         </p>
         <h2 className="mt-1 text-lg font-black text-slate-900">Payment</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Review the final total, then pay with the secure Stripe form.
+          Choose card payment or commercial credit terms (approved accounts only).
         </p>
       </div>
 
@@ -149,6 +176,79 @@ export function CheckoutPaymentStep({
         </div>
       </section>
 
+      <div
+        className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+        data-tour="checkout-payment-options"
+      >
+        <button
+          type="button"
+          onClick={() => setPaymentMethod("card")}
+          className={`rounded-2xl border p-4 text-left transition-colors ${
+            paymentMethod === "card"
+              ? "border-sky-300 bg-sky-50/80 ring-2 ring-sky-100"
+              : "border-slate-200 bg-white hover:border-slate-300"
+          }`}
+        >
+          <div className="flex items-center gap-2 text-sky-800">
+            <CreditCard className="h-4 w-4" />
+            <span className="text-xs font-bold uppercase tracking-wider">Credit Card</span>
+          </div>
+          <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
+            Pay instantly with Visa, Mastercard, Amex, or Discover via Stripe.
+          </p>
+        </button>
+
+        <button
+          type="button"
+          disabled={!creditEnabled}
+          onClick={() => {
+            if (!creditEnabled) {
+              toast.message(creditDisabledReason || "Commercial credit unavailable.");
+              return;
+            }
+            setPaymentMethod("credit");
+          }}
+          className={`rounded-2xl border p-4 text-left transition-colors ${
+            paymentMethod === "credit"
+              ? "border-sky-300 bg-sky-50/80 ring-2 ring-sky-100"
+              : creditEnabled
+                ? "border-slate-200 bg-white hover:border-slate-300"
+                : "cursor-not-allowed border-slate-100 bg-slate-50 opacity-70"
+          }`}
+        >
+          <div className="flex items-center gap-2 text-slate-800">
+            <Building2 className="h-4 w-4 text-sky-700" />
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Commercial Credit / Terms
+            </span>
+          </div>
+          <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
+            {creditAccount?.approved ? (
+              <>
+                Available {formatCurrency(creditAccount.availableCredit)} ·{" "}
+                {creditAccount.paymentTerms || "Net 30"}
+                {!creditEnabled && creditDisabledReason ? (
+                  <span className="mt-1 block font-semibold text-amber-800">
+                    {creditDisabledReason}
+                  </span>
+                ) : null}
+              </>
+            ) : (
+              <>
+                Approved B2B accounts only.{" "}
+                <Link
+                  href="/credit-application"
+                  className="font-semibold text-sky-700 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Apply for credit →
+                </Link>
+              </>
+            )}
+          </p>
+        </button>
+      </div>
+
       <label className="block space-y-1.5">
         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
           Email for receipt
@@ -193,18 +293,34 @@ export function CheckoutPaymentStep({
         </span>
       </label>
 
-      <StripeEmbeddedCheckout
-        customerEmail={checkoutEmail}
-        shipping={shipping}
-        shippingAmount={shippingAmount}
-        agreedToPolicies={agreedToPolicies}
-        onRequireAgreement={() => {
-          toast.error(
-            "Please agree to the Terms of Service and Refund Policy to continue."
-          );
-        }}
-        onServerTotal={onServerTotal}
-      />
+      {paymentMethod === "credit" && creditAccount?.approved ? (
+        <CommercialCreditCheckout
+          account={creditAccount}
+          customerEmail={checkoutEmail}
+          shipping={shipping}
+          agreedToPolicies={agreedToPolicies}
+          orderTotal={orderTotal}
+          onServerTotal={onServerTotal}
+          onRequireAgreement={() => {
+            toast.error(
+              "Please agree to the Terms of Service and Refund Policy to continue."
+            );
+          }}
+        />
+      ) : (
+        <StripeEmbeddedCheckout
+          customerEmail={checkoutEmail}
+          shipping={shipping}
+          shippingAmount={shippingAmount}
+          agreedToPolicies={agreedToPolicies}
+          onRequireAgreement={() => {
+            toast.error(
+              "Please agree to the Terms of Service and Refund Policy to continue."
+            );
+          }}
+          onServerTotal={onServerTotal}
+        />
+      )}
 
       <Button type="button" variant="outline" className="h-12 md:h-10" onClick={onBack}>
         Back to Shipping Method

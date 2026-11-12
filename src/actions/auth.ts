@@ -27,6 +27,10 @@ export interface UserProfile {
   creditApplicationStatus?: "pending" | "approved" | "rejected" | null;
   creditLimit?: number;
   creditTerms?: string;
+  /** Payment terms label (e.g. Net 30) — mirrors payment_terms column */
+  paymentTerms?: string;
+  /** Remaining commercial credit balance */
+  availableCredit?: number;
   /** True when tax_id or tax-exempt answer is missing — show compliance modal */
   needsTaxCompliance?: boolean;
 }
@@ -461,7 +465,7 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
       const { data: profile, error: profileErr } = await supabaseServer
         .from("profiles")
         .select(
-          "id, email, full_name, role, company_name, has_password, password_setup_skipped, phone, avatar_url, tax_id, is_tax_exempt, tax_exemption_number, tax_certificate_url, credit_application_status, credit_limit, credit_terms"
+          "id, email, full_name, role, company_name, has_password, password_setup_skipped, phone, avatar_url, tax_id, is_tax_exempt, tax_exemption_number, tax_certificate_url, credit_application_status, credit_limit, credit_terms, payment_terms, available_credit"
         )
         .eq("id", user.id)
         .single();
@@ -469,15 +473,26 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
       if (!profileErr && profile) {
         profileData = profile;
       } else if (profileErr) {
-        // Fallback if B2B tax columns are not migrated yet
-        const { data: basicProfile } = await supabaseServer
+        // Fallback if newer credit columns are not migrated yet
+        const { data: creditBasic } = await supabaseServer
           .from("profiles")
           .select(
-            "id, email, full_name, role, company_name, has_password, password_setup_skipped, phone, avatar_url"
+            "id, email, full_name, role, company_name, has_password, password_setup_skipped, phone, avatar_url, tax_id, is_tax_exempt, tax_exemption_number, tax_certificate_url, credit_application_status, credit_limit, credit_terms"
           )
           .eq("id", user.id)
           .single();
-        if (basicProfile) profileData = basicProfile;
+        if (creditBasic) {
+          profileData = creditBasic;
+        } else {
+          const { data: basicProfile } = await supabaseServer
+            .from("profiles")
+            .select(
+              "id, email, full_name, role, company_name, has_password, password_setup_skipped, phone, avatar_url"
+            )
+            .eq("id", user.id)
+            .single();
+          if (basicProfile) profileData = basicProfile;
+        }
       }
     } catch {
       // Ignore if profiles table does not exist or fails
@@ -536,6 +551,16 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
         : null;
     const creditLimit = Number(profileData?.credit_limit || 0);
     const creditTerms = String(profileData?.credit_terms || "Registered");
+    const paymentTerms = String(
+      profileData?.payment_terms || profileData?.credit_terms || "Registered"
+    );
+    const availableCreditRaw = profileData?.available_credit;
+    const availableCredit =
+      availableCreditRaw == null || availableCreditRaw === ""
+        ? creditApplicationStatus === "approved"
+          ? creditLimit
+          : 0
+        : Math.max(0, Number(availableCreditRaw) || 0);
 
     const emailLower = user.email?.toLowerCase() || "";
     const hasPassword = Boolean(
@@ -586,6 +611,8 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
         creditApplicationStatus,
         creditLimit,
         creditTerms,
+        paymentTerms,
+        availableCredit,
         needsTaxCompliance,
       },
     };

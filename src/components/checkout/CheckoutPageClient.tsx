@@ -9,6 +9,7 @@ import { presentPackageLabel } from "@/lib/products";
 import { formatBoxPriceEquation, handCartQuote } from "@/lib/pricing";
 import { CheckoutCartStep } from "@/components/checkout/CheckoutCartStep";
 import { CheckoutPaymentStep } from "@/components/checkout/CheckoutPaymentStep";
+import type { CommercialCreditAccount } from "@/components/checkout/CommercialCreditCheckout";
 import { ShipmentOriginSummary } from "@/components/checkout/ShipmentOriginSummary";
 import { CheckoutAddressStep } from "@/components/checkout/CheckoutAddressStep";
 import { CheckoutShippingMethodStep } from "@/components/checkout/CheckoutShippingMethodStep";
@@ -45,15 +46,27 @@ import { checkoutLoginPath, readMetaCheckoutQuery, rememberMetaCheckoutQuery } f
 
 const EXPIRED_QUOTE = "This shipping quote expired. Review the updated price before paying.";
 
-export function CheckoutPageClient({ taxExempt = false }: { taxExempt?: boolean }) {
+export function CheckoutPageClient({
+  taxExempt = false,
+  creditAccount = null,
+}: {
+  taxExempt?: boolean;
+  creditAccount?: CommercialCreditAccount | null;
+}) {
   return (
     <CheckoutStateProvider>
-      <CheckoutPageInner taxExempt={taxExempt} />
+      <CheckoutPageInner taxExempt={taxExempt} creditAccount={creditAccount} />
     </CheckoutStateProvider>
   );
 }
 
-function CheckoutPageInner({ taxExempt }: { taxExempt: boolean }) {
+function CheckoutPageInner({
+  taxExempt,
+  creditAccount,
+}: {
+  taxExempt: boolean;
+  creditAccount: CommercialCreditAccount | null;
+}) {
   const router = useRouter();
   const [step, setStep] = useState<CheckoutStepId>(1);
   const [furthestStep, setFurthestStep] = useState<CheckoutStepId>(1);
@@ -447,6 +460,8 @@ function CheckoutPageInner({ taxExempt }: { taxExempt: boolean }) {
               onCheckoutEmailChange={setCheckoutEmail}
               shipping={shipping}
               shippingAmount={shippingEstimate}
+              orderTotal={total}
+              creditAccount={creditAccount}
               onBack={() => setStep(3)}
               onEditAddress={() => setStep(2)}
               onEditMethod={() => setStep(3)}

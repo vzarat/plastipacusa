@@ -21,6 +21,7 @@ import {
   isBrowserTurnstileEnabled,
   TurnstileField,
 } from "@/components/security/TurnstileField";
+import type { UserProfile } from "@/actions/auth";
 import { submitCommercialCreditApplication } from "@/actions/credit-applications";
 import {
   CREDIT_APPLICATION_FIELD_LABELS,
@@ -321,7 +322,48 @@ function ContactHelpLinks() {
   );
 }
 
-export function CreditApplicationForm() {
+function prefillFromProfile(profile: UserProfile) {
+  const company = String(profile.companyName || "").trim();
+  const fullName = String(profile.fullName || "").trim();
+  const email = String(profile.email || "").trim().toLowerCase();
+  const phone = String(profile.phone || "").trim();
+  const taxId = String(profile.taxId || "").trim();
+  return {
+    creditLimitRequested: "",
+    paymentTermsRequested: "Net 30",
+    legalBusinessName: company,
+    dbaName: "",
+    taxIdEin: taxId,
+    yearsInBusiness: "",
+    businessStreet: "",
+    businessCity: "",
+    businessState: "",
+    businessZip: "",
+    billingSameAsBusiness: true,
+    billingStreet: "",
+    billingCity: "",
+    billingState: "",
+    billingZip: "",
+    phone,
+    email,
+    website: "",
+    businessType: "Corporation",
+    apContactName: fullName,
+    apPhone: phone,
+    apEmail: email,
+    purchasingContactName: "",
+    purchasingPhone: "",
+    purchasingEmail: "",
+    bankName: "",
+    bankContactPerson: "",
+    bankPhone: "",
+    authorizedRepresentativeName: fullName,
+    title: "",
+    eSignature: fullName,
+  };
+}
+
+export function CreditApplicationForm({ profile }: { profile: UserProfile }) {
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const turnstileRequired = isBrowserTurnstileEnabled();
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -333,39 +375,7 @@ export function CreditApplicationForm() {
   const errorBannerRef = useRef<HTMLParagraphElement | null>(null);
   const verifyTimersRef = useRef<Partial<Record<VerifyField, number>>>({});
 
-  const [form, setForm] = useState({
-    creditLimitRequested: "",
-    paymentTermsRequested: "Net 30",
-    legalBusinessName: "",
-    dbaName: "",
-    taxIdEin: "",
-    yearsInBusiness: "",
-    businessStreet: "",
-    businessCity: "",
-    businessState: "",
-    businessZip: "",
-    billingSameAsBusiness: true,
-    billingStreet: "",
-    billingCity: "",
-    billingState: "",
-    billingZip: "",
-    phone: "",
-    email: "",
-    website: "",
-    businessType: "Corporation",
-    apContactName: "",
-    apPhone: "",
-    apEmail: "",
-    purchasingContactName: "",
-    purchasingPhone: "",
-    purchasingEmail: "",
-    bankName: "",
-    bankContactPerson: "",
-    bankPhone: "",
-    authorizedRepresentativeName: "",
-    title: "",
-    eSignature: "",
-  });
+  const [form, setForm] = useState(() => prefillFromProfile(profile));
   const [refs, setRefs] = useState<[RefState, RefState, RefState]>([
     emptyRef(),
     emptyRef(),
@@ -529,19 +539,19 @@ export function CreditApplicationForm() {
             Form sent successfully
           </h2>
           <p className="mx-auto max-w-lg text-[13px] leading-relaxed text-slate-600 sm:text-sm">
-            Your commercial credit application was submitted. Our team will review it and follow up with eligibility details.
+            Your commercial credit application was submitted. A confirmation was sent to your work email. Our team will review it and follow up with eligibility details.
           </p>
           <p className="mx-auto max-w-lg text-[13px] leading-relaxed text-slate-600 sm:text-sm">
-            If you have any questions, contact us by phone, WhatsApp, or email to support.
+            Track pending, approved, or rejected status anytime in your credit dashboard.
           </p>
         </div>
         <ContactHelpLinks />
         <div className="flex w-full flex-col gap-2.5 sm:flex-row sm:justify-center">
           <Button asChild variant="gradient" className="min-h-12 w-full touch-manipulation rounded-xl font-bold sm:w-auto">
-            <Link href="/products">Browse Catalog</Link>
+            <Link href="/dashboard/credit">View Credit Status</Link>
           </Button>
           <Button asChild variant="outline" className="min-h-12 w-full touch-manipulation rounded-xl font-bold sm:w-auto">
-            <Link href="/">Back to Home</Link>
+            <Link href="/products">Browse Catalog</Link>
           </Button>
         </div>
       </div>

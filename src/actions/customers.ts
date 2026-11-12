@@ -186,7 +186,25 @@ export async function updateAdminCustomerDossier(
       patch.credit_limit = Math.max(0, Number(input.creditLimit) || 0);
     }
     if (input.creditTerms !== undefined) {
-      patch.credit_terms = String(input.creditTerms).trim() || "Registered";
+      const terms = String(input.creditTerms).trim() || "Registered";
+      patch.credit_terms = terms;
+      patch.payment_terms = terms;
+    }
+    if (
+      patch.credit_application_status === "approved" &&
+      patch.credit_limit !== undefined
+    ) {
+      patch.available_credit = patch.credit_limit;
+      if (!patch.payment_terms) {
+        patch.payment_terms = patch.credit_terms || "Net 30";
+      }
+      if (!patch.credit_terms) {
+        patch.credit_terms = "Net 30";
+        patch.payment_terms = "Net 30";
+      }
+    }
+    if (patch.credit_application_status === "rejected") {
+      patch.available_credit = 0;
     }
 
     if (Object.keys(patch).length === 0) {
@@ -211,6 +229,8 @@ export async function updateAdminCustomerDossier(
       credit_application_status: patch.credit_application_status,
       credit_limit: patch.credit_limit,
       credit_terms: patch.credit_terms,
+      payment_terms: patch.payment_terms,
+      available_credit: patch.available_credit,
     });
 
     revalidatePath(`/admin/customers/${customerId}`);

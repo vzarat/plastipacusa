@@ -52,12 +52,20 @@ async function getDashboardOrders(
                   ? "shipped"
                   : "pending";
 
+        const paymentStatusRaw = String(row.payment_status || "").toLowerCase();
+        const paymentMethodRaw = String(row.payment_method || "").toLowerCase();
+        const isUnpaidCredit =
+          paymentMethodRaw === "commercial_credit" ||
+          paymentStatusRaw === "unpaid" ||
+          paymentStatusRaw.includes("unpaid");
         const paymentStatus: DashboardOrder["paymentStatus"] =
           hasFailureDetails
             ? "failed"
             : isPaidCleared
               ? "paid"
-              : "pending";
+              : isUnpaidCredit || rawStatus === "pending"
+                ? "pending"
+                : "pending";
 
         return {
           id: row.id || row.po_number || `PO-USA-${row.id}`,
@@ -116,6 +124,64 @@ export default async function DashboardPage({
 
   const userOrders = await getDashboardOrders(currentUser);
 
+  let creditFinancialSummary: {
+    creditLimit: number;
+    availableCredit: number;
+    pendingInvoiceCount: number;
+    pendingInvoiceTotal: number;
+    paymentTerms: string;
+  } | null = null;
+
+  if (currentUser.profile.creditApplicationStatus === "approved") {
+    const creditLimit = Math.max(0, Number(currentUser.profile.creditLimit || 0));
+    const availableCredit = Math.max(
+      0,
+      Number(
+        currentUser.profile.availableCredit ??
+          currentUser.profile.creditLimit ??
+          0
+      )
+    );
+    let pendingInvoiceCount = 0;
+    let pendingInvoiceTotal = 0;
+    try {
+      const supabase = await createServerClient();
+      const { data: invoices, error } = await supabase
+        .from("b2b_invoices")
+        .select("amount, status")
+        .eq("user_id", currentUser.user.id)
+        .in("status", ["unpaid", "partial", "overdue"]);
+      if (!error && invoices) {
+        pendingInvoiceCount = invoices.length;
+        pendingInvoiceTotal = invoices.reduce(
+          (sum, row) => sum + Number(row.amount || 0),
+          0
+        );
+      } else {
+        const unpaidOrders = userOrders.filter(
+          (order) => order.paymentStatus === "pending"
+        );
+        pendingInvoiceCount = unpaidOrders.length;
+        pendingInvoiceTotal = unpaidOrders.reduce(
+          (sum, order) => sum + Number(order.totalUsd || 0),
+          0
+        );
+      }
+    } catch {
+      // non-fatal
+    }
+    creditFinancialSummary = {
+      creditLimit,
+      availableCredit,
+      pendingInvoiceCount,
+      pendingInvoiceTotal,
+      paymentTerms:
+        currentUser.profile.paymentTerms ||
+        currentUser.profile.creditTerms ||
+        "Net 30",
+    };
+  }
+
   const tabParam = params?.tab;
   const initialTab =
     tabParam === "invoices" ||
@@ -133,6 +199,7 @@ export default async function DashboardPage({
           profile={currentUser.profile}
           orders={userOrders}
           initialTab={initialTab}
+          creditFinancialSummary={creditFinancialSummary}
         />
       </Suspense>
       <SetPasswordModal isOpen={shouldSetupPassword} />

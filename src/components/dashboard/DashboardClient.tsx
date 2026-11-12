@@ -47,6 +47,10 @@ import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { DashboardMobileChrome } from "@/components/dashboard/DashboardMobileChrome";
 import { AvatarUpload } from "@/components/dashboard/AvatarUpload";
 import { DashboardGreeting } from "@/components/dashboard/DashboardGreeting";
+import {
+  CreditFinancialSummaryCard,
+  type CreditFinancialSummary,
+} from "@/components/dashboard/CreditFinancialSummaryCard";
 import dynamic from "next/dynamic";
 import { TaxComplianceModal, formatEinInput, isValidUsEin } from "@/components/dashboard/TaxComplianceModal";
 import { upsertMyB2BProfile, uploadTaxExemptionCertificate } from "@/actions/customers";
@@ -117,11 +121,17 @@ interface DashboardClientProps {
   profile: UserProfile;
   orders: DashboardOrder[];
   initialTab?: TabKey;
+  creditFinancialSummary?: CreditFinancialSummary | null;
 }
 
 type TabKey = "overview" | "reorders" | "invoices" | "settings" | "help";
 
-export function DashboardClient({ profile, orders, initialTab }: DashboardClientProps) {
+export function DashboardClient({
+  profile,
+  orders,
+  initialTab,
+  creditFinancialSummary = null,
+}: DashboardClientProps) {
   const { t, locale } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -872,6 +882,10 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                     companyName={profile.companyName}
                   />
 
+                  {creditFinancialSummary ? (
+                    <CreditFinancialSummaryCard summary={creditFinancialSummary} />
+                  ) : null}
+
                   {/* KPI Stats Row — denser on wide monitors */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-5 xl:gap-6">
                     {/* Total Orders */}
@@ -1173,10 +1187,22 @@ export function DashboardClient({ profile, orders, initialTab }: DashboardClient
                           {formatCurrency(order.totalUsd)}
                         </td>
                         <td className="py-4 px-4 xl:px-6">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold text-[11px]">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            {t("dashboard.paidCleared")}
-                          </span>
+                          {order.paymentStatus === "pending" ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-900">
+                              <Clock className="h-3.5 w-3.5 text-amber-600" />
+                              Unpaid
+                            </span>
+                          ) : order.paymentStatus === "failed" ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-800">
+                              <AlertCircle className="h-3.5 w-3.5 text-rose-600" />
+                              Failed
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
+                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                              {t("dashboard.paidCleared")}
+                            </span>
+                          )}
                         </td>
                         <td className="py-4 px-4 sm:px-6 text-right">
                           <button

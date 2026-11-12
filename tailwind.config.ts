@@ -101,11 +101,16 @@ const config: Config = {
           from: { transform: "translateX(0)" },
           to: { transform: "translateX(-100%)" },
         },
+        creditShimmer: {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(300%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         marquee: "marquee 35s linear infinite",
+        creditShimmer: "creditShimmer 1.8s linear infinite",
       },
     },
   },

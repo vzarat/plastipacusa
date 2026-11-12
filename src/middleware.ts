@@ -55,7 +55,9 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/admin") ||
     pathname === "/checkout" ||
-    pathname.startsWith("/checkout/");
+    pathname.startsWith("/checkout/") ||
+    pathname === "/credit-application" ||
+    pathname.startsWith("/credit-application/");
 
   if (pathname === "/checkout" && request.nextUrl.searchParams.has("products")) {
     const next = new URL("/meta-checkout", request.url);
@@ -89,6 +91,8 @@ export const config = {
     "/admin/:path*",
     "/checkout",
     "/checkout/:path*",
+    "/credit-application",
+    "/credit-application/:path*",
   ],
 };
 

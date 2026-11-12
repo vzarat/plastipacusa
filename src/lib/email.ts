@@ -380,6 +380,83 @@ export interface CreditStatusChangeNotifyInput {
 /**
  * Notify internal desks + applicant when credit application is approved/denied.
  */
+/**
+ * Confirmation receipt to the applicant after a successful credit_applications insert.
+ */
+export async function notifyApplicantCreditApplicationReceived(payload: {
+  workEmail: string;
+  contactName?: string;
+  companyName: string;
+  requestedCreditLimit?: string | number;
+  paymentTermsRequested?: string;
+  applicationId?: string | null;
+}): Promise<SendEmailResult> {
+  const email = String(payload.workEmail || "").trim().toLowerCase();
+  if (!email) {
+    return { success: false, skipped: true, error: "No applicant email." };
+  }
+
+  const base = getAppBaseUrl();
+  const limitDisplay = formatCreditLimitDisplay(payload.requestedCreditLimit);
+  const dashboardUrl = `${base}/dashboard/credit`;
+  const greeting = payload.contactName ? `Hello ${payload.contactName},` : "Hello,";
+
+  const text = [
+    greeting,
+    "",
+    `We received your Plastipac USA commercial credit application for ${payload.companyName}.`,
+    "",
+    `Requested credit limit: ${limitDisplay}`,
+    `Payment terms requested: ${payload.paymentTermsRequested || "Net 30"}`,
+    payload.applicationId ? `Application reference: ${payload.applicationId}` : null,
+    "",
+    "Status: Pending review",
+    "Our credit desk typically responds within 24–48 business hours.",
+    "",
+    `Track your application status here: ${dashboardUrl}`,
+    "",
+    `Questions? Email ${SUPPORT_EMAIL} or call our sales desk.`,
+    "",
+    "Plastipac USA Credit Desk",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;background:#f8fafc;padding:24px">
+      <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden">
+        <div style="background:#0f172a;color:#ffffff;padding:20px 24px">
+          <p style="margin:0 0 4px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.75">Plastipac USA · Credit Desk</p>
+          <h1 style="margin:0;font-size:20px;line-height:1.3">Credit Application Received</h1>
+        </div>
+        <div style="padding:24px;color:#0f172a;font-size:14px;line-height:1.6">
+          <p style="margin:0 0 12px">${escapeEmailHtml(greeting)}</p>
+          <p style="margin:0 0 12px">We received your commercial credit application for <strong>${escapeEmailHtml(payload.companyName)}</strong>.</p>
+          ${emailSection("Application Summary", [
+            ["Requested credit limit", limitDisplay],
+            ["Payment terms requested", payload.paymentTermsRequested || "Net 30"],
+            ["Status", "Pending review"],
+            ["Application reference", payload.applicationId || null],
+          ])}
+          <p style="margin:0 0 16px">Our credit desk typically responds within 24–48 business hours. You can track status anytime in your dashboard.</p>
+          <p style="margin:0">
+            <a href="${escapeEmailHtml(dashboardUrl)}" style="display:inline-block;background:#0284c7;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:10px">
+              View credit status
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>`;
+
+  return sendEmail({
+    to: email,
+    subject: `We received your Plastipac USA credit application — ${payload.companyName}`,
+    text,
+    html,
+    from: SUPPORT_FROM,
+  });
+}
+
 export async function notifyCreditApplicationStatusChange(
   payload: CreditStatusChangeNotifyInput
 ): Promise<SendEmailResult> {

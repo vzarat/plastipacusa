@@ -49,6 +49,18 @@ export default function CheckoutSuccessPage() {
 
       try {
         const params = searchParams;
+        const creditCheckout = params.get("credit") === "1";
+        const creditOrderId = params.get("order_id") || "";
+
+        if (creditCheckout) {
+          if (!active) return;
+          clearCheckoutShipping();
+          clearCart();
+          setOrderId(creditOrderId || "Commercial credit order");
+          setStatus("success");
+          return;
+        }
+
         let paymentIntentId = params.get("payment_intent") || "";
         const paymentIntentClientSecret =
           params.get("payment_intent_client_secret") || "";

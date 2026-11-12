@@ -27,6 +27,8 @@ import { createServiceRoleClient, isServiceRoleConfigured } from "@/lib/supabase
 import { requireTurnstileToken } from "@/lib/turnstile";
 import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
 import {
+  formatFridayDeliveryDate,
+  fridayDeliveryTitleForAddress,
   fridayRegionFromOptionId,
   fridayRegionTag,
   fridaySelectionFields,
@@ -37,6 +39,8 @@ import { evalShippingEligibility, RGV_FREE_DELIVERY_LABEL } from "@/lib/shipping
 import { buildShipmentFreight } from "@/lib/shipping/shipment";
 import { profileIsTaxExempt } from "@/lib/sales-tax";
 import type { ShippingQuoteLine } from "@/lib/shipping/types";
+import { notifyAdminPurchaseOrder } from "@/lib/email";
+import { formatOrderId } from "@/lib/utils";
 
 function refreshCatalogStock() {
   revalidatePath("/");
@@ -1107,5 +1111,443 @@ export async function resolveCheckoutSession(sessionId: string): Promise<{
     const message = err instanceof Error ? err.message : String(err);
     console.error("[resolveCheckoutSession] failed:", message);
     return { success: false, error: message };
+  }
+}
+
+/**
+ * Place a Net 30 / commercial credit order: validates approved credit + available
+ * balance, deducts available_credit, creates an unpaid B2B invoice + order.
+ */
+export async function placeCommercialCreditOrder(
+  options: CreatePaymentIntentOptions = {}
+): Promise<{
+  success: boolean;
+  orderId?: string;
+  invoiceId?: string;
+  total?: number;
+  availableCredit?: number;
+  error?: string;
+}> {
+  try {
+    const turnstileError = await requireTurnstileToken(options.turnstileToken);
+    if (turnstileError) {
+      return { success: false, error: turnstileError };
+    }
+
+    const supabase = await createServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const userId = user?.id || "";
+    const sessionEmail = (user?.email || "").trim().toLowerCase();
+    if (!userId) {
+      return {
+        success: false,
+        error: "You must sign in to your B2B account to use commercial credit.",
+      };
+    }
+
+    if (!options.shippingQuoteId) {
+      return { success: false, error: "Choose a shipping option before checkout." };
+    }
+
+    const requested = (options.quoteLines || [])
+      .map((line) => ({
+        sku: String(line.sku || "").trim(),
+        quantity: Math.floor(Number(line.quantity) || 0),
+      }))
+      .filter((line) => line.sku && line.quantity > 0);
+    if (requested.length === 0) {
+      return { success: false, error: "Your cart is empty." };
+    }
+
+    let pricedLines: PricedCheckoutLine[];
+    try {
+      pricedLines = await loadCatalogLines(supabase, requested);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "We couldn't price this cart.";
+      return { success: false, error: message };
+    }
+
+    let coupon: ReturnType<typeof mapCouponToApplied> | null = null;
+    const couponCode = String(options.couponCode || "").trim().toUpperCase();
+    if (couponCode) {
+      const { data: couponRow, error: couponError } = await supabase
+        .from("coupons")
+        .select("*")
+        .eq("code", couponCode)
+        .maybeSingle();
+      if (couponError || !couponRow) {
+        return { success: false, error: "Promo code not found." };
+      }
+      const blocked = couponBlockReason(couponRow, sessionEmail, Date.now(), 0);
+      if (blocked) return { success: false, error: blocked };
+      coupon = mapCouponToApplied(couponRow);
+    }
+
+    let shippingOption: {
+      id: string;
+      provider: string;
+      mode: string;
+      serviceName: string;
+      carrierName?: string;
+      carrierKey?: string;
+      serviceLevel?: string;
+      price: number;
+      transitDays: number;
+      destinationZip: string;
+    } | null = null;
+
+    if (options.shippingQuoteId === "rgv-local") {
+      try {
+        const freight = await buildShipmentFreight(options.quoteLines || []);
+        const gate = freeRgvDelivery({
+          postalCode: options.shipping?.postalCode,
+          city: options.shipping?.city,
+          state: options.shipping?.state,
+          rolls: freight.rolls,
+        });
+        const local = rgvLocalCharge(gate.eligible);
+        if ("error" in local) return { success: false, error: local.error };
+        const zip = String(options.shipping?.postalCode || "").match(/\d{5}/)?.[0] || "";
+        shippingOption = {
+          id: "rgv-local",
+          provider: "plastipac",
+          mode: "local",
+          serviceName: RGV_FREE_DELIVERY_LABEL,
+          carrierName: "Plastipac Delivery",
+          carrierKey: "plastipac",
+          price: local.price,
+          transitDays: 1,
+          destinationZip: zip,
+        };
+      } catch {
+        return { success: false, error: "Free local delivery does not apply to this order." };
+      }
+    } else if (options.shippingQuoteId === "houston-friday") {
+      try {
+        const freight = await buildShipmentFreight(options.quoteLines || []);
+        const gate = evalShippingEligibility(
+          options.shipping?.postalCode || "",
+          options.shipping?.city || "",
+          options.shipping?.state || "",
+          freight.boxes,
+          freight.rolls
+        );
+        const offered = gate.options.find((option) => option.id === "houston-friday");
+        if (!offered) {
+          return { success: false, error: "Houston Friday freight does not apply to this order." };
+        }
+        const zip = String(options.shipping?.postalCode || "").match(/\d{5}/)?.[0] || "";
+        shippingOption = {
+          id: "houston-friday",
+          provider: "plastipac",
+          mode: "local",
+          serviceName: offered.label,
+          carrierName: "Plastipac Delivery",
+          carrierKey: "plastipac",
+          price: 0,
+          transitDays: 1,
+          destinationZip: zip,
+        };
+      } catch {
+        return { success: false, error: "Houston Friday freight does not apply to this order." };
+      }
+    } else {
+      try {
+        const resolved = await resolveShippingCharge({
+          quoteId: options.shippingQuoteId,
+          postalCode: options.shipping?.postalCode || "",
+          city: options.shipping?.city,
+          state: options.shipping?.state,
+          lines: options.quoteLines || [],
+        });
+        if ("error" in resolved) {
+          return { success: false, error: resolved.error };
+        }
+        shippingOption = {
+          id: resolved.option.id,
+          provider: resolved.option.provider,
+          mode: resolved.option.mode,
+          serviceName: resolved.option.serviceName,
+          carrierName: resolved.option.carrierName,
+          carrierKey: resolved.option.carrierKey,
+          serviceLevel: resolved.option.serviceLevel,
+          price: resolved.option.price,
+          transitDays: resolved.option.transitDays,
+          destinationZip: resolved.option.destinationZip,
+        };
+      } catch {
+        return {
+          success: false,
+          error: "We couldn't confirm this shipping quote. Please choose it again.",
+        };
+      }
+    }
+
+    const { data: creditProfile, error: creditProfileError } = await supabase
+      .from("profiles")
+      .select(
+        "credit_application_status, credit_limit, available_credit, payment_terms, credit_terms, company_name, full_name, is_tax_exempt, tax_exempt_verified"
+      )
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (creditProfileError && /available_credit|payment_terms/i.test(creditProfileError.message)) {
+      return {
+        success: false,
+        error:
+          "Commercial credit balances are not configured yet. Please contact Plastipac USA support.",
+      };
+    }
+
+    const status = String(creditProfile?.credit_application_status || "").toLowerCase();
+    if (status !== "approved") {
+      return {
+        success: false,
+        error: "Commercial credit / terms is only available for approved B2B accounts.",
+      };
+    }
+
+    const taxExempt = profileIsTaxExempt(creditProfile);
+    const priced = priceCheckoutCart({
+      lines: pricedLines,
+      coupon,
+      shipping: shippingOption ? shippingOption.price : 0,
+      taxExempt,
+    });
+    const orderTotal = Number(priced.total.toFixed(2));
+    if (!Number.isFinite(orderTotal) || orderTotal < 0.5) {
+      return { success: false, error: "Order total must be at least $0.50 USD." };
+    }
+
+    const available = Math.max(0, Number(creditProfile?.available_credit ?? 0));
+    if (orderTotal > available) {
+      return {
+        success: false,
+        error: `Order total (${orderTotal.toFixed(2)}) exceeds available credit (${available.toFixed(2)}).`,
+      };
+    }
+
+    if (!isServiceRoleConfigured()) {
+      return { success: false, error: "Order storage is not configured." };
+    }
+    const admin = createServiceRoleClient();
+
+    const { data: remainingCredit, error: deductError } = await admin.rpc(
+      "deduct_available_credit",
+      { p_user_id: userId, p_amount: orderTotal }
+    );
+    if (deductError) {
+      return {
+        success: false,
+        error:
+          deductError.message ||
+          "Unable to reserve commercial credit for this order. Check your available balance.",
+      };
+    }
+
+    const fridayRegion = fridayRegionFromOptionId(shippingOption?.id);
+    const fridayDeliveryDate = fridayRegion
+      ? resolveFridayDeliveryIso(options.fridayDeliveryDate)
+      : null;
+    if (fridayDeliveryDate && fridayRegion && shippingOption) {
+      const scheduled = fridaySelectionFields(fridayDeliveryDate, fridayRegion);
+      shippingOption.serviceName = scheduled.serviceName;
+      shippingOption.transitDays = scheduled.transitDays;
+    }
+
+    const paymentTerms = String(
+      creditProfile?.payment_terms || creditProfile?.credit_terms || "Net 30"
+    );
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 30);
+
+    const shippingAddress = {
+      full_name: options.shipping?.fullName || options.customerName || "",
+      line1: options.shipping?.line1 || "",
+      line2: options.shipping?.line2 || "",
+      city: options.shipping?.city || "",
+      state: options.shipping?.state || "",
+      postal_code: options.shipping?.postalCode || "",
+      phone: options.shipping?.phone || "",
+      email: (options.customerEmail || sessionEmail || "").trim().toLowerCase(),
+      company_name: options.companyName || creditProfile?.company_name || "",
+      shipping_method: shippingOption?.serviceName || options.shippingMethod || null,
+      shipping_address_id: options.shippingAddressId || null,
+      tax_exempt_requested: Boolean(options.taxExemptRequested) || taxExempt,
+      friday_delivery_date: fridayDeliveryDate,
+      payment_method: "commercial_credit",
+      payment_terms: paymentTerms,
+    };
+
+    const lineItems =
+      options.lineItems && options.lineItems.length > 0
+        ? options.lineItems.map((item, index) => ({
+            productName: item.productName || pricedLines[index]?.productName || "Plastipac Product",
+            quantity: item.quantity || pricedLines[index]?.quantity || 1,
+            unitPrice: item.unitPrice ?? pricedLines[index]?.unitPrice ?? 0,
+            totalPrice:
+              item.totalPrice ??
+              pricedLines[index]?.totalPrice ??
+              Number(item.unitPrice || 0) * Number(item.quantity || 1),
+            sku: pricedLines[index]?.sku,
+            productSlug: item.productSlug,
+            packageSize: item.packageSize,
+            pricingTier: item.pricingTier,
+            rollsPerBox: item.rollsPerBox,
+            totalBoxes: item.totalBoxes,
+            application: item.application,
+            tierType: item.tierType,
+          }))
+        : pricedLines.map((line) => ({
+            productName: line.productName,
+            quantity: line.quantity,
+            unitPrice: line.unitPrice,
+            totalPrice: line.totalPrice,
+            sku: line.sku,
+          }));
+
+    const orderPayload: Record<string, unknown> = {
+      status: "pending",
+      payment_status: "Unpaid",
+      payment_method: "commercial_credit",
+      user_id: userId,
+      subtotal: priced.subtotal,
+      shipping: priced.shipping,
+      shipping_cost: priced.shipping,
+      shipping_method: shippingOption?.serviceName || options.shippingMethod || null,
+      shipping_address_id: options.shippingAddressId || null,
+      tax: priced.tax,
+      tax_amount: priced.tax,
+      discount_amount: priced.discount,
+      tax_exempt_requested: Boolean(options.taxExemptRequested) || taxExempt,
+      total: orderTotal,
+      total_amount: orderTotal,
+      items: lineItems,
+      shipping_address: shippingAddress,
+      created_at: new Date().toISOString(),
+    };
+
+    let orderRow: Record<string, unknown>;
+    try {
+      orderRow = await writeOrderRow(admin, "insert", null, orderPayload);
+    } catch (insertError) {
+      // Best-effort restore credit if order insert fails after deduction.
+      try {
+        await admin
+          .from("profiles")
+          .update({
+            available_credit: available,
+          })
+          .eq("id", userId);
+      } catch {
+        // ignore
+      }
+      const message =
+        insertError instanceof Error ? insertError.message : "Unable to create credit order.";
+      return { success: false, error: message };
+    }
+
+    const orderUuid = String(orderRow.id || "");
+    try {
+      await syncCheckoutHolds(admin, orderUuid, pricedLines);
+      refreshCatalogStock();
+    } catch (holdError) {
+      console.warn("[placeCommercialCreditOrder] inventory hold sync:", holdError);
+    }
+
+    const displayOrderId = formatOrderId({
+      id: orderUuid,
+      createdAt: String(orderRow.created_at || new Date().toISOString()),
+      items: lineItems,
+    });
+    const invoiceNumber = `INV-CR-${String(Date.now()).slice(-8)}`;
+
+    const { data: invoice, error: invoiceError } = await admin
+      .from("b2b_invoices")
+      .insert({
+        user_id: userId,
+        order_id: orderUuid || null,
+        invoice_number: invoiceNumber,
+        amount: orderTotal,
+        currency: "USD",
+        status: "unpaid",
+        payment_terms: paymentTerms,
+        due_date: dueDate.toISOString().slice(0, 10),
+        notes: `Commercial credit checkout · ${displayOrderId}`,
+      })
+      .select("id")
+      .maybeSingle();
+
+    if (invoiceError) {
+      console.warn("[placeCommercialCreditOrder] invoice insert:", invoiceError.message);
+    }
+
+    try {
+      await notifyAdminPurchaseOrder({
+        orderId: displayOrderId,
+        customerName:
+          shippingAddress.full_name ||
+          String(creditProfile?.full_name || "Customer"),
+        customerEmail: shippingAddress.email || sessionEmail,
+        customerCompany:
+          shippingAddress.company_name ||
+          String(creditProfile?.company_name || "B2B Account"),
+        totalAmount: orderTotal,
+        shippingState: shippingAddress.state,
+        shippingCity: shippingAddress.city,
+        shippingAddressSummary: [
+          shippingAddress.full_name,
+          [shippingAddress.line1, shippingAddress.line2].filter(Boolean).join(", "),
+          [shippingAddress.city, shippingAddress.state, shippingAddress.postal_code]
+            .filter(Boolean)
+            .join(", "),
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        shippingPhone: shippingAddress.phone,
+        itemCount: lineItems.length,
+        itemsSummary: lineItems
+          .map((item) =>
+            `${item.quantity}× ${customerLineDescription({
+              productName: String(item.productName || "Product"),
+              sku: item.sku ? String(item.sku) : undefined,
+            })}`
+          )
+          .join("; "),
+        orderDate: new Date().toISOString(),
+        fridayDeliveryDate: fridayDeliveryDate
+          ? formatFridayDeliveryDate(fridayDeliveryDate)
+          : undefined,
+        fridayDeliveryService: fridayDeliveryDate
+          ? fridayDeliveryTitleForAddress({
+              city: shippingAddress.city,
+              state: shippingAddress.state,
+              postalCode: shippingAddress.postal_code,
+            }) || undefined
+          : undefined,
+        detailsText: `Payment: Commercial Credit (${paymentTerms}) · Unpaid B2B invoice`,
+      });
+    } catch (emailError) {
+      console.warn("[placeCommercialCreditOrder] admin email:", emailError);
+    }
+
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/credit");
+    revalidatePath("/checkout");
+
+    return {
+      success: true,
+      orderId: displayOrderId,
+      invoiceId: invoice?.id ? String(invoice.id) : undefined,
+      total: orderTotal,
+      availableCredit:
+        remainingCredit != null ? Number(remainingCredit) : Math.max(0, available - orderTotal),
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[placeCommercialCreditOrder] failed:", message);
+    return { success: false, error: message || "Unable to place commercial credit order." };
   }
 }

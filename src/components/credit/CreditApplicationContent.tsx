@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowRight, CreditCard, PhoneCall, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import type { UserProfile } from "@/actions/auth";
 import { useLanguage } from "@/context/LanguageContext";
 import { B2BCreditFlow } from "@/components/credit/B2BCreditFlow";
 import { CreditApplicationForm } from "@/components/credit/CreditApplicationForm";
@@ -23,7 +24,7 @@ const FloatingCreditCards = dynamic(
   { ssr: false }
 );
 
-export function CreditApplicationContent() {
+export function CreditApplicationContent({ profile }: { profile: UserProfile }) {
   const { t } = useLanguage();
 
   return (
@@ -98,12 +99,20 @@ export function CreditApplicationContent() {
       <section className="mx-auto max-w-5xl space-y-5 px-3 pb-28 pt-6 sm:space-y-8 sm:px-6 sm:pb-14 sm:py-14 lg:px-8">
         <div className="flex items-start gap-2.5 rounded-2xl border border-blue-100 bg-blue-50/70 px-3 py-3 text-[12px] text-blue-900 sm:gap-3 sm:px-4 sm:text-xs">
           <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" />
-          <p className="min-w-0 leading-relaxed">{t("credit.notice")}</p>
+          <p className="min-w-0 leading-relaxed">
+            Signed in as <span className="font-bold">{profile.email || profile.fullName}</span>
+            {profile.companyName ? ` · ${profile.companyName}` : ""}. Your application is linked to
+            this B2B account and status is tracked in{" "}
+            <Link href="/dashboard/credit" className="font-bold underline underline-offset-2">
+              Dashboard → Credit
+            </Link>
+            . {t("credit.notice")}
+          </p>
         </div>
 
         <B2BCreditFlow />
         <div id="credit-application-form" className="scroll-mt-20">
-          <CreditApplicationForm />
+          <CreditApplicationForm profile={profile} />
         </div>
       </section>
     </div>

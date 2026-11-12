@@ -7,7 +7,11 @@ import {
   createServiceRoleClient,
   isServiceRoleConfigured,
 } from "@/lib/supabase/admin";
-import { notifyAdminCreditApplication, notifyCreditApplicationStatusChange } from "@/lib/email";
+import {
+  notifyAdminCreditApplication,
+  notifyApplicantCreditApplicationReceived,
+  notifyCreditApplicationStatusChange,
+} from "@/lib/email";
 import { PRIMARY_PHONE_DISPLAY } from "@/lib/company-contact";
 import {
   inferCreditApplicationErrorField,
@@ -272,6 +276,16 @@ function todayIsoDate(): string {
 export async function submitCommercialCreditApplication(
   input: CommercialCreditApplicationInput
 ): Promise<CreditApplicationResult> {
+  const currentUser = await getCurrentUser();
+  if (!currentUser?.user?.id) {
+    return {
+      success: false,
+      error: "Please sign in to your B2B account before submitting a credit application.",
+      field: "form",
+    };
+  }
+  const applicantUserId = currentUser.user.id;
+
   const turnstileError = await requireTurnstileToken(input.turnstileToken);
   if (turnstileError) {
     return { success: false, error: turnstileError, field: "turnstile" };
@@ -454,8 +468,6 @@ export async function submitCommercialCreditApplication(
   });
 
   const today = todayIsoDate();
-  const currentUser = await getCurrentUser();
-  const applicantUserId = currentUser?.user?.id || null;
 
   const payload: Record<string, unknown> = {
     user_id: applicantUserId,
@@ -545,20 +557,18 @@ export async function submitCommercialCreditApplication(
       };
     }
 
-    if (currentUser?.user?.id) {
-      try {
-        const sessionClient = await createServerClient();
-        await sessionClient.from("profiles").upsert({
-          id: currentUser.user.id,
-          email: currentUser.user.email || email,
-          company_name: legalBusinessName,
-          phone,
-          tax_id: normalizedTaxIdEin,
-          credit_application_status: "pending",
-        });
-      } catch {
-        // non-fatal
-      }
+    try {
+      const sessionClient = await createServerClient();
+      await sessionClient.from("profiles").upsert({
+        id: applicantUserId,
+        email: currentUser.user.email || email,
+        company_name: legalBusinessName,
+        phone,
+        tax_id: normalizedTaxIdEin,
+        credit_application_status: "pending",
+      });
+    } catch (profileError) {
+      console.warn("[credit] profile pending status sync failed:", profileError);
     }
 
     // Email is best-effort: DB insert already succeeded — always confirm to the user.
@@ -619,8 +629,26 @@ export async function submitCommercialCreditApplication(
       });
     } catch (emailError) {
       console.error(
-        "[credit] Resend dispatch error after successful insert:",
+        "[credit] Resend admin dispatch error after successful insert:",
         emailError,
+        "applicationId:",
+        inserted?.id || "n/a"
+      );
+    }
+
+    try {
+      await notifyApplicantCreditApplicationReceived({
+        workEmail: email,
+        contactName: authorizedRepresentativeName || apContactName,
+        companyName: legalBusinessName,
+        requestedCreditLimit: creditLimitRequested,
+        paymentTermsRequested,
+        applicationId: inserted?.id ? String(inserted.id) : null,
+      });
+    } catch (receiptError) {
+      console.error(
+        "[credit] Resend applicant receipt error after successful insert:",
+        receiptError,
         "applicationId:",
         inserted?.id || "n/a"
       );
@@ -813,8 +841,15 @@ export async function reviewCreditApplication(
           credit_application_status: input.status,
         };
         if (input.status === "approved") {
-          profilePatch.credit_terms = approvedTerms || "Net 30";
-          profilePatch.credit_limit = Math.max(0, approvedLimit || 10000);
+          const limit = Math.max(0, approvedLimit || 10000);
+          const terms = approvedTerms || "Net 30";
+          profilePatch.credit_terms = terms;
+          profilePatch.payment_terms = terms;
+          profilePatch.credit_limit = limit;
+          // Fresh approval resets usable balance to the approved limit.
+          profilePatch.available_credit = limit;
+        } else if (input.status === "rejected") {
+          profilePatch.available_credit = 0;
         }
         await supabase.from("profiles").update(profilePatch).eq("id", profileId);
       }
@@ -847,7 +882,9 @@ export async function reviewCreditApplication(
 
     revalidatePath("/admin/credit-applications");
     revalidatePath("/admin");
+    revalidatePath("/dashboard");
     revalidatePath("/dashboard/credit");
+    revalidatePath("/checkout");
     return { success: true };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -880,6 +917,10 @@ export interface MyCreditStatusInfo {
   taxId: string;
   applicationId: string | null;
   reviewedAt: string | null;
+  applicationDate: string | null;
+  requestedCreditLimit: number | null;
+  paymentTermsRequested: string | null;
+  legalBusinessName: string | null;
 }
 
 export async function getMyCreditStatus(): Promise<MyCreditStatusInfo> {
@@ -890,6 +931,10 @@ export async function getMyCreditStatus(): Promise<MyCreditStatusInfo> {
     taxId: "",
     applicationId: null,
     reviewedAt: null,
+    applicationDate: null,
+    requestedCreditLimit: null,
+    paymentTermsRequested: null,
+    legalBusinessName: null,
   };
 
   try {
@@ -899,16 +944,16 @@ export async function getMyCreditStatus(): Promise<MyCreditStatusInfo> {
     const supabase = await createServerClient();
     const { data: profile } = await supabase
       .from("profiles")
-      .select("tax_id, credit_application_status, credit_limit, credit_terms")
+      .select("tax_id, credit_application_status, credit_limit, credit_terms, company_name")
       .eq("id", currentUser.user.id)
       .maybeSingle();
 
     const { data: application } = await supabase
       .from("credit_applications")
-      .select("id, status, reviewed_at, created_at")
-      .or(
-        `user_id.eq.${currentUser.user.id},work_email.eq.${currentUser.user.email || ""}`
+      .select(
+        "id, status, reviewed_at, created_at, application_date, credit_limit_requested, payment_terms_requested, legal_business_name, company_name"
       )
+      .eq("user_id", currentUser.user.id)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -939,6 +984,25 @@ export async function getMyCreditStatus(): Promise<MyCreditStatusInfo> {
       taxId: String(profile?.tax_id || currentUser.profile.taxId || ""),
       applicationId: application?.id ? String(application.id) : null,
       reviewedAt: application?.reviewed_at ? String(application.reviewed_at) : null,
+      applicationDate: application?.application_date
+        ? String(application.application_date)
+        : application?.created_at
+          ? String(application.created_at).slice(0, 10)
+          : null,
+      requestedCreditLimit:
+        application?.credit_limit_requested != null
+          ? Number(application.credit_limit_requested)
+          : null,
+      paymentTermsRequested: application?.payment_terms_requested
+        ? String(application.payment_terms_requested)
+        : null,
+      legalBusinessName: String(
+        application?.legal_business_name ||
+          application?.company_name ||
+          profile?.company_name ||
+          currentUser.profile.companyName ||
+          ""
+      ) || null,
     };
   } catch (err) {
     console.warn("getMyCreditStatus exception:", err);

@@ -25,6 +25,10 @@ import { DashboardSidebar } from "@/components/dashboard/Sidebar";
 import { DashboardMobileChrome } from "@/components/dashboard/DashboardMobileChrome";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { Net30CreditHeroBanner } from "@/components/dashboard/Net30CreditHeroBanner";
+import {
+  CreditStatusTimeline,
+  mapMyCreditStatusToTimeline,
+} from "@/components/dashboard/CreditStatusTimeline";
 import { formatCurrency } from "@/lib/utils";
 import {
   formatEinInput,
@@ -115,6 +119,7 @@ export function DashboardCreditClient({
     isSpanish
   );
   const StatusIcon = statusUi.Icon;
+  const timelineStatus = mapMyCreditStatusToTimeline(creditStatus.status);
 
   const steps = [
     {
@@ -277,42 +282,53 @@ export function DashboardCreditClient({
           <Net30CreditHeroBanner />
         </div>
 
-        {/* High-contrast status card */}
-        <section
-          className={`w-full rounded-3xl border-2 p-5 sm:p-6 shadow-sm ${statusUi.shell}`}
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] opacity-70">
-                {isSpanish ? "Estado de crédito" : "Credit Status"}
-              </p>
-              <div className="flex items-center gap-2.5">
-                <StatusIcon className={`w-6 h-6 ${statusUi.icon}`} />
-                <p className="text-xl sm:text-2xl font-black tracking-tight">
-                  {statusUi.label}
+        {timelineStatus ? (
+          <CreditStatusTimeline
+            status={timelineStatus}
+            creditLimit={
+              creditStatus.creditLimit > 0
+                ? formatCurrency(creditStatus.creditLimit)
+                : creditStatus.requestedCreditLimit != null
+                  ? formatCurrency(creditStatus.requestedCreditLimit)
+                  : undefined
+            }
+            paymentTerms={
+              creditStatus.status === "approved"
+                ? creditStatus.creditTerms || "Net 30"
+                : creditStatus.paymentTermsRequested || undefined
+            }
+            applicationDate={creditStatus.applicationDate}
+            applicationId={creditStatus.applicationId}
+          />
+        ) : (
+          <section
+            className={`w-full rounded-3xl border-2 p-5 sm:p-6 shadow-sm ${statusUi.shell}`}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] opacity-70">
+                  Credit Status
+                </p>
+                <div className="flex items-center gap-2.5">
+                  <StatusIcon className={`w-6 h-6 ${statusUi.icon}`} />
+                  <p className="text-xl sm:text-2xl font-black tracking-tight">
+                    {statusUi.label}
+                  </p>
+                </div>
+                <p className="max-w-lg text-xs font-medium opacity-80">
+                  You have not applied for Net 30 yet. Start the full commercial credit
+                  application to get started.
                 </p>
               </div>
-              {creditStatus.status === "approved" && (
-                <p className="text-xs font-semibold opacity-80">
-                  {isSpanish ? "Términos:" : "Terms:"} {creditStatus.creditTerms}
-                </p>
-              )}
-              {creditStatus.status === "not_applied" && (
-                <p className="text-xs font-medium opacity-80 max-w-lg">
-                  {isSpanish
-                    ? "Aún no has solicitado Net 30. Completa el formulario abajo para empezar."
-                    : "You have not applied for Net 30 yet. Complete the form below to get started."}
-                </p>
-              )}
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${statusUi.badge}`}
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Net 30
+              </span>
             </div>
-            <span
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${statusUi.badge}`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Net 30
-            </span>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* How it works — 4 clear steps */}
         <section className="w-full rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 shadow-sm space-y-5">
@@ -352,23 +368,28 @@ export function DashboardCreditClient({
           </div>
         </section>
 
-        {/* Application form */}
+        {/* Application CTA / legacy short form kept for dashboard convenience */}
         {canApply ? (
           <section
             id="credit-application-form"
             className="w-full rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 shadow-sm space-y-5"
           >
-            <div>
-              <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">
-                {isSpanish
-                  ? "Solicitud de crédito"
-                  : "Credit Application Form"}
-              </h2>
-              <p className="text-xs text-slate-500 mt-1">
-                {isSpanish
-                  ? "Envía tu solicitud Net 30. Puedes actualizar TAX ID en Configuración en cualquier momento."
-                  : "Submit your Net 30 request. You can update TAX ID anytime in Account Settings."}
-              </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">
+                  Credit Application
+                </h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Use the full commercial credit form for trade references, AP contacts, and
+                  e-signature. Status updates appear on this page automatically.
+                </p>
+              </div>
+              <Link
+                href="/credit-application"
+                className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-sky-500/20"
+              >
+                Open Full Application
+              </Link>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -550,17 +571,16 @@ export function DashboardCreditClient({
               </div>
             </form>
           </section>
-        ) : (
-          <section className="w-full rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
-            {creditStatus.status === "pending"
-              ? isSpanish
-                ? "Tu solicitud está en revisión. Un especialista de crédito te contactará por correo en 24–48 horas hábiles."
-                : "Your application is under review. A credit specialist will email you within 24–48 business hours."
-              : isSpanish
-                ? "Tu cuenta ya tiene términos Net 30 aprobados."
-                : "Your account already has approved Net 30 terms."}
+        ) : creditStatus.status === "pending" ? (
+          <section className="w-full rounded-3xl border border-sky-100 bg-sky-50/60 p-5 text-sm text-sky-950 shadow-sm">
+            <p className="font-semibold">What happens next</p>
+            <p className="mt-1 text-xs leading-relaxed text-sky-900/80">
+              A credit specialist typically responds within 24–48 business hours. You will also
+              receive email updates at your work address — refresh this page anytime to see
+              progress on the timeline above.
+            </p>
           </section>
-        )}
+        ) : null}
       </main>
     </div>
   );
