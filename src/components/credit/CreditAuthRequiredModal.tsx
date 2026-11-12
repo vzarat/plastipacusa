@@ -158,14 +158,16 @@ export function CreditAuthRequiredModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[120] flex items-end justify-center bg-slate-950/50 p-4 sm:items-center"
+      key="credit-auth-backdrop"
+      className="fixed inset-0 z-[120] flex animate-creditModalBackdrop items-end justify-center bg-slate-950/50 p-4 sm:items-center"
       role="dialog"
       aria-modal="true"
       aria-labelledby="credit-auth-title"
       onClick={dismissible ? onClose : undefined}
     >
       <div
-        className="relative max-h-[92dvh] w-full max-w-md overflow-y-auto overflow-x-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+        key="credit-auth-panel"
+        className="relative max-h-[92dvh] w-full max-w-md origin-bottom animate-creditModalPanel overflow-y-auto overflow-x-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl will-change-transform sm:origin-center sm:animate-creditModalPanelDesktop"
         onClick={(e) => e.stopPropagation()}
       >
         {dismissible && onClose ? (
@@ -181,7 +183,7 @@ export function CreditAuthRequiredModal({
 
         <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-800 px-6 py-5 text-white">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/25 bg-white/10">
+            <div className="flex h-10 w-10 animate-[creditModalPanel_0.55s_cubic-bezier(0.16,1,0.3,1)_0.08s_both] items-center justify-center rounded-xl border border-white/25 bg-white/10">
               <Lock className="h-5 w-5 text-sky-100" aria-hidden />
             </div>
             <div>
