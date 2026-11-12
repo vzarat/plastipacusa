@@ -4,7 +4,6 @@ import React, { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
-  Building2,
   CreditCard,
   Eye,
   EyeOff,
@@ -21,16 +20,16 @@ import {
   TurnstileField,
 } from "@/components/security/TurnstileField";
 
-type AuthTab = "signin" | "signup";
+type AuthTab = "login" | "signup";
 
 interface CreditAuthRequiredModalProps {
   open: boolean;
   onClose?: () => void;
-  /** Prefill signup/signin email from the credit form when available */
+  /** Prefill from the credit form when available */
   defaultEmail?: string;
   defaultFullName?: string;
   defaultCompanyName?: string;
-  /** When true, closing is disabled — user must sign in or register. */
+  /** When true, closing is disabled — user must authenticate. */
   dismissible?: boolean;
   /** Called after a session is established so the parent can submit. */
   onAuthenticated: (info: {
@@ -44,7 +43,8 @@ const fieldClass =
   "h-11 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 text-sm text-slate-900 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/20";
 
 /**
- * Inline B2B auth gate for the commercial credit application — Sign In / Quick Sign Up.
+ * Inline auth gate for the credit application — Login / Sign Up.
+ * Company + corporate email belong on the credit form, not account creation.
  */
 export function CreditAuthRequiredModal({
   open,
@@ -60,7 +60,6 @@ export function CreditAuthRequiredModal({
   const [email, setEmail] = useState(defaultEmail);
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState(defaultFullName);
-  const [companyName, setCompanyName] = useState(defaultCompanyName);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -76,13 +75,12 @@ export function CreditAuthRequiredModal({
     if (!open) return;
     setEmail(defaultEmail || "");
     setFullName(defaultFullName || "");
-    setCompanyName(defaultCompanyName || "");
     setPassword("");
     setError(null);
     setTurnstileToken(null);
     setAcceptTerms(false);
-    setTab(defaultEmail ? "signin" : "signup");
-  }, [open, defaultEmail, defaultFullName, defaultCompanyName]);
+    setTab(defaultEmail ? "login" : "signup");
+  }, [open, defaultEmail, defaultFullName]);
 
   if (!open || !mounted || typeof document === "undefined") return null;
 
@@ -92,12 +90,14 @@ export function CreditAuthRequiredModal({
     companyName?: string;
   }) => {
     toast.success(
-      tab === "signup" ? "B2B account ready — submitting your application…" : "Signed in — submitting your application…"
+      tab === "signup"
+        ? "Account ready — submitting your application…"
+        : "Logged in — submitting your application…"
     );
     await onAuthenticated(info);
   };
 
-  const handleSignIn = () => {
+  const handleLogin = () => {
     setError(null);
     if (turnstileRequired && !turnstileToken) {
       setError("Please complete the bot check.");
@@ -110,10 +110,13 @@ export function CreditAuthRequiredModal({
         turnstileToken: turnstileToken || undefined,
       });
       if (!result.success) {
-        setError(result.error || "Unable to sign in.");
+        setError(result.error || "Unable to log in.");
         return;
       }
-      await finishAuth({ email: email.trim().toLowerCase() });
+      await finishAuth({
+        email: email.trim().toLowerCase(),
+        companyName: defaultCompanyName || undefined,
+      });
     });
   };
 
@@ -123,16 +126,21 @@ export function CreditAuthRequiredModal({
       setError("Please complete the bot check.");
       return;
     }
+    if (!fullName.trim()) {
+      setError("Please enter your name.");
+      return;
+    }
     if (!acceptTerms) {
       setError("Please accept the Terms of Service and Privacy Policy.");
       return;
     }
     startTransition(async () => {
+      // Company is optional for account creation — B2B company lives on the credit form.
       const result = await signUp({
         email,
         password,
         fullName,
-        companyName,
+        companyName: defaultCompanyName || undefined,
         acceptTerms: true,
         turnstileToken: turnstileToken || undefined,
       });
@@ -143,15 +151,15 @@ export function CreditAuthRequiredModal({
       if (!result.hasSession) {
         setError(
           result.message ||
-            "Account created. Please verify your email, then sign in to submit your credit application."
+            "Account created. Please verify your email, then log in to submit your credit application."
         );
-        setTab("signin");
+        setTab("login");
         return;
       }
       await finishAuth({
         email: email.trim().toLowerCase(),
         fullName: fullName.trim(),
-        companyName: companyName.trim(),
+        companyName: defaultCompanyName || undefined,
       });
     });
   };
@@ -188,13 +196,13 @@ export function CreditAuthRequiredModal({
             </div>
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wider text-sky-100/90">
-                B2B account required
+                Account required
               </p>
               <h2
                 id="credit-auth-title"
                 className="text-base font-extrabold leading-snug"
               >
-                Sign in to submit your credit application
+                Log in or sign up to submit
               </h2>
             </div>
           </div>
@@ -204,8 +212,8 @@ export function CreditAuthRequiredModal({
           <div className="flex items-start gap-2.5 rounded-xl border border-sky-100 bg-sky-50/80 px-3 py-2.5 text-[13px] leading-relaxed text-sky-900">
             <CreditCard className="mt-0.5 h-4 w-4 shrink-0 text-sky-700" aria-hidden />
             <p>
-              Your form answers stay on this page. After you sign in or create a B2B account,
-              we link the application to your user and submit it automatically.
+              Your credit form answers stay on this page. Company and corporate email are
+              already on the application — here you only create or access your account.
             </p>
           </div>
 
@@ -213,17 +221,17 @@ export function CreditAuthRequiredModal({
             <button
               type="button"
               onClick={() => {
-                setTab("signin");
+                setTab("login");
                 setError(null);
               }}
               className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${
-                tab === "signin"
+                tab === "login"
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-500 hover:text-slate-800"
               }`}
             >
               <LogIn className="h-3.5 w-3.5" />
-              Sign In
+              Login
             </button>
             <button
               type="button"
@@ -238,7 +246,7 @@ export function CreditAuthRequiredModal({
               }`}
             >
               <UserPlus className="h-3.5 w-3.5" />
-              Quick B2B Sign Up
+              Sign Up
             </button>
           </div>
 
@@ -258,21 +266,7 @@ export function CreditAuthRequiredModal({
               </label>
               <label className="block space-y-1.5">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  Company
-                </span>
-                <div className="relative">
-                  <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input
-                    className={`${fieldClass} pl-9`}
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    autoComplete="organization"
-                  />
-                </div>
-              </label>
-              <label className="block space-y-1.5">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  Work email
+                  Email
                 </span>
                 <input
                   type="email"
@@ -316,11 +310,19 @@ export function CreditAuthRequiredModal({
                 />
                 <span>
                   I agree to the{" "}
-                  <Link href="/terms-of-service" target="_blank" className="font-semibold text-sky-700 hover:underline">
+                  <Link
+                    href="/terms-of-service"
+                    target="_blank"
+                    className="font-semibold text-sky-700 hover:underline"
+                  >
                     Terms of Service
                   </Link>{" "}
                   and{" "}
-                  <Link href="/privacy-policy" target="_blank" className="font-semibold text-sky-700 hover:underline">
+                  <Link
+                    href="/privacy-policy"
+                    target="_blank"
+                    className="font-semibold text-sky-700 hover:underline"
+                  >
                     Privacy Policy
                   </Link>
                   .
@@ -331,7 +333,7 @@ export function CreditAuthRequiredModal({
             <div className="space-y-3">
               <label className="block space-y-1.5">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  Work email
+                  Email
                 </span>
                 <input
                   type="email"
@@ -368,12 +370,13 @@ export function CreditAuthRequiredModal({
             </div>
           )}
 
-          {turnstileRequired ? (
-            <TurnstileField onToken={setTurnstileToken} />
-          ) : null}
+          {turnstileRequired ? <TurnstileField onToken={setTurnstileToken} /> : null}
 
           {error ? (
-            <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800" role="alert">
+            <p
+              className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800"
+              role="alert"
+            >
               {error}
             </p>
           ) : null}
@@ -381,23 +384,23 @@ export function CreditAuthRequiredModal({
           <button
             type="button"
             disabled={isPending}
-            onClick={() => (tab === "signup" ? handleSignUp() : handleSignIn())}
+            onClick={() => (tab === "signup" ? handleSignUp() : handleLogin())}
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 px-4 py-3 text-sm font-bold text-white shadow-md shadow-sky-500/20 transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isPending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                {tab === "signup" ? "Creating account…" : "Signing in…"}
+                {tab === "signup" ? "Creating account…" : "Logging in…"}
               </>
             ) : tab === "signup" ? (
               <>
                 <UserPlus className="h-4 w-4" />
-                Create account & submit application
+                Sign up & submit application
               </>
             ) : (
               <>
                 <LogIn className="h-4 w-4" />
-                Sign in & submit application
+                Login & submit application
               </>
             )}
           </button>
