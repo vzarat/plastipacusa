@@ -20,13 +20,10 @@ import {
 } from "@/lib/products";
 import {
   HAND_CATALOG_PALLET_LABEL,
-  HAND_FULL_PALLET_BOXES,
-  buildHandFullPalletCartItem,
   getDisplayPrice,
   handCatalogQuote,
 } from "@/lib/pricing";
 import { boxStockLabel, boxesPerPalletForProduct, palletStockLabel } from "@/lib/pallet-stock";
-import { useCartStore } from "@/lib/store/useCartStore";
 function isolateCardAction(event: React.MouseEvent | React.TouchEvent) {
   event.stopPropagation();
 }
@@ -103,7 +100,6 @@ const CATEGORY_STYLES: Record<
 export function ProductCard({ product, priority = false }: ProductCardProps) {
   const { t } = useLanguage();
   const router = useRouter();
-  const addItem = useCartStore((state) => state.addItem);
   const [imageFailed, setImageFailed] = React.useState(false);
   // Resolve category brand logo and machine film detection
   const rawWidth = (product as any)?.width_inches ?? (product as any)?.widthInches ?? 0;
@@ -228,16 +224,6 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
       : !isSoldOut && palletCount > 0
         ? palletStockLabel(palletCount, boxesPerPallet)
         : null;
-  const variant64 = (product.variants || []).find(
-    (variant) => Number(variant.boxes_count ?? variant.boxesCount) === HAND_FULL_PALLET_BOXES
-  );
-  const addFullPallet = (goToCheckout: boolean) => {
-    if (isSoldOut || !handQuote?.fullPallet) return;
-    const line = buildHandFullPalletCartItem(product, variant64);
-    if (!line) return;
-    addItem(line);
-    if (goToCheckout) router.push("/checkout");
-  };
   const widthLabel = width > 0 ? `${Math.round(width)} IN` : null;
   const gaugeValue = Number(product.gauge);
   const gaugeLabel = Number.isFinite(gaugeValue) && gaugeValue > 0 ? `${gaugeValue} GA` : null;
@@ -338,18 +324,6 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             <span className="rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-500">
               {t("products.soldOut")}
             </span>
-          ) : handQuote?.fullPallet ? (
-            <button
-              type="button"
-              onClick={(event) => {
-                isolateCardAction(event);
-                addFullPallet(false);
-              }}
-              onTouchEnd={isolateCardAction}
-              className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-bold text-white active:scale-95"
-            >
-              Add
-            </button>
           ) : (
             <Link
               href={productHref}
@@ -507,7 +481,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           )}
         </div>
 
-        {/* High-Conversion "BUY NOW" Button */}
+        {/* Opens product page — cart/checkout happens on the PDP */}
         {isSoldOut ? (
           <button
             type="button"
@@ -517,33 +491,6 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           >
             {t("products.soldOut")}
           </button>
-        ) : handQuote?.fullPallet ? (
-          <>
-            <button
-              type="button"
-              onClick={(event) => {
-                isolateCardAction(event);
-                addFullPallet(false);
-              }}
-              onTouchEnd={isolateCardAction}
-              className="flex w-full items-center justify-center rounded-xl bg-sky-600 px-3 py-2 text-xs font-bold text-white active:scale-95 md:hidden"
-            >
-              Add
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                isolateCardAction(event);
-                addFullPallet(true);
-              }}
-              onTouchEnd={isolateCardAction}
-              className="group/btn hidden w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-700 px-4 py-3 text-sm font-extrabold text-white shadow-md shadow-sky-500/20 hover:opacity-95 active:scale-[0.99] md:flex"
-            >
-              <ShoppingCart className="h-4 w-4 text-white" />
-              {t("products.buyNow")}
-              <ArrowRight className="h-4 w-4 text-sky-200" />
-            </button>
-          </>
         ) : (
           <Link
             href={productHref}

@@ -496,10 +496,6 @@ export function ProductCatalog({
           return false;
         }
 
-        // Manual-only storefront: never list machine / automatic film.
-        if (product.application === "machine" || isMachineFilm(product)) {
-          return false;
-        }
         if (selectedAppType !== "all" && product.application !== selectedAppType) {
           return false;
         }

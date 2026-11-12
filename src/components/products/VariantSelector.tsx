@@ -17,6 +17,7 @@ import { boxStockLabel, boxesPerPalletForProduct, palletStockLabel } from "@/lib
 import { usesCompact1880Pallets } from "@/lib/palletizing";
 import {
   HAND_FULL_PALLET,
+  buildMachineFilmSelectorTiers,
   isMachineFilm as detectMachineFilm,
   normalizeMachinePackageLabel,
   formatBoxRollLabel,
@@ -414,9 +415,9 @@ export function VariantSelector({
   const unitLabel = unitLabelForProduct(isMachineFilm);
   const unitLabelPlural = isMachineFilm ? "Rolls" : "Boxes";
 
-  // Manual-only storefront: three package options. Machine SKUs are excluded upstream.
+  // Prefer configured package tiers when they carry real prices; otherwise use SKU variants.
   const variants = useMemo(() => {
-    if (isMachineFilm) return [];
+    if (isMachineFilm) return buildMachineFilmSelectorTiers(product);
 
     const mapped = (() => {
       if (product?.packageOptions?.length) {

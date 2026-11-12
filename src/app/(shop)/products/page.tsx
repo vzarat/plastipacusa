@@ -39,15 +39,17 @@ function CatalogFallback() {
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
   const resolvedParams = await searchParams;
-  // Manual Stretch Film storefront only.
-  const initialApp = "hand" as CatalogAppFilter;
+  const rawType = resolvedParams.type || resolvedParams.app || "all";
+  const initialApp = (
+    ["all", "hand", "machine"].includes(rawType) ? rawType : "all"
+  ) as CatalogAppFilter;
   const initialCategory = resolvedParams.category || "all";
   const pageRaw = Number(resolvedParams.page || "1");
   const initialPage =
     Number.isFinite(pageRaw) && pageRaw > 0 ? Math.floor(pageRaw) : 1;
 
-  // Fetch Manual catalog once; filtering/sorting happens client-side for instant UX
-  const allProducts = await getProducts("hand");
+  // Fetch full catalog once; filtering/sorting happens client-side for instant UX
+  const allProducts = await getProducts("all");
 
   return (
     <div className="min-h-[calc(100vh-200px)] bg-slate-50/40 py-4 md:py-12">

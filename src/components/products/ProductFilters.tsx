@@ -10,9 +10,9 @@ import {
 
 export type CatalogAppFilter = "all" | "hand" | "machine";
 
-const GAUGE_OPTIONS = ["all", "40", "60", "70", "80"] as const;
-const LENGTH_OPTIONS = ["all", "1000", "1500"] as const;
-const WIDTH_OPTIONS = ["all", "15", "18"] as const;
+const GAUGE_OPTIONS = ["all", "40", "51", "60", "70", "80"] as const;
+const LENGTH_OPTIONS = ["all", "1000", "1500", "5000", "7000", "9000"] as const;
+const WIDTH_OPTIONS = ["all", "15", "18", "20", "30"] as const;
 
 const chipBase =
   "min-w-[4rem] px-3 py-2 text-xs font-semibold text-center whitespace-nowrap rounded-xl border transition-all duration-150 cursor-pointer";
@@ -45,6 +45,7 @@ export function ProductFilters({
   const { t } = useLanguage();
 
   const hasActiveFilters =
+    selectedApp !== "all" ||
     selectedGauge !== "all" ||
     selectedLength !== "all" ||
     selectedWidth !== "all";
@@ -75,15 +76,38 @@ export function ProductFilters({
       </div>
 
       <div className="space-y-6">
-        {/* Manual Stretch Film only — machine / automatic catalog removed from storefront */}
         <div>
           <label className={labelClass}>{t("products.applicationType")}</label>
-          <div className="rounded-xl border border-sky-200 bg-sky-50/70 px-3.5 py-2.5 text-xs font-semibold text-sky-900">
-            {t("products.handStretchFilmSeries")}
+          <div className="flex flex-col gap-1.5">
+            {(
+              [
+                { key: "all" as const, label: t("products.allPackagingFilms") },
+                { key: "hand" as const, label: t("products.handStretchFilmSeries") },
+                {
+                  key: "machine" as const,
+                  label: t("products.machineHighYieldFilm"),
+                },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onAppChange(opt.key);
+                }}
+                className={`text-left text-xs px-3.5 py-2.5 rounded-xl font-semibold transition-all duration-150 cursor-pointer border ${
+                  selectedApp === opt.key
+                    ? BRAND_GRADIENT_PILL_ACTIVE
+                    : BRAND_GRADIENT_PILL_IDLE
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Film Width */}
         <div>
           <label className={labelClass}>{t("products.filmWidth")}</label>
           <div className="flex flex-wrap gap-2">
@@ -106,7 +130,6 @@ export function ProductFilters({
           </div>
         </div>
 
-        {/* Section 3: Target Gauge (50 Ga excluded) */}
         <div>
           <label className={labelClass}>{t("products.targetGauge")}</label>
           <div className="flex flex-wrap gap-2">
@@ -129,7 +152,6 @@ export function ProductFilters({
           </div>
         </div>
 
-        {/* Section 4: Roll Length */}
         <div>
           <label className={labelClass}>{t("products.rollLength")}</label>
           <div className="flex flex-wrap gap-2">

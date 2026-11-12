@@ -4,7 +4,7 @@ import React, { useMemo, useState, useEffect, useRef } from "react";
 import { trackViewContent } from "@/lib/meta-pixel";
 import { ProductWithVariants, ProductVariant } from "@/types";
 import { VariantSelector } from "@/components/products/VariantSelector";
-import { isMachineFilm } from "@/lib/products";
+import { buildMachineFilmSelectorTiers, isMachineFilm } from "@/lib/products";
 import { HAND_ROLLS_PER_BOX } from "@/lib/pricing";
 import {
   buildHandManualPackageTiers,
@@ -29,9 +29,8 @@ function buildInitialVariant(product: ProductWithVariants): ProductVariant | any
   const lengthValue = Number(product?.length_feet);
   const lengthFeet = Number.isFinite(lengthValue) && lengthValue > 0 ? lengthValue : undefined;
 
-  // Machine film is not sold on the Manual-only storefront.
   if (isMachineFilm(product)) {
-    return null;
+    return buildMachineFilmSelectorTiers(product)[0];
   }
 
   const layout = {
