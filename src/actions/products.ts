@@ -1530,16 +1530,31 @@ export async function getAdminProducts(): Promise<AdminProduct[]> {
       (categoryRows || []).map((category) => [String(category.id), category])
     );
 
-    return rows.map((row) =>
-      formatAdminProduct({
-        ...row,
-        ...(pricesById.get(String(row.id)) || {}),
-        categories: categoriesById.get(String(row.category_id)) || null,
-        product_variants: variantsEmbedded
-          ? row.product_variants || []
-          : variantsByProduct.get(String(row.id)) || row.product_variants || [],
-      })
-    );
+    return rows
+      .map((row) =>
+        formatAdminProduct({
+          ...row,
+          ...(pricesById.get(String(row.id)) || {}),
+          categories: categoriesById.get(String(row.category_id)) || null,
+          product_variants: variantsEmbedded
+            ? row.product_variants || []
+            : variantsByProduct.get(String(row.id)) || row.product_variants || [],
+        })
+      )
+      // Admin catalog: Automatic inventory is exactly the 4 master specs.
+      // Ghosts (60/63 GA × 6000 FT, No Part #, unpriced machine orphans) stay hidden
+      // even before the hard-purge migration is applied.
+      .filter((product) => {
+        const machineLike =
+          product.application === "machine" ||
+          detectMachineFilm(product) ||
+          Math.round(Number(product.widthInches || 0)) === 20 ||
+          String(product.slug || "")
+            .toLowerCase()
+            .startsWith("stretch-film-20");
+        if (!machineLike) return true;
+        return isOfficialMachineFilmProduct(product);
+      });
   } catch (err: any) {
     console.error("getAdminProducts error:", err);
     return [];

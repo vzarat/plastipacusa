@@ -475,13 +475,19 @@ const OFFICIAL_MACHINE_SPEC_KEYS = new Set(
 export function isOfficialMachineFilmProduct(product: {
   slug?: string | null;
   application?: string | null;
+  title?: string | null;
+  name?: string | null;
   widthInches?: number | string | null;
   width_inches?: number | string | null;
   gauge?: number | string | null;
   length_feet?: number | string | null;
   lengthFeet?: number | string | null;
 }): boolean {
+  const title = String(product.title || product.name || "");
   const slug = String(product.slug || "").toLowerCase();
+  // Retired Automatic fingerprints must never pass (60/63 GA, 6000 FT).
+  if (OBSOLETE_GENESIS_STANDARD_PATTERN.test(`${title} ${slug}`)) return false;
+
   if (OFFICIAL_MACHINE_SLUGS.has(slug)) return true;
 
   const width = Math.round(Number(product.widthInches ?? product.width_inches ?? 0));
@@ -492,6 +498,7 @@ export function isOfficialMachineFilmProduct(product: {
   if (!Number.isFinite(width) || !Number.isFinite(gauge) || !Number.isFinite(length)) {
     return false;
   }
+  if (gauge === 60 || gauge === 63 || length === 6000) return false;
   return OFFICIAL_MACHINE_SPEC_KEYS.has(`${width}::${gauge}::${length}`);
 }
 
