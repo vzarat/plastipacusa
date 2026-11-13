@@ -186,8 +186,7 @@ export function isHoustonArea(destination: {
   postalCode?: string;
 }): boolean {
   if (!isTexas(destination.state)) return false;
-  const city = normalizePlace(destination.city);
-  if (city === "houston" || city.startsWith("houston ")) return true;
+  // Free Houston route requires a real 770–772 ZIP (city-only claims rejected).
   const zip = zipNumber(destination.postalCode);
   return zip !== null && zip >= 77001 && zip <= 77299;
 }

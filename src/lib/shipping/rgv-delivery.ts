@@ -35,6 +35,17 @@ function isTexas(state: string | undefined): boolean {
   return normalized === "tx" || normalized === "texas";
 }
 
+function zipDigits(postalCode: string | undefined): string | null {
+  const match = String(postalCode || "").match(/\d{5}/);
+  return match ? match[0] : null;
+}
+
+/** Valley ZIPs are 785xx. City alone without a matching ZIP is rejected. */
+export function isRgvZip(postalCode: string | undefined): boolean {
+  const zip = zipDigits(postalCode);
+  return Boolean(zip && zip.startsWith("785"));
+}
+
 export function freeRgvDelivery(input: {
   postalCode?: string;
   city?: string;
@@ -43,7 +54,8 @@ export function freeRgvDelivery(input: {
   boxes?: number;
   pallets?: number;
 }): { inValley: boolean; eligible: boolean; pallets: number } {
-  const inValley = isTexas(input.state) && RGV_CITIES.has(normalizePlace(input.city));
+  const cityOk = RGV_CITIES.has(normalizePlace(input.city));
+  const inValley = isTexas(input.state) && cityOk && isRgvZip(input.postalCode);
   const pallets = equivalentPalletCount({
     boxes: input.boxes,
     rolls: input.rolls,

@@ -91,6 +91,33 @@ export interface CreatePaymentIntentOptions {
   };
 }
 
+/** Server-side address gate — UI checks are not enough. */
+function requireCheckoutShippingAddress(
+  shipping: CreatePaymentIntentOptions["shipping"]
+): string | null {
+  const line1 = String(shipping?.line1 || "").trim();
+  const city = String(shipping?.city || "").trim();
+  const state = String(shipping?.state || "").trim();
+  const postalCode = String(shipping?.postalCode || "").match(/\d{5}/)?.[0] || "";
+  if (!line1 || !city || !state || !postalCode) {
+    return "Enter a complete shipping address (street, city, state, ZIP) before payment.";
+  }
+  return null;
+}
+
+/** Freight eligibility uses catalog SKU + qty only — never trust client rolls/boxes/weight. */
+function catalogFreightLines(
+  lines: ShippingQuoteLine[] | undefined
+): Array<{ sku: string; productSlug?: string; quantity: number }> {
+  return (lines || [])
+    .map((line) => ({
+      sku: String(line.sku || "").trim(),
+      productSlug: line.productSlug ? String(line.productSlug) : undefined,
+      quantity: Math.floor(Number(line.quantity) || 0),
+    }))
+    .filter((line) => line.sku && line.quantity > 0);
+}
+
 async function loadCatalogLines(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
   requested: Array<{ sku: string; quantity: number }>
@@ -282,6 +309,10 @@ export async function createPaymentIntent(
     if (!options.shippingQuoteId) {
       return { success: false, error: "Choose a shipping option before payment." };
     }
+    const addressError = requireCheckoutShippingAddress(options.shipping);
+    if (addressError) {
+      return { success: false, error: addressError };
+    }
 
     let coupon: ReturnType<typeof mapCouponToApplied> | null = null;
     let couponId: string | null = null;
@@ -331,9 +362,10 @@ export async function createPaymentIntent(
       expiresAt?: string | null;
       destinationZip: string;
     } | null = null;
+    const freightLines = catalogFreightLines(options.quoteLines);
     if (options.shippingQuoteId === "rgv-local") {
       try {
-        const freight = await buildShipmentFreight(options.quoteLines || []);
+        const freight = await buildShipmentFreight(freightLines);
         const gate = freeRgvDelivery({
           postalCode: options.shipping?.postalCode,
           city: options.shipping?.city,
@@ -360,7 +392,7 @@ export async function createPaymentIntent(
       }
     } else if (options.shippingQuoteId === "houston-friday") {
       try {
-        const freight = await buildShipmentFreight(options.quoteLines || []);
+        const freight = await buildShipmentFreight(freightLines);
         const gate = evalShippingEligibility(
           options.shipping?.postalCode || "",
           options.shipping?.city || "",
@@ -394,7 +426,7 @@ export async function createPaymentIntent(
           postalCode: options.shipping?.postalCode || "",
           city: options.shipping?.city,
           state: options.shipping?.state,
-          lines: options.quoteLines || [],
+          lines: freightLines,
         });
         if ("error" in resolved) {
           return { success: false, error: resolved.error, expired: resolved.expired };
@@ -420,6 +452,9 @@ export async function createPaymentIntent(
         };
       }
     }
+    if (!shippingOption || !(Number(shippingOption.price) >= 0) || !shippingOption.id) {
+      return { success: false, error: "Choose a shipping option before payment." };
+    }
     const { data: taxProfile, error: taxProfileError } = await supabase
       .from("profiles")
       .select("is_tax_exempt, tax_exempt_verified")
@@ -440,7 +475,7 @@ export async function createPaymentIntent(
     const priced = priceCheckoutCart({
       lines: pricedLines,
       coupon,
-      shipping: shippingOption ? shippingOption.price : 0,
+      shipping: shippingOption.price,
       taxExempt,
     });
     const normalizedAmount = Math.round(priced.total * 100);
@@ -1151,6 +1186,10 @@ export async function placeCommercialCreditOrder(
     if (!options.shippingQuoteId) {
       return { success: false, error: "Choose a shipping option before checkout." };
     }
+    const addressError = requireCheckoutShippingAddress(options.shipping);
+    if (addressError) {
+      return { success: false, error: addressError };
+    }
 
     const requested = (options.quoteLines || [])
       .map((line) => ({
@@ -1199,9 +1238,10 @@ export async function placeCommercialCreditOrder(
       destinationZip: string;
     } | null = null;
 
+    const freightLines = catalogFreightLines(options.quoteLines);
     if (options.shippingQuoteId === "rgv-local") {
       try {
-        const freight = await buildShipmentFreight(options.quoteLines || []);
+        const freight = await buildShipmentFreight(freightLines);
         const gate = freeRgvDelivery({
           postalCode: options.shipping?.postalCode,
           city: options.shipping?.city,
@@ -1228,7 +1268,7 @@ export async function placeCommercialCreditOrder(
       }
     } else if (options.shippingQuoteId === "houston-friday") {
       try {
-        const freight = await buildShipmentFreight(options.quoteLines || []);
+        const freight = await buildShipmentFreight(freightLines);
         const gate = evalShippingEligibility(
           options.shipping?.postalCode || "",
           options.shipping?.city || "",
@@ -1262,7 +1302,7 @@ export async function placeCommercialCreditOrder(
           postalCode: options.shipping?.postalCode || "",
           city: options.shipping?.city,
           state: options.shipping?.state,
-          lines: options.quoteLines || [],
+          lines: freightLines,
         });
         if ("error" in resolved) {
           return { success: false, error: resolved.error };
@@ -1285,6 +1325,9 @@ export async function placeCommercialCreditOrder(
           error: "We couldn't confirm this shipping quote. Please choose it again.",
         };
       }
+    }
+    if (!shippingOption || !(Number(shippingOption.price) >= 0) || !shippingOption.id) {
+      return { success: false, error: "Choose a shipping option before checkout." };
     }
 
     const { data: creditProfile, error: creditProfileError } = await supabase
@@ -1315,7 +1358,7 @@ export async function placeCommercialCreditOrder(
     const priced = priceCheckoutCart({
       lines: pricedLines,
       coupon,
-      shipping: shippingOption ? shippingOption.price : 0,
+      shipping: shippingOption.price,
       taxExempt,
     });
     const orderTotal = Number(priced.total.toFixed(2));

@@ -99,10 +99,13 @@ export function houstonFridayPresetLabel(boxes: number, rolls: number): string |
   return FREE_LOCAL_DELIVERY_PROMO;
 }
 
+/** Free Houston local requires a real 770–772 ZIP (city-only claims are rejected). */
 function isGreaterHouston(zipCode: string, city: string, state: string): boolean {
+  if (!isTexas(state)) return false;
   const zip = zipDigits(zipCode);
-  if (zip && HOUSTON_ZIP_PREFIXES.has(zip.slice(0, 3))) return true;
-  return isTexas(state) && normalizePlace(city) === "houston";
+  if (!zip || !HOUSTON_ZIP_PREFIXES.has(zip.slice(0, 3))) return false;
+  void city;
+  return true;
 }
 
 const FREE_LOCAL_DESCRIPTION =
