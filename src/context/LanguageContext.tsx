@@ -390,7 +390,8 @@ export const translations = {
     "home.clientLogosTitle": "Industry leaders that trust our high-performance packaging solutions",
 
     // Announcement / US Pride Banner
-    "banner.usPride": "Leader manufacturer of stretch film",
+    "banner.usPride":
+      "FREE Local Delivery to Houston & RGV on orders of 2+ Pallets · Leader manufacturer of stretch film",
 
     // Footer
     "footer.tagline":

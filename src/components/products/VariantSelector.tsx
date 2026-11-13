@@ -339,9 +339,14 @@ function displayPackageSubtext(variant: any, isMachine: boolean): string {
   const rolls = Math.max(0, getRollsCount(variant));
   if (isMachine) {
     const tierKind = getPackageTierKind(variant, true);
-    if (tierKind === "fixed_half" || rolls === 20) return "20 Rolls";
-    if (tierKind === "full_pallet" || rolls === 40) return "40 Rolls";
-    return "";
+    const promo = houstonFridayPresetLabel(0, rolls);
+    if (tierKind === "fixed_half" || rolls === 20) {
+      return promo ? `20 Rolls · ${promo}` : "20 Rolls";
+    }
+    if (tierKind === "full_pallet" || rolls === 40) {
+      return promo ? `40 Rolls · ${promo}` : "40 Rolls";
+    }
+    return promo || "";
   }
 
   const boxes = Number(variant?.boxes_count ?? variant?.boxesCount ?? 0);
@@ -370,11 +375,15 @@ function displayPackageSubtext(variant: any, isMachine: boolean): string {
 /** Short mobile line — title already has rolls/boxes; skip pallet-weight legalese. */
 function compactPackageSubtext(full: string, isMachine: boolean): string {
   if (!full) return "";
-  if (isMachine) return full;
+  if (isMachine) {
+    if (/2\+\s*Pallets/i.test(full)) return "Free Local · 2+ Pallets";
+    return full;
+  }
 
   const withoutPallet = full.replace(HAND_PALLET_WEIGHT_NOTE, "").replace(/\s+/g, " ").trim();
-  if (/Houston Friday Freight/i.test(withoutPallet)) return "Houston Friday Freight";
-  if (/Free RGV Freight/i.test(withoutPallet)) return "Free RGV Freight";
+  if (/2\+\s*Pallets|FREE Local Delivery/i.test(withoutPallet)) return "Free Local · 2+ Pallets";
+  if (/Houston Friday Freight/i.test(withoutPallet)) return "Free Local · 2+ Pallets";
+  if (/Free RGV Freight/i.test(withoutPallet)) return "Free Local · 2+ Pallets";
   if (/Sample|Single box/i.test(withoutPallet)) return "Sample / Single box";
   if (/master boxes|192 Rolls/i.test(withoutPallet)) return "192 Rolls / 48 Boxes";
   if (/Rolls included|Boxes ·/i.test(withoutPallet)) return "";

@@ -1,8 +1,5 @@
 import type { AssistantResult, FilmKind, PackageTier } from "@/lib/assistant/types";
-import {
-  HOUSTON_FREE_DELIVERY_BOXES,
-  RGV_FREE_DELIVERY_BOXES,
-} from "@/lib/shippingRules";
+import { HOUSTON_FREE_DELIVERY_BOXES } from "@/lib/shippingRules";
 
 /** Legacy alias kept for imports; 1-box qty now follows MAX_PACKAGE_QUANTITY. */
 export const HAND_BOX_MAX_QUANTITY = 40;
@@ -38,7 +35,7 @@ export interface ValidPackage {
   quantity: number;
   rolls: number;
   boxes: number;
-  /** Box count the freight rules already use (RGV 16, Houston 64). */
+  /** Box-equivalent count used by freight rules (2 Manual full pallets = 96 boxes). */
   freightBoxCount: number;
 }
 
@@ -97,10 +94,12 @@ export function validatePackageQuantity(
       quantity,
       rolls: spec.rolls * quantity,
       boxes: 0,
+      // Box-equivalent volume: half = 0.5 pallet (24), full = 48 per pallet.
+      // Free local unlocks at 2 pallets (96 box-equivalents).
       freightBoxCount:
         input.tier === "half_pallet"
-          ? RGV_FREE_DELIVERY_BOXES
-          : HOUSTON_FREE_DELIVERY_BOXES * quantity,
+          ? Math.round(HOUSTON_FREE_DELIVERY_BOXES / 4) * quantity
+          : Math.round(HOUSTON_FREE_DELIVERY_BOXES / 2) * quantity,
     };
   }
 

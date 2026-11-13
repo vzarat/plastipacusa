@@ -1,6 +1,8 @@
 import { roundMoney } from "@/lib/sales-tax";
 import { ORDER_PREP_LABEL, addBusinessDays, formatScheduleDate } from "@/lib/shipping/dates";
 import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
+import { fullPalletsForPackage, roundPalletStock } from "@/lib/pallet-stock";
+import { normalizeHandPackageBoxes } from "@/lib/pricing";
 import { evalShippingEligibility } from "@/lib/shippingRules";
 
 export type DeliveryMethodId =
@@ -38,15 +40,16 @@ export const DELIVERY_METHODS: DeliveryMethod[] = [
   },
   {
     id: "rgv-express",
-    label: "Free Local Delivery (Plastipac Fleet)",
-    description: "Plastipac fleet delivery for Rio Grande Valley orders of 16 boxes (64 rolls) or more.",
-    scheduleNote: "Free local express delivery across the Rio Grande Valley.",
+    label: "Free Local Delivery (2+ Pallets)",
+    description:
+      "Plastipac fleet delivery for Rio Grande Valley orders of 2+ full pallets (Manual and/or Automatic).",
+    scheduleNote: "Free local delivery across the Rio Grande Valley on 2+ pallet orders.",
   },
   {
     id: "houston-friday",
-    label: "Free Houston Delivery (Fridays Only)",
-    description: "Free Houston Delivery — Friday Route Only",
-    scheduleNote: "Free Houston Delivery — Friday Route Only",
+    label: "Free Local Delivery (2+ Pallets)",
+    description: "Free Houston local delivery on the Friday route for orders of 2+ pallets.",
+    scheduleNote: "Free Houston Delivery — Friday Route · 2+ Pallets",
   },
   {
     id: "san-antonio-tuesday",
@@ -59,8 +62,16 @@ export const DELIVERY_METHODS: DeliveryMethod[] = [
 export interface ShippingCartLine {
   quantity: number;
   totalBoxes?: number;
+  totalRolls?: number;
+  application?: string | null;
+  rollsPerBox?: number | null;
   packageSize?: string;
   pricingTier?: string;
+  widthInches?: number | string | null;
+  gauge?: number | string | null;
+  lengthFeet?: number | string | null;
+  productSlug?: string | null;
+  productName?: string | null;
 }
 
 export interface ShippingDestination {
@@ -113,6 +124,47 @@ export function countCartBoxes(items: ShippingCartLine[]): number {
     const quantity = Math.max(0, Number(item.quantity) || 0);
     return total + perPackage * quantity;
   }, 0);
+}
+
+/** Equivalent full-pallet volume across Manual + Automatic cart lines. */
+export function countCartPallets(items: ShippingCartLine[]): number {
+  return roundPalletStock(
+    items.reduce((total, item) => {
+      const quantity = Math.max(0, Math.floor(Number(item.quantity) || 0));
+      const application =
+        String(item.application || "").toLowerCase() === "machine" ? "machine" : "hand";
+      const rollsPerPackage =
+        application === "machine"
+          ? (() => {
+              const rolls = Math.floor(Number(item.rollsPerBox) || 0);
+              if (rolls === 20 || rolls === 40) return rolls;
+              const lineRolls = Math.floor(Number(item.totalRolls) || 0);
+              if (quantity > 0 && (lineRolls / quantity === 20 || lineRolls / quantity === 40)) {
+                return lineRolls / quantity;
+              }
+              return 0;
+            })()
+          : 0;
+      const boxesPerPackage =
+        application === "hand"
+          ? normalizeHandPackageBoxes(item.totalBoxes, item.totalRolls)
+          : 0;
+      return (
+        total +
+        fullPalletsForPackage({
+          application,
+          boxesPerPackage,
+          rollsPerPackage,
+          quantity,
+          widthInches: item.widthInches,
+          gauge: item.gauge,
+          lengthFeet: item.lengthFeet,
+          slug: item.productSlug,
+          name: item.productName,
+        })
+      );
+    }, 0)
+  );
 }
 
 export function isRioGrandeValley(destination: {

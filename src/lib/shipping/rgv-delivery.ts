@@ -1,8 +1,15 @@
 /** Client-safe Rio Grande Valley free-delivery rule. No server imports. */
 
-export const RGV_FREE_DELIVERY_ROLLS = 64;
+import {
+  FREE_LOCAL_DELIVERY_MIN_PALLETS,
+  equivalentPalletCount,
+  qualifiesForFreeLocalDelivery,
+} from "@/lib/shipping/local-delivery";
 
-/** The only cities that qualify for RGV Friday Free Delivery. */
+/** @deprecated Use FREE_LOCAL_DELIVERY_MIN_PALLETS (2 full-pallet equivalents). */
+export const RGV_FREE_DELIVERY_ROLLS = FREE_LOCAL_DELIVERY_MIN_PALLETS * 192;
+
+/** The only cities that qualify for RGV Free Local Delivery. */
 export const RGV_CITIES = new Set([
   "alamo",
   "mcallen",
@@ -32,9 +39,19 @@ export function freeRgvDelivery(input: {
   postalCode?: string;
   city?: string;
   state?: string;
-  rolls: number;
-}): { inValley: boolean; eligible: boolean } {
+  rolls?: number;
+  boxes?: number;
+  pallets?: number;
+}): { inValley: boolean; eligible: boolean; pallets: number } {
   const inValley = isTexas(input.state) && RGV_CITIES.has(normalizePlace(input.city));
-  const rolls = Math.max(0, Number(input.rolls) || 0);
-  return { inValley, eligible: inValley && rolls >= RGV_FREE_DELIVERY_ROLLS };
+  const pallets = equivalentPalletCount({
+    boxes: input.boxes,
+    rolls: input.rolls,
+    pallets: input.pallets,
+  });
+  return {
+    inValley,
+    eligible: inValley && qualifiesForFreeLocalDelivery(pallets),
+    pallets,
+  };
 }

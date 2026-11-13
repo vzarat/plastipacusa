@@ -42,15 +42,15 @@ describe("carrier logo storage paths", () => {
   it("uses the Plastipac delivery mark for Houston and RGV Friday delivery", () => {
     const plastipac = `${BASE}/${encodeURI("PLASTIPAC_DELIVERY.svg")}`;
     assert.equal(
-      carrierLogoSources("plastipac", "Houston Friday Free Delivery (Scheduled)")[0],
+      carrierLogoSources("plastipac", "Free Local Delivery (2+ Pallets) · Houston Friday Route")[0],
       plastipac
     );
     assert.equal(
-      carrierLogoSources(undefined, "Houston Friday Free Delivery (Scheduled)")[0],
+      carrierLogoSources(undefined, "Free Local Delivery (2+ Pallets) · Houston Friday Route")[0],
       plastipac
     );
     assert.equal(
-      carrierLogoSources(undefined, "RGV Friday Free Delivery (Scheduled)")[0],
+      carrierLogoSources(undefined, "Free Local Delivery (2+ Pallets) · RGV")[0],
       plastipac
     );
   });

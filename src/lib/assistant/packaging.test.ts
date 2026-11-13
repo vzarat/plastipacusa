@@ -444,43 +444,26 @@ describe("gaugeAdvice", () => {
 });
 
 describe("freightRateCheck", () => {
-  it("includes RGV delivery for 16 hand-film boxes", () => {
+  it("does not unlock RGV free local below 2 full pallets", () => {
     const result = freightRateCheck({
       postalCode: "78501",
       city: "McAllen",
       state: "TX",
       film: "hand",
       widthInches: 18,
-      tier: "box",
-      quantity: 16,
+      tier: "full_pallet",
+      quantity: 1,
     });
     assert.equal(result.ok, true);
     if (result.ok) {
-      assert.equal(result.boxCount, 16);
-      assert.equal(result.freeDeliveryEligible, true);
-      assert.equal(result.estimatedShippingUsd, 0);
-    }
-  });
-
-  it("requires a full pallet before Houston freight is free", () => {
-    const result = freightRateCheck({
-      postalCode: "77002",
-      city: "Houston",
-      state: "TX",
-      film: "hand",
-      widthInches: 18,
-      tier: "box",
-      quantity: 16,
-    });
-    assert.equal(result.ok, true);
-    if (result.ok) {
-      assert.equal(result.boxCount, 16);
+      assert.equal(result.boxCount, 48);
       assert.equal(result.freeDeliveryEligible, false);
       assert.ok(result.estimatedShippingUsd > 0);
+      assert.match(String(result.banner || ""), /Add 1 more pallet/i);
     }
   });
 
-  it("unlocks Houston Friday on one full pallet", () => {
+  it("requires 2 full pallets before Houston freight is free", () => {
     const result = freightRateCheck({
       postalCode: "77002",
       city: "Houston",
@@ -493,6 +476,24 @@ describe("freightRateCheck", () => {
     assert.equal(result.ok, true);
     if (result.ok) {
       assert.equal(result.boxCount, 48);
+      assert.equal(result.freeDeliveryEligible, false);
+      assert.ok(result.estimatedShippingUsd > 0);
+    }
+  });
+
+  it("unlocks Houston free local on two full pallets", () => {
+    const result = freightRateCheck({
+      postalCode: "77002",
+      city: "Houston",
+      state: "TX",
+      film: "hand",
+      widthInches: 18,
+      tier: "full_pallet",
+      quantity: 2,
+    });
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.boxCount, 96);
       assert.equal(result.freeDeliveryEligible, true);
       assert.equal(result.estimatedShippingUsd, 0);
     }

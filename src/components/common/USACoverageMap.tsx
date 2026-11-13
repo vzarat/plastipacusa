@@ -228,7 +228,7 @@ export function USACoverageMap() {
               style={{ backgroundColor: FILL_PRIMARY }}
               aria-hidden
             />
-            Texas — RGV local delivery and Houston Friday route
+            Texas — FREE Local Delivery to Houston & RGV on 2+ Pallets
           </span>
           <span className="inline-flex items-center gap-1.5 text-slate-700">
             <span

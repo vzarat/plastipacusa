@@ -5,8 +5,8 @@ export type FridayDeliveryRegion = "houston" | "rgv";
 
 export function fridayDeliveryTitle(region: FridayDeliveryRegion): string {
   return region === "houston"
-    ? "Houston Friday Free Delivery (Scheduled)"
-    : "RGV Friday Free Delivery (Scheduled)";
+    ? "Free Local Delivery (2+ Pallets) · Houston Friday Route"
+    : "Free Local Delivery (2+ Pallets) · RGV";
 }
 
 export function fridayRegionTag(region: FridayDeliveryRegion): "Houston" | "RGV" {

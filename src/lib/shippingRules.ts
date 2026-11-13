@@ -1,12 +1,33 @@
 import { ORDERS_EMAIL } from "@/lib/company-email";
-import { freeRgvDelivery, RGV_FREE_DELIVERY_ROLLS } from "@/lib/shipping/rgv-delivery";
+import { freeRgvDelivery } from "@/lib/shipping/rgv-delivery";
+import {
+  FREE_LOCAL_DELIVERY_LABEL,
+  FREE_LOCAL_DELIVERY_MIN_PALLETS,
+  FREE_LOCAL_DELIVERY_PROMO,
+  equivalentPalletCount,
+  freeLocalDeliveryUnlockMessage,
+  palletsShortOfFreeLocal,
+  qualifiesForFreeLocalDelivery,
+} from "@/lib/shipping/local-delivery";
+import { HAND_FULL_PALLET_BOXES } from "@/lib/pricing";
 
-export const RGV_FREE_DELIVERY_BOXES = 16;
-/** One standardized Manual full pallet (48 boxes / 192 rolls). */
-export const HOUSTON_FREE_DELIVERY_BOXES = 48;
-export const RGV_FREE_DELIVERY_LABEL = "Free Local Delivery (Plastipac Fleet)";
-export const HOUSTON_FRIDAY_LABEL = "Free Houston Delivery (Fridays Only)";
-export const HOUSTON_FRIDAY_NOTE = "Free Houston Delivery — Friday Route Only";
+/** Two Manual full pallets (48 boxes each). */
+export const HOUSTON_FREE_DELIVERY_BOXES = HAND_FULL_PALLET_BOXES * FREE_LOCAL_DELIVERY_MIN_PALLETS;
+/** Same 2-pallet rule as Houston for RGV (legacy box alias). */
+export const RGV_FREE_DELIVERY_BOXES = HOUSTON_FREE_DELIVERY_BOXES;
+
+export const RGV_FREE_DELIVERY_LABEL = FREE_LOCAL_DELIVERY_LABEL;
+export const HOUSTON_FRIDAY_LABEL = FREE_LOCAL_DELIVERY_LABEL;
+export const HOUSTON_FRIDAY_NOTE =
+  "Free local delivery on the Houston Friday route for orders of 2+ pallets.";
+
+export {
+  FREE_LOCAL_DELIVERY_LABEL,
+  FREE_LOCAL_DELIVERY_MIN_PALLETS,
+  FREE_LOCAL_DELIVERY_PROMO,
+  equivalentPalletCount,
+  qualifiesForFreeLocalDelivery,
+};
 
 export const LOGISTICS_EMAIL = ORDERS_EMAIL;
 export const LOGISTICS_PHONE_DISPLAY = "+1 (956) 400-3683";
@@ -31,8 +52,10 @@ export interface ShippingRuleOption {
 export interface ShippingEligibility {
   region: ShippingRegionId;
   cartTotalBoxes: number;
+  cartTotalPallets: number;
   freeDeliveryEligible: boolean;
   boxesToUnlock: number;
+  palletsToUnlock: number;
   banner: string | null;
   badge: string | null;
   notice: string | null;
@@ -61,16 +84,19 @@ function zipDigits(postalCode: string): string | null {
   return match ? match[0] : null;
 }
 
-/** Preset box count comes from the catalog. Houston Friday unlocks at one full pallet (48 boxes). */
-export function qualifiesForHoustonFriday(boxes: number): boolean {
-  return Math.floor(Number(boxes) || 0) >= HOUSTON_FREE_DELIVERY_BOXES;
+/** Preset unlock: Houston / RGV free local needs 2 full-pallet equivalents. */
+export function qualifiesForHoustonFriday(boxes: number, rolls = 0): boolean {
+  return qualifiesForFreeLocalDelivery(equivalentPalletCount({ boxes, rolls }));
 }
 
-/** Product-page label. Rolls and boxes are the variant's catalog counts. */
+/** Product-page promo badge (policy), not single-SKU unlock. */
 export function houstonFridayPresetLabel(boxes: number, rolls: number): string | null {
+  const boxCount = Math.floor(Number(boxes) || 0);
   const rollCount = Math.floor(Number(rolls) || 0);
-  if (!qualifiesForHoustonFriday(boxes) || rollCount < 1) return null;
-  return `${rollCount} Rolls included · Houston Friday Freight Eligible`;
+  const isHandFull = boxCount >= HAND_FULL_PALLET_BOXES;
+  const isMachinePallet = rollCount === 20 || rollCount === 40;
+  if (!isHandFull && !isMachinePallet) return null;
+  return FREE_LOCAL_DELIVERY_PROMO;
 }
 
 function isGreaterHouston(zipCode: string, city: string, state: string): boolean {
@@ -79,56 +105,79 @@ function isGreaterHouston(zipCode: string, city: string, state: string): boolean
   return isTexas(state) && normalizePlace(city) === "houston";
 }
 
+const FREE_LOCAL_DESCRIPTION =
+  "Plastipac fleet delivery for Houston & Rio Grande Valley orders of 2+ full pallets (Manual and/or Automatic).";
+
 export function evalShippingEligibility(
   zipCode: string,
   city: string,
   state: string,
   cartTotalBoxes: number,
-  cartTotalRolls = 0
+  cartTotalRolls = 0,
+  cartTotalPallets?: number
 ): ShippingEligibility {
   const boxes = Math.max(0, Math.floor(Number(cartTotalBoxes) || 0));
   const rolls = Math.max(0, Math.round(Number(cartTotalRolls) || 0));
-  const rgv = freeRgvDelivery({ postalCode: zipCode, city, state, rolls });
+  const pallets = equivalentPalletCount({
+    boxes,
+    rolls,
+    pallets: cartTotalPallets,
+  });
+  const palletsToUnlock = palletsShortOfFreeLocal(pallets);
+  const boxesToUnlock = palletsToUnlock * HAND_FULL_PALLET_BOXES;
+  const unlockBanner = freeLocalDeliveryUnlockMessage(pallets);
+  const rgv = freeRgvDelivery({
+    postalCode: zipCode,
+    city,
+    state,
+    rolls,
+    boxes,
+    pallets,
+  });
 
   if (rgv.inValley) {
     if (rgv.eligible) {
       return {
         region: "rgv",
         cartTotalBoxes: boxes,
+        cartTotalPallets: pallets,
         freeDeliveryEligible: true,
         boxesToUnlock: 0,
+        palletsToUnlock: 0,
         banner: null,
-        badge: null,
+        badge: FREE_LOCAL_DELIVERY_PROMO,
         notice: null,
         showQuoteActions: false,
         defaultMethodId: "rgv-express",
         options: [
           {
             id: "rgv-express",
-            label: RGV_FREE_DELIVERY_LABEL,
-            description: "Plastipac fleet delivery for Rio Grande Valley orders of 64 rolls or more.",
+            label: FREE_LOCAL_DELIVERY_LABEL,
+            description: FREE_LOCAL_DESCRIPTION,
             scheduleNote: null,
           },
         ],
       };
     }
 
-    const rollsToUnlock = Math.max(0, RGV_FREE_DELIVERY_ROLLS - rolls);
     return {
       region: "rgv",
       cartTotalBoxes: boxes,
+      cartTotalPallets: pallets,
       freeDeliveryEligible: false,
-      boxesToUnlock: rollsToUnlock,
-      banner: `Add ${rollsToUnlock} more roll(s) to unlock FREE RGV Local Delivery.`,
+      boxesToUnlock,
+      palletsToUnlock,
+      banner: unlockBanner,
       badge: null,
       notice: null,
       showQuoteActions: false,
-      defaultMethodId: "ground",
+      defaultMethodId: "freight",
       options: [
         {
-          id: "ground",
-          label: "Standard Local Courier",
-          description: "Local courier fee based on shipment weight and box count.",
+          id: "freight",
+          label: "Standard Freight (Warp LTL)",
+          description:
+            "Standard Warp LTL rates apply until the cart reaches 2 full pallets for free local delivery.",
           scheduleNote: null,
         },
       ],
@@ -136,16 +185,17 @@ export function evalShippingEligibility(
   }
 
   if (isGreaterHouston(zipCode, city, state)) {
-    const eligible = qualifiesForHoustonFriday(boxes);
-    const boxesToUnlock = Math.max(0, HOUSTON_FREE_DELIVERY_BOXES - boxes);
+    const eligible = qualifiesForFreeLocalDelivery(pallets);
     if (eligible) {
       return {
         region: "houston",
         cartTotalBoxes: boxes,
+        cartTotalPallets: pallets,
         freeDeliveryEligible: true,
         boxesToUnlock: 0,
+        palletsToUnlock: 0,
         banner: null,
-        badge: null,
+        badge: FREE_LOCAL_DELIVERY_PROMO,
         notice: null,
         showQuoteActions: false,
         defaultMethodId: "houston-friday",
@@ -163,9 +213,11 @@ export function evalShippingEligibility(
     return {
       region: "houston",
       cartTotalBoxes: boxes,
+      cartTotalPallets: pallets,
       freeDeliveryEligible: false,
       boxesToUnlock,
-      banner: `🚛 Houston Freight requires a minimum of 1 Full Pallet (64 Boxes). Add ${boxesToUnlock} more box(es) to qualify for Free Friday Freight.`,
+      palletsToUnlock,
+      banner: unlockBanner,
       badge: null,
       notice: null,
       showQuoteActions: false,
@@ -173,8 +225,9 @@ export function evalShippingEligibility(
       options: [
         {
           id: "freight",
-          label: "Standard Freight",
-          description: "Freight fee based on shipment weight and box count until the full-pallet minimum is met.",
+          label: "Standard Freight (Warp LTL)",
+          description:
+            "Standard Warp LTL rates apply until the cart reaches 2 full pallets for free Houston local delivery.",
           scheduleNote: null,
         },
       ],
@@ -184,8 +237,10 @@ export function evalShippingEligibility(
   return {
     region: "out-of-region",
     cartTotalBoxes: boxes,
+    cartTotalPallets: pallets,
     freeDeliveryEligible: false,
     boxesToUnlock: 0,
+    palletsToUnlock: 0,
     banner: null,
     badge: "Custom LTL Freight Delivery",
     notice: "Your order will be quoted using our Texas-to-US freight rate engine.",
@@ -195,7 +250,8 @@ export function evalShippingEligibility(
       {
         id: "freight",
         label: "Custom LTL Freight Delivery",
-        description: "Estimated from the Texas-to-US freight rate engine. Request a quote to confirm the final rate.",
+        description:
+          "Estimated from the Texas-to-US freight rate engine. Request a quote to confirm the final rate.",
         scheduleNote: null,
       },
     ],
@@ -208,9 +264,17 @@ export function labelForShippingMethod(
   city: string,
   state: string,
   cartTotalBoxes: number,
-  cartTotalRolls = 0
+  cartTotalRolls = 0,
+  cartTotalPallets?: number
 ): string {
-  const eligibility = evalShippingEligibility(zipCode, city, state, cartTotalBoxes, cartTotalRolls);
+  const eligibility = evalShippingEligibility(
+    zipCode,
+    city,
+    state,
+    cartTotalBoxes,
+    cartTotalRolls,
+    cartTotalPallets
+  );
   return (
     eligibility.options.find((option) => option.id === methodId)?.label ||
     eligibility.options[0]?.label ||

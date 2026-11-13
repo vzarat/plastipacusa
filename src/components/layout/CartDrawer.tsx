@@ -28,7 +28,7 @@ import {
   readCheckoutShipping,
   type CheckoutShippingAddress,
 } from "@/lib/shipping-address";
-import { countCartBoxes } from "@/lib/shipping-method";
+import { countCartBoxes, countCartPallets } from "@/lib/shipping-method";
 import { evalShippingEligibility } from "@/lib/shippingRules";
 import {
   canIncreaseCartQuantity,
@@ -72,6 +72,7 @@ export function CartDrawer() {
     () => items.reduce((total, item) => total + (Number(item.totalRolls) || 0), 0),
     [items]
   );
+  const cartPallets = useMemo(() => countCartPallets(items), [items]);
   const drawerEligibility = useMemo(() => {
     if (!savedShipping?.postalCode && !savedShipping?.city) return null;
     return evalShippingEligibility(
@@ -79,9 +80,10 @@ export function CartDrawer() {
       savedShipping.city,
       savedShipping.state,
       cartBoxes,
-      cartRolls
+      cartRolls,
+      cartPallets
     );
-  }, [savedShipping, cartBoxes, cartRolls]);
+  }, [savedShipping, cartBoxes, cartRolls, cartPallets]);
 
   const goToCheckoutIfAuthenticated = async () => {
     if (isOpeningCheckout) return;

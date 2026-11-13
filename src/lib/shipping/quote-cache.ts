@@ -1,6 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { FREE_LOCAL_DELIVERY_MIN_ROLLS, WARP_ORIGIN_ZIP, getWarpConfig } from "@/lib/shipping/config";
+import { WARP_ORIGIN_ZIP, getWarpConfig } from "@/lib/shipping/config";
 import { nextBusinessPickupDate } from "@/lib/shipping/dates";
+import {
+  FREE_LOCAL_DELIVERY_LABEL,
+  equivalentPalletCount,
+  qualifiesForFreeLocalDelivery,
+} from "@/lib/shipping/local-delivery";
 import {
   QUOTE_PAYABLE_BUFFER_MS,
   fetchLtlMarketOptions,
@@ -472,15 +477,16 @@ export async function resolveShippingCharge(input: {
       error instanceof ShipmentDataError &&
       error.code === "missing_dims" &&
       isRioGrandeValley({ postalCode: zip, city: input.city, state: input.state }) &&
-      error.rolls >= FREE_LOCAL_DELIVERY_MIN_ROLLS
+      qualifiesForFreeLocalDelivery(equivalentPalletCount({ rolls: error.rolls }))
     ) {
       return {
         option: {
           id: "rgv-local",
           provider: "plastipac",
           mode: "local",
-          serviceName: "Free Local Delivery (Plastipac Fleet)",
-          description: "Plastipac fleet delivery for Rio Grande Valley orders of 16 boxes (64 rolls) or more.",
+          serviceName: FREE_LOCAL_DELIVERY_LABEL,
+          description:
+            "Plastipac fleet delivery for Rio Grande Valley orders of 2+ full pallets (Manual and/or Automatic).",
           price: 0,
           transitDays: 1,
           expiresAt: null,
@@ -493,7 +499,9 @@ export async function resolveShippingCharge(input: {
   if (input.quoteId === "rgv-local") {
     const eligible =
       isRioGrandeValley({ postalCode: zip, city: input.city, state: input.state }) &&
-      freight.rolls >= FREE_LOCAL_DELIVERY_MIN_ROLLS;
+      qualifiesForFreeLocalDelivery(
+        equivalentPalletCount({ boxes: freight.boxes, rolls: freight.rolls })
+      );
     if (!eligible) {
       return { error: "Free local delivery does not apply to this order.", expired: false };
     }
@@ -502,8 +510,9 @@ export async function resolveShippingCharge(input: {
         id: "rgv-local",
         provider: "plastipac",
         mode: "local",
-        serviceName: "Free Local Delivery (Plastipac Fleet)",
-        description: "Plastipac fleet delivery for Rio Grande Valley orders of 16 boxes (64 rolls) or more.",
+        serviceName: FREE_LOCAL_DELIVERY_LABEL,
+        description:
+          "Plastipac fleet delivery for Rio Grande Valley orders of 2+ full pallets (Manual and/or Automatic).",
         price: 0,
         transitDays: 1,
         expiresAt: null,

@@ -15,7 +15,7 @@ import { useCartStore } from "@/lib/store/useCartStore";
 import { submitInquiry } from "@/actions/inquiries";
 import { formatCurrency } from "@/lib/utils";
 import { ShippingEligibilityAlert } from "@/components/checkout/ShippingEligibilityAlert";
-import { WAREHOUSE_ORIGIN } from "@/lib/shipping-method";
+import { WAREHOUSE_ORIGIN, countCartPallets } from "@/lib/shipping-method";
 import { CarrierLogo } from "@/components/checkout/CarrierLogo";
 import { featuredCarrierOptions } from "@/lib/shipping/featured-options";
 import {
@@ -219,6 +219,7 @@ export function CheckoutShippingMethodStep({
     () => items.reduce((total, item) => total + (Number(item.totalRolls) || 0), 0),
     [items]
   );
+  const cartPallets = useMemo(() => countCartPallets(items), [items]);
   const shippingEligibility = useMemo(
     () =>
       evalShippingEligibility(
@@ -226,9 +227,10 @@ export function CheckoutShippingMethodStep({
         selectedAddress?.city || "",
         selectedAddress?.state || "",
         boxCount,
-        cartRolls
+        cartRolls,
+        cartPallets
       ),
-    [selectedAddress, boxCount, cartRolls]
+    [selectedAddress, boxCount, cartRolls, cartPallets]
   );
 
   const quoteKey = [

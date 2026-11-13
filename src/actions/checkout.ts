@@ -339,6 +339,7 @@ export async function createPaymentIntent(
           city: options.shipping?.city,
           state: options.shipping?.state,
           rolls: freight.rolls,
+          boxes: freight.boxes,
         });
         const local = rgvLocalCharge(gate.eligible);
         if ("error" in local) return { success: false, error: local.error };
@@ -1206,6 +1207,7 @@ export async function placeCommercialCreditOrder(
           city: options.shipping?.city,
           state: options.shipping?.state,
           rolls: freight.rolls,
+          boxes: freight.boxes,
         });
         const local = rgvLocalCharge(gate.eligible);
         if ("error" in local) return { success: false, error: local.error };
