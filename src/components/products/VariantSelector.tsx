@@ -901,56 +901,37 @@ export function VariantSelector({
             {t("products.officialFactoryDirectPrice")}
           </span>
           <div className="flex items-baseline gap-2 flex-wrap">
-            {isMachineFilm ? (
-              <>
-                {hasActiveDiscount && baseUnitPriceRaw !== unitPrice && (
-                  <span className="text-lg sm:text-xl font-bold text-slate-400 line-through tracking-tight">
-                    {formatCurrency(baseUnitPriceRaw)}
-                  </span>
-                )}
-                <span
-                  className={`text-3xl sm:text-4xl font-black tracking-tight ${
-                    hasActiveDiscount ? "text-emerald-700" : "text-slate-900"
-                  }`}
-                >
-                  {unitPrice > 0 ? formatCurrency(unitPrice) : "—"}
+            <>
+              {hasActiveDiscount && baseUnitPriceRaw > 0 && baseUnitPriceRaw !== unitPrice && (
+                <span className="text-lg sm:text-xl font-bold text-slate-400 line-through tracking-tight">
+                  {formatCurrency(baseUnitPriceRaw)}
                 </span>
-                {unitPrice > 0 && (
-                  <span className="text-sm font-bold text-slate-500">USD</span>
-                )}
-                {Number((selectedVariant as { perRollPrice?: number })?.perRollPrice) > 0 && (
-                  <span className="basis-full text-sm font-semibold text-slate-500">
-                    {formatCurrency(
-                      Number((selectedVariant as { perRollPrice?: number }).perRollPrice)
-                    )}{" "}
-                    USD / roll
-                  </span>
-                )}
-              </>
-            ) : (
-              <>
-                {hasActiveDiscount && listBoxUnit !== discountedBoxUnit && listBoxUnit > 0 && (
-                  <span className="text-lg sm:text-xl font-bold text-slate-400 line-through tracking-tight">
-                    {formatCurrency(listBoxUnit)} USD / box
-                  </span>
-                )}
-                <span
-                  className={`text-3xl sm:text-4xl font-black tracking-tight ${
-                    hasActiveDiscount ? "text-emerald-700" : "text-slate-900"
-                  }`}
-                >
-                  {discountedBoxUnit > 0 ? formatCurrency(discountedBoxUnit) : "—"}
-                </span>
-                {discountedBoxUnit > 0 && (
-                  <span className="text-sm font-bold text-slate-500">USD / box</span>
-                )}
-                {unitPrice > 0 && (
-                  <span className="basis-full text-sm font-semibold text-slate-500">
-                    Total: {formatCurrency(unitPrice)} USD
-                  </span>
-                )}
-              </>
-            )}
+              )}
+              <span
+                className={`text-3xl sm:text-4xl font-black tracking-tight ${
+                  hasActiveDiscount ? "text-emerald-700" : "text-slate-900"
+                }`}
+              >
+                {unitPrice > 0 ? formatCurrency(unitPrice) : "—"}
+              </span>
+              {unitPrice > 0 && (
+                <span className="text-sm font-bold text-slate-500">USD</span>
+              )}
+              {isMachineFilm
+                ? Number((selectedVariant as { perRollPrice?: number })?.perRollPrice) > 0 && (
+                    <span className="basis-full text-sm font-semibold text-slate-500">
+                      {formatCurrency(
+                        Number((selectedVariant as { perRollPrice?: number }).perRollPrice)
+                      )}{" "}
+                      USD / roll
+                    </span>
+                  )
+                : discountedBoxUnit > 0 && (
+                    <span className="basis-full text-sm font-semibold text-slate-500">
+                      {formatCurrency(discountedBoxUnit)} USD / box
+                    </span>
+                  )}
+            </>
             {appliedDiscount && (
               <span className="inline-flex items-center rounded-full bg-emerald-100 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
                 {formatDiscountAppliedBadge(appliedDiscount)}
@@ -1126,7 +1107,7 @@ export function VariantSelector({
                       <>
                         {optionBoxUnit !== optionBoxUnitDiscounted && (
                           <span className="block text-xs font-semibold text-slate-400 line-through">
-                            {formatCurrency(optionBoxUnit)} USD / box
+                            {formatCurrency(totalForBoxes(optionBoxUnit, boxesCount))} USD
                           </span>
                         )}
                         <p
@@ -1136,11 +1117,10 @@ export function VariantSelector({
                               : "text-slate-900"
                           }`}
                         >
-                          {formatCurrency(optionBoxUnitDiscounted)} USD / box
+                          {formatCurrency(totalForBoxes(optionBoxUnitDiscounted, boxesCount))} USD
                         </p>
-                        <p className="mt-0.5 whitespace-nowrap text-[11px] font-semibold text-slate-500">
-                          Total: {formatCurrency(totalForBoxes(optionBoxUnitDiscounted, boxesCount))}{" "}
-                          USD
+                        <p className="mt-0.5 whitespace-nowrap text-xs text-slate-500">
+                          {formatCurrency(optionBoxUnitDiscounted)} USD / box
                         </p>
                       </>
                     ) : (

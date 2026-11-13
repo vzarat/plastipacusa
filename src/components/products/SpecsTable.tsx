@@ -312,11 +312,10 @@ function matrixRowView(
   ) : Number((variant as { boxUnitPrice?: number }).boxUnitPrice) > 0 && boxes > 0 ? (
     <span className="block whitespace-normal text-right">
       <span className="block">
-        {formatCurrency((variant as { boxUnitPrice?: number }).boxUnitPrice)} USD / box
+        {formatCurrency(Number((variant as { boxUnitPrice?: number }).boxUnitPrice) * boxes)} USD
       </span>
       <span className="block text-xs font-semibold text-slate-500">
-        Total:{" "}
-        {formatCurrency(Number((variant as { boxUnitPrice?: number }).boxUnitPrice) * boxes)} USD
+        {formatCurrency((variant as { boxUnitPrice?: number }).boxUnitPrice)} USD / box
       </span>
     </span>
   ) : (
