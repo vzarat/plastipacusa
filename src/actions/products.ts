@@ -35,6 +35,10 @@ import {
   unitBoxPriceForCount,
 } from "@/lib/pricing";
 import {
+  AUTHORIZED_AUTOMATIC_PART_NUMBERS,
+  AUTHORIZED_AUTOMATIC_SLUGS,
+} from "@/lib/machine-film-master";
+import {
   HAND_FULL_PALLET,
   MACHINE_FILM_IMAGE_URL,
   GENESIS_HP_SLUGS,
@@ -1545,15 +1549,30 @@ export async function getAdminProducts(): Promise<AdminProduct[]> {
       // Ghosts (60/63 GA × 6000 FT, No Part #, unpriced machine orphans) stay hidden
       // even before the hard-purge migration is applied.
       .filter((product) => {
+        const slug = String(product.slug || "").toLowerCase();
+        const part = String(product.partNumber || "").trim();
+        const partKey = part.replace(/-/g, "").toUpperCase();
         const machineLike =
           product.application === "machine" ||
           detectMachineFilm(product) ||
           Math.round(Number(product.widthInches || 0)) === 20 ||
-          String(product.slug || "")
-            .toLowerCase()
-            .startsWith("stretch-film-20");
+          slug.startsWith("stretch-film-20");
         if (!machineLike) return true;
-        return isOfficialMachineFilmProduct(product);
+        if (!isOfficialMachineFilmProduct(product)) return false;
+        if (AUTHORIZED_AUTOMATIC_SLUGS.has(slug)) return true;
+        if (AUTHORIZED_AUTOMATIC_PART_NUMBERS.has(partKey) || AUTHORIZED_AUTOMATIC_PART_NUMBERS.has(part.toUpperCase())) {
+          return true;
+        }
+        // Dim-matched but missing / placeholder part # — hide until SQL purge + matrix sync.
+        if (!part || /^no part\b/i.test(part) || /^(n\/a|na|-)$/i.test(part)) {
+          return false;
+        }
+        const priced =
+          Number(product.priceUsd || 0) > 0 ||
+          Number(product.price20Rolls || 0) > 0 ||
+          Number(product.price40Rolls || 0) > 0 ||
+          (product.packageTiers || []).some((tier) => Number(tier.price || 0) > 0);
+        return priced;
       });
   } catch (err: any) {
     console.error("getAdminProducts error:", err);
