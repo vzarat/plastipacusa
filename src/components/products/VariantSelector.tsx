@@ -493,7 +493,13 @@ export function VariantSelector({
   const clearCoupon = useCartStore((state) => state.clearCoupon);
 
   const [internalSelectedVariantId, setInternalSelectedVariantId] = useState<string>(() => {
-    if (!isMachineFilm) {
+    if (isMachineFilm) {
+      const full = variants.find(
+        (variant: any) =>
+          variant?.tierKey === "full_pallet" || getRollsCount(variant) === 40
+      );
+      if (full) return String(full.id || full.sku || full.tierKey);
+    } else {
       const full = variants.find(
         (variant: any) =>
           variant?.tierKey === "full" || getBoxesCount(variant, false) === HAND_FULL_PALLET_BOXES
@@ -910,7 +916,13 @@ export function VariantSelector({
       <div className="pb-5 border-b border-slate-100 flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <span className="text-[11px] uppercase tracking-widest text-slate-400 font-bold block mb-1">
-            {t("products.officialFactoryDirectPrice")}
+            {isMachineFilm
+              ? packageRolls >= 40
+                ? "Full Pallet Total"
+                : "Half Pallet Total"
+              : isFullPalletTier
+                ? "Full Pallet Total"
+                : "Package Total"}
           </span>
           <div className="flex items-baseline gap-2 flex-wrap">
             <>

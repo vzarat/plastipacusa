@@ -52,6 +52,33 @@ function product(overrides: Partial<AdminProduct> = {}): AdminProduct {
   };
 }
 
+function machineProduct(overrides: Partial<AdminProduct> = {}): AdminProduct {
+  return {
+    ...product({
+      id: "machine-80",
+      slug: "stretch-film-20-x-80-ga-x-5000ft",
+      name: 'GENESIS Machine Film 20" x 80 GA x 5000 FT',
+      partNumber: "HPF-SF208050",
+      gauge: 80,
+      widthInches: 20,
+      lengthFeet: 5000,
+      rollsPerBox: 1,
+      rollWeightLbs: 34.06142,
+      palletWeightLbs: 1288.51,
+      palletDimensions: "48 x 40 x 46",
+      priceUsd: 56.46,
+      price1Box: null,
+      price64Boxes: null,
+      price20Rolls: 1129.2,
+      price40Rolls: 1901.2,
+      packageTiers: [],
+      application: "machine",
+      categorySlug: "genesis-standard",
+    }),
+    ...overrides,
+  };
+}
+
 describe("packaging specs csv", () => {
   it("exports the hand-film 1-box + full-pallet weights, tare, dimensions, and prices", () => {
     const csv = packagingSpecsCsv([product(), product({ id: "draft", isActive: false, name: "Hidden" })]);
@@ -72,5 +99,29 @@ describe("packaging specs csv", () => {
     assert.doesNotMatch(header, /16-Box/);
     assert.doesNotMatch(header, /32-Box/);
     assert.match(header, /Full Pallet Volume \(CBM\)/);
+  });
+
+  it("keeps Full Pallet SKU aligned and drops duplicate Automatic ghosts", () => {
+    const csv = packagingSpecsCsv([
+      machineProduct(),
+      machineProduct({
+        id: "ghost-80-a",
+        slug: "stretch-film-20-x-80-ga-x-5000ft-copy",
+        name: 'STRETCH FILM 20" X 80 GA X 5000FT',
+      }),
+      machineProduct({
+        id: "ghost-80-b",
+        slug: "legacy-80",
+        name: 'STRETCH FILM 20" X 80 GA X 5000FT',
+      }),
+    ]);
+    const lines = csv.split("\r\n");
+    assert.equal(lines.length, 2);
+    assert.match(
+      lines[1],
+      /HPF-SF208050-HLP,48 x 40 x 46,707\.3,20,56\.46,1129\.20,HPF-SF208050-FLP,1288\.5/
+    );
+    assert.match(lines[1], /GENESIS Machine Film/);
+    assert.doesNotMatch(csv, /STRETCH FILM 20/);
   });
 });

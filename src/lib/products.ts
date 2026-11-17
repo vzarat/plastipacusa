@@ -135,10 +135,10 @@ export function isMachineFilm(product: {
   );
 }
 
-/** Canonical machine film package tiers. Sold by the pallet, with no boxes. */
+/** Canonical machine film package tiers. Full pallet first — PDP hero default. */
 export const MACHINE_PACKAGE_TIERS = [
-  { rolls: 20, label: "Half Pallet (20 Rolls)", suffix: "HLP" },
   { rolls: 40, label: "Full Pallet (40 Rolls)", suffix: "FLP" },
+  { rolls: 20, label: "Half Pallet (20 Rolls)", suffix: "HLP" },
 ] as const;
 
 function officialMachineTierSku(
@@ -243,14 +243,16 @@ export function buildMachinePackageOptions(input: {
   gauge?: number | string | null;
   lengthFeet?: number | string | null;
 }): PackageOptionLike[] {
+  const halfTier = MACHINE_PACKAGE_TIERS.find((tier) => tier.rolls === 20)!;
+  const fullTier = MACHINE_PACKAGE_TIERS.find((tier) => tier.rolls === 40)!;
   const tiers: Array<{
     rolls: number;
     label: string;
     suffix: string;
     price: number | null | undefined;
   }> = [
-    { ...MACHINE_PACKAGE_TIERS[0], price: input.price20 },
-    { ...MACHINE_PACKAGE_TIERS[1], price: input.price40 },
+    { ...fullTier, price: input.price40 },
+    { ...halfTier, price: input.price20 },
   ];
 
   return tiers
@@ -299,9 +301,9 @@ function sourcePrice(item: any): number {
 }
 
 /**
- * Machine film is sold as a half pallet and a full pallet even when the
- * database only has a single-roll price. Half pallet is first so it can be
- * the default selection.
+ * Machine film is sold as a full pallet and a half pallet even when the
+ * database only has a single-roll price. Full pallet is first so package total
+ * is the default PDP hero price.
  */
 export function buildMachineFilmSelectorTiers(product: any, variants?: any[] | null) {
   const sources = [...(product?.packageOptions || []), ...(variants || product?.variants || [])];

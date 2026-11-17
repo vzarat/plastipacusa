@@ -1534,7 +1534,7 @@ export async function getAdminProducts(): Promise<AdminProduct[]> {
       (categoryRows || []).map((category) => [String(category.id), category])
     );
 
-    return rows
+    const formatted = rows
       .map((row) =>
         formatAdminProduct({
           ...row,
@@ -1574,6 +1574,39 @@ export async function getAdminProducts(): Promise<AdminProduct[]> {
           (product.packageTiers || []).some((tier) => Number(tier.price || 0) > 0);
         return priced;
       });
+
+    // One Automatic product per official fingerprint (prefer GENESIS / official slug).
+    const machineScore = (product: (typeof formatted)[number]) => {
+      const slug = String(product.slug || "").toLowerCase();
+      const name = String(product.name || "").toLowerCase();
+      return (
+        (AUTHORIZED_AUTOMATIC_SLUGS.has(slug) ? 10 : 0) +
+        (name.includes("genesis") ? 8 : 0) +
+        (product.partNumber ? 2 : 0)
+      );
+    };
+    const hand: typeof formatted = [];
+    const machineByKey = new Map<string, (typeof formatted)[number]>();
+    for (const product of formatted) {
+      const machineLike =
+        product.application === "machine" ||
+        detectMachineFilm(product) ||
+        Math.round(Number(product.widthInches || 0)) === 20;
+      if (!machineLike) {
+        hand.push(product);
+        continue;
+      }
+      const key = [
+        Math.round(Number(product.widthInches || 0)),
+        Math.round(Number(product.gauge || 0)),
+        Math.round(Number(product.lengthFeet || 0)),
+      ].join("::");
+      const existing = machineByKey.get(key);
+      if (!existing || machineScore(product) > machineScore(existing)) {
+        machineByKey.set(key, product);
+      }
+    }
+    return [...hand, ...machineByKey.values()];
   } catch (err: any) {
     console.error("getAdminProducts error:", err);
     return [];

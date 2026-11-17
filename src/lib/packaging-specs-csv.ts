@@ -1,5 +1,6 @@
 import {
   findMachineFilmMaster,
+  MACHINE_FILM_MASTER,
   MACHINE_PALLET_DIMENSIONS,
   machineFilmPackageTotal,
   machineFilmTierSkuFor,
@@ -173,6 +174,7 @@ function machineCsvCells(product: AdminProduct): Array<string | number | null> {
   const volume = freightVolumeFromInches(MACHINE_PALLET_UNIT);
   const dims =
     String(product.palletDimensions || "").trim() || MACHINE_PALLET_DIMENSIONS.replace(/x/gi, "x");
+  // Half pallet reuses the shared "Box *" columns; Full Pallet SKU must come next.
   return [
     halfSku,
     dims.includes("x") ? dims.replace(/\s*x\s*/gi, " x ") : dimensionLabel(MACHINE_PALLET_UNIT),
@@ -180,6 +182,7 @@ function machineCsvCells(product: AdminProduct): Array<string | number | null> {
     20,
     money(halfPerRoll),
     money(halfTotal),
+    fullSku,
     weightCell(fullWeight),
     master?.palletTareLbs != null ? weightCell(master.palletTareLbs) : "",
     dimensionLabel(MACHINE_PALLET_UNIT),
@@ -191,8 +194,47 @@ function machineCsvCells(product: AdminProduct): Array<string | number | null> {
   ];
 }
 
+/** Prefer GENESIS / official-slug Automatic rows; drop unauthorized + duplicate masters. */
+function catalogProductsForCsv(products: AdminProduct[]): AdminProduct[] {
+  const active = products.filter((product) => product.isActive);
+  const hand: AdminProduct[] = [];
+  const machineByMaster = new Map<string, AdminProduct>();
+
+  const machineScore = (product: AdminProduct): number => {
+    const name = `${product.storefrontTitle || ""} ${product.name || ""}`.toLowerCase();
+    const slug = String(product.slug || "").toLowerCase();
+    let score = 0;
+    if (name.includes("genesis")) score += 8;
+    if (
+      slug === "stretch-film-20-x-51-ga-x-7000ft" ||
+      slug === "stretch-film-20-x-51-ga-x-9000ft" ||
+      slug === "stretch-film-20-x-70-ga-x-5000ft" ||
+      slug === "stretch-film-20-x-80-ga-x-5000ft"
+    ) {
+      score += 10;
+    }
+    if (product.partNumber) score += 2;
+    return score;
+  };
+
+  for (const product of active) {
+    if (product.application !== "machine") {
+      hand.push(product);
+      continue;
+    }
+    const master = findMachineFilmMaster(product);
+    if (!master) continue;
+    const existing = machineByMaster.get(master.slug);
+    if (!existing || machineScore(product) > machineScore(existing)) {
+      machineByMaster.set(master.slug, product);
+    }
+  }
+
+  return [...hand, ...MACHINE_FILM_MASTER.map((row) => machineByMaster.get(row.slug)).filter(Boolean) as AdminProduct[]];
+}
+
 export function packagingSpecsCsv(products: AdminProduct[]): string {
-  const rows = products.filter((product) => product.isActive).map((product) => {
+  const rows = catalogProductsForCsv(products).map((product) => {
     const machine = product.application === "machine";
     const standard = machine
       ? findMachineFilmMaster(product)?.halfPerRoll ?? positive(product.priceUsd)
