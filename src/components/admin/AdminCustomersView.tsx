@@ -1,15 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { formatCurrency } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
+import { deleteAdminManagedUser } from "@/actions/admin-users";
 import {
   Building2,
   Search,
   CheckCircle2,
   FileCheck,
   FolderOpen,
+  Loader2,
+  Trash2,
+  X,
 } from "lucide-react";
 
 export interface CustomerRecord {
@@ -32,13 +37,26 @@ export interface CustomerRecord {
 
 interface AdminCustomersViewProps {
   customers?: CustomerRecord[];
+  currentAdminId?: string;
 }
 
-export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) {
-  const { t } = useLanguage();
+export function AdminCustomersView({
+  customers = [],
+  currentAdminId = "",
+}: AdminCustomersViewProps) {
+  const { t, locale } = useLanguage();
+  const isSpanish = locale === "es";
   const [search, setSearch] = useState("");
+  const [rows, setRows] = useState(customers);
+  const [deleteTarget, setDeleteTarget] = useState<CustomerRecord | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
-  const filtered = customers.filter((c) => {
+  useEffect(() => {
+    setRows(customers);
+  }, [customers]);
+
+  const filtered = rows.filter((c) => {
     if (search.trim()) {
       const q = search.toLowerCase();
       return (
@@ -51,9 +69,32 @@ export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) 
     return true;
   });
 
+  const handleDelete = () => {
+    if (!deleteTarget) return;
+    if (deleteTarget.id === currentAdminId) {
+      toast.error(
+        isSpanish
+          ? "No puedes eliminar tu propia cuenta."
+          : "You cannot delete your own account."
+      );
+      return;
+    }
+    setBusyId(deleteTarget.id);
+    startTransition(async () => {
+      const result = await deleteAdminManagedUser(deleteTarget.id);
+      setBusyId(null);
+      if (!result.success) {
+        toast.error(result.error || "Delete failed.");
+        return;
+      }
+      setRows((prev) => prev.filter((row) => row.id !== deleteTarget.id));
+      setDeleteTarget(null);
+      toast.success(isSpanish ? "Cuenta eliminada." : "Account deleted.");
+    });
+  };
+
   return (
     <div className="space-y-6 animate-fade-in-up">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs">
         <div>
           <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold mb-1">
@@ -70,9 +111,7 @@ export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) 
         </div>
       </div>
 
-      {/* Customers Table Container */}
       <div className="rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
-        {/* Controls */}
         <div className="p-4 sm:px-6 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -86,7 +125,6 @@ export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) 
           </div>
         </div>
 
-        {/* Table */}
         {filtered.length === 0 ? (
           <div className="p-10 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
@@ -109,7 +147,7 @@ export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) 
                   <th className="py-3.5 px-3">Credit Limit / Used</th>
                   <th className="py-3.5 px-3">Tax Resale Cert</th>
                   <th className="py-3.5 px-3">Approval Status</th>
-                  <th className="py-3.5 px-4 sm:px-6 text-right">Expediente</th>
+                  <th className="py-3.5 px-4 sm:px-6 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
@@ -189,14 +227,36 @@ export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) 
                     </td>
 
                     <td className="py-4 px-4 sm:px-6 text-right">
-                      <Link
-                        href={`/admin/customers/${encodeURIComponent(client.id)}`}
-                        prefetch={false}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-blue-200 bg-blue-50 text-[11px] font-bold text-blue-800 shadow-xs hover:bg-blue-600 hover:border-blue-600 hover:text-white transition-colors"
-                      >
-                        <FolderOpen className="w-3.5 h-3.5" />
-                        Open Expediente
-                      </Link>
+                      <div className="inline-flex items-center justify-end gap-1.5">
+                        <Link
+                          href={`/admin/customers/${encodeURIComponent(client.id)}`}
+                          prefetch={false}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-blue-200 bg-blue-50 text-[11px] font-bold text-blue-800 shadow-xs hover:bg-blue-600 hover:border-blue-600 hover:text-white transition-colors"
+                        >
+                          <FolderOpen className="w-3.5 h-3.5" />
+                          Open
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(client)}
+                          disabled={
+                            client.id === currentAdminId || busyId === client.id
+                          }
+                          title={
+                            client.id === currentAdminId
+                              ? isSpanish
+                                ? "No puedes eliminar tu propia cuenta"
+                                : "You cannot delete your own account"
+                              : isSpanish
+                                ? "Eliminar cuenta"
+                                : "Delete account"
+                          }
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 text-[11px] font-bold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          {isSpanish ? "Eliminar" : "Delete"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -205,7 +265,64 @@ export function AdminCustomersView({ customers = [] }: AdminCustomersViewProps) 
           </div>
         )}
       </div>
+
+      {deleteTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
+          >
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-black text-slate-900">
+                  {isSpanish ? "Eliminar cuenta" : "Delete account"}
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  {isSpanish
+                    ? "Esto borra el login y el perfil. No se puede deshacer."
+                    : "This removes their login and profile. This cannot be undone."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-sm leading-relaxed text-slate-700">
+              {isSpanish
+                ? `¿Eliminar permanentemente a ${deleteTarget.contactName || deleteTarget.companyName || deleteTarget.email}?`
+                : `Permanently delete ${deleteTarget.contactName || deleteTarget.companyName || deleteTarget.email}?`}
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                {isSpanish ? "Cancelar" : "Cancel"}
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={busyId === deleteTarget.id || isPending}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50 cursor-pointer"
+              >
+                {busyId === deleteTarget.id || isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" />
+                )}
+                {isSpanish ? "Eliminar cuenta" : "Delete account"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
-

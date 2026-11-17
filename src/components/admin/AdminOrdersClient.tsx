@@ -273,7 +273,9 @@ export function AdminOrdersClient({
             <AdminCatalogView initialProducts={initialProducts} showToast={showToast} />
           )}
 
-          {activeTab === "customers" && <AdminCustomersView customers={customers} />}
+          {activeTab === "customers" && (
+            <AdminCustomersView customers={customers} currentAdminId={profile.id} />
+          )}
 
           {activeTab === "settings" && (
             <AdminSettingsView

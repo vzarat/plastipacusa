@@ -12,6 +12,7 @@ import {
   Mail,
   Phone,
   ShieldCheck,
+  Trash2,
   XCircle,
 } from "lucide-react";
 import {
@@ -19,10 +20,12 @@ import {
   type CreditApplicationStatus,
   type CustomerDossier,
 } from "@/actions/customers";
+import { deleteAdminManagedUser } from "@/actions/admin-users";
 import { formatCurrency } from "@/lib/utils";
 
 interface AdminCustomerDossierViewProps {
   dossier: CustomerDossier;
+  currentAdminId?: string;
 }
 
 function isPdfUrl(url: string | null): boolean {
@@ -37,6 +40,7 @@ function isImageUrl(url: string | null): boolean {
 
 export function AdminCustomerDossierView({
   dossier: initial,
+  currentAdminId = "",
 }: AdminCustomerDossierViewProps) {
   const [dossier, setDossier] = useState(initial);
   const [creditStatus, setCreditStatus] = useState<CreditApplicationStatus>(
@@ -44,7 +48,9 @@ export function AdminCustomerDossierView({
   );
   const [creditLimit, setCreditLimit] = useState(String(initial.creditLimit || 0));
   const [creditTerms, setCreditTerms] = useState(initial.creditTerms || "Registered");
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const isSelf = dossier.id === currentAdminId;
 
   const viewerUrl = dossier.taxCertificateSignedUrl || dossier.taxCertificateUrl;
   const showPdf = useMemo(() => isPdfUrl(viewerUrl), [viewerUrl]);
@@ -92,6 +98,22 @@ export function AdminCustomerDossierView({
       creditApplicationStatus: creditStatus,
       creditLimit: limit,
       creditTerms: creditTerms.trim() || "Registered",
+    });
+  };
+
+  const handleDeleteAccount = () => {
+    if (isSelf) {
+      toast.error("You cannot delete your own admin account.");
+      return;
+    }
+    startTransition(async () => {
+      const result = await deleteAdminManagedUser(dossier.id);
+      if (!result.success) {
+        toast.error(result.error || "Delete failed.");
+        return;
+      }
+      toast.success("Account deleted.");
+      window.location.href = "/admin?tab=customers";
     });
   };
 
@@ -396,6 +418,51 @@ export function AdminCustomerDossierView({
           </section>
         </div>
       </div>
+
+      <section className="rounded-2xl border border-rose-200 bg-rose-50/40 p-5 shadow-xs">
+        <h2 className="text-sm font-black uppercase tracking-wider text-rose-800">
+          Danger zone
+        </h2>
+        <p className="mt-1 text-xs text-rose-700/90">
+          Permanently delete this customer login and profile. Order history may remain
+          anonymized by user id. This cannot be undone.
+        </p>
+        {!confirmDelete ? (
+          <button
+            type="button"
+            disabled={isSelf || isPending}
+            onClick={() => setConfirmDelete(true)}
+            className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-rose-300 bg-white px-4 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            {isSelf ? "Cannot delete your own account" : "Delete account"}
+          </button>
+        ) : (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={handleDeleteAccount}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50 cursor-pointer"
+            >
+              {isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5" />
+              )}
+              Confirm delete
+            </button>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => setConfirmDelete(false)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

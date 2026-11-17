@@ -157,9 +157,59 @@ export async function updateAdminManagedUserRole(input: {
     }
 
     revalidatePath("/admin/users");
+    revalidatePath("/admin");
     return { success: true };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return { success: false, error: message || "Role update failed." };
+  }
+}
+
+/** Permanently deletes an auth user and their profile. Admins cannot delete themselves. */
+export async function deleteAdminManagedUser(
+  userIdInput: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const currentUser = await requireAdmin();
+    if (!currentUser) {
+      return { success: false, error: "Unauthorized." };
+    }
+
+    if (!isServiceRoleConfigured()) {
+      return {
+        success: false,
+        error: "SUPABASE_SERVICE_ROLE_KEY is not configured on the server.",
+      };
+    }
+
+    const userId = String(userIdInput || "").trim();
+    if (!userId) {
+      return { success: false, error: "Missing user id." };
+    }
+
+    if (userId === currentUser.user.id) {
+      return { success: false, error: "You cannot delete your own admin account." };
+    }
+
+    const admin = createServiceRoleClient();
+    const { error } = await admin.auth.admin.deleteUser(userId);
+    if (error) {
+      return { success: false, error: error.message || "Delete failed." };
+    }
+
+    await admin.from("profiles").delete().eq("id", userId);
+    try {
+      await admin.from("company_profiles").delete().eq("user_id", userId);
+    } catch {
+      // optional table
+    }
+
+    revalidatePath("/admin/users");
+    revalidatePath("/admin");
+    revalidatePath("/admin/customers");
+    return { success: true };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { success: false, error: message || "Delete failed." };
   }
 }

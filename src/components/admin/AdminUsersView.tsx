@@ -20,6 +20,7 @@ import {
   XCircle,
 } from "lucide-react";
 import {
+  deleteAdminManagedUser,
   getAdminManagedUsers,
   updateAdminManagedUserProfile,
   updateAdminManagedUserRole,
@@ -321,28 +322,15 @@ export function AdminUsersView({
     if (!deleteUser) return;
     setBusyId(deleteUser.id);
     startTransition(async () => {
-      try {
-        const res = await fetch("/api/admin/users", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "delete",
-            userId: deleteUser.id,
-          }),
-        });
-        const data = await res.json().catch(() => ({}));
-        setBusyId(null);
-        if (!res.ok) {
-          toast.error(data.error || "Delete failed.");
-          return;
-        }
-        setUsers((prev) => prev.filter((u) => u.id !== deleteUser.id));
-        setDeleteUser(null);
-        toast.success(isSpanish ? "Usuario eliminado." : "User deleted.");
-      } catch {
-        setBusyId(null);
-        toast.error("Delete failed.");
+      const result = await deleteAdminManagedUser(deleteUser.id);
+      setBusyId(null);
+      if (!result.success) {
+        toast.error(result.error || "Delete failed.");
+        return;
       }
+      setUsers((prev) => prev.filter((u) => u.id !== deleteUser.id));
+      setDeleteUser(null);
+      toast.success(isSpanish ? "Cuenta eliminada." : "Account deleted.");
     });
   };
 
@@ -494,24 +482,44 @@ export function AdminUsersView({
                       {formatDate(user.createdAt, locale)}
                     </td>
                     <td className="py-4 px-4 sm:px-6 text-right">
-                      <button
-                        type="button"
-                        ref={(el) => {
-                          if (el) menuButtonRefs.current.set(user.id, el);
-                          else menuButtonRefs.current.delete(user.id);
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleMenu(user.id);
-                        }}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 text-[10px] font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
-                        aria-expanded={menuUserId === user.id}
-                        aria-haspopup="menu"
-                      >
-                        <MoreHorizontal className="w-3.5 h-3.5" />
-                        {isSpanish ? "Menú" : "Menu"}
-                        <ChevronDown className="w-3 h-3 text-slate-400" />
-                      </button>
+                      <div className="inline-flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => openDelete(user)}
+                          disabled={user.id === currentAdminId || busyId === user.id}
+                          title={
+                            user.id === currentAdminId
+                              ? isSpanish
+                                ? "No puedes eliminar tu propia cuenta"
+                                : "You cannot delete your own account"
+                              : isSpanish
+                                ? "Eliminar cuenta"
+                                : "Delete account"
+                          }
+                          className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[10px] font-bold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          {isSpanish ? "Eliminar" : "Delete"}
+                        </button>
+                        <button
+                          type="button"
+                          ref={(el) => {
+                            if (el) menuButtonRefs.current.set(user.id, el);
+                            else menuButtonRefs.current.delete(user.id);
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleMenu(user.id);
+                          }}
+                          className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-2.5 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                          aria-expanded={menuUserId === user.id}
+                          aria-haspopup="menu"
+                        >
+                          <MoreHorizontal className="h-3.5 w-3.5" />
+                          {isSpanish ? "Más" : "More"}
+                          <ChevronDown className="h-3 w-3 text-slate-400" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
