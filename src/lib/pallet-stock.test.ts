@@ -4,6 +4,10 @@ import { customerHoldMessage } from "./payments/checkout-holds";
 import {
   boxStockLabel,
   stockBoxSplitLabel,
+  stockRollSplitLabel,
+  rollStockLabel,
+  productStockLabel,
+  isLowRollStock,
   boxStockShortage,
   deductBoxesFromPalletStock,
   describeBoxStock,
@@ -143,12 +147,40 @@ describe("pallet stock", () => {
     assert.equal(isLowBoxStock(192, 64), true);
     assert.equal(isLowBoxStock(193, 64), false);
     assert.equal(isLowBoxStock(null, 64), false);
+    assert.equal(stockRollSplitLabel(90), "2 Full Pallets and 10 Rolls");
+    assert.equal(rollStockLabel(80), "2 Pallets (80 rolls available)");
+    assert.equal(rollStockLabel(90), "2 Full Pallets and 10 Rolls");
+    assert.equal(
+      productStockLabel(90, { application: "machine" }),
+      "2 Full Pallets and 10 Rolls"
+    );
+    assert.equal(
+      productStockLabel(144, { application: "hand", boxesPerPallet: 48 }),
+      "3 Pallets (144 boxes available)"
+    );
+    assert.equal(isLowRollStock(120), true);
+    assert.equal(isLowRollStock(121), false);
     assert.equal(
       boxStockShortage(
         [{ productId: "film", productName: "STRETCH FILM", boxes: 32 }],
         new Map([["film", 16]])
       ),
       "Only 16 boxes available."
+    );
+    assert.equal(
+      boxStockShortage(
+        [
+          {
+            productId: "auto",
+            productName: "GENESIS",
+            application: "machine",
+            boxes: 0,
+            rolls: 40,
+          },
+        ],
+        new Map([["auto", 20]])
+      ),
+      "Only 20 rolls available."
     );
     assert.equal(
       soldOutCheckoutMessage(

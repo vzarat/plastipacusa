@@ -40,7 +40,7 @@ export const products = pgTable("products", {
   stockQuantity: integer("stock_quantity").notNull().default(0),
   /** Boxes in one full Manual pallet (standardized to 48 / 192 rolls). */
   boxesPerPallet: integer("boxes_per_pallet").default(48),
-  /** Total boxes on hand. NULL is untracked. 0 is sold out. */
+  /** Inventory on hand. Manual = boxes; Automatic = rolls. NULL is untracked. 0 is sold out. */
   stockBoxes: integer("stock_boxes"),
   isSoldOut: boolean("is_sold_out").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),

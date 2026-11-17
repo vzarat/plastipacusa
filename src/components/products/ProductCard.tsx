@@ -23,7 +23,7 @@ import {
   getDisplayPrice,
   handCatalogQuote,
 } from "@/lib/pricing";
-import { boxStockLabel, boxesPerPalletForProduct, palletStockLabel } from "@/lib/pallet-stock";
+import { boxesPerPalletForProduct, palletStockLabel, productStockLabel } from "@/lib/pallet-stock";
 function isolateCardAction(event: React.MouseEvent | React.TouchEvent) {
   event.stopPropagation();
 }
@@ -220,7 +220,10 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   });
   const palletLabel =
     !isSoldOut && product.stockBoxes != null
-      ? boxStockLabel(product.stockBoxes, boxesPerPallet)
+      ? productStockLabel(product.stockBoxes, {
+          application: product.application,
+          boxesPerPallet,
+        })
       : !isSoldOut && palletCount > 0
         ? palletStockLabel(palletCount, boxesPerPallet)
         : null;

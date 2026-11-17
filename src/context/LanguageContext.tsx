@@ -321,6 +321,8 @@ export const translations = {
     "admin.basePrice": "Base Unit Price (USD)",
     "admin.stockQty": "Stock Boxes",
     "admin.stockPalletsHint": "Total available base boxes in stock. Leave blank if untracked, 0 if sold out.",
+    "admin.stockRolls": "Stock Rolls",
+    "admin.stockRollsHint": "Total available rolls in stock. Leave blank if untracked, 0 if sold out.",
     "admin.application": "Application",
     "admin.applicationHint": "Auto-set from Category (GENESIS = Machine).",
     "admin.category": "Category",

@@ -11,6 +11,8 @@ interface HoldLine {
   productName: string;
   pallets: number;
   boxes?: number | null;
+  rolls?: number | null;
+  application?: string | null;
 }
 
 function missingHoldFunction(error: { code?: string; message?: string } | null): boolean {
@@ -32,7 +34,9 @@ export function customerHoldMessage(error: { message?: string; details?: string;
     .join(" ")
     .replace(/^[A-Z0-9]{5}:\s*/, "")
     .trim();
-  if (/sold out|available for|boxes available|promo code/i.test(text)) return text.slice(0, 300);
+  if (/sold out|available for|boxes available|rolls available|promo code/i.test(text)) {
+    return text.slice(0, 300);
+  }
   return null;
 }
 

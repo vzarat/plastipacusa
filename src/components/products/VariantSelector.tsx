@@ -13,7 +13,7 @@ import { DirectCheckoutButton } from "@/components/checkout/DirectCheckoutButton
 import { ProductDiscountInput } from "@/components/products/ProductDiscountInput";
 import type { AppliedDiscount } from "@/types/discount";
 import { applyDiscountToPrice, formatDiscountAppliedBadge } from "@/lib/discounts";
-import { boxStockLabel, boxesPerPalletForProduct, palletStockLabel } from "@/lib/pallet-stock";
+import { boxesPerPalletForProduct, palletStockLabel, productStockLabel } from "@/lib/pallet-stock";
 import { usesCompact1880Pallets } from "@/lib/palletizing";
 import {
   HAND_FULL_PALLET,
@@ -797,7 +797,10 @@ export function VariantSelector({
   });
   const palletLabel =
     !isSoldOut && product?.stockBoxes != null
-      ? boxStockLabel(product.stockBoxes, boxesPerPallet)
+      ? productStockLabel(product.stockBoxes, {
+          application: product?.application,
+          boxesPerPallet,
+        })
       : !isSoldOut && palletCount > 0
         ? palletStockLabel(palletCount, boxesPerPallet)
         : null;

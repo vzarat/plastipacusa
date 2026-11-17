@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/utils";
 import { getDisplayPrice } from "@/lib/pricing";
-import { boxesPerPalletForProduct, isLowBoxStock } from "@/lib/pallet-stock";
+import { boxesPerPalletForProduct, isLowProductStock } from "@/lib/pallet-stock";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   Search,
@@ -709,9 +709,10 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                       })()}
                     </span>
                     <div className="flex items-center gap-2">
-                    {isLowBoxStock(
-                      item.stockBoxes,
-                      item.boxesPerPallet ??
+                    {isLowProductStock(item.stockBoxes, {
+                      application: item.application,
+                      boxesPerPallet:
+                        item.boxesPerPallet ??
                         boxesPerPalletForProduct({
                           application: item.application,
                           widthInches: item.widthInches,
@@ -719,8 +720,8 @@ export function AdminCatalogView({ initialProducts, showToast }: AdminCatalogVie
                           lengthFeet: item.lengthFeet,
                           slug: item.slug,
                           name: item.name,
-                        })
-                    ) && !item.isSoldOut && (
+                        }),
+                    }) && !item.isSoldOut && (
                       <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800">
                         Low Stock
                       </span>

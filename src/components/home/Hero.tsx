@@ -40,7 +40,7 @@ function LeadSlide() {
         sizes="(max-width: 1400px) 100vw, 1400px"
         className="hidden object-contain object-center md:block"
       />
-      <div className="absolute left-[9.88%] top-[79.5%] z-20 hidden md:block">
+      <div className="absolute left-[8.1%] top-[64.5%] z-20 hidden md:block">
         <Link href="/#product-catalog-section" className={SLIDE_CTA_CLASS}>
           Shop Now
           <ArrowRight className="h-[1.05cqw] w-[1.05cqw]" />

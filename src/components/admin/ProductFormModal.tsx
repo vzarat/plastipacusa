@@ -30,7 +30,7 @@ import {
 import { PRODUCT_CATEGORIES, categorySlugFromRecord, getApplicationForCategory } from "@/data/categories";
 import { readBoxTierPrices } from "@/lib/pricing";
 import { HAND_FULL_PALLET_BOXES } from "@/lib/pricing";
-import { stockBoxSplitLabel } from "@/lib/pallet-stock";
+import { stockBoxSplitLabel, stockRollSplitLabel } from "@/lib/pallet-stock";
 import { useLanguage } from "@/context/LanguageContext";
 
 interface ProductFormModalProps {
@@ -400,10 +400,13 @@ export function ProductFormModal({
     }
   };
 
+  const isMachineStock = form.application === "machine";
   const boxesPerPallet =
     Math.floor(Number(form.boxesPerPallet) || 0) ||
-    (form.application === "machine" ? 0 : HAND_FULL_PALLET_BOXES);
-  const stockBreakdown = stockBoxSplitLabel(form.stockBoxes, boxesPerPallet);
+    (isMachineStock ? 0 : HAND_FULL_PALLET_BOXES);
+  const stockBreakdown = isMachineStock
+    ? stockRollSplitLabel(form.stockBoxes)
+    : stockBoxSplitLabel(form.stockBoxes, boxesPerPallet);
 
   return createPortal(
     <div
@@ -543,11 +546,11 @@ export function ProductFormModal({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5" htmlFor="stock-boxes">
-                {t("admin.stockQty")}
+              <label className="block text-xs font-bold text-slate-700 mb-1.5" htmlFor="stock-on-hand">
+                {isMachineStock ? t("admin.stockRolls") : t("admin.stockQty")}
               </label>
               <Input
-                id="stock-boxes"
+                id="stock-on-hand"
                 type="number"
                 inputMode="numeric"
                 min={0}
@@ -555,17 +558,17 @@ export function ProductFormModal({
                 placeholder="Untracked"
                 value={form.stockBoxes ?? ""}
                 onChange={(e) => {
-                  const nextBoxes =
+                  const nextStock =
                     e.target.value === "" ? null : Math.max(0, Math.floor(Number(e.target.value) || 0));
                   setForm((current) => ({
                     ...current,
-                    stockBoxes: nextBoxes,
-                    isSoldOut: nextBoxes === 0,
+                    stockBoxes: nextStock,
+                    isSoldOut: nextStock === 0,
                   }));
                 }}
               />
               <p className="mt-1.5 text-[11px] leading-snug text-slate-500">
-                {t("admin.stockPalletsHint")}
+                {isMachineStock ? t("admin.stockRollsHint") : t("admin.stockPalletsHint")}
               </p>
               {stockBreakdown ? (
                 <p className="mt-1 text-[11px] font-semibold leading-snug text-slate-700">{stockBreakdown}</p>
@@ -619,21 +622,29 @@ export function ProductFormModal({
                 }
               />
             </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Rolls per Box</label>
-              <Input
-                type="number"
-                step="1"
-                min="0"
-                value={form.rollsPerBox ?? ""}
-                onChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
-                    rollsPerBox: e.target.value === "" ? null : Number(e.target.value),
-                  }))
-                }
-              />
-            </div>
+            {!isMachineStock ? (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Rolls per Box</label>
+                <Input
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={form.rollsPerBox ?? ""}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      rollsPerBox: e.target.value === "" ? null : Number(e.target.value),
+                    }))
+                  }
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Sell Unit</label>
+                <Input value="Roll (no boxes)" disabled className="bg-slate-50 text-slate-500" />
+                <p className="mt-1 text-[10px] text-slate-400">Automatic film is stocked and sold by the roll.</p>
+              </div>
+            )}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
                 Weight per Roll (lbs)

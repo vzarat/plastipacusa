@@ -1,7 +1,25 @@
+import { MACHINE_FULL_PALLET_ROLLS } from "@/lib/machine-film-master";
 import { HAND_FULL_PALLET_BOXES } from "@/lib/pricing";
 
-const MACHINE_FULL_PALLET_ROLLS = 40;
 const PALLET_SCALE = 1_000_000;
+
+function isMachineApplication(application?: string | null): boolean {
+  return String(application || "").toLowerCase() === "machine";
+}
+
+/** Inventory units demanded by a line: boxes for Manual, rolls for Automatic. */
+export function lineStockUnits(line: {
+  application?: string | null;
+  boxes?: number | null;
+  rolls?: number | null;
+}): { units: number; unitLabel: "boxes" | "rolls" } {
+  const boxes = Math.max(0, Math.floor(Number(line.boxes) || 0));
+  const rolls = Math.max(0, Math.floor(Number(line.rolls) || 0));
+  if (isMachineApplication(line.application) || (boxes <= 0 && rolls > 0)) {
+    return { units: rolls, unitLabel: "rolls" };
+  }
+  return { units: boxes, unitLabel: "boxes" };
+}
 
 export interface PalletPackageInput {
   application?: string | null;
@@ -182,6 +200,72 @@ export function boxStockLabel(
   return `${parts.totalBoxes} boxes available`;
 }
 
+export interface RollStockParts {
+  fullPallets: number;
+  looseRolls: number;
+  totalRolls: number;
+}
+
+/** Full pallets and leftover rolls from Automatic stock (40 rolls = 1 full pallet). */
+export function describeRollStock(
+  stockRolls: number | null | undefined,
+  rollsPerPallet: number = MACHINE_FULL_PALLET_ROLLS
+): RollStockParts | null {
+  if (stockRolls == null || stockRolls === undefined) return null;
+  const totalRolls = Math.max(0, Math.floor(Number(stockRolls) || 0));
+  const ratio = Math.floor(Number(rollsPerPallet) || 0);
+  if (ratio < 1) return { fullPallets: 0, looseRolls: totalRolls, totalRolls };
+  return {
+    fullPallets: Math.floor(totalRolls / ratio),
+    looseRolls: totalRolls % ratio,
+    totalRolls,
+  };
+}
+
+/** "2 Full Pallets and 10 Rolls" — admin breakdown for Automatic stock. */
+export function stockRollSplitLabel(
+  stockRolls: number | null | undefined,
+  rollsPerPallet: number = MACHINE_FULL_PALLET_ROLLS
+): string | null {
+  if (stockRolls == null) return null;
+  const parts = describeRollStock(stockRolls, rollsPerPallet);
+  if (!parts) return null;
+  const palletLabel = parts.fullPallets === 1 ? "Full Pallet" : "Full Pallets";
+  const rollLabel = parts.looseRolls === 1 ? "Roll" : "Rolls";
+  return `${parts.fullPallets} ${palletLabel} and ${parts.looseRolls} ${rollLabel}`;
+}
+
+/** "2 Pallets (80 rolls available)" or "90 rolls available". */
+export function rollStockLabel(
+  stockRolls: number | null | undefined,
+  rollsPerPallet: number = MACHINE_FULL_PALLET_ROLLS
+): string | null {
+  const parts = describeRollStock(stockRolls, rollsPerPallet);
+  if (!parts || parts.totalRolls <= 0) return null;
+  const ratio = Math.floor(Number(rollsPerPallet) || 0);
+  if (ratio > 0 && parts.looseRolls === 0) {
+    const noun = parts.fullPallets === 1 ? "Pallet" : "Pallets";
+    return `${parts.fullPallets} ${noun} (${parts.totalRolls} rolls available)`;
+  }
+  if (ratio > 0) {
+    const palletLabel = parts.fullPallets === 1 ? "Full Pallet" : "Full Pallets";
+    const rollLabel = parts.looseRolls === 1 ? "Roll" : "Rolls";
+    return `${parts.fullPallets} ${palletLabel} and ${parts.looseRolls} ${rollLabel}`;
+  }
+  return `${parts.totalRolls} rolls available`;
+}
+
+/** Storefront/admin stock badge — boxes for Manual, rolls for Automatic. */
+export function productStockLabel(
+  stockOnHand: number | null | undefined,
+  options: { application?: string | null; boxesPerPallet?: number | null }
+): string | null {
+  if (isMachineApplication(options.application)) {
+    return rollStockLabel(stockOnHand);
+  }
+  return boxStockLabel(stockOnHand, options.boxesPerPallet);
+}
+
 /** True when tracked boxes are at or below three full pallets. */
 export function isLowBoxStock(
   stockBoxes: number | null | undefined,
@@ -192,24 +276,51 @@ export function isLowBoxStock(
   return Math.floor(stockBoxes) <= 3 * ratio;
 }
 
+/** True when tracked Automatic rolls are at or below three full pallets (120 rolls). */
+export function isLowRollStock(
+  stockRolls: number | null | undefined,
+  rollsPerPallet: number = MACHINE_FULL_PALLET_ROLLS
+): boolean {
+  const ratio = Math.floor(Number(rollsPerPallet) || 0);
+  if (stockRolls == null || ratio < 1) return false;
+  return Math.floor(stockRolls) <= 3 * ratio;
+}
+
+export function isLowProductStock(
+  stockOnHand: number | null | undefined,
+  options: { application?: string | null; boxesPerPallet?: number | null }
+): boolean {
+  if (isMachineApplication(options.application)) {
+    return isLowRollStock(stockOnHand);
+  }
+  return isLowBoxStock(stockOnHand, options.boxesPerPallet);
+}
+
 export function boxStockShortage(
-  lines: Array<{ productId?: string | null; productName: string; boxes?: number | null }>,
+  lines: Array<{
+    productId?: string | null;
+    productName: string;
+    boxes?: number | null;
+    rolls?: number | null;
+    application?: string | null;
+  }>,
   onHandByProduct: Map<string, number | null>
 ): string | null {
-  const demand = new Map<string, { name: string; boxes: number }>();
+  const demand = new Map<string, { name: string; units: number; unitLabel: "boxes" | "rolls" }>();
   for (const line of lines) {
     const productId = String(line.productId || "");
-    const boxes = Math.max(0, Math.floor(Number(line.boxes) || 0));
-    if (!productId || boxes <= 0) continue;
-    const current = demand.get(productId) || { name: line.productName, boxes: 0 };
-    current.boxes += boxes;
+    const { units, unitLabel } = lineStockUnits(line);
+    if (!productId || units <= 0) continue;
+    const current = demand.get(productId) || { name: line.productName, units: 0, unitLabel };
+    current.units += units;
+    current.unitLabel = unitLabel;
     demand.set(productId, current);
   }
   for (const [productId, need] of demand) {
     const onHand = onHandByProduct.get(productId);
     if (onHand == null) continue;
-    if (onHand >= need.boxes) continue;
-    return `Only ${Math.max(0, Math.floor(onHand))} boxes available.`;
+    if (onHand >= need.units) continue;
+    return `Only ${Math.max(0, Math.floor(onHand))} ${need.unitLabel} available.`;
   }
   return null;
 }
