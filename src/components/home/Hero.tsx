@@ -5,72 +5,25 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 
-const SLIDE_SDK_1 =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_1.jpg";
 const SLIDE_SDK_2 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_2.jpg";
 const SLIDE_SDK_3 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_3.jpg";
-const MOBIL_SLIDE =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/MOBIL_SLIDE.jpg";
 const EFFICIENCY_BG =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_2.jpg";
 const EFFICIENCY_MACHINE =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/ROBOPACK.png";
 
-const MOBILE_SLIDE_COUNT = 2;
-const DESKTOP_SLIDE_COUNT = 3;
+const MOBILE_SLIDE_COUNT = 1;
+const DESKTOP_SLIDE_COUNT = 2;
 const AUTO_MS = 7000;
 const SLIDE_LABELS = [
-  "Order bulk",
   "Increase packaging efficiency",
   "Quality you can count on",
 ];
 
 const SLIDE_CTA_CLASS =
   "inline-flex w-fit items-center gap-[0.45cqw] rounded-[0.7cqw] bg-gradient-to-r from-cyan-500 to-blue-600 px-[1.15cqw] py-[0.55cqw] text-[1.05cqw] font-bold uppercase tracking-wide text-white shadow-md shadow-blue-500/30";
-
-const MOBILE_CTA_CLASS =
-  "inline-flex w-fit items-center gap-[1.8cqw] whitespace-nowrap rounded-[3.2cqw] bg-gradient-to-r from-cyan-500 to-blue-600 px-[5.6cqw] py-[2.8cqw] text-[3.9cqw] font-bold uppercase tracking-wide text-white shadow-lg shadow-blue-500/30";
-
-function BulkSlide() {
-  return (
-    <div className="absolute inset-0">
-      <Image
-        src={SLIDE_SDK_1}
-        alt="Order bulk, save more, wrap better. Free delivery in the RGV with purchases of 20 boxes or more."
-        fill
-        priority
-        sizes="(max-width: 1400px) 100vw, 1400px"
-        className="hidden object-contain object-center md:block"
-      />
-      <div className="absolute left-[9.84%] top-[77%] z-20 hidden md:block">
-        <Link
-          href="/#product-catalog-section"
-          className={SLIDE_CTA_CLASS}
-        >
-          Shop Bulk Now
-          <ArrowRight className="h-[1.05cqw] w-[1.05cqw]" />
-        </Link>
-      </div>
-
-      <Image
-        src={MOBIL_SLIDE}
-        alt="Order bulk, save more, wrap better. Free delivery in the RGV with purchases of 20 boxes or more."
-        fill
-        priority
-        sizes="100vw"
-        className="object-contain object-center md:hidden"
-      />
-      <div className="absolute left-1/2 top-[41.5%] z-20 -translate-x-1/2 md:hidden">
-        <Link href="/#product-catalog-section" className={MOBILE_CTA_CLASS}>
-          Shop Bulk Now
-          <ArrowRight className="h-[3.6cqw] w-[3.6cqw]" />
-        </Link>
-      </div>
-    </div>
-  );
-}
 
 function EfficiencySlide() {
   return (
@@ -79,6 +32,7 @@ function EfficiencySlide() {
         src={SLIDE_SDK_2}
         alt="Increase packaging efficiency. At Plastipac USA, we're all about smarter packaging solutions to help your business work better."
         fill
+        priority
         sizes="(max-width: 1400px) 100vw, 1400px"
         className="hidden object-contain object-center md:block"
       />
@@ -94,6 +48,7 @@ function EfficiencySlide() {
           src={EFFICIENCY_BG}
           alt=""
           fill
+          priority
           sizes="100vw"
           className="object-cover object-center"
         />
@@ -168,7 +123,7 @@ export function Hero() {
   }, []);
 
   useEffect(() => {
-    if (paused) return;
+    if (paused || slideCount <= 1) return;
     const timer = window.setInterval(() => {
       setIndex((current) => (current + 1) % slideCount);
     }, AUTO_MS);
@@ -193,7 +148,7 @@ export function Hero() {
           aria-hidden={index !== 0}
           inert={index !== 0}
         >
-          <BulkSlide />
+          <EfficiencySlide />
         </div>
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
@@ -202,47 +157,42 @@ export function Hero() {
           aria-hidden={index !== 1}
           inert={index !== 1}
         >
-          <EfficiencySlide />
-        </div>
-        <div
-          className={`absolute inset-0 transition-opacity duration-500 ${
-            index === 2 ? "opacity-100" : "pointer-events-none opacity-0"
-          }`}
-          aria-hidden={index !== 2}
-          inert={index !== 2}
-        >
           <QualitySlide />
         </div>
 
-        <button
-          type="button"
-          aria-label="Previous slide"
-          onClick={() =>
-            setIndex((current) => (current - 1 + slideCount) % slideCount)
-          }
-          className="absolute inset-y-0 left-0 z-30 w-12 cursor-pointer bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-8px] focus-visible:outline-white md:w-16"
-        />
-        <button
-          type="button"
-          aria-label="Next slide"
-          onClick={() => setIndex((current) => (current + 1) % slideCount)}
-          className="absolute inset-y-0 right-0 z-30 w-12 cursor-pointer bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-8px] focus-visible:outline-white md:w-16"
-        />
-
-        <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2">
-          {SLIDE_LABELS.slice(0, slideCount).map((label, slide) => (
+        {slideCount > 1 ? (
+          <>
             <button
-              key={label}
               type="button"
-              aria-label={`Show slide: ${label}`}
-              aria-current={index === slide ? "true" : undefined}
-              onClick={() => setIndex(slide)}
-              className={`h-2.5 rounded-full transition-all ${
-                index === slide ? "w-7 bg-white" : "w-2.5 bg-white/55 hover:bg-white/80"
-              }`}
+              aria-label="Previous slide"
+              onClick={() =>
+                setIndex((current) => (current - 1 + slideCount) % slideCount)
+              }
+              className="absolute inset-y-0 left-0 z-30 w-12 cursor-pointer bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-8px] focus-visible:outline-white md:w-16"
             />
-          ))}
-        </div>
+            <button
+              type="button"
+              aria-label="Next slide"
+              onClick={() => setIndex((current) => (current + 1) % slideCount)}
+              className="absolute inset-y-0 right-0 z-30 w-12 cursor-pointer bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-8px] focus-visible:outline-white md:w-16"
+            />
+
+            <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2">
+              {SLIDE_LABELS.slice(0, slideCount).map((label, slide) => (
+                <button
+                  key={label}
+                  type="button"
+                  aria-label={`Show slide: ${label}`}
+                  aria-current={index === slide ? "true" : undefined}
+                  onClick={() => setIndex(slide)}
+                  className={`h-2.5 rounded-full transition-all ${
+                    index === slide ? "w-7 bg-white" : "w-2.5 bg-white/55 hover:bg-white/80"
+                  }`}
+                />
+              ))}
+            </div>
+          </>
+        ) : null}
       </div>
     </section>
   );
