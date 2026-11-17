@@ -159,7 +159,7 @@ export function DashboardSidebar({
                 {isSpanish ? "Solicita tu Crédito" : "Commercial Credit"}
               </span>
               <span className="block text-[10px] font-medium text-emerald-700/75 truncate">
-                {isSpanish ? "Aplica a términos Net 30" : "Apply for Net 30 Terms"}
+                {isSpanish ? "Enviar solicitud de crédito" : "Submit a Credit Application"}
               </span>
             </span>
           </Link>

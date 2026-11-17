@@ -123,7 +123,7 @@ function CreditCardFace({
           {showDetails ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-white/15 border border-white/25 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-white">
               <Cpu className="w-3 h-3 text-cyan-100" />
-              Net 30 Preferred
+              Credit Preferred
             </span>
           ) : (
             <span className="h-2 w-10 rounded-full bg-white/25" />

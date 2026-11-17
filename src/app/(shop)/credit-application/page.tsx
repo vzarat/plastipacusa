@@ -4,9 +4,9 @@ import { getCurrentUser } from "@/actions/auth";
 import { CreditApplicationContent } from "@/components/credit/CreditApplicationContent";
 
 export const metadata: Metadata = {
-  title: "Apply for B2B Credit & Net 30 | Plastipac USA",
+  title: "Submit a B2B Credit Application | Plastipac USA",
   description:
-    "Apply for Plastipac USA B2B credit with Net 30 commercial terms, PO checkout, and dedicated lines of credit for verified corporate accounts.",
+    "Submit a Plastipac USA B2B credit application for commercial credit terms, PO checkout, and a dedicated credit line for verified corporate accounts.",
 };
 
 export default async function CreditApplicationPage() {

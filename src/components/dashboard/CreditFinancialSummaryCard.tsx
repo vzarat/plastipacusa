@@ -28,7 +28,7 @@ export function CreditFinancialSummaryCard({
             Financial Summary
           </h2>
           <p className="mt-0.5 text-xs text-slate-500">
-            {summary.paymentTerms || "Net 30"} · live available balance
+            {summary.paymentTerms || "Commercial Credit"} · live available balance
           </p>
         </div>
         <Link

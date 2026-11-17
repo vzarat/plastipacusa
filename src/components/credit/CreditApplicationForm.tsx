@@ -1316,7 +1316,7 @@ export function CreditApplicationForm({
                   onChange={(e) =>
                     updateRef(index as 0 | 1 | 2, "creditTerms", e.target.value)
                   }
-                  placeholder="Credit terms (e.g. Net 30)"
+                  placeholder="Credit terms (if known)"
                   className={`${inputClass} sm:col-span-2`}
                 />
               </div>

@@ -716,8 +716,8 @@ export function DashboardClient({
                         </span>
                         <span className="block text-[10px] font-medium text-emerald-700/75 truncate">
                           {locale === "es"
-                            ? "Aplica a términos Net 30"
-                            : "Apply for Net 30 Terms"}
+                            ? "Enviar solicitud de crédito"
+                            : "Submit a Credit Application"}
                         </span>
                       </span>
                     </Link>
@@ -1492,8 +1492,8 @@ export function DashboardClient({
                   >
                     <CreditCard className="w-4 h-4" />
                     {locale === "es"
-                      ? "Solicitar crédito Net 30"
-                      : "Apply for Net 30 Credit"}
+                      ? "Enviar solicitud de crédito"
+                      : "Submit a Credit Application"}
                   </Link>
                 </div>
               </form>

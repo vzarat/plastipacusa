@@ -19,7 +19,7 @@ const FloatingCreditCards = dynamic(
   { ssr: false }
 );
 
-/** Compact Net 30 hero — exclusive to the dashboard Commercial Credit page. */
+/** Compact commercial credit hero — exclusive to the dashboard Commercial Credit page. */
 export function Net30CreditHeroBanner() {
   const { locale, t } = useLanguage();
   const isSpanish = locale === "es";
@@ -47,21 +47,20 @@ export function Net30CreditHeroBanner() {
         <div className="flex flex-col items-start space-y-3 sm:space-y-4 min-w-0">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.16em] text-sky-100">
             <CreditCard className="w-3.5 h-3.5" />
-            {t("dashboard.creditSlideBadge") || "Net 30 Credit"}
+            {t("dashboard.creditSlideBadge") || "Commercial Credit"}
           </span>
 
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight text-white">
             {isSpanish
-              ? "Crédito B2B y términos Net 30"
-              : t("dashboard.creditSlideTitle") ||
-                "B2B Credit & Net 30 Terms"}
+              ? "Solicitud de crédito B2B"
+              : t("dashboard.creditSlideTitle") || "Apply for B2B Credit"}
           </h2>
 
           <p className="text-sm text-sky-100/90 leading-relaxed max-w-md">
             {isSpanish
-              ? "Financia pedidos de pallet completo con pago a 30 días. Solicita tu límite y recibe respuesta en 24–48 horas hábiles."
+              ? "Envía tu solicitud de crédito para pedidos de alto volumen y checkout con PO."
               : t("dashboard.creditSlideSubtitle") ||
-                "Finance full-pallet orders with 30-day payment terms. Request your limit and hear back within 24–48 business hours."}
+                "Submit a credit application for high-volume freight orders and PO checkout."}
           </p>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-1 w-full sm:w-auto">
@@ -69,7 +68,7 @@ export function Net30CreditHeroBanner() {
               href="#credit-application-form"
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 px-4 py-2.5 text-sm font-extrabold text-white shadow-lg shadow-blue-500/25 hover:opacity-95 transition-opacity"
             >
-              {isSpanish ? "Iniciar solicitud" : "Start Application"}
+              {isSpanish ? "Iniciar solicitud" : "Start Credit Application"}
               <ArrowRight className="w-4 h-4" />
             </a>
             <a

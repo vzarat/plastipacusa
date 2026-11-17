@@ -135,7 +135,7 @@ export function TaxComplianceModal({
       toast.success("B2B tax profile saved successfully.");
 
       if (result.applyForCredit) {
-        toast.message("Continue with your Net 30 credit application.");
+        toast.message("Continue with your credit application.");
         router.push("/dashboard/credit");
         return;
       }
@@ -328,7 +328,7 @@ export function TaxComplianceModal({
               className="mt-0.5 rounded border-slate-300 text-blue-700 focus:ring-blue-600"
             />
             <span className="text-xs text-slate-700 font-medium leading-relaxed">
-              Apply for B2B Commercial Credit (Net 30)
+              Submit a B2B Credit Application
               <span className="block text-[10px] text-slate-400 font-normal mt-0.5">
                 Optional — we will mark your account for credit review and open
                 the full application.

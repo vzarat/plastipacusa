@@ -60,7 +60,7 @@ export function CreditApplicationContent({
             </Badge>
 
             <h1 className="max-w-[18ch] text-[1.55rem] font-extrabold leading-[1.15] tracking-tight text-white sm:max-w-none sm:text-4xl lg:text-5xl">
-              Apply for B2B Credit & Net 30 Terms
+              Submit a B2B Credit Application
             </h1>
 
             <p className="max-w-xl text-[13px] leading-relaxed text-sky-100/90 sm:text-base">

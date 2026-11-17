@@ -87,16 +87,16 @@ export function CheckoutForm({
           <div className="flex items-center gap-2 text-slate-800">
             <Building2 className="w-4 h-4 text-sky-700" />
             <span className="text-xs font-bold uppercase tracking-wider">
-              Net 30 Commercial Credit
+              Commercial Credit
             </span>
           </div>
           <p className="text-xs text-slate-600 leading-relaxed">
-            Approved B2B accounts can invoice on Net 30 terms.{" "}
+            Approved B2B accounts can invoice on commercial credit terms.{" "}
             <Link
               href="/credit-application"
               className="font-semibold text-sky-700 hover:underline"
             >
-              Apply for credit →
+              Submit a credit application →
             </Link>
           </p>
         </div>

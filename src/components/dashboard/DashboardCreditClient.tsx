@@ -231,7 +231,7 @@ export function DashboardCreditClient({
         taxIdEin: form.taxIdEin.trim() || "Pending — to be provided",
         desiredCreditLimit: form.desiredCreditLimit.trim(),
         notes: form.notes.trim() || undefined,
-        creditReference1: `Dashboard Net 30 application — desired limit $${form.desiredCreditLimit.trim()}`,
+        creditReference1: `Dashboard credit application — desired limit $${form.desiredCreditLimit.trim()}`,
       });
 
       if (!result.success) {
@@ -314,7 +314,7 @@ export function DashboardCreditClient({
             }
             paymentTerms={
               creditStatus.status === "approved"
-                ? creditStatus.creditTerms || "Net 30"
+                ? creditStatus.creditTerms || "Commercial Credit"
                 : creditStatus.paymentTermsRequested || undefined
             }
             applicationDate={creditStatus.applicationDate}
@@ -336,15 +336,15 @@ export function DashboardCreditClient({
                   </p>
                 </div>
                 <p className="max-w-lg text-xs font-medium opacity-80">
-                  You have not applied for Net 30 yet. Start the full commercial credit
-                  application to get started.
+                  You have not submitted a credit application yet. Start the full
+                  commercial credit application to get started.
                 </p>
               </div>
               <span
                 className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${statusUi.badge}`}
               >
                 <ShieldCheck className="h-3.5 w-3.5" />
-                Net 30
+                Credit Application
               </span>
             </div>
           </section>
@@ -358,8 +358,8 @@ export function DashboardCreditClient({
             </h2>
             <p className="text-xs text-slate-500 mt-1">
               {isSpanish
-                ? "Cuatro pasos claros para obtener términos Net 30."
-                : "Four clear steps to unlock Net 30 payment terms."}
+                ? "Cuatro pasos claros para completar tu solicitud de crédito."
+                : "Four clear steps to complete your credit application."}
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-4 w-full">

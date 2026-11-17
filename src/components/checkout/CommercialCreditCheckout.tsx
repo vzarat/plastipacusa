@@ -151,8 +151,8 @@ export function CommercialCreditCheckout({
       clearCart();
       toast.success(
         result.orderId
-          ? `Credit order ${result.orderId} placed — unpaid Net 30 invoice created.`
-          : "Credit order placed — unpaid Net 30 invoice created."
+          ? `Credit order ${result.orderId} placed — unpaid commercial credit invoice created.`
+          : "Credit order placed — unpaid commercial credit invoice created."
       );
       router.push(
         `/checkout/success?credit=1&order_id=${encodeURIComponent(result.orderId || "")}`
@@ -173,8 +173,8 @@ export function CommercialCreditCheckout({
         <div className="min-w-0 flex-1">
           <p className="text-sm font-black text-slate-900">Commercial Credit / Terms</p>
           <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
-            Charge this order to your approved {account.paymentTerms || "Net 30"} line. An unpaid
-            B2B invoice is created and available credit is reduced immediately.
+            Charge this order to your approved {account.paymentTerms || "commercial credit"} line.
+            An unpaid B2B invoice is created and available credit is reduced immediately.
           </p>
         </div>
       </div>
@@ -207,7 +207,7 @@ export function CommercialCreditCheckout({
       ) : (
         <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800">
           <ShieldCheck className="h-3.5 w-3.5" />
-          Within available credit · due under {account.paymentTerms || "Net 30"}
+          Within available credit · due under {account.paymentTerms || "approved credit terms"}
         </p>
       )}
 
@@ -225,7 +225,10 @@ export function CommercialCreditCheckout({
             Placing credit order…
           </>
         ) : (
-          <>Place order on {account.paymentTerms || "Net 30"} · {formatCurrency(orderTotal)}</>
+          <>
+            Place order on {account.paymentTerms || "commercial credit"} ·{" "}
+            {formatCurrency(orderTotal)}
+          </>
         )}
       </button>
     </div>

@@ -215,7 +215,7 @@ function stepsForPhase(phase: TourPhase): DriveStep[] {
           popover: {
             title: "5. Checkout & Payment",
             description:
-              "Pay with Credit Card via Stripe Elements, or apply for Commercial Net 30 credit for approved B2B accounts.",
+              "Pay with Credit Card via Stripe Elements, or submit a commercial credit application for approved B2B accounts.",
             side: "bottom",
             align: "start",
           },

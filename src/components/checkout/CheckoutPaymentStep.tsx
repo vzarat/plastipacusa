@@ -226,7 +226,7 @@ export function CheckoutPaymentStep({
             {creditAccount?.approved ? (
               <>
                 Available {formatCurrency(creditAccount.availableCredit)} ·{" "}
-                {creditAccount.paymentTerms || "Net 30"}
+                {creditAccount.paymentTerms || "Commercial Credit"}
                 {!creditEnabled && creditDisabledReason ? (
                   <span className="mt-1 block font-semibold text-amber-800">
                     {creditDisabledReason}
