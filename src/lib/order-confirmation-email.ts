@@ -655,8 +655,7 @@ export const SAMPLE_ORDER_CONTENT: OrderConfirmationContent = {
   shippingSelection: {
     carrierName: "Plastipac Delivery",
     carrierKey: "plastipac",
-    logoUrl:
-      "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/CARRIERS/PLASTIPAC_DELIVERY.svg",
+    logoUrl: undefined,
     serviceName: "Friday free delivery",
     price: 0,
     weightLbs: 1173.5,

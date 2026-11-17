@@ -5,7 +5,6 @@ const CARRIER_LOGO_BASE =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/CARRIERS";
 
 const CARRIER_PARTNERS = [
-  { name: "Plastipac Delivery", src: `${CARRIER_LOGO_BASE}/PLASTIPAC_DELIVERY.svg` },
   { name: "Warp", src: `${CARRIER_LOGO_BASE}/epub_Warp-logo_webp_png.webp` },
   { name: "FedEx", src: `${CARRIER_LOGO_BASE}/${encodeURI("FedEx_Express.svg")}` },
   { name: "Vocar", src: `${CARRIER_LOGO_BASE}/${encodeURI("VOCAR.png")}` },

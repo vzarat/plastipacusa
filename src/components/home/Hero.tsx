@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 
+const SLIDE_SDK_4 =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_4.jpg";
 const SLIDE_SDK_2 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_2.jpg";
 const SLIDE_SDK_3 =
@@ -15,9 +17,10 @@ const EFFICIENCY_MACHINE =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/ROBOPACK.png";
 
 const MOBILE_SLIDE_COUNT = 1;
-const DESKTOP_SLIDE_COUNT = 2;
+const DESKTOP_SLIDE_COUNT = 3;
 const AUTO_MS = 7000;
 const SLIDE_LABELS = [
+  "Featured",
   "Increase packaging efficiency",
   "Quality you can count on",
 ];
@@ -25,20 +28,21 @@ const SLIDE_LABELS = [
 const SLIDE_CTA_CLASS =
   "inline-flex w-fit items-center gap-[0.45cqw] rounded-[0.7cqw] bg-gradient-to-r from-cyan-500 to-blue-600 px-[1.15cqw] py-[0.55cqw] text-[1.05cqw] font-bold uppercase tracking-wide text-white shadow-md shadow-blue-500/30";
 
-function EfficiencySlide() {
+/** First web slide (SLIDE_SDK_4). Mobile falls back to the efficiency layout. */
+function LeadSlide() {
   return (
     <div className="absolute inset-0">
       <Image
-        src={SLIDE_SDK_2}
-        alt="Increase packaging efficiency. At Plastipac USA, we're all about smarter packaging solutions to help your business work better."
+        src={SLIDE_SDK_4}
+        alt="Plastipac USA stretch film — featured packaging solutions"
         fill
         priority
         sizes="(max-width: 1400px) 100vw, 1400px"
         className="hidden object-contain object-center md:block"
       />
       <div className="absolute left-[9.88%] top-[79.5%] z-20 hidden md:block">
-        <Link href="/#inquiry-form" className={SLIDE_CTA_CLASS}>
-          Contact Us Today!
+        <Link href="/#product-catalog-section" className={SLIDE_CTA_CLASS}>
+          Shop Now
           <ArrowRight className="h-[1.05cqw] w-[1.05cqw]" />
         </Link>
       </div>
@@ -80,6 +84,26 @@ function EfficiencySlide() {
             Contact Us Today!
           </Link>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function EfficiencySlide() {
+  return (
+    <div className="absolute inset-0">
+      <Image
+        src={SLIDE_SDK_2}
+        alt="Increase packaging efficiency. At Plastipac USA, we're all about smarter packaging solutions to help your business work better."
+        fill
+        sizes="(max-width: 1400px) 100vw, 1400px"
+        className="hidden object-contain object-center md:block"
+      />
+      <div className="absolute left-[9.88%] top-[79.5%] z-20 hidden md:block">
+        <Link href="/#inquiry-form" className={SLIDE_CTA_CLASS}>
+          Contact Us Today!
+          <ArrowRight className="h-[1.05cqw] w-[1.05cqw]" />
+        </Link>
       </div>
     </div>
   );
@@ -148,7 +172,7 @@ export function Hero() {
           aria-hidden={index !== 0}
           inert={index !== 0}
         >
-          <EfficiencySlide />
+          <LeadSlide />
         </div>
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
@@ -156,6 +180,15 @@ export function Hero() {
           }`}
           aria-hidden={index !== 1}
           inert={index !== 1}
+        >
+          <EfficiencySlide />
+        </div>
+        <div
+          className={`absolute inset-0 transition-opacity duration-500 ${
+            index === 2 ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+          aria-hidden={index !== 2}
+          inert={index !== 2}
         >
           <QualitySlide />
         </div>

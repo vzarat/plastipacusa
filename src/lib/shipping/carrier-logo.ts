@@ -19,7 +19,6 @@ const CARRIER_LOGO_FILES: Record<string, string> = {
   southwestern: "southwest logo.gif",
   unis: "UNIS.jpg",
   vocar: "VOCAR.png",
-  plastipac: "PLASTIPAC_DELIVERY.svg",
   warp: "epub_Warp-logo_webp_png.webp",
   "warp-technology": "epub_Warp-logo_webp_png.webp",
   xpo: "XPO,_Inc_.svg",
@@ -56,15 +55,6 @@ export function carrierLogoSlug(carrierKey: string | undefined, name: string): s
   if (compact.includes("FORWARD")) return compact.includes("AIR") ? "forward-air" : "forward";
   if (compact.includes("SOUTHWEST")) return "southwestern";
   if (compact.includes("VOCAR")) return "vocar";
-  if (
-    compact.includes("PLASTIPAC") ||
-    compact.includes("FRIDAY FREE DELIVERY") ||
-    compact.includes("FREE LOCAL DELIVERY") ||
-    (compact.includes("2+ PALLETS") &&
-      (compact.includes("HOUSTON") || compact.includes("RGV")))
-  ) {
-    return "plastipac";
-  }
   if (compact.includes("CCFS")) return "ccfs";
   if (compact.includes("UNIS")) return "unis";
   if (compact.includes("WARP")) return "warp";
