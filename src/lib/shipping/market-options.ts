@@ -191,21 +191,27 @@ export function marketItemsFromPieces(pieces: FreightPiece[]): MarketFreightItem
   });
 }
 
+/** Physical cart identity only — used to confirm a stored quote still matches the order. */
+export function cartFreightIdentityHash(pieces: FreightPiece[]): string {
+  const canonical = marketItemsFromPieces(pieces)
+    .map((item) =>
+      [item.qty, item.weightLbsPerPallet, item.lengthIn, item.widthIn, item.heightIn].join("x")
+    )
+    .join("|");
+  return createHash("sha256").update(canonical).digest("hex");
+}
+
+/**
+ * Warp request fingerprint. Includes pickup date / accessorials for carrier parity checks.
+ * Do not use this to confirm checkout payment — use cartFreightIdentityHash instead.
+ */
 export function freightItemsHash(
   pieces: FreightPiece[],
   identity: { pickupDate?: string; accessorials?: string[] } = {}
 ): string {
   const pickupDate = identity.pickupDate || nextBusinessPickupDate();
   const accessorials = [...(identity.accessorials ?? [])].map((item) => item.trim()).filter(Boolean).sort();
-  const canonical = [
-    pickupDate,
-    accessorials.join(","),
-    marketItemsFromPieces(pieces)
-      .map((item) =>
-        [item.qty, item.weightLbsPerPallet, item.lengthIn, item.widthIn, item.heightIn].join("x")
-      )
-      .join("|"),
-  ].join("||");
+  const canonical = [pickupDate, accessorials.join(","), cartFreightIdentityHash(pieces)].join("||");
   return createHash("sha256").update(canonical).digest("hex");
 }
 

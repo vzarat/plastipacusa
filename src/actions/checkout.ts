@@ -108,12 +108,19 @@ function requireCheckoutShippingAddress(
 /** Freight eligibility uses catalog SKU + qty only — never trust client rolls/boxes/weight. */
 function catalogFreightLines(
   lines: ShippingQuoteLine[] | undefined
-): Array<{ sku: string; productSlug?: string; quantity: number }> {
+): ShippingQuoteLine[] {
   return (lines || [])
     .map((line) => ({
       sku: String(line.sku || "").trim(),
       productSlug: line.productSlug ? String(line.productSlug) : undefined,
       quantity: Math.floor(Number(line.quantity) || 0),
+      totalBoxes:
+        line.totalBoxes != null ? Math.max(0, Math.floor(Number(line.totalBoxes) || 0)) : undefined,
+      totalRolls:
+        line.totalRolls != null ? Math.max(0, Math.floor(Number(line.totalRolls) || 0)) : undefined,
+      weightLbs:
+        line.weightLbs != null && Number(line.weightLbs) > 0 ? Number(line.weightLbs) : undefined,
+      application: line.application ? String(line.application) : undefined,
     }))
     .filter((line) => line.sku && line.quantity > 0);
 }

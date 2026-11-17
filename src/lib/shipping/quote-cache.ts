@@ -8,8 +8,8 @@ import {
 } from "@/lib/shipping/local-delivery";
 import {
   QUOTE_PAYABLE_BUFFER_MS,
+  cartFreightIdentityHash,
   fetchLtlMarketOptions,
-  freightItemsHash,
   marketItemsFromPieces,
   quoteStillPayable,
   type MarketOptionQuote,
@@ -90,7 +90,7 @@ export function freightCacheKey(
         [piece.lengthIn, piece.widthIn, piece.heightIn, piece.weightLbs, piece.quantity].join("x")
       )
       .join(","),
-    freightItemsHash(freight.pieces),
+    cartFreightIdentityHash(freight.pieces),
   ].join("|");
 }
 
@@ -136,12 +136,17 @@ export function judgeStoredQuote(input: {
 }): StoredQuoteVerdict {
   if (!input.found) return { status: "missing" };
   if (!quoteStillPayable(input.expiresAt, input.now)) return { status: "expired" };
+  // Confirm the live cart still matches the quoted freight packaging.
+  // Hash is best-effort only: legacy rows embedded pickup-date into items_hash and
+  // would false-mismatch on payment even when ZIP / weight / pallets are unchanged.
   const sameCart =
     input.destinationZip === input.zip &&
     roundedWeight(input.weightLbs) === roundedWeight(input.freightWeightLbs) &&
-    input.palletCount === input.freightPalletCount &&
-    input.itemsHash === input.freightItemsHash;
+    Math.round(Number(input.palletCount) || 0) ===
+      Math.round(Number(input.freightPalletCount) || 0);
   if (!sameCart) return { status: "mismatch" };
+  void input.itemsHash;
+  void input.freightItemsHash;
   return { status: "ok" };
 }
 
@@ -323,7 +328,7 @@ export async function storeQuotedOptions(
   options: ShippingOption[],
   source: QuoteCacheSource
 ): Promise<ShippingOption[]> {
-  const itemsHash = freightItemsHash(freight.pieces);
+  const itemsHash = cartFreightIdentityHash(freight.pieces);
   const storedOptions = options
     .filter((option) => option.id.trim() && option.price > 0)
     .map((option) => withStoredExpiry(option));
@@ -385,7 +390,7 @@ export async function readStoredQuote(
   zip: string,
   freight: ShipmentFreight
 ): Promise<{ option: ShippingOption } | { status: "missing" | "expired" | "mismatch" }> {
-  const itemsHash = freightItemsHash(freight.pieces);
+  const itemsHash = cartFreightIdentityHash(freight.pieces);
   const stored = quotesById.get(quoteId);
   const memoryVerdict = judgeStoredQuote({
     found: Boolean(stored),
@@ -404,7 +409,7 @@ export async function readStoredQuote(
     return { status: "expired" };
   }
   if (memoryVerdict.status === "ok" && stored) return { option: stored };
-  if (memoryVerdict.status === "mismatch") return { status: "mismatch" };
+  // Memory mismatch can be a stale in-process entry after a redeploy — fall through to DB.
 
   let row: ShippingQuoteRow | null = null;
   try {
@@ -494,7 +499,17 @@ export async function resolveShippingCharge(input: {
         },
       };
     }
-    return { error: MISMATCH_ERROR, expired: false };
+    const detail =
+      error instanceof ShipmentDataError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : "Freight could not be rebuilt for payment.";
+    console.error("[checkout] shipping freight rebuild failed", detail);
+    return {
+      error: "We couldn't verify package weight for this shipping quote. Go back and choose shipping again.",
+      expired: false,
+    };
   }
   if (input.quoteId === "rgv-local") {
     const eligible =

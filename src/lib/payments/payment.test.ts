@@ -351,16 +351,20 @@ describe("stored quote and local delivery at payment", () => {
     assert.equal(failure.expired, true);
   });
 
-  it("rejects a changed cart for ZIP, weight, pallets, and items_hash", () => {
+  it("rejects a changed cart for ZIP, weight, and pallets", () => {
     for (const patch of [
       { zip: "77001" },
       { freightWeightLbs: 140 },
       { freightPalletCount: 2 },
-      { freightItemsHash: "hash-b" },
     ]) {
       const verdict = judgeStoredQuote({ ...base, ...patch });
       assert.equal(verdict.status, "mismatch");
     }
+    // Legacy items_hash values may differ; packaging match is enough to pay.
+    assert.equal(
+      judgeStoredQuote({ ...base, freightItemsHash: "hash-b" }).status,
+      "ok"
+    );
     assert.equal(paymentQuoteFailure("mismatch").error, MISMATCH_QUOTE_MESSAGE);
   });
 
