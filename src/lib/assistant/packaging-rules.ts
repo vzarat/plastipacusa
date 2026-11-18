@@ -95,7 +95,7 @@ export function validatePackageQuantity(
       rolls: spec.rolls * quantity,
       boxes: 0,
       // Box-equivalent volume: half = 0.5 pallet (24), full = 48 per pallet.
-      // Free local unlocks at 2 pallets (96 box-equivalents).
+      // Free local unlocks at 3 pallets (144 box-equivalents).
       freightBoxCount:
         input.tier === "half_pallet"
           ? Math.round(HOUSTON_FREE_DELIVERY_BOXES / 4) * quantity

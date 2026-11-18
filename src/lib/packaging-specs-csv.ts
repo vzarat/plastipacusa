@@ -194,7 +194,49 @@ function machineCsvCells(product: AdminProduct): Array<string | number | null> {
   ];
 }
 
-/** Prefer GENESIS / official-slug Automatic rows; drop unauthorized + duplicate masters. */
+function syntheticMachineCatalogProduct(
+  row: (typeof MACHINE_FILM_MASTER)[number]
+): AdminProduct {
+  const halfTotal = machineFilmPackageTotal(row, 20);
+  const fullTotal = machineFilmPackageTotal(row, 40);
+  return {
+    id: `master-${row.slug}`,
+    slug: row.slug,
+    name: row.title,
+    storefrontTitle: `GENESIS Machine Film ${row.title.replace(/^STRETCH FILM\s+/i, "")}`,
+    partNumber: row.partNumber,
+    description: "",
+    gauge: row.gauge,
+    widthInches: row.widthInches,
+    lengthFeet: row.lengthFeet,
+    rollsPerBox: 1,
+    rollWeightLbs: row.rollWeightLbs,
+    palletWeightLbs: row.fullPalletWeightLbs,
+    palletDimensions: MACHINE_PALLET_DIMENSIONS,
+    priceUsd: fullTotal,
+    price1Box: null,
+    price16Boxes: null,
+    price32Boxes: null,
+    price64Boxes: null,
+    priceCase: null,
+    priceHalfPallet: halfTotal,
+    pricePallet: fullTotal,
+    price6Rolls: 0,
+    price12Rolls: 0,
+    price20Rolls: halfTotal,
+    price40Rolls: fullTotal,
+    packageTiers: [],
+    stockQuantity: 0,
+    isSoldOut: false,
+    application: "machine",
+    categorySlug: "genesis-high-performance",
+    imageUrl: "",
+    images: [],
+    isActive: true,
+  };
+}
+
+/** Prefer GENESIS / official-slug Automatic rows; always emit the 4 masters with roll×count totals. */
 function catalogProductsForCsv(products: AdminProduct[]): AdminProduct[] {
   const active = products.filter((product) => product.isActive);
   const hand: AdminProduct[] = [];
@@ -226,11 +268,23 @@ function catalogProductsForCsv(products: AdminProduct[]): AdminProduct[] {
     if (!master) continue;
     const existing = machineByMaster.get(master.slug);
     if (!existing || machineScore(product) > machineScore(existing)) {
-      machineByMaster.set(master.slug, product);
+      machineByMaster.set(master.slug, {
+        ...product,
+        price20Rolls: machineFilmPackageTotal(master, 20),
+        price40Rolls: machineFilmPackageTotal(master, 40),
+        priceHalfPallet: machineFilmPackageTotal(master, 20),
+        pricePallet: machineFilmPackageTotal(master, 40),
+        priceUsd: machineFilmPackageTotal(master, 40),
+      });
     }
   }
 
-  return [...hand, ...MACHINE_FILM_MASTER.map((row) => machineByMaster.get(row.slug)).filter(Boolean) as AdminProduct[]];
+  return [
+    ...hand,
+    ...MACHINE_FILM_MASTER.map(
+      (row) => machineByMaster.get(row.slug) ?? syntheticMachineCatalogProduct(row)
+    ),
+  ];
 }
 
 export function packagingSpecsCsv(products: AdminProduct[]): string {

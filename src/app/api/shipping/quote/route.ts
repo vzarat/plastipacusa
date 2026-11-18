@@ -369,7 +369,7 @@ async function quoteForSignedInUser(request: Request) {
       freight.boxes,
       freight.rolls
     ).options.find((option) => option.id === "houston-friday");
-    // Under 2 pallets: do not offer free Houston/RGV — Warp LTL options only.
+    // Under 3 pallets: do not offer free Houston/RGV — Warp LTL options only.
     const fridayRoute = fridayRule ? scheduledFridayOption("houston-friday", zip) : null;
 
     const destinationZip = zip;

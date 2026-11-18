@@ -393,7 +393,7 @@ export const translations = {
 
     // Announcement / US Pride Banner
     "banner.usPride":
-      "FREE Local Delivery to Houston & RGV on orders of 2+ Pallets · Leader manufacturer of stretch film",
+      "FREE Local Delivery to Houston & RGV on orders of 3+ Pallets · Leader manufacturer of stretch film",
 
     // Footer
     "footer.tagline":

@@ -139,7 +139,8 @@ export function TaxExemptionModal({
           <ul className="list-disc space-y-1.5 pl-4 text-xs leading-relaxed text-slate-600">
             <li>
               Plastipac USA LLC collects applicable sales tax based on the delivery destination
-              state (including Texas state & local sales taxes).
+              state (including Texas state & local sales taxes). Tax is calculated on
+              discounted merchandise plus shipping/freight.
             </li>
             <li>
               Resellers and tax-exempt organizations must provide a valid State Resale Certificate

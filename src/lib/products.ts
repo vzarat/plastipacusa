@@ -274,12 +274,6 @@ export function buildMachinePackageOptions(input: {
     }));
 }
 
-/**
- * Full-pallet per-roll price compared with the half-pallet per-roll price.
- * Matches the 20-roll and 40-roll tier columns (580.36 vs 1,099.64).
- */
-const MACHINE_FULL_PALLET_UNIT_RATE = 1099.64 / (580.36 * 2);
-
 function roundTierMoney(amount: number): number {
   return Math.round(amount * 100) / 100;
 }
@@ -301,41 +295,14 @@ function sourcePrice(item: any): number {
 }
 
 /**
- * Machine film is sold as a full pallet and a half pallet even when the
- * database only has a single-roll price. Full pallet is first so package total
- * is the default PDP hero price.
+ * Machine film pallet totals = per-roll × roll count (20 or 40).
+ * Never inherit Manual 48-box formulas. Official GENESIS specs use MACHINE_FILM_MASTER.
  */
 export function buildMachineFilmSelectorTiers(product: any, variants?: any[] | null) {
   const sources = [...(product?.packageOptions || []), ...(variants || product?.variants || [])];
   const widthInches = String(product?.width_inches || product?.widthInches || sources[0]?.widthInches || "20.00");
   const gauge = Number(product?.gauge || sources[0]?.gauge || 60);
   const lengthFeet = Number(product?.length_feet || product?.lengthFeet || sources[0]?.lengthFeet || 0);
-  const singleRoll = sources.find((item) => sourceRolls(item) === 1 && sourcePrice(item) > 0);
-  const looseRoll = sources.find(
-    (item) => sourcePrice(item) > 0 && sourceRolls(item) > 0 && sourceRolls(item) < 20
-  );
-  const storedTierPrice = (rolls: number) => {
-    const match = sources.find((item) => sourceRolls(item) === rolls && sourcePrice(item) > 0);
-    if (match) return sourcePrice(match);
-    if (rolls === 20) {
-      return firstPositiveAmount([product?.price20Rolls, product?.price_20_rolls]);
-    }
-    return firstPositiveAmount([product?.price40Rolls, product?.price_40_rolls]);
-  };
-  const halfStored = storedTierPrice(20);
-  const fullStored = storedTierPrice(40);
-  const unitRollPrice =
-    sourcePrice(singleRoll) ||
-    firstPositiveAmount([product?.price6Rolls, product?.price_6_rolls, product?.price1]) ||
-    (halfStored > 0 || fullStored > 0
-      ? 0
-      : firstPositiveAmount([
-          product?.priceUsd,
-          product?.price_usd,
-          product?.price,
-          product?.startingPrice,
-        ])) ||
-    (looseRoll ? sourcePrice(looseRoll) / Math.max(1, sourceRolls(looseRoll)) : 0);
   const rollWeight = firstPositiveAmount([
     ...sources.map((item) => item?.rollWeightLbs ?? item?.roll_weight_lbs),
     product?.rollWeightLbs,
@@ -349,43 +316,58 @@ export function buildMachineFilmSelectorTiers(product: any, variants?: any[] | n
   ]);
   const baseSku = String(product?.partNumber || product?.part_number || product?.slug || "MACHINE");
 
-  const palletTotalMatchesUnit = (stored: number, rolls: number, unit: number) => {
-    if (!(stored > 0)) return false;
-    if (!(unit > 0)) return true;
-    const perRoll = stored / rolls;
-    return perRoll <= unit * 1.05 && perRoll >= unit * 0.5;
-  };
-
-  const halfPerRoll = palletTotalMatchesUnit(halfStored, 20, unitRollPrice)
-    ? halfStored / 20
-    : unitRollPrice;
-  const halfPrice = halfPerRoll > 0 ? roundTierMoney(halfPerRoll * 20) : 0;
-  const storedFullPerRoll = fullStored > 0 ? fullStored / 40 : 0;
-  const fullPerRoll =
-    palletTotalMatchesUnit(fullStored, 40, halfPerRoll) &&
-    storedFullPerRoll > 0 &&
-    storedFullPerRoll < halfPerRoll - 0.004
-      ? storedFullPerRoll
-      : halfPerRoll > 0
-        ? roundTierMoney(halfPerRoll * MACHINE_FULL_PALLET_UNIT_RATE)
-        : 0;
-  const fullPrice = fullPerRoll > 0 ? roundTierMoney(fullPerRoll * 40) : 0;
-  const officialHalf = machineFilmPerRollPrice({
+  const officialHalfPerRoll = machineFilmPerRollPrice({
     widthInches,
     gauge,
     lengthFeet,
     rolls: 20,
   });
-  const officialFull = machineFilmPerRollPrice({
+  const officialFullPerRoll = machineFilmPerRollPrice({
     widthInches,
     gauge,
     lengthFeet,
     rolls: 40,
   });
-  const pricedHalfPerRoll = officialHalf ?? halfPerRoll;
-  const pricedFullPerRoll = officialFull ?? fullPerRoll;
-  const pricedHalf = officialHalf != null ? machineFilmPackagePrice({ widthInches, gauge, lengthFeet, rolls: 20 }) ?? 0 : halfPrice;
-  const pricedFull = officialFull != null ? machineFilmPackagePrice({ widthInches, gauge, lengthFeet, rolls: 40 }) ?? 0 : fullPrice;
+  const officialHalf = machineFilmPackagePrice({
+    widthInches,
+    gauge,
+    lengthFeet,
+    rolls: 20,
+  });
+  const officialFull = machineFilmPackagePrice({
+    widthInches,
+    gauge,
+    lengthFeet,
+    rolls: 40,
+  });
+
+  // Legacy fallback only when the SKU is not in the official four.
+  const storedTierPrice = (rolls: number) => {
+    const match = sources.find((item) => sourceRolls(item) === rolls && sourcePrice(item) > 0);
+    if (match) return sourcePrice(match);
+    if (rolls === 20) {
+      return firstPositiveAmount([product?.price20Rolls, product?.price_20_rolls]);
+    }
+    return firstPositiveAmount([product?.price40Rolls, product?.price_40_rolls]);
+  };
+  const halfStored = storedTierPrice(20);
+  const fullStored = storedTierPrice(40);
+  const fallbackHalfPerRoll =
+    halfStored > 0 ? roundTierMoney(halfStored / 20) : 0;
+  const fallbackFullPerRoll =
+    fullStored > 0
+      ? roundTierMoney(fullStored / 40)
+      : fallbackHalfPerRoll > 0
+        ? fallbackHalfPerRoll
+        : 0;
+  const pricedHalfPerRoll = officialHalfPerRoll ?? fallbackHalfPerRoll;
+  const pricedFullPerRoll = officialFullPerRoll ?? fallbackFullPerRoll;
+  const pricedHalf =
+    officialHalf ??
+    (pricedHalfPerRoll > 0 ? roundTierMoney(pricedHalfPerRoll * 20) : 0);
+  const pricedFull =
+    officialFull ??
+    (pricedFullPerRoll > 0 ? roundTierMoney(pricedFullPerRoll * 40) : 0);
   const fullPalletSavingsPerRoll =
     pricedHalfPerRoll > 0 && pricedFullPerRoll > 0
       ? roundTierMoney(pricedHalfPerRoll - pricedFullPerRoll)

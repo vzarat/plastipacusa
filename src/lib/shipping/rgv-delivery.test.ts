@@ -9,8 +9,8 @@ import {
 } from "../shippingRules";
 
 describe("free RGV delivery", () => {
-  it("does not unlock free local below 2 full-pallet equivalents", () => {
-    const rolls = 40; // 1 Automatic full pallet
+  it("does not unlock free local below 3 full-pallet equivalents", () => {
+    const rolls = 80; // 2 Automatic full pallets — still short of 3
     const quote = freeRgvDelivery({
       postalCode: "78572",
       city: "Mission",
@@ -56,13 +56,13 @@ describe("free RGV delivery", () => {
       postalCode: "78516",
       city: "  ALAMO  ",
       state: "Texas",
-      rolls: 80,
+      rolls: 120,
     });
     const abbreviated = freeRgvDelivery({
       postalCode: "78501",
       city: "mcallen",
       state: " tx ",
-      rolls: 80,
+      rolls: 120,
     });
     assert.equal(spelled.eligible, true);
     assert.equal(abbreviated.eligible, true);
@@ -71,7 +71,7 @@ describe("free RGV delivery", () => {
   it("accepts only the seven active RGV cities", () => {
     for (const city of ["Alamo", "McAllen", "Mission", "Hidalgo", "Edinburg", "Mercedes", "Weslaco"]) {
       assert.equal(
-        freeRgvDelivery({ postalCode: "78501", city, state: "TX", rolls: 80 }).eligible,
+        freeRgvDelivery({ postalCode: "78501", city, state: "TX", rolls: 120 }).eligible,
         true,
         city
       );
@@ -97,22 +97,22 @@ describe("free RGV delivery", () => {
     );
   });
 
-  it("includes a Texas 78572 shipment of 2 Automatic full pallets", () => {
+  it("includes a Texas 78572 shipment of 3 Automatic full pallets", () => {
     const quote = freeRgvDelivery({
       postalCode: "78572",
       city: "Mission",
       state: "TX",
-      rolls: 80,
+      rolls: 120,
     });
-    const banner = evalShippingEligibility("78572", "Mission", "TX", 0, 80);
+    const banner = evalShippingEligibility("78572", "Mission", "TX", 0, 120);
     assert.equal(quote.eligible, true);
     assert.equal(banner.freeDeliveryEligible, true);
     assert.equal(banner.options[0]?.label, RGV_FREE_DELIVERY_LABEL);
   });
 
-  it("offers free Friday delivery for Houston 770-772 ZIPs at 2+ pallets, not city-only", () => {
-    const houston = evalShippingEligibility("77002", "Houston", "TX", 96, 384);
-    const prefix = evalShippingEligibility("77201", "Pasadena", "TX", 96, 384);
+  it("offers free Friday delivery for Houston 770-772 ZIPs at 3+ pallets, not city-only", () => {
+    const houston = evalShippingEligibility("77002", "Houston", "TX", 144, 576);
+    const prefix = evalShippingEligibility("77201", "Pasadena", "TX", 144, 576);
     const cityOnly = evalShippingEligibility("", "Houston", "TX", 96, 384);
     const outside = evalShippingEligibility("77301", "Spring", "TX", 96, 384);
     assert.equal(houston.options[0]?.id, "houston-friday");

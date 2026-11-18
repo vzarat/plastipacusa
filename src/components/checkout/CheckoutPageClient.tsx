@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Loader2 } from "lucide-react";
+import { CheckoutTrustFooter } from "@/components/checkout/CheckoutTrustFooter";
 import { toast } from "sonner";
 import { presentPackageLabel } from "@/lib/products";
 import { formatBoxPriceEquation, handCartQuote } from "@/lib/pricing";
@@ -584,12 +585,23 @@ function CheckoutPageInner({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-slate-600">
                 <span>
-                  {taxExempt ? "Tax" : `Tax (${(quote.taxRate * 100).toFixed(2)}%)`}
+                  {taxExempt
+                    ? "Tax"
+                    : furthestStep >= 3 && selectedShippingOption
+                      ? `Tax (${(quote.taxRate * 100).toFixed(2)}%)`
+                      : "Tax"}
                 </span>
                 <span className="font-semibold text-slate-800">
-                  {formatCurrency(quote.tax)}
+                  {furthestStep >= 3 && selectedShippingOption
+                    ? formatCurrency(quote.tax)
+                    : "—"}
                 </span>
               </div>
+              {furthestStep >= 3 && selectedShippingOption && !taxExempt && (
+                <p className="text-[11px] text-slate-500">
+                  Includes sales tax on merchandise and shipping.
+                </p>
+              )}
               {step === 4 && taxExemptRequested && (
                 <p className="text-xs font-semibold text-emerald-700">
                   Sales tax stays on this order until the exemption is verified.
@@ -616,10 +628,7 @@ function CheckoutPageInner({
             </div>
           </div>
 
-          <p className="mt-4 text-[11px] text-slate-500 leading-relaxed">
-            Payment is completed in the left column using Stripe&apos;s embedded
-            Payment Element. You will return here after confirmation.
-          </p>
+          <CheckoutTrustFooter />
 
           <Button
             type="button"

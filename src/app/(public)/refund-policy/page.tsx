@@ -10,7 +10,7 @@ export const metadata = {
 
 export default function RefundPolicyPage() {
   return (
-    <LegalPageShell title="Refund & Cancellation Policy" effectiveDate="September 15, 2026">
+    <LegalPageShell title="Refund & Cancellation Policy" effectiveDate="November 17, 2026">
       <section className="space-y-3">
         <h2>1. Overview</h2>
         <p>
@@ -165,12 +165,33 @@ export default function RefundPolicyPage() {
         </p>
       </section>
 
-      <section className="space-y-3">
-        <h2>9. How Refunds Are Issued</h2>
+      <section className="space-y-3" id="online-payments-stripe">
+        <h2>9. Online Payments, Refunds &amp; Stripe</h2>
         <p>
-          Approved refunds are processed through the original payment method (e.g., Stripe). Timing for funds to appear
-          depends on your bank or card issuer and may take several business days after we initiate the refund. Order
-          status updates will be communicated by email when available.
+          Online card and related payment transactions on our Site are processed through{" "}
+          <strong>Stripe</strong>, an independent payment intermediary between Plastipac and the customer. Plastipac does
+          not store full payment card numbers and does not operate Stripe&apos;s authorization, settlement, dispute, or
+          banking networks.
+        </p>
+        <ul>
+          <li>
+            Approved refunds are issued to the original payment method via Stripe. Timing for funds to appear depends on
+            Stripe, your bank, or your card issuer and may take several business days after we initiate the refund.
+          </li>
+          <li>
+            If you experience a payment authorization failure, delayed capture, duplicate charge appearance, bank hold,
+            chargeback processing delay, or similar money-movement issue, the cause may be on Stripe&apos;s side (or your
+            bank&apos;s)—not Plastipac&apos;s storefront systems. Contact us at{" "}
+            <a href="mailto:support@plastipacusa.com">support@plastipacusa.com</a> with your order or payment reference;
+            we will help investigate and, where appropriate, coordinate with Stripe.
+          </li>
+          <li>
+            Commercial credit / Net terms orders (when approved) are billed under Plastipac&apos;s credit arrangement and
+            are not Stripe card charges, unless a card payment is used for a specific invoice.
+          </li>
+        </ul>
+        <p>
+          Order status updates will be communicated by email when available.
         </p>
       </section>
 

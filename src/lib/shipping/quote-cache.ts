@@ -491,7 +491,7 @@ export async function resolveShippingCharge(input: {
           mode: "local",
           serviceName: FREE_LOCAL_DELIVERY_LABEL,
           description:
-            "Plastipac fleet delivery for Rio Grande Valley orders of 2+ full pallets (Manual and/or Automatic).",
+            "Plastipac fleet delivery for Rio Grande Valley orders of 3+ full pallets (Manual and/or Automatic, any size).",
           price: 0,
           transitDays: 1,
           expiresAt: null,
@@ -527,7 +527,7 @@ export async function resolveShippingCharge(input: {
         mode: "local",
         serviceName: FREE_LOCAL_DELIVERY_LABEL,
         description:
-          "Plastipac fleet delivery for Rio Grande Valley orders of 2+ full pallets (Manual and/or Automatic).",
+          "Plastipac fleet delivery for Rio Grande Valley orders of 3+ full pallets (Manual and/or Automatic, any size).",
         price: 0,
         transitDays: 1,
         expiresAt: null,

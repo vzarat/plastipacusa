@@ -37,6 +37,8 @@ import {
 import {
   AUTHORIZED_AUTOMATIC_PART_NUMBERS,
   AUTHORIZED_AUTOMATIC_SLUGS,
+  findMachineFilmMaster,
+  machineFilmPackageTotal,
 } from "@/lib/machine-film-master";
 import {
   HAND_FULL_PALLET,
@@ -537,9 +539,35 @@ function formatProduct(raw: any): ProductWithVariants {
       categorySlug: earlyCategorySlug || joinedCategorySlug,
     });
 
+  const machineMaster = isMachineProduct
+    ? findMachineFilmMaster({
+        slug: slugStr,
+        partNumber: String(raw.part_number || raw.partNumber || ""),
+        widthInches: resolvedWidth,
+        gauge: gaugeNum,
+        lengthFeet: lengthNum,
+      })
+    : null;
+  const officialHalfTotal = machineMaster
+    ? machineFilmPackageTotal(machineMaster, 20)
+    : null;
+  const officialFullTotal = machineMaster
+    ? machineFilmPackageTotal(machineMaster, 40)
+    : null;
+
   let packageOptions: PackageOption[] = [];
   if (isMachineProduct) {
-    if (useCustomPackageTiers) {
+    if (machineMaster && officialHalfTotal != null && officialFullTotal != null) {
+      // Official Automatic matrix: package total = per-roll × 20 / × 40.
+      packageOptions = buildMachinePackageOptions({
+        baseSku: machineMaster.partNumber || baseSku,
+        price20: officialHalfTotal,
+        price40: officialFullTotal,
+        widthInches: machineMaster.widthInches,
+        gauge: machineMaster.gauge,
+        lengthFeet: machineMaster.lengthFeet,
+      });
+    } else if (useCustomPackageTiers) {
       packageOptions = buildMachinePackageOptions({
         baseSku,
         price1: price6Rolls ?? productBasePrice,
@@ -694,12 +722,19 @@ function formatProduct(raw: any): ProductWithVariants {
     storefrontTitle: raw.storefront_title || raw.storefrontTitle || null,
     priceCase: raw.price_case === null || raw.price_case === undefined ? null : Number(raw.price_case),
     priceHalfPallet:
-      raw.price_half_pallet === null || raw.price_half_pallet === undefined ? null : Number(raw.price_half_pallet),
-    pricePallet: raw.price_pallet === null || raw.price_pallet === undefined ? null : Number(raw.price_pallet),
+      officialHalfTotal ??
+      (raw.price_half_pallet === null || raw.price_half_pallet === undefined
+        ? null
+        : Number(raw.price_half_pallet)),
+    pricePallet:
+      officialFullTotal ??
+      (raw.price_pallet === null || raw.price_pallet === undefined
+        ? null
+        : Number(raw.price_pallet)),
     price6Rolls: price6Rolls ?? undefined,
     price12Rolls: price12Rolls ?? undefined,
-    price20Rolls: price20Rolls ?? undefined,
-    price40Rolls: price40Rolls ?? undefined,
+    price20Rolls: officialHalfTotal ?? price20Rolls ?? undefined,
+    price40Rolls: officialFullTotal ?? price40Rolls ?? undefined,
     packageOptions,
     boxPrices,
     price_1_box: boxPrices.price1Box,

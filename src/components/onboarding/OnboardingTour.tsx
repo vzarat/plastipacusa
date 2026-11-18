@@ -29,14 +29,14 @@ const MOBILE_STEPS = [
   {
     id: "rgv",
     title: "Free Local Delivery — RGV",
-    body: "FREE Local Delivery to Houston & RGV on orders of 2+ Pallets (Manual and/or Automatic combined).",
+    body: "FREE Local Delivery to Houston & RGV on orders of 3+ Pallets (Manual and/or Automatic, any size).",
     selector: "#hero-carousel, [data-tour='hero']",
     slide: null,
   },
   {
     id: "houston",
     title: "Free Local Delivery — Houston",
-    body: "FREE Local Delivery to Houston & RGV on orders of 2+ Pallets. Under 2 pallets, standard Warp LTL rates apply.",
+    body: "FREE Local Delivery to Houston & RGV on orders of 3+ Pallets. Under 3 pallets, standard Warp LTL rates apply.",
     selector: "#hero-carousel, [data-tour='hero']",
     slide: null,
   },

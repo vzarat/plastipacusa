@@ -6,7 +6,7 @@ import {
   qualifiesForFreeLocalDelivery,
 } from "@/lib/shipping/local-delivery";
 
-/** @deprecated Use FREE_LOCAL_DELIVERY_MIN_PALLETS (2 full-pallet equivalents). */
+/** @deprecated Use FREE_LOCAL_DELIVERY_MIN_PALLETS (3 full-pallet equivalents). */
 export const RGV_FREE_DELIVERY_ROLLS = FREE_LOCAL_DELIVERY_MIN_PALLETS * 192;
 
 /** The only cities that qualify for RGV Free Local Delivery. */

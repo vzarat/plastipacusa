@@ -82,9 +82,11 @@ function machineProduct(overrides: Partial<AdminProduct> = {}): AdminProduct {
 describe("packaging specs csv", () => {
   it("exports the hand-film 1-box + full-pallet weights, tare, dimensions, and prices", () => {
     const csv = packagingSpecsCsv([product(), product({ id: "draft", isActive: false, name: "Hidden" })]);
-    const [header, row] = csv.split("\r\n");
+    const lines = csv.split("\r\n");
+    const [header, row] = lines;
     assert.equal(header.split(",").length, PACKAGING_SPECS_CSV_HEADERS.length);
-    assert.equal(csv.split("\r\n").length, 2);
+    // 1 hand row + 4 official Automatic masters (synthesized when absent).
+    assert.equal(lines.length, 6);
     assert.match(row, /18\.99/);
     assert.match(row, /951\.5/);
     assert.match(row, /40\.00/);
@@ -101,7 +103,7 @@ describe("packaging specs csv", () => {
     assert.match(header, /Full Pallet Volume \(CBM\)/);
   });
 
-  it("keeps Full Pallet SKU aligned and drops duplicate Automatic ghosts", () => {
+  it("keeps Full Pallet SKU aligned, drops duplicate Automatic ghosts, and prices rolls×count", () => {
     const csv = packagingSpecsCsv([
       machineProduct(),
       machineProduct({
@@ -116,12 +118,20 @@ describe("packaging specs csv", () => {
       }),
     ]);
     const lines = csv.split("\r\n");
-    assert.equal(lines.length, 2);
+    assert.equal(lines.length, 5); // header + 4 masters
+    const eighty = lines.find((line) => line.includes("HPF-SF208050-FLP")) || "";
     assert.match(
-      lines[1],
+      eighty,
       /HPF-SF208050-HLP,48 x 40 x 46,707\.3,20,56\.46,1129\.20,HPF-SF208050-FLP,1288\.5/
     );
-    assert.match(lines[1], /GENESIS Machine Film/);
-    assert.doesNotMatch(csv, /STRETCH FILM 20/);
+    assert.match(eighty, /1901\.20/);
+    assert.match(csv, /1701\.20/);
+    assert.match(csv, /1016\.80/);
+    assert.match(csv, /2175\.60/);
+    assert.match(csv, /1283\.20/);
+    assert.match(csv, /1668\.40/);
+    assert.match(csv, /998\.60/);
+    assert.match(eighty, /GENESIS Machine Film/);
+    assert.doesNotMatch(csv, /STRETCH FILM 20" X 80 GA X 5000FT/);
   });
 });

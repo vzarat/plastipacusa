@@ -279,8 +279,17 @@ export function CheckoutPaymentStep({
             className="font-semibold text-sky-700 hover:underline"
           >
             Terms of Service
-          </Link>{" "}
-          and{" "}
+          </Link>
+          ,{" "}
+          <Link
+            href="/shipping-policy#third-party-carriers"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-sky-700 hover:underline"
+          >
+            Shipping Policy
+          </Link>
+          , and{" "}
           <Link
             href="/refund-policy"
             target="_blank"
@@ -303,7 +312,7 @@ export function CheckoutPaymentStep({
           onServerTotal={onServerTotal}
           onRequireAgreement={() => {
             toast.error(
-              "Please agree to the Terms of Service and Refund Policy to continue."
+              "Please agree to the Terms, Shipping, and Refund policies to continue."
             );
           }}
         />
@@ -315,7 +324,7 @@ export function CheckoutPaymentStep({
           agreedToPolicies={agreedToPolicies}
           onRequireAgreement={() => {
             toast.error(
-              "Please agree to the Terms of Service and Refund Policy to continue."
+              "Please agree to the Terms, Shipping, and Refund policies to continue."
             );
           }}
           onServerTotal={onServerTotal}

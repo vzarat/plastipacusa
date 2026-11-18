@@ -33,8 +33,8 @@ const BORDER_WHITE = "#FFFFFF";
 const SELECTED_FILL = "#1D4ED8";
 
 const HIGHLIGHT_BADGES = [
-  { label: "RGV — Free Local · 2+ Pallets", icon: "⚡" },
-  { label: "Houston — Free Local · 2+ Pallets", icon: "📦" },
+  { label: "RGV — Free Local · 3+ Pallets", icon: "⚡" },
+  { label: "Houston — Free Local · 3+ Pallets", icon: "📦" },
   { label: "Freight Quote Required", icon: "🚛" },
 ] as const;
 
@@ -159,7 +159,7 @@ export function USACoverageSection() {
                   style={{ backgroundColor: HUB_FILL }}
                   aria-hidden
                 />
-                Texas — FREE Local Delivery to Houston & RGV on 2+ Pallets
+                Texas — FREE Local Delivery to Houston & RGV on 3+ Pallets
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span

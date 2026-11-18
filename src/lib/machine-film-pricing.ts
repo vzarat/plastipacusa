@@ -22,6 +22,8 @@ export function machineFilmPerRollPrice(input: {
   widthInches?: number | string | null;
   gauge?: number | string | null;
   lengthFeet?: number | string | null;
+  slug?: string | null;
+  partNumber?: string | null;
   rolls?: number | string | null;
 }): number | null {
   const rolls = Math.round(Number(input.rolls) || 0);
@@ -31,11 +33,13 @@ export function machineFilmPerRollPrice(input: {
   return rolls === 40 ? row.fullPerRoll : row.halfPerRoll;
 }
 
-/** Pallet total charged for one half pallet or one full pallet. */
+/** Pallet total = per-roll × rolls (20 or 40). Never Manual ×48 boxes. */
 export function machineFilmPackagePrice(input: {
   widthInches?: number | string | null;
   gauge?: number | string | null;
   lengthFeet?: number | string | null;
+  slug?: string | null;
+  partNumber?: string | null;
   rolls?: number | string | null;
 }): number | null {
   const rolls = Math.round(Number(input.rolls) || 0);

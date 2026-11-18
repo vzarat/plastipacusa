@@ -40,16 +40,16 @@ export const DELIVERY_METHODS: DeliveryMethod[] = [
   },
   {
     id: "rgv-express",
-    label: "Free Local Delivery (2+ Pallets)",
+    label: "Free Local Delivery (3+ Pallets)",
     description:
-      "Plastipac fleet delivery for Rio Grande Valley orders of 2+ full pallets (Manual and/or Automatic).",
-    scheduleNote: "Free local delivery across the Rio Grande Valley on 2+ pallet orders.",
+      "Plastipac fleet delivery for Rio Grande Valley orders of 3+ full pallets (Manual and/or Automatic, any size).",
+    scheduleNote: "Free local delivery across the Rio Grande Valley on 3+ pallet orders.",
   },
   {
     id: "houston-friday",
-    label: "Free Local Delivery (2+ Pallets)",
-    description: "Free Houston local delivery on the Friday route for orders of 2+ pallets.",
-    scheduleNote: "Free Houston Delivery — Friday Route · 2+ Pallets",
+    label: "Free Local Delivery (3+ Pallets)",
+    description: "Free Houston local delivery on the Friday route for orders of 3+ pallets.",
+    scheduleNote: "Free Houston Delivery — Friday Route · 3+ Pallets",
   },
   {
     id: "san-antonio-tuesday",

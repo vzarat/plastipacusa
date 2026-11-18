@@ -228,7 +228,7 @@ export function USACoverageMap() {
               style={{ backgroundColor: FILL_PRIMARY }}
               aria-hidden
             />
-            Texas — FREE Local Delivery to Houston & RGV on 2+ Pallets
+            Texas — FREE Local Delivery to Houston & RGV on 3+ Pallets
           </span>
           <span className="inline-flex items-center gap-1.5 text-slate-700">
             <span

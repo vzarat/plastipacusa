@@ -7,6 +7,8 @@ import { ArrowRight } from "lucide-react";
 
 const SLIDE_SDK_4 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_4.jpg";
+const SLIDE_SDK_5 =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_5.jpg";
 const SLIDE_SDK_2 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_2.jpg";
 const SLIDE_SDK_3 =
@@ -15,10 +17,11 @@ const SLIDE_MOBILE_STORY =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/Instagram%20story%20-%208.png";
 
 const MOBILE_SLIDE_COUNT = 1;
-const DESKTOP_SLIDE_COUNT = 3;
+const DESKTOP_SLIDE_COUNT = 4;
 const AUTO_MS = 7000;
 const SLIDE_LABELS = [
   "Featured",
+  "High-performance at competitive prices",
   "Increase packaging efficiency",
   "Quality you can count on",
 ];
@@ -63,6 +66,26 @@ function LeadSlide() {
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function PerformanceSlide() {
+  return (
+    <div className="absolute inset-0">
+      <Image
+        src={SLIDE_SDK_5}
+        alt="High-performance stretch film at competitive prices."
+        fill
+        sizes="(max-width: 1400px) 100vw, 1400px"
+        className="hidden object-contain object-center md:block"
+      />
+      <div className="absolute left-1/2 top-[68%] z-20 hidden -translate-x-1/2 md:block">
+        <Link href="/#product-catalog-section" className={SLIDE_CTA_CLASS}>
+          Shop Now
+          <ArrowRight className="h-[1.05cqw] w-[1.05cqw]" />
+        </Link>
       </div>
     </div>
   );
@@ -160,7 +183,7 @@ export function Hero() {
           aria-hidden={index !== 1}
           inert={index !== 1}
         >
-          <EfficiencySlide />
+          <PerformanceSlide />
         </div>
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
@@ -168,6 +191,15 @@ export function Hero() {
           }`}
           aria-hidden={index !== 2}
           inert={index !== 2}
+        >
+          <EfficiencySlide />
+        </div>
+        <div
+          className={`absolute inset-0 transition-opacity duration-500 ${
+            index === 3 ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+          aria-hidden={index !== 3}
+          inert={index !== 3}
         >
           <QualitySlide />
         </div>

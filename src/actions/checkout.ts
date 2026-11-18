@@ -108,19 +108,12 @@ function requireCheckoutShippingAddress(
 /** Freight eligibility uses catalog SKU + qty only — never trust client rolls/boxes/weight. */
 function catalogFreightLines(
   lines: ShippingQuoteLine[] | undefined
-): ShippingQuoteLine[] {
+): Array<{ sku: string; productSlug?: string; quantity: number }> {
   return (lines || [])
     .map((line) => ({
       sku: String(line.sku || "").trim(),
       productSlug: line.productSlug ? String(line.productSlug) : undefined,
       quantity: Math.floor(Number(line.quantity) || 0),
-      totalBoxes:
-        line.totalBoxes != null ? Math.max(0, Math.floor(Number(line.totalBoxes) || 0)) : undefined,
-      totalRolls:
-        line.totalRolls != null ? Math.max(0, Math.floor(Number(line.totalRolls) || 0)) : undefined,
-      weightLbs:
-        line.weightLbs != null && Number(line.weightLbs) > 0 ? Number(line.weightLbs) : undefined,
-      application: line.application ? String(line.application) : undefined,
     }))
     .filter((line) => line.sku && line.quantity > 0);
 }
@@ -1004,9 +997,43 @@ export async function updatePaymentIntentShipping(
       return { success: false, error: "Missing payment intent." };
     }
 
+    const supabase = await createServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const userId = user?.id || "";
+    if (!userId) {
+      return { success: false, error: "Sign in to update shipping." };
+    }
+
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2026-08-26.dahlia" as any,
     });
+
+    const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const ownerId = String(intent.metadata?.user_id || intent.metadata?.userId || "");
+    const orderId = String(intent.metadata?.order_id || "");
+    if (!ownerId || ownerId !== userId) {
+      return { success: false, error: "This payment does not belong to your account." };
+    }
+    if (intent.status === "succeeded" || intent.status === "canceled") {
+      return { success: false, error: "This payment can no longer be updated." };
+    }
+    if (orderId && isServiceRoleConfigured()) {
+      const admin = createServiceRoleClient();
+      const { data: pending } = await admin
+        .from("orders")
+        .select("id, user_id, status")
+        .eq("id", orderId)
+        .maybeSingle();
+      if (
+        pending &&
+        (String(pending.user_id || "") !== userId ||
+          String(pending.status || "") !== "pending_payment")
+      ) {
+        return { success: false, error: "This payment can no longer be updated." };
+      }
+    }
 
     const shippingMeta = JSON.stringify({
       full_name: shipping.fullName || "",
@@ -1433,42 +1460,39 @@ export async function placeCommercialCreditOrder(
       payment_terms: paymentTerms,
     };
 
-    const lineItems =
-      options.lineItems && options.lineItems.length > 0
-        ? options.lineItems.map((item, index) => ({
-            productName: item.productName || pricedLines[index]?.productName || "Plastipac Product",
-            quantity: item.quantity || pricedLines[index]?.quantity || 1,
-            unitPrice: item.unitPrice ?? pricedLines[index]?.unitPrice ?? 0,
-            totalPrice:
-              item.totalPrice ??
-              pricedLines[index]?.totalPrice ??
-              Number(item.unitPrice || 0) * Number(item.quantity || 1),
-            sku: pricedLines[index]?.sku,
-            productSlug: item.productSlug,
-            packageSize: item.packageSize,
-            pricingTier: item.pricingTier,
-            rollsPerBox: item.rollsPerBox,
-            totalBoxes: item.totalBoxes,
-            application: item.application,
-            tierType: item.tierType,
-          }))
-        : pricedLines.map((line) => ({
-            productName: line.productName,
-            quantity: line.quantity,
-            unitPrice: line.unitPrice,
-            totalPrice: line.totalPrice,
-            sku: line.sku,
-          }));
+    // Always persist catalog-priced lines so stock holds can deduct boxes/rolls.
+    const lineItems = pricedLines.map((line) => ({
+      sku: line.sku,
+      productName: line.productName,
+      productSlug: line.productSlug,
+      quantity: line.quantity,
+      boxes: line.boxes,
+      rolls: line.rolls,
+      pallets: line.pallets,
+      unitPrice: line.unitPrice,
+      totalPrice: line.totalPrice,
+      application: line.application,
+      widthInches: line.widthInches,
+      gauge: line.gauge,
+      lengthFeet: line.lengthFeet,
+    }));
 
     const orderPayload: Record<string, unknown> = {
-      status: "pending",
+      // pending_payment so sync_checkout_holds can reserve inventory, then flip to pending.
+      status: "pending_payment",
       payment_status: "Unpaid",
       payment_method: "commercial_credit",
+      booking_status: "needs_booking",
+      fulfillment_status: "unfulfilled",
       user_id: userId,
       subtotal: priced.subtotal,
       shipping: priced.shipping,
       shipping_cost: priced.shipping,
       shipping_method: shippingOption?.serviceName || options.shippingMethod || null,
+      shipping_provider: shippingOption?.provider || null,
+      shipping_mode: shippingOption?.mode || null,
+      shipping_service: shippingOption?.serviceLevel || shippingOption?.serviceName || null,
+      shipping_quote_id: shippingOption?.id || null,
       shipping_address_id: options.shippingAddressId || null,
       tax: priced.tax,
       tax_amount: priced.tax,
@@ -1476,6 +1500,7 @@ export async function placeCommercialCreditOrder(
       tax_exempt_requested: Boolean(options.taxExemptRequested) || taxExempt,
       total: orderTotal,
       total_amount: orderTotal,
+      coupon_id: coupon?.id || null,
       items: lineItems,
       shipping_address: shippingAddress,
       created_at: new Date().toISOString(),
@@ -1502,12 +1527,37 @@ export async function placeCommercialCreditOrder(
     }
 
     const orderUuid = String(orderRow.id || "");
-    try {
-      await syncCheckoutHolds(admin, orderUuid, pricedLines);
-      refreshCatalogStock();
-    } catch (holdError) {
-      console.warn("[placeCommercialCreditOrder] inventory hold sync:", holdError);
+    const heldError = await syncCheckoutHolds(admin, orderUuid, pricedLines);
+    if (heldError) {
+      try {
+        await releaseCheckoutHolds(admin, orderUuid);
+        await admin.from("orders").delete().eq("id", orderUuid);
+        await admin
+          .from("profiles")
+          .update({ available_credit: available })
+          .eq("id", userId);
+      } catch (rollbackError) {
+        console.warn("[placeCommercialCreditOrder] stock rollback:", rollbackError);
+      }
+      return { success: false, error: heldError };
     }
+
+    // Keep inventory reserved; leave unpaid Net terms visible as a normal pending order.
+    const { error: creditStatusError } = await admin
+      .from("orders")
+      .update({
+        status: "pending",
+        payment_status: "Unpaid",
+        inventory_settled: true,
+      })
+      .eq("id", orderUuid);
+    if (creditStatusError) {
+      console.warn(
+        "[placeCommercialCreditOrder] status finalize:",
+        creditStatusError.message
+      );
+    }
+    refreshCatalogStock();
 
     const displayOrderId = formatOrderId({
       id: orderUuid,

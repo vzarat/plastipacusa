@@ -235,8 +235,18 @@ export function CheckoutForm({
             onClick={(e) => e.stopPropagation()}
           >
             Terms of Service
-          </Link>{" "}
-          and{" "}
+          </Link>
+          ,{" "}
+          <Link
+            href="/shipping-policy#third-party-carriers"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-sky-700 hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Shipping Policy
+          </Link>
+          , and{" "}
           <Link
             href="/refund-policy"
             target="_blank"
@@ -257,7 +267,7 @@ export function CheckoutForm({
         agreedToPolicies={agreedToPolicies}
         onRequireAgreement={() => {
           toast.error(
-            "Please agree to the Terms of Service and Refund Policy to continue."
+            "Please agree to the Terms, Shipping, and Refund policies to continue."
           );
         }}
       />

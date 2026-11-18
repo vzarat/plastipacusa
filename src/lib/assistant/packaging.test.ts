@@ -444,7 +444,7 @@ describe("gaugeAdvice", () => {
 });
 
 describe("freightRateCheck", () => {
-  it("does not unlock RGV free local below 2 full pallets", () => {
+  it("does not unlock RGV free local below 3 full pallets", () => {
     const result = freightRateCheck({
       postalCode: "78501",
       city: "McAllen",
@@ -459,29 +459,11 @@ describe("freightRateCheck", () => {
       assert.equal(result.boxCount, 48);
       assert.equal(result.freeDeliveryEligible, false);
       assert.ok(result.estimatedShippingUsd > 0);
-      assert.match(String(result.banner || ""), /Add 1 more pallet/i);
+      assert.match(String(result.banner || ""), /Add 2 more pallets/i);
     }
   });
 
-  it("requires 2 full pallets before Houston freight is free", () => {
-    const result = freightRateCheck({
-      postalCode: "77002",
-      city: "Houston",
-      state: "TX",
-      film: "hand",
-      widthInches: 18,
-      tier: "full_pallet",
-      quantity: 1,
-    });
-    assert.equal(result.ok, true);
-    if (result.ok) {
-      assert.equal(result.boxCount, 48);
-      assert.equal(result.freeDeliveryEligible, false);
-      assert.ok(result.estimatedShippingUsd > 0);
-    }
-  });
-
-  it("unlocks Houston free local on two full pallets", () => {
+  it("requires 3 full pallets before Houston freight is free", () => {
     const result = freightRateCheck({
       postalCode: "77002",
       city: "Houston",
@@ -494,6 +476,24 @@ describe("freightRateCheck", () => {
     assert.equal(result.ok, true);
     if (result.ok) {
       assert.equal(result.boxCount, 96);
+      assert.equal(result.freeDeliveryEligible, false);
+      assert.ok(result.estimatedShippingUsd > 0);
+    }
+  });
+
+  it("unlocks Houston free local on three full pallets", () => {
+    const result = freightRateCheck({
+      postalCode: "77002",
+      city: "Houston",
+      state: "TX",
+      film: "hand",
+      widthInches: 18,
+      tier: "full_pallet",
+      quantity: 3,
+    });
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.boxCount, 144);
       assert.equal(result.freeDeliveryEligible, true);
       assert.equal(result.estimatedShippingUsd, 0);
     }

@@ -7,25 +7,10 @@ import {
   isServiceRoleConfigured,
 } from "@/lib/supabase/admin";
 import { formatOrderId } from "@/lib/utils";
-import { ORDERS_EMAIL, ORDERS_FROM } from "@/lib/company-email";
-import {
-  notifyAdminPurchaseOrder,
-  sendEmail,
-  sendOrderConfirmationEmail,
-} from "@/lib/email";
-import {
-  fetchPlastipacLogoForPdf,
-  generateInvoicePdf,
-} from "@/lib/invoice-pdf";
-import { fetchOrderConfirmationTemplate } from "@/lib/email-template-store";
-import { purchaseEmailFromOrder } from "@/lib/order-purchase-email";
 import {
   formatFridayDeliveryDate,
-  fridayDeliveryTitleForAddress,
   readFridayDeliveryIso,
 } from "@/lib/shipping/friday-delivery";
-import { buildOrderConfirmationHtml } from "@/lib/order-confirmation-email";
-import { customerLineDescription } from "@/lib/catalog-sku";
 import { calculateOrderTotal, roundMoney } from "@/lib/sales-tax";
 
 async function insertOrderDroppingUnknownColumns(
@@ -397,40 +382,56 @@ export async function createOrderFromCheckout(
 
     const { data: pendingPayment } = await supabase
       .from("orders")
-      .select("id")
+      .select("id, created_at, items")
       .eq("payment_intent_id", paymentIntentId)
       .eq("status", "pending_payment")
       .maybeSingle();
-    if (pendingPayment) {
+    if (pendingPayment?.id) {
+      // Payment already succeeded — settle the pending row instead of erroring the customer.
+      try {
+        if (isServiceRoleConfigured()) {
+          const admin = createServiceRoleClient();
+          const settled = await admin.rpc("settle_paid_order", {
+            p_order_id: String(pendingPayment.id),
+          });
+          if (settled.error) {
+            console.warn(
+              "[createOrderFromCheckout] settle_paid_order:",
+              settled.error.message
+            );
+            await admin
+              .from("orders")
+              .update({
+                status: "paid",
+                payment_status: "Paid & Cleared",
+                booking_status: "needs_booking",
+                fulfillment_status: "unfulfilled",
+              })
+              .eq("id", pendingPayment.id)
+              .eq("status", "pending_payment");
+          }
+        }
+      } catch (settleError) {
+        console.warn("[createOrderFromCheckout] pending settle:", settleError);
+      }
       return {
-        success: false,
-        error: "Payment received. We're finishing your order.",
+        success: true,
+        orderId: formatOrderId({
+          id: pendingPayment.id,
+          createdAt: String(pendingPayment.created_at || new Date().toISOString()),
+          items:
+            (Array.isArray(pendingPayment.items)
+              ? (pendingPayment.items as {
+                  gauge?: string | number | null;
+                  quantity?: number;
+                }[])
+              : null) || cartItems,
+        }),
       };
     }
 
     if (existingOrder) {
-      await supabase
-        .from("orders")
-        .update({
-          payment_intent_id: paymentIntentId,
-          subtotal: subtotalAmount,
-          shipping: shippingAmount,
-          shipping_cost: shippingAmount,
-          shipping_method: shippingMethod,
-          ...(shippingAddressId ? { shipping_address_id: shippingAddressId } : {}),
-          tax: taxAmount,
-          tax_amount: taxAmount,
-          discount_amount: roundMoney(metaDiscount),
-          tax_exempt_requested: taxExemptRequested,
-          total: orderTotal,
-          total_amount: orderTotal,
-          shipping_address: {
-            ...(existingOrder.shipping_address || {}),
-            ...shippingAddress,
-          },
-        })
-        .eq("id", existingOrder.id);
-
+      // Already settled (webhook or prior success). Do not rewrite lines/address from the client.
       return {
         success: true,
         orderId: formatOrderId({
@@ -441,255 +442,15 @@ export async function createOrderFromCheckout(
       };
     }
 
-    let insertResult = await insertOrderDroppingUnknownColumns(supabase, payload);
-
-    // If user_id column rejects null guests, retry without user_id.
-    if (
-      insertResult.error &&
-      !resolvedUserId &&
-      /user_id|null|not-null|violates/i.test(insertResult.error.message || "")
-    ) {
-      const { user_id: _omit, ...withoutUser } = payload as Record<
-        string,
-        unknown
-      > & { user_id?: string };
-      insertResult = await supabase
-        .from("orders")
-        .insert(withoutUser)
-        .select("id, status");
-    }
-
-    if (insertResult.error) {
-      throw new Error(
-        insertResult.error.message || "Failed to save the order."
-      );
-    }
-
-    const data = insertResult.data;
-    const insertedOrder = Array.isArray(data) ? data[0] : data;
-
-    if (insertedOrder?.status !== "paid") {
-      throw new Error("Order was not persisted with a paid status.");
-    }
-
-    const createdOrderId = formatOrderId({
-      id: insertedOrder?.id || paymentIntentId,
-      createdAt: new Date().toISOString(),
-      items: cartItems,
-    });
-
-    try {
-      const orderItems = (payload.items as any[]).map((item: any) => ({
-        quantity: Number(item.quantity || 1),
-        productName: customerLineDescription({
-          productName: item.productName || item.name || "Plastipac Product",
-          sku: item.sku,
-        }),
-        linePrice:
-          Number(item.totalPrice ?? item.unitPrice ?? 0) *
-          Number(item.quantity || 1),
-      }));
-
-      const customerName = shippingAddress.full_name || "Customer";
-      const customerEmail =
-        shippingAddress.email || "customer@plastipacusa.com";
-      const companyName =
-        shippingDetails?.company_name ||
-        shippingDetails?.companyName ||
-        paymentIntentDetails?.metadata?.company_name ||
-        "Plastipac USA Customer";
-      const orderDate = new Date().toISOString();
-      const totalAmount = Number(total.toFixed(2));
-      const shippingState = shippingAddress.state
-        ? String(shippingAddress.state)
-        : "";
-      const shippingCity = shippingAddress.city
-        ? String(shippingAddress.city)
-        : "";
-      const shippingAddressSummary = [
-        shippingAddress.full_name,
-        [shippingAddress.line1, shippingAddress.line2].filter(Boolean).join(", "),
-        [shippingCity, shippingState, shippingAddress.postal_code]
-          .filter(Boolean)
-          .join(", "),
-        shippingAddress.phone ? `Phone: ${shippingAddress.phone}` : null,
-      ]
-        .filter(Boolean)
-        .join("\n");
-      const fridayIso = readFridayDeliveryIso(shippingAddress.friday_delivery_date);
-      const fridayDeliveryDate = fridayIso ? formatFridayDeliveryDate(fridayIso) : undefined;
-      const fridayDeliveryService = fridayDeliveryDate
-        ? fridayDeliveryTitleForAddress({
-            city: shippingCity,
-            state: shippingState,
-            postalCode: shippingAddress.postal_code,
-          }) || undefined
-        : undefined;
-      const itemsSummary = orderItems
-        .map(
-          (item: { quantity: number; productName: string }) =>
-            `${item.quantity}× ${item.productName}`
-        )
-        .join("; ");
-
-      const template = await fetchOrderConfirmationTemplate();
-      const purchase = purchaseEmailFromOrder(payload);
-      const rendered = buildOrderConfirmationHtml(template, {
-        orderId: createdOrderId,
-        customerName,
-        customerEmail,
-        customerCompany: companyName,
-        totalAmountUsd: totalAmount,
-        itemsSummary,
-        itemCount: orderItems.length,
-        shippingAddressSummary,
-        shippingAddress: {
-          fullName: shippingAddress.full_name || customerName,
-          line1: shippingAddress.line1 || undefined,
-          line2: shippingAddress.line2 || undefined,
-          city: shippingCity || undefined,
-          state: shippingState || undefined,
-          postalCode: shippingAddress.postal_code || undefined,
-          phone: shippingAddress.phone || undefined,
-        },
-        orderDate,
-        fridayDeliveryDate,
-        fridayDeliveryService,
-        lineItems: purchase.lineItems.length
-          ? purchase.lineItems
-          : orderItems.map((item) => ({
-              description: item.productName,
-              quantity: item.quantity,
-              total: item.linePrice,
-            })),
-        subtotalUsd: purchase.subtotalUsd,
-        discountUsd: purchase.discountUsd,
-        shippingUsd: purchase.shippingUsd,
-        taxUsd: purchase.taxUsd,
-        shippingSelection: purchase.shippingSelection,
-      });
-
-      let pdfBytes: Uint8Array | null = null;
-      try {
-        const logo = await fetchPlastipacLogoForPdf();
-        const idDigits = String(insertedOrder?.id || paymentIntentId)
-          .replace(/[^0-9a-f]/gi, "")
-          .slice(-4)
-          .toUpperCase();
-        pdfBytes = generateInvoicePdf({
-          invoiceNumber: `INV-${new Date(orderDate).getFullYear()}-${idDigits || "0000"}`,
-          orderPoRef: createdOrderId,
-          issueDate: new Date(orderDate).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          }),
-          paymentStatus: "Paid & Cleared",
-          customerName,
-          customerCompany: companyName,
-          customerEmail,
-          items: purchase.lineItems.length
-            ? purchase.lineItems.map((item) => ({
-                description: item.description,
-                detail: item.detail,
-                quantity: item.quantity,
-                unitPrice: item.unitPrice ?? (item.quantity ? Number(((item.total || 0) / item.quantity).toFixed(2)) : 0),
-                total: item.total || 0,
-              }))
-            : orderItems.map((item) => ({
-                description: item.productName,
-                quantity: item.quantity,
-                unitPrice: item.quantity ? Number((item.linePrice / item.quantity).toFixed(2)) : item.linePrice,
-                total: item.linePrice,
-              })),
-          charges: [
-            purchase.subtotalUsd != null ? { label: "Subtotal", amount: purchase.subtotalUsd } : null,
-            purchase.discountUsd && purchase.discountUsd > 0
-              ? { label: "Discount", amount: -purchase.discountUsd }
-              : null,
-            purchase.shippingUsd != null ? { label: "Shipping", amount: purchase.shippingUsd } : null,
-            purchase.taxUsd && purchase.taxUsd > 0 ? { label: "Tax", amount: purchase.taxUsd } : null,
-          ].filter((row): row is { label: string; amount: number } => Boolean(row)),
-          totalUsd: totalAmount,
-          logo,
-          deliveryDate: fridayDeliveryDate,
-        });
-      } catch (pdfError) {
-        console.error("Invoice PDF generation error:", pdfError);
-      }
-
-      await Promise.allSettled([
-        pdfBytes
-          ? sendOrderConfirmationEmail({
-              orderId: createdOrderId,
-              customerName,
-              customerEmail,
-              customerCompany: companyName,
-              totalAmountUsd: totalAmount,
-              itemsSummary,
-              itemCount: orderItems.length,
-              shippingAddressSummary,
-              shippingAddress: {
-                fullName: shippingAddress.full_name || customerName,
-                line1: shippingAddress.line1 || undefined,
-                line2: shippingAddress.line2 || undefined,
-                city: shippingCity || undefined,
-                state: shippingState || undefined,
-                postalCode: shippingAddress.postal_code || undefined,
-                phone: shippingAddress.phone || undefined,
-              },
-              orderDate,
-              fridayDeliveryDate,
-              fridayDeliveryService,
-              lineItems: purchase.lineItems.length
-                ? purchase.lineItems
-                : orderItems.map((item) => ({
-                    description: item.productName,
-                    quantity: item.quantity,
-                    total: item.linePrice,
-                  })),
-              subtotalUsd: purchase.subtotalUsd,
-              discountUsd: purchase.discountUsd,
-              shippingUsd: purchase.shippingUsd,
-              taxUsd: purchase.taxUsd,
-              shippingSelection: purchase.shippingSelection,
-              pdfBytes,
-            })
-          : sendEmail({
-              from:
-                rendered.from ||
-                ORDERS_FROM,
-              to: customerEmail,
-              subject: rendered.subject,
-              text: rendered.text,
-              html: rendered.html,
-              replyTo: ORDERS_EMAIL,
-            }),
-        notifyAdminPurchaseOrder({
-          orderId: createdOrderId,
-          customerName,
-          customerEmail,
-          customerCompany: companyName,
-          totalAmount,
-          shippingState,
-          shippingCity,
-          shippingAddressSummary,
-          shippingPhone: shippingAddress.phone || undefined,
-          itemCount: orderItems.length,
-          itemsSummary,
-          detailsText: purchase.detailsText,
-          orderDate,
-          fridayDeliveryDate,
-          fridayDeliveryService,
-        }),
-      ]);
-    } catch (emailError) {
-      console.error("Order email dispatch error:", emailError);
-    }
-
+    // Do not invent a paid order from client cart items. Settlement belongs to the
+    // Stripe webhook + pending_payment row created at PaymentIntent time.
     return {
       success: true,
-      orderId: createdOrderId,
+      orderId: formatOrderId({
+        id: paymentIntentId,
+        createdAt: new Date().toISOString(),
+        items: cartItems,
+      }),
     };
   } catch (error: any) {
     const errorMessage =

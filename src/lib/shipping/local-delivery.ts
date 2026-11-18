@@ -1,19 +1,19 @@
 /**
  * Client-safe Free Local Delivery rules for Houston & Rio Grande Valley (RGV).
- * Minimum: 2 full-pallet equivalents (Manual and/or Automatic combined).
+ * Minimum: 3 full-pallet equivalents (Manual and/or Automatic, any size combined).
  */
 import { HAND_FULL_PALLET_BOXES } from "@/lib/pricing";
 import { formatPalletCount, roundPalletStock } from "@/lib/pallet-stock";
 
-export const FREE_LOCAL_DELIVERY_MIN_PALLETS = 2;
+export const FREE_LOCAL_DELIVERY_MIN_PALLETS = 3;
 /** Machine full pallet = 40 rolls. */
 export const MACHINE_FULL_PALLET_ROLLS = 40;
 /** Manual rolls on one full pallet (48 boxes × 4). */
 export const HAND_FULL_PALLET_ROLLS = HAND_FULL_PALLET_BOXES * 4;
 
-export const FREE_LOCAL_DELIVERY_LABEL = "Free Local Delivery (2+ Pallets)";
+export const FREE_LOCAL_DELIVERY_LABEL = "Free Local Delivery (3+ Pallets)";
 export const FREE_LOCAL_DELIVERY_PROMO =
-  "FREE Local Delivery to Houston & RGV on orders of 2+ Pallets";
+  "FREE Local Delivery to Houston & RGV on orders of 3+ Pallets";
 
 /**
  * Equivalent full-pallet volume from freight totals.

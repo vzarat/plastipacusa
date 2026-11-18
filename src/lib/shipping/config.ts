@@ -20,9 +20,9 @@ export const WARP_ORIGIN_STATE: string = DEFAULT_WAREHOUSE_ORIGIN.state;
 export const SHIPPING_MARKUP_PERCENT = 0;
 
 /** Full-pallet equivalents required before Houston / RGV local delivery is free. */
-export const FREE_LOCAL_DELIVERY_MIN_PALLETS = 2;
-/** @deprecated Prefer FREE_LOCAL_DELIVERY_MIN_PALLETS (2 full pallets). */
-export const FREE_LOCAL_DELIVERY_MIN_ROLLS = 384;
+export const FREE_LOCAL_DELIVERY_MIN_PALLETS = 3;
+/** @deprecated Prefer FREE_LOCAL_DELIVERY_MIN_PALLETS (3 full pallets). */
+export const FREE_LOCAL_DELIVERY_MIN_ROLLS = 576;
 
 export {
   HAND_FREIGHT_DIMENSIONS_IN,

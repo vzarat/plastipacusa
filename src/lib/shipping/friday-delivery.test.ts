@@ -17,9 +17,9 @@ describe("Friday free delivery", () => {
   it("names Houston and RGV delivery separately", () => {
     assert.equal(
       fridayDeliveryTitle("houston"),
-      "Free Local Delivery (2+ Pallets) · Houston Friday Route"
+      "Free Local Delivery (3+ Pallets) · Houston Friday Route"
     );
-    assert.equal(fridayDeliveryTitle("rgv"), "Free Local Delivery (2+ Pallets) · RGV");
+    assert.equal(fridayDeliveryTitle("rgv"), "Free Local Delivery (3+ Pallets) · RGV");
     assert.equal(fridayRegionTag("houston"), "Houston");
     assert.equal(fridayRegionTag("rgv"), "RGV");
     assert.equal(fridayRegionFromOptionId("houston-friday"), "houston");

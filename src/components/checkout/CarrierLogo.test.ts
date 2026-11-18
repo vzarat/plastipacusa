@@ -42,15 +42,15 @@ describe("carrier logo storage paths", () => {
   it("does not use a Plastipac Delivery logo for free local delivery", () => {
     const fallback = `${BASE}/carrier.svg`;
     assert.equal(
-      carrierLogoSources("plastipac", "Free Local Delivery (2+ Pallets) · Houston Friday Route")[0],
+      carrierLogoSources("plastipac", "Free Local Delivery (3+ Pallets) · Houston Friday Route")[0],
       fallback
     );
     assert.equal(
-      carrierLogoSources(undefined, "Free Local Delivery (2+ Pallets) · Houston Friday Route")[0],
+      carrierLogoSources(undefined, "Free Local Delivery (3+ Pallets) · Houston Friday Route")[0],
       fallback
     );
     assert.equal(
-      carrierLogoSources(undefined, "Free Local Delivery (2+ Pallets) · RGV")[0],
+      carrierLogoSources(undefined, "Free Local Delivery (3+ Pallets) · RGV")[0],
       fallback
     );
   });

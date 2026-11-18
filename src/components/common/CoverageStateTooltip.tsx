@@ -11,12 +11,12 @@ export const LOGISTICS_PHONE_DISPLAY = "(956) 400-3683";
 export const LOGISTICS_PHONE_HREF = "tel:+19564003683";
 export const LOGISTICS_PHONE_LABEL = `📞 Call Logistics: ${LOGISTICS_PHONE_DISPLAY}`;
 
-export const RGV_BADGE = "Free Local · 2+ Pallets";
+export const RGV_BADGE = "Free Local · 3+ Pallets";
 export const RGV_DESCRIPTION =
-  "FREE Local Delivery to Houston & RGV on orders of 2+ Pallets across the Rio Grande Valley, including McAllen, Pharr, Edinburg, Mission, and Brownsville. Under 2 pallets, standard Warp LTL rates apply.";
-export const HOUSTON_BADGE = "Free Local · 2+ Pallets";
+  "FREE Local Delivery to Houston & RGV on orders of 3+ Pallets across the Rio Grande Valley, including McAllen, Pharr, Edinburg, Mission, and Brownsville. Under 3 pallets, standard Warp LTL rates apply.";
+export const HOUSTON_BADGE = "Free Local · 3+ Pallets";
 export const HOUSTON_DESCRIPTION =
-  "FREE Local Delivery to Houston & RGV on orders of 2+ Pallets via the weekly Friday Houston route. Under 2 pallets, standard Warp LTL rates apply.";
+  "FREE Local Delivery to Houston & RGV on orders of 3+ Pallets via the weekly Friday Houston route. Under 3 pallets, standard Warp LTL rates apply.";
 
 export const CUSTOM_FREIGHT_BADGE = "Freight Quote Required";
 export const CUSTOM_FREIGHT_TITLE = "Freight Quote Required";

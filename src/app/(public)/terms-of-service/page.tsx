@@ -80,7 +80,9 @@ export default function TermsOfServicePage() {
         <p>
           Prices displayed on the Site are in U.S. dollars unless otherwise stated and may exclude applicable sales tax,
           freight, duties, or handling charges, which will be calculated where required at checkout or on the invoice.
-          Volume, pallet, and package-tier pricing may change without prior notice.
+          Unless you are verified tax-exempt, <strong>sales tax is calculated on discounted merchandise plus
+          shipping/freight</strong> shown at checkout. Volume, pallet, and package-tier pricing may change without prior
+          notice.
         </p>
         <p>
           <strong>Pricing errors:</strong> Despite our efforts, items may occasionally be listed at an incorrect price
@@ -94,10 +96,16 @@ export default function TermsOfServicePage() {
       <section className="space-y-3">
         <h2>7. Payment</h2>
         <p>
-          Online payments are processed by Stripe. By providing a payment method, you represent that you are authorized
-          to use it and authorize Plastipac (via Stripe) to charge the full amount of your order, including taxes and
-          shipping where applicable. We may place a temporary authorization on your payment method. Failed, disputed, or
-          reversed payments may result in order suspension or cancellation.
+          Online payments are processed by <strong>Stripe</strong>, which acts as the payment intermediary between
+          Plastipac and the customer. By providing a payment method, you represent that you are authorized to use it and
+          authorize Plastipac (via Stripe) to charge the full amount of your order, including taxes and shipping where
+          applicable. We may place a temporary authorization on your payment method. Failed, disputed, or reversed
+          payments may result in order suspension or cancellation.
+        </p>
+        <p>
+          Authorization delays, bank holds, settlement timing, and certain payment errors may originate with Stripe or
+          your financial institution rather than Plastipac. Refund timing and related payment issues are further
+          described in our <Link href="/refund-policy#online-payments-stripe">Refund Policy</Link>.
         </p>
       </section>
 
@@ -108,6 +116,13 @@ export default function TermsOfServicePage() {
           <Link href="/shipping-policy">Shipping Policy</Link>, which is incorporated into these Terms by reference. Risk
           of loss transfers according to the shipping terms stated on your confirmation or invoice (commonly upon
           carrier pickup or delivery, depending on the freight arrangement).
+        </p>
+        <p>
+          For destinations outside Plastipac&apos;s local Rio Grande Valley / Houston Friday programs, rates and
+          carriers are obtained via <strong>third-party shipping APIs and external carriers</strong>. Those carriers are
+          not Plastipac; transit estimates are not guarantees. Order preparation remains approximately{" "}
+          <strong>2–3 business days</strong> before tender. If a carrier exception arises, Plastipac may contact you to
+          coordinate next steps as described in the Shipping Policy.
         </p>
       </section>
 

@@ -88,11 +88,22 @@ function manualPackageOptions(fullBoxes: number = HAND_FULL_PALLET_BOXES) {
   ] as const;
 }
 
+/** Automatic admin tiers: half (20 rolls) + full (40 rolls). Never 48 boxes. */
+function machinePackageOptions() {
+  return [
+    { label: "Half Pallet (20 Rolls)", rollsCount: 20, boxesCount: 0, suffix: "HLP" },
+    { label: "Full Pallet (40 Rolls)", rollsCount: 40, boxesCount: 0, suffix: "FLP" },
+  ] as const;
+}
+
 function defaultPackageTiers(
   baseSku: string,
-  fullBoxes: number = HAND_FULL_PALLET_BOXES
+  fullBoxes: number = HAND_FULL_PALLET_BOXES,
+  application: "hand" | "machine" = "hand"
 ): AdminPackageTier[] {
-  return manualPackageOptions(fullBoxes).map((option) => ({
+  const options =
+    application === "machine" ? machinePackageOptions() : manualPackageOptions(fullBoxes);
+  return options.map((option) => ({
     label: option.label,
     sku: packageSku(baseSku, option.suffix),
     price: 0,
@@ -120,7 +131,30 @@ function withDefaultPackageTiers(
 ): AdminPackageTier[] {
   const saved = Array.isArray(tiers) ? tiers : [];
   if (application === "machine") {
-    return saved.length > 0 ? saved : defaultPackageTiers(baseSku, fullBoxes);
+    if (saved.length > 0) {
+      const half = saved.find((tier) => Number(tier.rollsCount) === 20);
+      const full = saved.find((tier) => Number(tier.rollsCount) === 40);
+      if (half || full) {
+        return machinePackageOptions().map((option) => {
+          const match =
+            saved.find((tier) => Number(tier.rollsCount) === option.rollsCount) ||
+            saved.find((tier) => Number(tier.boxesCount) === option.boxesCount);
+          const savedPrice = Number(match?.price);
+          return {
+            id: match?.id,
+            label: option.label,
+            sku: match?.sku?.trim() || packageSku(baseSku, option.suffix),
+            price: savedPrice > 0 ? savedPrice : 0,
+            boxesCount: 0,
+            rollsCount: option.rollsCount,
+            rollWeightLbs: match?.rollWeightLbs ?? null,
+            boxWeightLbs: null,
+            palletWeightLbs: match?.palletWeightLbs ?? null,
+          };
+        });
+      }
+    }
+    return defaultPackageTiers(baseSku, fullBoxes, "machine");
   }
   return manualPackageOptions(fullBoxes).map((option) => {
     const match =
@@ -466,10 +500,12 @@ export function ProductFormModal({
                     partNumber,
                     packageTiers: prev.packageTiers.some((tier) => tier.id)
                       ? prev.packageTiers
-                      : defaultPackageTiers(partNumber).map((tier, index) => ({
-                          ...tier,
-                          price: prev.packageTiers[index]?.price ?? 0,
-                        })),
+                      : defaultPackageTiers(partNumber, HAND_FULL_PALLET_BOXES, prev.application).map(
+                          (tier, index) => ({
+                            ...tier,
+                            price: prev.packageTiers[index]?.price ?? 0,
+                          })
+                        ),
                   }));
                 }}
                 placeholder="e.g. FRC-1880-CS"

@@ -11,15 +11,15 @@ import {
 } from "@/lib/shipping/local-delivery";
 import { HAND_FULL_PALLET_BOXES } from "@/lib/pricing";
 
-/** Two Manual full pallets (48 boxes each). */
+/** Three Manual full pallets (48 boxes each). */
 export const HOUSTON_FREE_DELIVERY_BOXES = HAND_FULL_PALLET_BOXES * FREE_LOCAL_DELIVERY_MIN_PALLETS;
-/** Same 2-pallet rule as Houston for RGV (legacy box alias). */
+/** Same 3-pallet rule as Houston for RGV (legacy box alias). */
 export const RGV_FREE_DELIVERY_BOXES = HOUSTON_FREE_DELIVERY_BOXES;
 
 export const RGV_FREE_DELIVERY_LABEL = FREE_LOCAL_DELIVERY_LABEL;
 export const HOUSTON_FRIDAY_LABEL = FREE_LOCAL_DELIVERY_LABEL;
 export const HOUSTON_FRIDAY_NOTE =
-  "Free local delivery on the Houston Friday route for orders of 2+ pallets.";
+  "Free local delivery on the Houston Friday route for orders of 3+ pallets.";
 
 export {
   FREE_LOCAL_DELIVERY_LABEL,
@@ -84,7 +84,7 @@ function zipDigits(postalCode: string): string | null {
   return match ? match[0] : null;
 }
 
-/** Preset unlock: Houston / RGV free local needs 2 full-pallet equivalents. */
+/** Preset unlock: Houston / RGV free local needs 3 full-pallet equivalents. */
 export function qualifiesForHoustonFriday(boxes: number, rolls = 0): boolean {
   return qualifiesForFreeLocalDelivery(equivalentPalletCount({ boxes, rolls }));
 }
@@ -109,7 +109,7 @@ function isGreaterHouston(zipCode: string, city: string, state: string): boolean
 }
 
 const FREE_LOCAL_DESCRIPTION =
-  "Plastipac fleet delivery for Houston & Rio Grande Valley orders of 2+ full pallets (Manual and/or Automatic).";
+  "Plastipac fleet delivery for Houston & Rio Grande Valley orders of 3+ full pallets (Manual and/or Automatic, any size).";
 
 export function evalShippingEligibility(
   zipCode: string,
@@ -180,7 +180,7 @@ export function evalShippingEligibility(
           id: "freight",
           label: "Standard Freight (Warp LTL)",
           description:
-            "Standard Warp LTL rates apply until the cart reaches 2 full pallets for free local delivery.",
+            "Standard Warp LTL rates apply until the cart reaches 3 full pallets for free local delivery.",
           scheduleNote: null,
         },
       ],
@@ -230,7 +230,7 @@ export function evalShippingEligibility(
           id: "freight",
           label: "Standard Freight (Warp LTL)",
           description:
-            "Standard Warp LTL rates apply until the cart reaches 2 full pallets for free Houston local delivery.",
+            "Standard Warp LTL rates apply until the cart reaches 3 full pallets for free Houston local delivery.",
           scheduleNote: null,
         },
       ],

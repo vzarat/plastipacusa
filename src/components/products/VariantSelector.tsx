@@ -376,14 +376,14 @@ function displayPackageSubtext(variant: any, isMachine: boolean): string {
 function compactPackageSubtext(full: string, isMachine: boolean): string {
   if (!full) return "";
   if (isMachine) {
-    if (/2\+\s*Pallets/i.test(full)) return "Free Local · 2+ Pallets";
+    if (/[23]\+\s*Pallets/i.test(full)) return "Free Local · 3+ Pallets";
     return full;
   }
 
   const withoutPallet = full.replace(HAND_PALLET_WEIGHT_NOTE, "").replace(/\s+/g, " ").trim();
-  if (/2\+\s*Pallets|FREE Local Delivery/i.test(withoutPallet)) return "Free Local · 2+ Pallets";
-  if (/Houston Friday Freight/i.test(withoutPallet)) return "Free Local · 2+ Pallets";
-  if (/Free RGV Freight/i.test(withoutPallet)) return "Free Local · 2+ Pallets";
+  if (/[23]\+\s*Pallets|FREE Local Delivery/i.test(withoutPallet)) return "Free Local · 3+ Pallets";
+  if (/Houston Friday Freight/i.test(withoutPallet)) return "Free Local · 3+ Pallets";
+  if (/Free RGV Freight/i.test(withoutPallet)) return "Free Local · 3+ Pallets";
   if (/Sample|Single box/i.test(withoutPallet)) return "Sample / Single box";
   if (/master boxes|192 Rolls/i.test(withoutPallet)) return "192 Rolls / 48 Boxes";
   if (/Rolls included|Boxes ·/i.test(withoutPallet)) return "";

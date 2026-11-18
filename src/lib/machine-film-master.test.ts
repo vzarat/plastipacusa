@@ -33,14 +33,48 @@ describe("machine film Automatic matrix", () => {
     );
   });
 
-  it("prices Tarima 20 and Tarima 40 from the master spreadsheet", () => {
+  it("prices Tarima 20 and Tarima 40 as per-roll × roll count (not ×48 boxes)", () => {
+    const expected = [
+      { gauge: 51, length: 7000, half: 1016.8, full: 1701.2, halfPer: 50.84, fullPer: 42.53 },
+      { gauge: 51, length: 9000, half: 1283.2, full: 2175.6, halfPer: 64.16, fullPer: 54.39 },
+      { gauge: 70, length: 5000, half: 998.6, full: 1668.4, halfPer: 49.93, fullPer: 41.71 },
+      { gauge: 80, length: 5000, half: 1129.2, full: 1901.2, halfPer: 56.46, fullPer: 47.53 },
+    ] as const;
+
+    for (const spec of expected) {
+      const row = findMachineFilmMaster({
+        widthInches: 20,
+        gauge: spec.gauge,
+        lengthFeet: spec.length,
+      });
+      assert.ok(row, `${spec.gauge}/${spec.length}`);
+      assert.equal(machineFilmPerRollPrice({ ...row!, rolls: 20 }), spec.halfPer);
+      assert.equal(machineFilmPerRollPrice({ ...row!, rolls: 40 }), spec.fullPer);
+      assert.equal(machineFilmPackageTotal(row!, 20), spec.half);
+      assert.equal(machineFilmPackageTotal(row!, 40), spec.full);
+      assert.equal(
+        machineFilmPackagePrice({
+          widthInches: 20,
+          gauge: spec.gauge,
+          lengthFeet: spec.length,
+          rolls: 20,
+        }),
+        spec.half
+      );
+      assert.equal(
+        machineFilmPackagePrice({
+          widthInches: 20,
+          gauge: spec.gauge,
+          lengthFeet: spec.length,
+          rolls: 40,
+        }),
+        spec.full
+      );
+      assert.equal(Math.round(spec.halfPer * 20 * 100) / 100, spec.half);
+      assert.equal(Math.round(spec.fullPer * 40 * 100) / 100, spec.full);
+    }
+
     const row = findMachineFilmMaster({ widthInches: 20, gauge: 51, lengthFeet: 7000 });
-    assert.ok(row);
-    assert.equal(machineFilmPerRollPrice({ ...row, rolls: 20 }), 50.84);
-    assert.equal(machineFilmPerRollPrice({ ...row, rolls: 40 }), 42.53);
-    assert.equal(machineFilmPackageTotal(row!, 20), 1016.8);
-    assert.equal(machineFilmPackageTotal(row!, 40), 1701.2);
-    assert.equal(machineFilmPackagePrice({ widthInches: 20, gauge: 80, lengthFeet: 5000, rolls: 40 }), 1901.2);
     assert.equal(machineFilmTierSkuFor(row!, 20), "HPF-SF205170-HLP");
     assert.equal(machineFilmTierSkuFor(row!, 40), "HPF-SF205170-FLP");
   });

@@ -1,4 +1,5 @@
 import { formatCurrency } from "@/lib/utils";
+import { machineFilmPackagePrice } from "@/lib/machine-film-pricing";
 
 /**
  * Hand-film price = the Supabase unit box price for the volume bracket × box count.
@@ -399,32 +400,52 @@ export function buildHandFullPalletCartItem(
 
 /**
  * Catalog price. Hand film uses the full-pallet (48-box) per-box rate from product_variants.price.
- * Machine film keeps the previous 1-box, then full-pallet variant order.
+ * Automatic film uses pallet package totals (per-roll × 20 or × 40) — never the Manual ×48 path.
  */
 export function getDisplayPrice(product: unknown): number | null {
   const row = product && typeof product === "object" ? (product as Record<string, unknown>) : {};
   if (!isMachineCatalogRecord(row)) {
     return handCatalogUnitPrice(product);
   }
+
+  const masterFull = machineFilmPackagePrice({
+    widthInches: row.widthInches != null ? String(row.widthInches) : row.width_inches != null ? String(row.width_inches) : null,
+    gauge: row.gauge != null ? Number(row.gauge) : null,
+    lengthFeet:
+      row.lengthFeet != null
+        ? Number(row.lengthFeet)
+        : row.length_feet != null
+          ? Number(row.length_feet)
+          : null,
+    slug: typeof row.slug === "string" ? row.slug : null,
+    partNumber:
+      typeof row.partNumber === "string"
+        ? row.partNumber
+        : typeof row.part_number === "string"
+          ? row.part_number
+          : null,
+    rolls: 40,
+  });
+  if (masterFull != null && masterFull > 0) return masterFull;
+
   const variants = variantRecords(row);
-
-  const variant1 = variants.find((variant) => variantBoxCount(variant) === 1);
-  const fromOneBox = variant1 ? variantUnitPrice(variant1, 1) : null;
-  if (fromOneBox != null) return fromOneBox;
-
-  const variant64 = variants.find((variant) => variantBoxCount(variant) === HAND_FULL_PALLET_BOXES);
-  const fromPallet = variant64 ? variantUnitPrice(variant64, HAND_FULL_PALLET_BOXES) : null;
-  if (fromPallet != null) return fromPallet;
-
-  const variant16 = variants.find((variant) => variantBoxCount(variant) === 16);
-  const fromLayer = variant16 ? variantUnitPrice(variant16, 16) : null;
-  if (fromLayer != null) return fromLayer;
-
-  const variant32 = variants.find((variant) => variantBoxCount(variant) === 32);
-  const fromHalf = variant32 ? variantUnitPrice(variant32, 32) : null;
+  const byRolls = (rolls: number) =>
+    variants.find((variant) => {
+      const count = Math.floor(
+        Number(variant.rolls_count ?? variant.rollsCount ?? variant.rollsPerBox ?? variant.rolls) || 0
+      );
+      return count === rolls;
+    });
+  const full = byRolls(40);
+  const half = byRolls(20);
+  const fromFull = full ? moneyAmount(full.price_usd ?? full.priceUsd ?? full.price) : null;
+  if (fromFull != null) return fromFull;
+  const fromHalf = half ? moneyAmount(half.price_usd ?? half.priceUsd ?? half.price) : null;
   if (fromHalf != null) return fromHalf;
 
-  return null;
+  const columnFull = moneyAmount(row.price_40_rolls ?? row.price40Rolls ?? row.price_pallet ?? row.pricePallet);
+  if (columnFull != null) return columnFull;
+  return moneyAmount(row.price_20_rolls ?? row.price20Rolls ?? row.price_half_pallet ?? row.priceHalfPallet);
 }
 
 /**
