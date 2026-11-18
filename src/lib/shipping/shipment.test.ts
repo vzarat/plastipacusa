@@ -77,6 +77,105 @@ describe("catalog shipment freight", () => {
     assert.ok(freight.weightLbs > 1900);
   });
 
+  it("rebuilds every official Manual/Automatic package from SKU + master with no catalog weights", () => {
+    const cases = [
+      {
+        sku: "STD-SF188015-64B",
+        slug: "stretch-film-18-x-80-ga-x-1500ft",
+        application: "hand" as const,
+        width: 18,
+        gauge: 80,
+        length: 1500,
+        expectBoxes: 48,
+        expectRolls: 192,
+        expectPackaging: "pallet",
+        minWeight: 1900,
+      },
+      {
+        sku: "STD-SF188015-1B",
+        slug: "stretch-film-18-x-80-ga-x-1500ft",
+        application: "hand" as const,
+        width: 18,
+        gauge: 80,
+        length: 1500,
+        expectBoxes: 1,
+        expectRolls: 4,
+        expectPackaging: "box",
+        minWeight: 30,
+      },
+      {
+        sku: "ELT-SF157015-64B",
+        slug: "stretch-film-15-x-70-ga-x-1500ft",
+        application: "hand" as const,
+        width: 15,
+        gauge: 70,
+        length: 1500,
+        expectBoxes: 48,
+        expectRolls: 192,
+        expectPackaging: "pallet",
+        minWeight: 1400,
+      },
+      {
+        sku: "HPF-SF205170-HLP",
+        slug: "stretch-film-20-x-51-ga-x-7000ft",
+        application: "machine" as const,
+        width: 20,
+        gauge: 51,
+        length: 7000,
+        expectBoxes: 0,
+        expectRolls: 20,
+        expectPackaging: "pallet",
+        minWeight: 600,
+      },
+      {
+        sku: "HPF-SF208050-FLP",
+        slug: "stretch-film-20-x-80-ga-x-5000ft",
+        application: "machine" as const,
+        width: 20,
+        gauge: 80,
+        length: 5000,
+        expectBoxes: 0,
+        expectRolls: 40,
+        expectPackaging: "pallet",
+        minWeight: 1200,
+      },
+    ];
+
+    for (const item of cases) {
+      const freight = shipmentFreightFromCatalog(
+        [
+          {
+            sku: item.sku,
+            productSlug: item.slug,
+            application: item.application,
+            quantity: 1,
+          },
+        ],
+        [],
+        new Map([
+          [
+            item.slug,
+            {
+              slug: item.slug,
+              application: item.application,
+              roll_weight_lbs: null,
+              pallet_weight_lbs: null,
+              pallet_dimensions: item.width === 15 ? "48 x 40 x 68" : "48 x 48 x 78",
+              rolls_per_box: item.application === "machine" ? 1 : 4,
+              width_inches: item.width,
+              gauge: item.gauge,
+              length_feet: item.length,
+            },
+          ],
+        ])
+      );
+      assert.equal(freight.boxes, item.expectBoxes, item.sku);
+      assert.equal(freight.rolls, item.expectRolls, item.sku);
+      assert.equal(freight.pieces[0]?.packaging, item.expectPackaging, item.sku);
+      assert.ok(freight.weightLbs >= item.minWeight, `${item.sku} weight ${freight.weightLbs}`);
+    }
+  });
+
   it("ignores a fake totalRolls and does not qualify for rgv-local", () => {
     const freight = shipmentFreightFromCatalog(
       [

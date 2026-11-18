@@ -105,14 +105,23 @@ function requireCheckoutShippingAddress(
   return null;
 }
 
-/** Freight eligibility uses catalog SKU + qty only — never trust client rolls/boxes/weight. */
+/**
+ * Freight rebuild uses catalog SKU + qty (+ slug/application for master lookup).
+ * Do not trust client weight; boxes/rolls are recovered from catalog or SKU suffix (-64B/-1B).
+ */
 function catalogFreightLines(
   lines: ShippingQuoteLine[] | undefined
-): Array<{ sku: string; productSlug?: string; quantity: number }> {
+): Array<{
+  sku: string;
+  productSlug?: string;
+  application?: string;
+  quantity: number;
+}> {
   return (lines || [])
     .map((line) => ({
       sku: String(line.sku || "").trim(),
       productSlug: line.productSlug ? String(line.productSlug) : undefined,
+      application: line.application ? String(line.application) : undefined,
       quantity: Math.floor(Number(line.quantity) || 0),
     }))
     .filter((line) => line.sku && line.quantity > 0);

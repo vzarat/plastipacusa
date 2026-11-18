@@ -464,6 +464,51 @@ export async function readStoredQuote(
   return { option };
 }
 
+/** Last-resort: honor a still-valid stored Warp quote for this ZIP if freight rebuild fails. */
+async function acceptStoredQuoteForZip(
+  quoteId: string,
+  zip: string
+): Promise<ShippingOption | null> {
+  if (!quoteId || quoteId === "rgv-local" || quoteId === "houston-friday") return null;
+  const memory = quotesById.get(quoteId);
+  if (
+    memory &&
+    memory.destinationZip === zip &&
+    quoteStillPayable(memory.expiresAt) &&
+    Number(memory.freight?.weightLbs || 0) > 0
+  ) {
+    return memory;
+  }
+  try {
+    const supabase = await quoteTable();
+    let columns: string[] = [...QUOTE_SELECT_COLUMNS];
+    let data: unknown = null;
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const result = await supabase
+        .from("shipping_quotes")
+        .select(columns.join(", "))
+        .eq("quote_id", quoteId)
+        .maybeSingle();
+      if (!result.error) {
+        data = result.data;
+        break;
+      }
+      const column = missingQuoteColumn(String(result.error.message || ""));
+      if (!column || !columns.includes(column)) throw result.error;
+      columns = columns.filter((name) => name !== column);
+    }
+    const row = quoteRowFromRecord(data);
+    if (!row) return null;
+    if (String(row.destination_zip || "") !== zip) return null;
+    if (!quoteStillPayable(row.expires_at)) return null;
+    if (!(Number(row.weight_lbs) > 0)) return null;
+    return optionFromRow(row);
+  } catch (error) {
+    safeStoreLog(error);
+    return null;
+  }
+}
+
 export async function resolveShippingCharge(input: {
   quoteId: string;
   postalCode: string;
@@ -506,6 +551,11 @@ export async function resolveShippingCharge(input: {
           ? error.message
           : "Freight could not be rebuilt for payment.";
     console.error("[checkout] shipping freight rebuild failed", detail);
+    const stored = await acceptStoredQuoteForZip(input.quoteId, zip);
+    if (stored) {
+      console.warn("[checkout] accepting stored shipping quote after freight rebuild failure");
+      return { option: stored };
+    }
     return {
       error: "We couldn't verify package weight for this shipping quote. Go back and choose shipping again.",
       expired: false,
