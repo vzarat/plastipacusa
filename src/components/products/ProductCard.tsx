@@ -23,7 +23,6 @@ import {
   getDisplayPrice,
   handCatalogQuote,
 } from "@/lib/pricing";
-import { boxesPerPalletForProduct, palletStockLabel, productStockLabel } from "@/lib/pallet-stock";
 function isolateCardAction(event: React.MouseEvent | React.TouchEvent) {
   event.stopPropagation();
 }
@@ -208,25 +207,6 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
     ? []
     : ["1 Box", "Full Pallet"];
   const isSoldOut = !isCatalogInStock(product);
-  const palletCount = Number(product.stockQuantity) || 0;
-  const boxesPerPallet = boxesPerPalletForProduct({
-    application: product.application,
-    widthInches: width,
-    gauge: product.gauge,
-    lengthFeet: product.length_feet,
-    slug: product.slug,
-    name: product.name,
-    boxesPerPallet: product.boxesPerPallet,
-  });
-  const palletLabel =
-    !isSoldOut && product.stockBoxes != null
-      ? productStockLabel(product.stockBoxes, {
-          application: product.application,
-          boxesPerPallet,
-        })
-      : !isSoldOut && palletCount > 0
-        ? palletStockLabel(palletCount, boxesPerPallet)
-        : null;
   const widthLabel = width > 0 ? `${Math.round(width)} IN` : null;
   const gaugeValue = Number(product.gauge);
   const gaugeLabel = Number.isFinite(gaugeValue) && gaugeValue > 0 ? `${gaugeValue} GA` : null;
@@ -314,9 +294,11 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             </span>
           )}
         </div>
-        {palletLabel ? (
-          <p className="mt-1 text-[11px] font-semibold text-emerald-700">{palletLabel}</p>
-        ) : null}
+        {!isSoldOut ? (
+          <p className="mt-1 text-[11px] font-semibold text-emerald-700">{t("products.inStock")}</p>
+        ) : (
+          <p className="mt-1 text-[11px] font-semibold text-slate-500">{t("products.soldOut")}</p>
+        )}
         {handQuote?.fullPallet ? (
           <p className="mt-1 text-[11px] font-semibold text-slate-500">
             {HAND_CATALOG_PALLET_LABEL}
@@ -435,7 +417,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className={`w-3.5 h-3.5 ${catStyles.iconColor} flex-shrink-0`} />
                 <span>
-                  {isSoldOut ? t("products.soldOut") : palletLabel || t("products.readyToShip")}
+                  {isSoldOut ? t("products.soldOut") : t("products.inStock")}
                 </span>
               </div>
             </div>

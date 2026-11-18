@@ -13,7 +13,6 @@ import { DirectCheckoutButton } from "@/components/checkout/DirectCheckoutButton
 import { ProductDiscountInput } from "@/components/products/ProductDiscountInput";
 import type { AppliedDiscount } from "@/types/discount";
 import { applyDiscountToPrice, formatDiscountAppliedBadge } from "@/lib/discounts";
-import { boxesPerPalletForProduct, palletStockLabel, productStockLabel } from "@/lib/pallet-stock";
 import { usesCompact1880Pallets } from "@/lib/palletizing";
 import {
   HAND_FULL_PALLET,
@@ -791,26 +790,6 @@ export function VariantSelector({
     isAvailable: (product as { isAvailable?: boolean | null } | null | undefined)?.isAvailable,
     stockQuantity: product?.stockQuantity,
   });
-  const palletCount = Number(product?.stockQuantity) || 0;
-  const boxesPerPallet = boxesPerPalletForProduct({
-    application: product?.application,
-    widthInches: product?.widthInches ?? product?.width_inches,
-    gauge: product?.gauge,
-    lengthFeet: product?.length_feet ?? product?.lengthFeet,
-    slug: product?.slug,
-    name: product?.name,
-    boxesPerPallet: product?.boxesPerPallet,
-  });
-  const palletLabel =
-    !isSoldOut && product?.stockBoxes != null
-      ? productStockLabel(product.stockBoxes, {
-          application: product?.application,
-          boxesPerPallet,
-        })
-      : !isSoldOut && palletCount > 0
-        ? palletStockLabel(palletCount, boxesPerPallet)
-        : null;
-
   const handleAddToCart = () => {
     if (isSoldOut) return;
     if (!product || !selectedVariant || baseUnitPriceRaw <= 0) return;
@@ -969,7 +948,7 @@ export function VariantSelector({
             variant={isSoldOut ? "secondary" : "success"}
             className="text-xs font-semibold px-3 py-1"
           >
-            ● {isSoldOut ? t("products.soldOut") : palletLabel || t("products.inStock")}
+            ● {isSoldOut ? t("products.soldOut") : t("products.inStock")}
           </Badge>
         </div>
       </div>
