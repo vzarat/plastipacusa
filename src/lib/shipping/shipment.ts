@@ -1,6 +1,12 @@
 import { catalogSkuCandidates, canonicalCatalogSku, catalogSkusMatch } from "@/lib/catalog-sku";
 import { createServerClient } from "@/lib/supabase/server";
+import {
+  createServiceRoleClient,
+  isServiceRoleConfigured,
+} from "@/lib/supabase/admin";
+import { findManualFilmMaster } from "@/lib/manual-film-master";
 import { packageTotalWeightLbs } from "@/lib/package-weight";
+import { HAND_FULL_PALLET_BOXES } from "@/lib/pricing";
 import { groupLinesBySku } from "@/lib/shipping/catalog-freight";
 import {
   formatFreightDimensions,
@@ -13,6 +19,11 @@ import { ShipmentDataError } from "@/lib/shipping/shipment-error";
 import type { FreightPiece, ShipmentFreight, ShippingQuoteLine } from "@/lib/shipping/types";
 
 export { ShipmentDataError };
+
+const VARIANT_FREIGHT_SELECT =
+  "sku, rolls_count, rolls_per_box, boxes_count, roll_weight_lbs, box_weight_lbs, pallet_weight_lbs, products(slug, application, roll_weight_lbs, pallet_weight_lbs, pallet_dimensions, rolls_per_box, width_inches, gauge, length_feet)";
+const VARIANT_FREIGHT_SELECT_NO_BOX_WEIGHT =
+  "sku, rolls_count, rolls_per_box, boxes_count, roll_weight_lbs, pallet_weight_lbs, products(slug, application, roll_weight_lbs, pallet_weight_lbs, pallet_dimensions, rolls_per_box, width_inches, gauge, length_feet)";
 
 function positive(value: unknown): number | null {
   const amount = typeof value === "number" ? value : parseFloat(String(value ?? ""));
@@ -63,11 +74,38 @@ export interface FreightProduct {
 export interface FreightVariant {
   sku: string | null;
   rolls_count: number | null;
+  /** Some live rows store package rolls here instead of rolls_count. */
+  rolls_per_box?: number | null;
   boxes_count: number | null;
   roll_weight_lbs: number | null;
   box_weight_lbs: number | null;
   pallet_weight_lbs: number | null;
   products: FreightProduct | FreightProduct[] | null;
+}
+
+/** Hand film: recover boxes/rolls when the catalog row only stores one of them. */
+function resolveHandPackageCounts(input: {
+  rolls: number;
+  boxes: number;
+  sku?: string | null;
+}): { rolls: number; boxes: number } {
+  let rolls = Math.max(0, Math.round(Number(input.rolls) || 0));
+  let boxes = Math.max(0, Math.floor(Number(input.boxes) || 0));
+  if (boxes <= 0 && rolls > 0) {
+    boxes = Math.max(1, Math.round(rolls / 4));
+  } else if (rolls <= 0 && boxes > 0) {
+    rolls = boxes * 4;
+  }
+  if (boxes > 0 && rolls > 0) return { rolls, boxes };
+
+  const sku = String(input.sku || "").toUpperCase();
+  if (/FULL|48B|192R|-FLP\b/.test(sku)) {
+    return { rolls: HAND_FULL_PALLET_BOXES * 4, boxes: HAND_FULL_PALLET_BOXES };
+  }
+  if (/1B\b|BOX\b/.test(sku) || sku.endsWith("-1B")) {
+    return { rolls: 4, boxes: 1 };
+  }
+  return { rolls, boxes };
 }
 
 function productOf(row: FreightVariant | undefined): FreightProduct | null {
@@ -86,7 +124,9 @@ export async function buildShipmentFreight(
     );
   }
 
-  const supabase = await createServerClient();
+  const supabase = isServiceRoleConfigured()
+    ? createServiceRoleClient()
+    : await createServerClient();
   const skus = [
     ...new Set(
       requested.flatMap((line) => catalogSkuCandidates(String(line.sku || ""))).filter(Boolean)
@@ -100,9 +140,7 @@ export async function buildShipmentFreight(
   if (skus.length > 0) {
     const { data, error } = await supabase
       .from("product_variants")
-      .select(
-        "sku, rolls_count, boxes_count, roll_weight_lbs, box_weight_lbs, pallet_weight_lbs, products(slug, application, roll_weight_lbs, pallet_weight_lbs, pallet_dimensions, rolls_per_box, width_inches, gauge, length_feet)"
-      )
+      .select(VARIANT_FREIGHT_SELECT)
       .in("sku", skus);
     if (error) {
       console.error(
@@ -114,9 +152,7 @@ export async function buildShipmentFreight(
       );
       const fallback = await supabase
         .from("product_variants")
-        .select(
-          "sku, rolls_count, boxes_count, roll_weight_lbs, pallet_weight_lbs, products(slug, application, roll_weight_lbs, pallet_weight_lbs, pallet_dimensions, rolls_per_box, width_inches, gauge, length_feet)"
-        )
+        .select(VARIANT_FREIGHT_SELECT_NO_BOX_WEIGHT)
         .in("sku", skus);
       if (fallback.error) {
         console.error(
@@ -137,7 +173,7 @@ export async function buildShipmentFreight(
     const { data } = await supabase
       .from("product_variants")
       .select(
-        "sku, rolls_count, boxes_count, roll_weight_lbs, box_weight_lbs, pallet_weight_lbs, products!inner(slug, application, roll_weight_lbs, pallet_weight_lbs, pallet_dimensions, rolls_per_box, width_inches, gauge, length_feet)"
+        "sku, rolls_count, rolls_per_box, boxes_count, roll_weight_lbs, box_weight_lbs, pallet_weight_lbs, products!inner(slug, application, roll_weight_lbs, pallet_weight_lbs, pallet_dimensions, rolls_per_box, width_inches, gauge, length_feet)"
       )
       .in("products.slug", slugs);
     const known = new Set(rows.map((row) => String(row.sku || "")));
@@ -213,11 +249,25 @@ export function shipmentFreightFromCatalog(
     const row = freightVariantFor(line.sku, rows);
     const product =
       productOf(row) || productsBySlug.get(String(line.productSlug || "")) || null;
-    const packageRolls = positive(row?.rolls_count) ?? positive(line.totalRolls) ?? 0;
-    const packageBoxes = positive(row?.boxes_count) ?? positive(line.totalBoxes) ?? 0;
     const application = String(product?.application || line.application || "").toLowerCase();
     const clientWeight = positive(line.weightLbs);
     const slug = String(product?.slug || line.productSlug || "");
+    const rawRolls =
+      positive(row?.rolls_count) ??
+      positive(row?.rolls_per_box) ??
+      positive(line.totalRolls) ??
+      0;
+    const rawBoxes = positive(row?.boxes_count) ?? positive(line.totalBoxes) ?? 0;
+    const resolved =
+      application === "machine"
+        ? { rolls: rawRolls, boxes: 0 }
+        : resolveHandPackageCounts({
+            rolls: rawRolls,
+            boxes: rawBoxes,
+            sku: row?.sku || line.sku,
+          });
+    const packageRolls = resolved.rolls;
+    const packageBoxes = resolved.boxes;
     const siblings = rows.filter((item) => {
       const itemSlug = productOf(item)?.slug;
       return slug && itemSlug === slug;
@@ -229,13 +279,29 @@ export function shipmentFreightFromCatalog(
       }
       return null;
     };
+    const master =
+      application === "machine"
+        ? null
+        : findManualFilmMaster({
+            slug,
+            widthInches: product?.width_inches,
+            gauge: product?.gauge,
+            lengthFeet: product?.length_feet,
+          });
     const rollWeightLbs =
-      positive(row?.roll_weight_lbs) ?? siblingWeight("roll_weight_lbs") ?? positive(product?.roll_weight_lbs);
-    const boxWeightLbs = positive(row?.box_weight_lbs) ?? siblingWeight("box_weight_lbs");
+      positive(row?.roll_weight_lbs) ??
+      siblingWeight("roll_weight_lbs") ??
+      positive(product?.roll_weight_lbs) ??
+      (master ? master.rollWeightLbs : null);
+    const boxWeightLbs =
+      positive(row?.box_weight_lbs) ??
+      siblingWeight("box_weight_lbs") ??
+      (master ? master.boxWeightLbs : null);
     const palletWeightLbs =
       positive(row?.pallet_weight_lbs) ??
       siblingWeight("pallet_weight_lbs") ??
-      positive(product?.pallet_weight_lbs);
+      positive(product?.pallet_weight_lbs) ??
+      (master ? master.fullPalletWeightLbs : null);
     const unitWeight =
       packageTotalWeightLbs({
         rolls: packageRolls,
@@ -265,25 +331,25 @@ export function shipmentFreightFromCatalog(
       const handPieces = warpHandPieces({
         boxes: lineBoxes,
         widthInches: product?.width_inches,
-        palletDimensions: product?.pallet_dimensions,
+        palletDimensions: product?.pallet_dimensions ?? master?.palletDimensions,
         boxWeightLbs,
         palletWeightLbs,
       }) ??
-        (unitWeight != null && lineBoxes > 0
+        (unitWeight != null && (lineBoxes > 0 || packageRolls >= 192)
           ? (() => {
               const dims =
-                parsePalletDimensions(product?.pallet_dimensions) ??
+                parsePalletDimensions(product?.pallet_dimensions ?? master?.palletDimensions) ??
                 (Math.round(Number(product?.width_inches) || 0) === 15
                   ? { lengthIn: 48, widthIn: 40, heightIn: 68 }
                   : { lengthIn: 48, widthIn: 48, heightIn: 78 });
-              const isFull = lineBoxes >= 48;
+              const isFull = lineBoxes >= 48 || packageRolls >= 192;
               return [
                 {
                   lengthIn: isFull ? dims.lengthIn : 11,
                   widthIn: isFull ? dims.widthIn : 11,
                   heightIn: isFull ? dims.heightIn : 19.5,
                   weightLbs: unitWeight * quantity,
-                  quantity: isFull ? quantity : lineBoxes,
+                  quantity: isFull ? quantity : Math.max(1, lineBoxes),
                   packaging: (isFull ? "pallet" : "box") as "pallet" | "box",
                 },
               ];

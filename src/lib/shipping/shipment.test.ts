@@ -38,6 +38,45 @@ const HAND_80 = {
 };
 
 describe("catalog shipment freight", () => {
+  it("rebuilds a hand full pallet when boxes_count is missing (payment quote re-verify)", () => {
+    const freight = shipmentFreightFromCatalog(
+      [
+        {
+          sku: "HAND-80-FULL",
+          productSlug: "stretch-film-18-x-80-ga-x-1500ft",
+          quantity: 1,
+        },
+      ],
+      [
+        {
+          sku: "HAND-80-FULL",
+          rolls_count: null,
+          rolls_per_box: 192,
+          boxes_count: null,
+          roll_weight_lbs: null,
+          box_weight_lbs: null,
+          pallet_weight_lbs: null,
+          products: {
+            slug: "stretch-film-18-x-80-ga-x-1500ft",
+            application: "hand",
+            roll_weight_lbs: null,
+            pallet_weight_lbs: null,
+            pallet_dimensions: "48 x 48 x 78",
+            rolls_per_box: 4,
+            width_inches: 18,
+            gauge: 80,
+            length_feet: 1500,
+          },
+        },
+      ],
+      new Map()
+    );
+    assert.equal(freight.boxes, 48);
+    assert.equal(freight.rolls, 192);
+    assert.equal(freight.pieces[0]?.packaging, "pallet");
+    assert.ok(freight.weightLbs > 1900);
+  });
+
   it("ignores a fake totalRolls and does not qualify for rgv-local", () => {
     const freight = shipmentFreightFromCatalog(
       [
