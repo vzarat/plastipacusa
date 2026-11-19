@@ -1,7 +1,29 @@
-import PDFDocument from "pdfkit";
+import {
+  PDFDocument,
+  StandardFonts,
+  rgb,
+  type PDFFont,
+  type PDFImage,
+  type PDFPage,
+} from "pdf-lib";
 import { QUOTE_LOGO_DATA_URI } from "./logo-data";
 import { quoteMerchandiseTotal } from "./totals";
 import type { SalesQuoteRecord } from "./types";
+
+const PAGE_WIDTH = 612;
+const PAGE_HEIGHT = 792;
+const MARGIN = 40;
+const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
+
+const COLOR = {
+  ink: rgb(0.06, 0.09, 0.16),
+  muted: rgb(0.28, 0.33, 0.41),
+  soft: rgb(0.39, 0.45, 0.55),
+  brand: rgb(0.01, 0.41, 0.63),
+  line: rgb(0.8, 0.84, 0.88),
+  row: rgb(0.95, 0.96, 0.98),
+  noticeBg: rgb(0.97, 0.98, 0.99),
+};
 
 function money(amount: number): string {
   return `$${Number(amount || 0).toLocaleString("en-US", {
@@ -27,16 +49,6 @@ function formatIssuedAt(iso?: string | null): string {
   });
 }
 
-function logoBuffer(): Buffer | null {
-  const match = QUOTE_LOGO_DATA_URI.match(/^data:image\/png;base64,(.+)$/);
-  if (!match?.[1]) return null;
-  try {
-    return Buffer.from(match[1], "base64");
-  } catch {
-    return null;
-  }
-}
-
 function linePackageLabel(line: SalesQuoteRecord["items"][number]): string {
   if (line.application === "machine") {
     return `${line.tierLabel} · ${line.rollsPerPackage} rolls`;
@@ -45,6 +57,57 @@ function linePackageLabel(line: SalesQuoteRecord["items"][number]): string {
     return `${line.tierLabel} · ${line.boxesPerPackage} boxes`;
   }
   return `${line.tierLabel} · 1 box`;
+}
+
+function logoBytes(): Uint8Array | null {
+  const match = QUOTE_LOGO_DATA_URI.match(/^data:image\/png;base64,(.+)$/);
+  if (!match?.[1]) return null;
+  try {
+    return Uint8Array.from(Buffer.from(match[1], "base64"));
+  } catch {
+    return null;
+  }
+}
+
+function drawText(
+  page: PDFPage,
+  text: string,
+  x: number,
+  y: number,
+  font: PDFFont,
+  size: number,
+  color = COLOR.ink,
+  options?: { maxWidth?: number; align?: "left" | "right" }
+) {
+  let value = text || "";
+  if (options?.maxWidth) {
+    while (value.length > 3 && font.widthOfTextAtSize(value, size) > options.maxWidth) {
+      value = `${value.slice(0, -4)}…`;
+    }
+  }
+  const width = font.widthOfTextAtSize(value, size);
+  const drawX =
+    options?.align === "right" ? x - width : x;
+  page.drawText(value, { x: drawX, y, size, font, color });
+  return width;
+}
+
+function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
+  const words = (text || "").split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const lines: string[] = [];
+  let current = words[0];
+  for (let i = 1; i < words.length; i += 1) {
+    const next = `${current} ${words[i]}`;
+    if (font.widthOfTextAtSize(next, size) <= maxWidth) {
+      current = next;
+    } else {
+      lines.push(current);
+      current = words[i];
+    }
+  }
+  lines.push(current);
+  return lines;
 }
 
 export async function buildSalesQuotePdfBuffer(input: {
@@ -63,345 +126,366 @@ export async function buildSalesQuotePdfBuffer(input: {
     day: "numeric",
   });
 
-  const doc = new PDFDocument({
-    size: "LETTER",
-    margins: { top: 36, bottom: 56, left: 40, right: 40 },
-    info: {
-      Title: `${quote.quoteNumber} — Plastipac USA`,
-      Author: "Plastipac USA",
-      Subject: `Sales quote for ${quote.companyName || quote.contactName}`,
-    },
-  });
+  const pdf = await PDFDocument.create();
+  pdf.setTitle(`${quote.quoteNumber} — Plastipac USA`);
+  pdf.setAuthor("Plastipac USA");
+  pdf.setSubject(`Sales quote for ${quote.companyName || quote.contactName}`);
 
-  const chunks: Buffer[] = [];
-  doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-  const pageWidth =
-    doc.page.width - doc.page.margins.left - doc.page.margins.right;
-  const left = doc.page.margins.left;
-  const right = doc.page.width - doc.page.margins.right;
-
-  const logo = logoBuffer();
-  if (logo) {
-    doc.image(logo, left, 34, { width: 168, height: 46, fit: [168, 46] });
-  } else {
-    doc
-      .fillColor("#0369a1")
-      .font("Helvetica-Bold")
-      .fontSize(16)
-      .text("Plastipac USA", left, 40);
+  let logo: PDFImage | null = null;
+  const bytes = logoBytes();
+  if (bytes) {
+    try {
+      logo = await pdf.embedPng(bytes);
+    } catch {
+      logo = null;
+    }
   }
 
-  doc
-    .fillColor("#64748b")
-    .font("Helvetica")
-    .fontSize(8)
-    .text("Industrial stretch film · Manual & Automatic", left, 84, {
-      width: 220,
-    })
-    .text("contact@plastipacusa.com · plastipacusa.com", left, 96, {
-      width: 220,
+  let page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  let y = PAGE_HEIGHT - MARGIN;
+
+  const ensureSpace = (needed: number) => {
+    if (y - needed < MARGIN + 56) {
+      drawFooter(page, font, acceptUrl);
+      page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+      y = PAGE_HEIGHT - MARGIN;
+    }
+  };
+
+  // Header
+  if (logo) {
+    const logoW = 168;
+    const logoH = (logo.height / logo.width) * logoW;
+    page.drawImage(logo, {
+      x: MARGIN,
+      y: y - logoH,
+      width: logoW,
+      height: logoH,
     });
+  } else {
+    drawText(page, "Plastipac USA", MARGIN, y - 18, bold, 16, COLOR.brand);
+  }
 
-  doc
-    .fillColor("#0f172a")
-    .font("Helvetica-Bold")
-    .fontSize(13)
-    .text("SALES QUOTE", left + pageWidth - 210, 36, {
-      width: 210,
-      align: "right",
-    });
-  doc
-    .fillColor("#475569")
-    .font("Helvetica")
-    .fontSize(8)
-    .text(quote.quoteNumber, left + pageWidth - 210, 54, {
-      width: 210,
-      align: "right",
-    })
-    .text(`Issued: ${issuedLabel}`, left + pageWidth - 210, 66, {
-      width: 210,
-      align: "right",
-    })
-    .text(`Valid through ${validUntil}`, left + pageWidth - 210, 78, {
-      width: 210,
-      align: "right",
-    })
-    .text(termsLabel(quote.paymentTerms), left + pageWidth - 210, 90, {
-      width: 210,
-      align: "right",
-    });
-
-  doc
-    .moveTo(left, 118)
-    .lineTo(right, 118)
-    .lineWidth(2)
-    .strokeColor("#0369a1")
-    .stroke();
-
-  let y = 132;
-  doc
-    .fillColor("#0369a1")
-    .font("Helvetica-Bold")
-    .fontSize(9)
-    .text("PREPARED FOR", left, y);
-  doc
-    .fillColor("#0369a1")
-    .text("QUOTE SCOPE", left + pageWidth / 2 + 10, y);
-
-  y += 14;
-  doc
-    .fillColor("#0f172a")
-    .font("Helvetica-Bold")
-    .fontSize(10)
-    .text(quote.companyName || "—", left, y, { width: pageWidth / 2 - 12 });
-  doc
-    .fillColor("#475569")
-    .font("Helvetica")
-    .fontSize(8)
-    .text(
-      "Merchandise only — shipping and sales tax are calculated at checkout.",
-      left + pageWidth / 2 + 10,
-      y,
-      { width: pageWidth / 2 - 12 }
-    );
-
-  y += 14;
-  doc
-    .fillColor("#475569")
-    .font("Helvetica")
-    .fontSize(8)
-    .text(quote.contactName || "", left, y, { width: pageWidth / 2 - 12 });
-  doc.text(
-    `Est. pallets: ${Number(quote.palletCount || 0).toFixed(2)}`,
-    left + pageWidth / 2 + 10,
-    y,
-    { width: pageWidth / 2 - 12 }
+  drawText(page, "SALES QUOTE", PAGE_WIDTH - MARGIN, y - 14, bold, 13, COLOR.ink, {
+    align: "right",
+  });
+  drawText(page, quote.quoteNumber, PAGE_WIDTH - MARGIN, y - 28, font, 8, COLOR.muted, {
+    align: "right",
+  });
+  drawText(
+    page,
+    `Issued: ${issuedLabel}`,
+    PAGE_WIDTH - MARGIN,
+    y - 40,
+    font,
+    8,
+    COLOR.muted,
+    { align: "right" }
+  );
+  drawText(
+    page,
+    `Valid through ${validUntil}`,
+    PAGE_WIDTH - MARGIN,
+    y - 52,
+    font,
+    8,
+    COLOR.muted,
+    { align: "right" }
+  );
+  drawText(
+    page,
+    termsLabel(quote.paymentTerms),
+    PAGE_WIDTH - MARGIN,
+    y - 64,
+    font,
+    8,
+    COLOR.muted,
+    { align: "right" }
   );
 
-  y += 12;
-  doc.text(quote.email || "", left, y, { width: pageWidth / 2 - 12 });
+  y -= 78;
+  drawText(
+    page,
+    "Industrial stretch film · Manual & Automatic",
+    MARGIN,
+    y,
+    font,
+    8,
+    COLOR.soft
+  );
+  y -= 12;
+  drawText(
+    page,
+    "contact@plastipacusa.com · plastipacusa.com",
+    MARGIN,
+    y,
+    font,
+    8,
+    COLOR.soft
+  );
+
+  y -= 14;
+  page.drawLine({
+    start: { x: MARGIN, y },
+    end: { x: PAGE_WIDTH - MARGIN, y },
+    thickness: 2,
+    color: COLOR.brand,
+  });
+
+  y -= 22;
+  drawText(page, "PREPARED FOR", MARGIN, y, bold, 9, COLOR.brand);
+  drawText(page, "QUOTE SCOPE", MARGIN + CONTENT_WIDTH / 2 + 10, y, bold, 9, COLOR.brand);
+
+  y -= 14;
+  drawText(page, quote.companyName || "—", MARGIN, y, bold, 10, COLOR.ink, {
+    maxWidth: CONTENT_WIDTH / 2 - 12,
+  });
+  const scopeLines = wrapText(
+    "Merchandise only — shipping and sales tax are calculated at checkout.",
+    font,
+    8,
+    CONTENT_WIDTH / 2 - 12
+  );
+  scopeLines.forEach((line, i) => {
+    drawText(
+      page,
+      line,
+      MARGIN + CONTENT_WIDTH / 2 + 10,
+      y - i * 11,
+      font,
+      8,
+      COLOR.muted
+    );
+  });
+
+  y -= 14;
+  drawText(page, quote.contactName || "", MARGIN, y, font, 8, COLOR.muted, {
+    maxWidth: CONTENT_WIDTH / 2 - 12,
+  });
+  drawText(
+    page,
+    `Est. pallets: ${Number(quote.palletCount || 0).toFixed(2)}`,
+    MARGIN + CONTENT_WIDTH / 2 + 10,
+    y,
+    font,
+    8,
+    COLOR.muted
+  );
+
+  y -= 12;
+  drawText(page, quote.email || "", MARGIN, y, font, 8, COLOR.muted, {
+    maxWidth: CONTENT_WIDTH / 2 - 12,
+  });
   if (Number(quote.weightLbs || 0) > 0) {
-    doc.text(
+    drawText(
+      page,
       `Est. product weight: ${Number(quote.weightLbs || 0).toLocaleString("en-US")} lbs`,
-      left + pageWidth / 2 + 10,
+      MARGIN + CONTENT_WIDTH / 2 + 10,
       y,
-      { width: pageWidth / 2 - 12 }
+      font,
+      8,
+      COLOR.muted
     );
   }
 
-  y += 12;
   if (quote.phone) {
-    doc.text(quote.phone, left, y, { width: pageWidth / 2 - 12 });
-    y += 12;
+    y -= 12;
+    drawText(page, quote.phone, MARGIN, y, font, 8, COLOR.muted);
   }
-  doc.text(
+
+  y -= 12;
+  drawText(
+    page,
     `Ship ZIP ${quote.shippingZip}${
       quote.shippingCity ? ` · ${quote.shippingCity}` : ""
     }${quote.shippingState ? `, ${quote.shippingState}` : ""}`,
-    left,
+    MARGIN,
     y,
-    { width: pageWidth / 2 - 12 }
+    font,
+    8,
+    COLOR.muted,
+    { maxWidth: CONTENT_WIDTH / 2 - 12 }
   );
 
-  y += 24;
-  doc
-    .fillColor("#0369a1")
-    .font("Helvetica-Bold")
-    .fontSize(9)
-    .text("LINE ITEMS", left, y);
-  y += 14;
+  y -= 26;
+  drawText(page, "LINE ITEMS", MARGIN, y, bold, 9, COLOR.brand);
+  y -= 8;
 
   const cols = {
-    desc: left,
-    sku: left + pageWidth * 0.42,
-    qty: left + pageWidth * 0.62,
-    unit: left + pageWidth * 0.72,
-    total: left + pageWidth * 0.85,
+    desc: MARGIN + 4,
+    sku: MARGIN + CONTENT_WIDTH * 0.42,
+    qty: MARGIN + CONTENT_WIDTH * 0.62,
+    unit: MARGIN + CONTENT_WIDTH * 0.72,
+    total: PAGE_WIDTH - MARGIN - 4,
   };
-  const descW = cols.sku - cols.desc - 6;
-  const skuW = cols.qty - cols.sku - 6;
-  const qtyW = cols.unit - cols.qty - 4;
-  const unitW = cols.total - cols.unit - 4;
-  const totalW = right - cols.total;
 
-  doc.rect(left, y - 4, pageWidth, 18).fill("#f1f5f9");
-  doc
-    .fillColor("#334155")
-    .font("Helvetica-Bold")
-    .fontSize(8)
-    .text("Description", cols.desc + 4, y, { width: descW })
-    .text("SKU", cols.sku, y, { width: skuW })
-    .text("Qty", cols.qty, y, { width: qtyW, align: "right" })
-    .text("Unit", cols.unit, y, { width: unitW, align: "right" })
-    .text("Total", cols.total, y, { width: totalW, align: "right" });
-
-  y += 18;
-  doc
-    .moveTo(left, y)
-    .lineTo(right, y)
-    .lineWidth(1)
-    .strokeColor("#cbd5e1")
-    .stroke();
-  y += 6;
+  page.drawRectangle({
+    x: MARGIN,
+    y: y - 14,
+    width: CONTENT_WIDTH,
+    height: 18,
+    color: COLOR.row,
+  });
+  drawText(page, "Description", cols.desc, y - 8, bold, 8, COLOR.muted);
+  drawText(page, "SKU", cols.sku, y - 8, bold, 8, COLOR.muted);
+  drawText(page, "Qty", cols.qty + 36, y - 8, bold, 8, COLOR.muted, {
+    align: "right",
+  });
+  drawText(page, "Unit", cols.unit + 48, y - 8, bold, 8, COLOR.muted, {
+    align: "right",
+  });
+  drawText(page, "Total", cols.total, y - 8, bold, 8, COLOR.muted, {
+    align: "right",
+  });
+  y -= 20;
 
   for (const line of quote.items) {
-    const packageLabel = linePackageLabel(line);
-    const rowHeight = 28;
-    if (y + rowHeight > doc.page.height - 90) {
-      doc.addPage();
-      y = 48;
-    }
-
-    doc
-      .fillColor("#0f172a")
-      .font("Helvetica")
-      .fontSize(8)
-      .text(line.productName || line.sku, cols.desc + 4, y, {
-        width: descW,
-        ellipsis: true,
-      });
-    doc
-      .fillColor("#64748b")
-      .fontSize(7)
-      .text(packageLabel, cols.desc + 4, y + 11, {
-        width: descW,
-        ellipsis: true,
-      });
-
-    doc
-      .fillColor("#0f172a")
-      .fontSize(8)
-      .text(line.sku, cols.sku, y + 4, { width: skuW, ellipsis: true })
-      .text(String(line.quantity), cols.qty, y + 4, {
-        width: qtyW,
-        align: "right",
-      })
-      .text(money(line.unitPrice), cols.unit, y + 4, {
-        width: unitW,
-        align: "right",
-      })
-      .text(money(line.lineTotal), cols.total, y + 4, {
-        width: totalW,
-        align: "right",
-      });
-
-    y += rowHeight;
-    doc
-      .moveTo(left, y - 4)
-      .lineTo(right, y - 4)
-      .lineWidth(0.5)
-      .strokeColor("#e2e8f0")
-      .stroke();
+    ensureSpace(34);
+    drawText(page, line.productName || line.sku, cols.desc, y, font, 8, COLOR.ink, {
+      maxWidth: cols.sku - cols.desc - 8,
+    });
+    drawText(page, line.sku, cols.sku, y, font, 8, COLOR.ink, {
+      maxWidth: cols.qty - cols.sku - 8,
+    });
+    drawText(page, String(line.quantity), cols.qty + 36, y, font, 8, COLOR.ink, {
+      align: "right",
+    });
+    drawText(page, money(line.unitPrice), cols.unit + 48, y, font, 8, COLOR.ink, {
+      align: "right",
+    });
+    drawText(page, money(line.lineTotal), cols.total, y, font, 8, COLOR.ink, {
+      align: "right",
+    });
+    y -= 11;
+    drawText(page, linePackageLabel(line), cols.desc, y, font, 7, COLOR.soft, {
+      maxWidth: cols.sku - cols.desc - 8,
+    });
+    y -= 8;
+    page.drawLine({
+      start: { x: MARGIN, y },
+      end: { x: PAGE_WIDTH - MARGIN, y },
+      thickness: 0.5,
+      color: COLOR.line,
+    });
+    y -= 10;
   }
 
-  y += 8;
-  const boxX = right - 210;
+  ensureSpace(120);
   const boxW = 210;
-  doc.rect(boxX, y, boxW, quote.discountAmount > 0 ? 62 : 48)
-    .lineWidth(1)
-    .strokeColor("#cbd5e1")
-    .stroke();
-
-  let ty = y + 10;
-  doc
-    .fillColor("#0f172a")
-    .font("Helvetica")
-    .fontSize(9)
-    .text("Subtotal", boxX + 10, ty)
-    .text(money(quote.subtotal), boxX + 10, ty, {
-      width: boxW - 20,
-      align: "right",
-    });
-  ty += 14;
-  if (quote.discountAmount > 0) {
-    doc
-      .text("Discount", boxX + 10, ty)
-      .text(`-${money(quote.discountAmount)}`, boxX + 10, ty, {
-        width: boxW - 20,
-        align: "right",
-      });
-    ty += 14;
-  }
-  doc
-    .moveTo(boxX + 10, ty)
-    .lineTo(boxX + boxW - 10, ty)
-    .strokeColor("#94a3b8")
-    .stroke();
-  ty += 8;
-  doc
-    .font("Helvetica-Bold")
-    .text("Quote total (USD)", boxX + 10, ty)
-    .text(money(merchandiseTotal), boxX + 10, ty, {
-      width: boxW - 20,
-      align: "right",
-    });
-
-  y += quote.discountAmount > 0 ? 78 : 64;
-  doc.rect(left, y, pageWidth, 46).fill("#f8fafc");
-  doc.rect(left, y, pageWidth, 46).lineWidth(1).strokeColor("#e2e8f0").stroke();
-  doc
-    .fillColor("#0369a1")
-    .font("Helvetica-Bold")
-    .fontSize(8)
-    .text("Shipping & tax", left + 10, y + 8);
-  doc
-    .fillColor("#475569")
-    .font("Helvetica")
-    .fontSize(7.5)
-    .text(
-      "Product pricing only. Sales tax and shipping are calculated at checkout. Freight is quoted through multiple carriers on our site, so rates depend on destination and the service you select.",
-      left + 10,
-      y + 20,
-      { width: pageWidth - 20, lineGap: 1.5 }
-    );
-
-  y += 58;
-  if (quote.notes) {
-    if (y > doc.page.height - 100) {
-      doc.addPage();
-      y = 48;
-    }
-    doc
-      .fillColor("#0369a1")
-      .font("Helvetica-Bold")
-      .fontSize(9)
-      .text("NOTES", left, y);
-    y += 12;
-    doc
-      .fillColor("#334155")
-      .font("Helvetica")
-      .fontSize(8)
-      .text(quote.notes, left, y, { width: pageWidth, lineGap: 2 });
-  }
-
-  const footerY = doc.page.height - 48;
-  doc
-    .moveTo(left, footerY)
-    .lineTo(right, footerY)
-    .lineWidth(1)
-    .strokeColor("#e2e8f0")
-    .stroke();
-  doc
-    .fillColor("#64748b")
-    .font("Helvetica")
-    .fontSize(7.5)
-    .text(`Accept online: ${acceptUrl}`, left, footerY + 8, {
-      width: pageWidth,
-    })
-    .text(
-      "Prices in USD. This document is a sales quotation, not an invoice. Final amounts for tax and shipping appear at checkout.",
-      left,
-      footerY + 20,
-      { width: pageWidth }
-    );
-
-  doc.end();
-
-  await new Promise<void>((resolve, reject) => {
-    doc.on("end", () => resolve());
-    doc.on("error", reject);
+  const boxX = PAGE_WIDTH - MARGIN - boxW;
+  const boxH = quote.discountAmount > 0 ? 62 : 48;
+  page.drawRectangle({
+    x: boxX,
+    y: y - boxH,
+    width: boxW,
+    height: boxH,
+    borderColor: COLOR.line,
+    borderWidth: 1,
   });
 
-  return Buffer.concat(chunks);
+  let ty = y - 16;
+  drawText(page, "Subtotal", boxX + 10, ty, font, 9, COLOR.ink);
+  drawText(page, money(quote.subtotal), boxX + boxW - 10, ty, font, 9, COLOR.ink, {
+    align: "right",
+  });
+  if (quote.discountAmount > 0) {
+    ty -= 14;
+    drawText(page, "Discount", boxX + 10, ty, font, 9, COLOR.ink);
+    drawText(
+      page,
+      `-${money(quote.discountAmount)}`,
+      boxX + boxW - 10,
+      ty,
+      font,
+      9,
+      COLOR.ink,
+      { align: "right" }
+    );
+  }
+  ty -= 10;
+  page.drawLine({
+    start: { x: boxX + 10, y: ty },
+    end: { x: boxX + boxW - 10, y: ty },
+    thickness: 1,
+    color: COLOR.soft,
+  });
+  ty -= 14;
+  drawText(page, "Quote total (USD)", boxX + 10, ty, bold, 9, COLOR.ink);
+  drawText(
+    page,
+    money(merchandiseTotal),
+    boxX + boxW - 10,
+    ty,
+    bold,
+    9,
+    COLOR.ink,
+    { align: "right" }
+  );
+
+  y -= boxH + 16;
+  ensureSpace(70);
+  const noticeLines = wrapText(
+    "Product pricing only. Sales tax and shipping are calculated at checkout. Freight is quoted through multiple carriers on our site, so rates depend on destination and the service you select.",
+    font,
+    7.5,
+    CONTENT_WIDTH - 20
+  );
+  const noticeH = 22 + noticeLines.length * 10;
+  page.drawRectangle({
+    x: MARGIN,
+    y: y - noticeH,
+    width: CONTENT_WIDTH,
+    height: noticeH,
+    color: COLOR.noticeBg,
+    borderColor: COLOR.line,
+    borderWidth: 1,
+  });
+  drawText(page, "Shipping & tax", MARGIN + 10, y - 12, bold, 8, COLOR.brand);
+  noticeLines.forEach((line, i) => {
+    drawText(page, line, MARGIN + 10, y - 24 - i * 10, font, 7.5, COLOR.muted);
+  });
+  y -= noticeH + 16;
+
+  if (quote.notes) {
+    ensureSpace(40);
+    drawText(page, "NOTES", MARGIN, y, bold, 9, COLOR.brand);
+    y -= 12;
+    const noteLines = wrapText(quote.notes, font, 8, CONTENT_WIDTH);
+    for (const line of noteLines) {
+      ensureSpace(14);
+      drawText(page, line, MARGIN, y, font, 8, COLOR.muted);
+      y -= 11;
+    }
+  }
+
+  drawFooter(page, font, acceptUrl);
+
+  const pdfBytes = await pdf.save();
+  return Buffer.from(pdfBytes);
+}
+
+function drawFooter(page: PDFPage, font: PDFFont, acceptUrl: string) {
+  const y = 36;
+  page.drawLine({
+    start: { x: MARGIN, y: y + 18 },
+    end: { x: PAGE_WIDTH - MARGIN, y: y + 18 },
+    thickness: 1,
+    color: COLOR.line,
+  });
+  drawText(page, `Accept online: ${acceptUrl}`, MARGIN, y + 6, font, 7.5, COLOR.soft, {
+    maxWidth: CONTENT_WIDTH,
+  });
+  drawText(
+    page,
+    "Prices in USD. This document is a sales quotation, not an invoice. Final amounts for tax and shipping appear at checkout.",
+    MARGIN,
+    y - 6,
+    font,
+    7.5,
+    COLOR.soft,
+    { maxWidth: CONTENT_WIDTH }
+  );
 }
