@@ -13,6 +13,7 @@ describe("hand film SKUs", () => {
     assert.equal(handFilmTierSku({ ...spec, boxes: 1 }), "STD-SF188010-1B");
     assert.equal(handFilmTierSku({ ...spec, boxes: 16 }), "STD-SF188010-16B");
     assert.equal(handFilmTierSku({ ...spec, boxes: 32 }), "STD-SF188010-32B");
+    assert.equal(handFilmTierSku({ ...spec, boxes: 48 }), "STD-SF188010-64B");
   });
 
   it("puts a hyphen between the quality and SF", () => {

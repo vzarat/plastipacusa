@@ -137,16 +137,22 @@ function variantRecords(product: Record<string, unknown>): Record<string, unknow
 
 function variantBoxCount(record: Record<string, unknown>): number | null {
   const boxes = Math.floor(Number(record.boxes_count ?? record.boxesCount ?? record.boxes) || 0);
-  if ((CARD_BOX_COUNTS as readonly number[]).includes(boxes)) return boxes;
-
   const rolls = Math.floor(Number(record.rolls_count ?? record.rollsCount ?? record.rolls) || 0);
-  if (rolls === 4) return 1;
-  if (rolls === HAND_FULL_PALLET_ROLLS || rolls === 256) return HAND_FULL_PALLET_BOXES;
+  // Normalize legacy 24/32/64 (and 256-roll) full-pallet rows onto the live 48-box tier.
+  const normalized = normalizeHandPackageBoxes(boxes, rolls);
+  if ((CARD_BOX_COUNTS as readonly number[]).includes(normalized)) return normalized;
 
   const label = String(record.title || record.package_size || record.packageSize || record.label || "");
   const boxMatch = label.match(/(\d+)\s*BOX/i);
-  const labeledBoxes = Math.floor(Number(boxMatch?.[1]) || 0);
+  const labeledBoxes = normalizeHandPackageBoxes(boxMatch?.[1]);
   if ((CARD_BOX_COUNTS as readonly number[]).includes(labeledBoxes)) return labeledBoxes;
+
+  // Live full-pallet SKUs still end in -64B even when boxes_count is missing.
+  const sku = String(record.sku || "").toUpperCase();
+  if (/(FULL|48B|64B|192R)/.test(sku) || /-(48|64)B$/.test(sku)) {
+    return HAND_FULL_PALLET_BOXES;
+  }
+  if (/-(1)B$/.test(sku) || /\b1B\b/.test(sku)) return 1;
 
   return null;
 }

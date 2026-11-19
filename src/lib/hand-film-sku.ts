@@ -6,6 +6,8 @@ const HAND_TIER_SUFFIX: Record<number, string> = {
   1: "1B",
   16: "16B",
   32: "32B",
+  // Live catalog still uses -64B for the standardized 48-box / 192-roll full pallet.
+  48: "64B",
   64: "64B",
 };
 

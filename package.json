@@ -24,6 +24,7 @@
     "@marsidev/react-turnstile": "^1.6.3",
     "@mirawision/usa-map-react": "^2.0.2",
     "@react-email/components": "^1.0.12",
+    "@react-pdf/renderer": "^4.9.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.4.2",
     "@stripe/react-stripe-js": "^6.10.0",

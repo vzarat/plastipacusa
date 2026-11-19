@@ -83,46 +83,49 @@ describe("shared checkout pricing", () => {
 
   it("prices a live catalog row that stores price_usd and a product title", () => {
     const row = {
-      sku: "15-40-1500-64",
+      sku: "ELT-SF154015-64B",
       price_usd: 21.2,
       boxes_count: null,
       rolls_count: 256,
       product_id: "film-15",
-      title: "64 BOXES = 256 ROLLS",
+      title: "Full Pallet (192 Rolls / 48 Boxes)",
     };
     const product = { id: "film-15", title: "STRETCH FILM 15\" x 40 GA x 1500 FT", slug: "15-40-1500", type: "hand", width_inches: 15, gauge: 40 };
     const variant = toCatalogCheckoutVariant(row, product);
-    const priced = totalsFromCatalog([{ sku: "15-40-1500-64", quantity: 1 }], [variant], null, 0);
+    const priced = totalsFromCatalog([{ sku: "ELT-SF154015-64B", quantity: 1 }], [variant], null, 0);
     assert.equal(priced.lines[0]?.boxUnitPrice, 21.2);
-    assert.equal(priced.subtotal, 1356.8);
+    assert.equal(priced.lines[0]?.boxes, 48);
+    assert.equal(priced.subtotal, 1017.6);
     assert.equal(priced.lines[0]?.productName, product.title);
   });
 
-  it("prices two 16-box lines at the 16-box rate, not the combined 32-box rate", () => {
+  it("prices two 1-box lines at the 1-box rate, not a combined full-pallet rate", () => {
     const hand = [
-      { sku: "H-1", price: 28.21, boxes_count: 1, product_id: "hand-1", products: { application: "hand", name: "Hand", slug: "hand" } },
-      { sku: "H-16A", price: 25.65, boxes_count: 16, product_id: "hand-1", products: { application: "hand", name: "Hand", slug: "hand" } },
-      { sku: "H-16B", price: 25.65, boxes_count: 16, product_id: "hand-1", products: { application: "hand", name: "Hand", slug: "hand" } },
-      { sku: "H-32", price: 23.32, boxes_count: 32, product_id: "hand-1", products: { application: "hand", name: "Hand", slug: "hand" } },
+      { sku: "H-1A", price: 28.21, boxes_count: 1, product_id: "hand-1", products: { application: "hand", name: "Hand", slug: "hand" } },
+      { sku: "H-1B", price: 28.21, boxes_count: 1, product_id: "hand-1", products: { application: "hand", name: "Hand", slug: "hand" } },
+      { sku: "H-48", price: 21.2, boxes_count: 48, product_id: "hand-1", products: { application: "hand", name: "Hand", slug: "hand" } },
       { sku: "H-64", price: 21.2, boxes_count: 64, product_id: "hand-1", products: { application: "hand", name: "Hand", slug: "hand" } },
     ];
     const two = totalsFromCatalog(
       [
-        { sku: "H-16A", quantity: 1 },
-        { sku: "H-16B", quantity: 1 },
+        { sku: "H-1A", quantity: 1 },
+        { sku: "H-1B", quantity: 1 },
       ],
       hand,
       null,
       0
     );
-    assert.equal(two.lines[0].boxUnitPrice, 25.65);
-    assert.equal(two.lines[1].boxUnitPrice, 25.65);
-    assert.equal(two.lines[0].boxes, 16);
-    assert.equal(two.lines[1].boxes, 16);
-    assert.equal(two.subtotal, 820.8);
-    assert.equal(totalsFromCatalog([{ sku: "H-1", quantity: 1 }], hand, null, 0).lines[0].boxUnitPrice, 28.21);
-    assert.equal(totalsFromCatalog([{ sku: "H-32", quantity: 1 }], hand, null, 0).lines[0].boxUnitPrice, 23.32);
+    assert.equal(two.lines[0].boxUnitPrice, 28.21);
+    assert.equal(two.lines[1].boxUnitPrice, 28.21);
+    assert.equal(two.lines[0].boxes, 1);
+    assert.equal(two.lines[1].boxes, 1);
+    assert.equal(two.subtotal, 56.42);
+    assert.equal(totalsFromCatalog([{ sku: "H-48", quantity: 1 }], hand, null, 0).lines[0].boxUnitPrice, 21.2);
+    assert.equal(totalsFromCatalog([{ sku: "H-48", quantity: 1 }], hand, null, 0).lines[0].boxes, 48);
+    // Legacy boxes_count 64 still settles as the live 48-box full pallet.
     assert.equal(totalsFromCatalog([{ sku: "H-64", quantity: 1 }], hand, null, 0).lines[0].boxUnitPrice, 21.2);
+    assert.equal(totalsFromCatalog([{ sku: "H-64", quantity: 1 }], hand, null, 0).lines[0].boxes, 48);
+    assert.equal(totalsFromCatalog([{ sku: "H-64", quantity: 1 }], hand, null, 0).lines[0].totalPrice, 1017.6);
   });
 
   it("prices a saved FEL cart from the current ELT-SF catalog rows", () => {
@@ -135,9 +138,7 @@ describe("shared checkout pricing", () => {
     };
     const variants = [
       { sku: "ELT-SF154015-1B", price: 28.21, boxes_count: 1, product_id: "film-15", products: film },
-      { sku: "ELT-SF154015-16B", price: 25.65, boxes_count: 16, product_id: "film-15", products: film },
-      { sku: "ELT-SF154015-32B", price: 23.32, boxes_count: 32, product_id: "film-15", products: film },
-      { sku: "ELT-SF154015-64B", price: 21.2, boxes_count: 64, product_id: "film-15", products: film },
+      { sku: "ELT-SF154015-64B", price: 21.2, boxes_count: 48, product_id: "film-15", products: film },
     ];
     const priced = totalsFromCatalog(
       [
@@ -153,8 +154,8 @@ describe("shared checkout pricing", () => {
     assert.equal(priced.lines[0].totalPrice, 28.21);
     assert.equal(priced.lines[1].sku, "ELT-SF154015-64B");
     assert.equal(priced.lines[1].boxUnitPrice, 21.2);
-    assert.equal(priced.lines[1].totalPrice, 1356.8);
-    assert.equal(priced.subtotal, 1385.01);
+    assert.equal(priced.lines[1].totalPrice, 1017.6);
+    assert.equal(priced.subtotal, 1045.81);
   });
 
   it("uses the priced elite row when an old FEL row has no price", () => {
@@ -179,7 +180,7 @@ describe("shared checkout pricing", () => {
         {
           sku: "STD-SF188010-64B",
           price: 21.2,
-          boxes_count: 64,
+          boxes_count: 48,
           product_id: "std-18",
           products: {
             application: "hand",
@@ -194,7 +195,7 @@ describe("shared checkout pricing", () => {
       0
     );
     assert.equal(standard.lines[0].sku, "STD-SF188010-64B");
-    assert.equal(standard.lines[0].totalPrice, 1356.8);
+    assert.equal(standard.lines[0].totalPrice, 1017.6);
 
     const machine = totalsFromCatalog(
       [{ sku: "HPFSF205170-HLP", quantity: 1 }],

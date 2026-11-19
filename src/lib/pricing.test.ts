@@ -224,6 +224,7 @@ describe("box price × box quantity", () => {
 
   it("leaves machine film catalog pricing on the previous order", () => {
     assert.equal(handCatalogQuote({ application: "machine", widthInches: 20 }), null);
+    // Automatic film ignores Manual box tiers; price comes from 20/40-roll variants or the master.
     assert.equal(
       getDisplayPrice({
         application: "machine",
@@ -233,7 +234,29 @@ describe("box price × box quantity", () => {
           { boxes_count: 48, price: 21.2 },
         ],
       }),
-      10
+      null
+    );
+    assert.equal(
+      getDisplayPrice({
+        application: "machine",
+        widthInches: 20,
+        gauge: 70,
+        length_feet: 5000,
+      }),
+      1668.4
+    );
+    assert.equal(
+      getDisplayPrice({
+        application: "machine",
+        widthInches: 20,
+        gauge: 99,
+        length_feet: 1111,
+        product_variants: [
+          { rolls_count: 20, price: 800 },
+          { rolls_count: 40, price: 1600 },
+        ],
+      }),
+      1600
     );
     assert.equal(
       buildHandFullPalletCartItem(

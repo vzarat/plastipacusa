@@ -355,30 +355,10 @@ export async function createOrderFromCheckout(
 
     const { data: existingByIntent } = await supabase
       .from("orders")
-      .select("id, shipping_address, status")
+      .select("id, created_at, items, shipping_address, status")
       .eq("payment_intent_id", paymentIntentId)
       .neq("status", "pending_payment")
       .maybeSingle();
-
-    const { data: existingOrders, error: existingError } = await supabase
-      .from("orders")
-      .select("id, shipping_address, status")
-      .neq("status", "pending_payment");
-
-    if (existingError) {
-      console.warn(
-        "Unable to check existing checkout order record:",
-        existingError.message
-      );
-    }
-
-    const existingOrder =
-      existingByIntent ||
-      existingOrders?.find(
-        (order: any) =>
-          order.status !== "pending_payment" &&
-          order.shipping_address?.stripe_payment_intent_id === paymentIntentId
-      );
 
     const { data: pendingPayment } = await supabase
       .from("orders")
@@ -430,27 +410,30 @@ export async function createOrderFromCheckout(
       };
     }
 
-    if (existingOrder) {
+    if (existingByIntent) {
       // Already settled (webhook or prior success). Do not rewrite lines/address from the client.
       return {
         success: true,
         orderId: formatOrderId({
-          id: existingOrder.id,
-          createdAt: new Date().toISOString(),
-          items: cartItems,
+          id: existingByIntent.id,
+          createdAt: String(existingByIntent.created_at || new Date().toISOString()),
+          items:
+            (Array.isArray(existingByIntent.items)
+              ? (existingByIntent.items as {
+                  gauge?: string | number | null;
+                  quantity?: number;
+                }[])
+              : null) || cartItems,
         }),
       };
     }
 
-    // Do not invent a paid order from client cart items. Settlement belongs to the
-    // Stripe webhook + pending_payment row created at PaymentIntent time.
+    // Fail closed: never invent a confirmation from the PaymentIntent alone.
+    // Settlement belongs to the Stripe webhook + pending_payment row created at pay time.
     return {
-      success: true,
-      orderId: formatOrderId({
-        id: paymentIntentId,
-        createdAt: new Date().toISOString(),
-        items: cartItems,
-      }),
+      success: false,
+      error:
+        "Your payment went through, but we are still confirming the order. Please wait a moment or contact support with your payment reference — do not pay again.",
     };
   } catch (error: any) {
     const errorMessage =

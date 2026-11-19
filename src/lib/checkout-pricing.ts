@@ -165,7 +165,11 @@ export function catalogCheckoutLines(
       const application =
         String(product?.application || "").toLowerCase() === "machine" ? "machine" : "hand";
       const quantity = Math.max(1, Math.floor(Number(line.quantity) || 1));
-      const presetBoxes = Math.max(0, Math.floor(Number(variant.boxes_count) || 0));
+      // Legacy -64B / 256-roll rows must price as the live 48-box full pallet.
+      const presetBoxes =
+        application === "hand"
+          ? normalizeHandPackageBoxes(variant.boxes_count, variant.rolls_count)
+          : Math.max(0, Math.floor(Number(variant.boxes_count) || 0));
       const boxes = presetBoxes * quantity;
       const widthInches = String(product?.width_inches ?? "");
       const gauge = Math.round(Number(product?.gauge) || 0);

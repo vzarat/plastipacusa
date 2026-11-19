@@ -111,14 +111,17 @@ export function findMachineFilmMaster(input: {
     const bySlug = MACHINE_FILM_MASTER.find((row) => row.slug === slug);
     if (bySlug) return bySlug;
   }
+  // Tier SKUs (…-HLP / …-FLP / …20R / …40R) must match the base part number.
   const part = String(input.partNumber || "")
     .trim()
     .toUpperCase()
+    .replace(/-(HLP|FLP|20R|40R)$/i, "")
     .replace(/[^A-Z0-9]/g, "");
   if (part) {
-    const byPart = MACHINE_FILM_MASTER.find(
-      (row) => row.partNumber.replace(/[^A-Z0-9]/g, "") === part
-    );
+    const byPart = MACHINE_FILM_MASTER.find((row) => {
+      const master = row.partNumber.replace(/[^A-Z0-9]/g, "");
+      return master === part || part.startsWith(master) || master.startsWith(part);
+    });
     if (byPart) return byPart;
   }
   const width = Math.round(Number(input.widthInches) || 0);

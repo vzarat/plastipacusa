@@ -148,6 +148,62 @@ function resolveHandPackageCounts(input: {
   return { rolls, boxes };
 }
 
+/**
+ * Last-resort box/roll totals from SKU suffixes when catalog weights are missing.
+ * Keeps free local / Houston Friday eligibility checks working at payment time.
+ */
+export function estimatePackageUnitsFromQuoteLines(
+  lines: ShippingQuoteLine[]
+): { boxes: number; rolls: number } {
+  let boxes = 0;
+  let rolls = 0;
+  for (const line of lines) {
+    const quantity = Math.max(1, Math.floor(Number(line.quantity) || 1));
+    const machine = looksLikeMachineFilm({
+      application: line.application,
+      sku: line.sku,
+      slug: line.productSlug,
+    });
+    if (machine) {
+      const packageRolls = resolveMachinePackageRolls({
+        rolls: Math.round(Number(line.totalRolls) || 0),
+        sku: line.sku,
+      });
+      if (packageRolls === 20 || packageRolls === 40) {
+        rolls += packageRolls * quantity;
+        continue;
+      }
+    }
+    const resolved = resolveHandPackageCounts({
+      rolls: Math.round(Number(line.totalRolls) || 0),
+      boxes: Math.floor(Number(line.totalBoxes) || 0),
+      sku: line.sku,
+    });
+    boxes += resolved.boxes * quantity;
+    rolls += resolved.rolls * quantity;
+  }
+  return { boxes, rolls };
+}
+
+/** Freight rebuild first; SKU/line counts if weights are missing. */
+export async function resolveShipmentPackageUnits(
+  lines: ShippingQuoteLine[]
+): Promise<{ boxes: number; rolls: number; fromFreight: boolean }> {
+  try {
+    const freight = await buildShipmentFreight(lines);
+    return { boxes: freight.boxes, rolls: freight.rolls, fromFreight: true };
+  } catch (error) {
+    if (error instanceof ShipmentDataError && (error.boxes > 0 || error.rolls > 0)) {
+      return { boxes: error.boxes, rolls: error.rolls, fromFreight: false };
+    }
+    const estimated = estimatePackageUnitsFromQuoteLines(lines);
+    if (estimated.boxes > 0 || estimated.rolls > 0) {
+      return { ...estimated, fromFreight: false };
+    }
+    throw error;
+  }
+}
+
 async function loadFreightVariantsBySku(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
   skus: string[]
@@ -345,8 +401,9 @@ export function shipmentFreightFromCatalog(
     if (machine && packageRolls !== 20 && packageRolls !== 40) {
       packageRolls = resolveMachinePackageRolls({ rolls: 0, sku });
       if (packageRolls !== 20 && packageRolls !== 40 && machineMaster) {
-        // Official Automatic SKUs are only sold as half (20) or full (40).
-        packageRolls = /HLP|20R/i.test(sku) ? 20 : 40;
+        // Only default a tier when the SKU explicitly signals half or full.
+        if (/HLP|20R/i.test(sku)) packageRolls = 20;
+        else if (/FLP|40R|FULL/i.test(sku)) packageRolls = 40;
       }
     }
     if (!machine && packageBoxes <= 0 && packageRolls <= 0) {

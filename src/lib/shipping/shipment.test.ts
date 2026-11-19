@@ -3,7 +3,12 @@ import { describe, it } from "node:test";
 import { packageTotalWeightLbs } from "../package-weight";
 import { marketItemsFromPieces } from "./market-options";
 import { freeRgvDelivery } from "./rgv-delivery";
-import { ShipmentDataError, shipmentFreightFromCatalog, type FreightVariant } from "./shipment";
+import {
+  ShipmentDataError,
+  estimatePackageUnitsFromQuoteLines,
+  shipmentFreightFromCatalog,
+  type FreightVariant,
+} from "./shipment";
 
 const HAND_80 = {
   sku: "HAND-80-48",
@@ -577,5 +582,24 @@ describe("catalog shipment freight", () => {
     assert.equal(fullSent?.heightIn, 68);
     assert.equal(fullSent?.widthIn, 40);
     assert.equal(fullSent?.weightLbsPerPallet, 894);
+  });
+
+  it("estimates free-local pallet units from SKU suffixes when weights are missing", () => {
+    const units = estimatePackageUnitsFromQuoteLines([
+      { sku: "STD-SF188010-64B", quantity: 2, application: "hand" },
+      { sku: "HPF-SF207050-FLP", quantity: 1, application: "machine" },
+    ]);
+    assert.equal(units.boxes, 96);
+    assert.equal(units.rolls, 192 * 2 + 40);
+    assert.equal(
+      freeRgvDelivery({
+        postalCode: "78572",
+        city: "Mission",
+        state: "TX",
+        boxes: units.boxes,
+        rolls: units.rolls,
+      }).eligible,
+      true
+    );
   });
 });

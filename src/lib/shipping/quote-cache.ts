@@ -15,7 +15,11 @@ import {
   type MarketOptionQuote,
 } from "@/lib/shipping/market-options";
 import { isRioGrandeValley } from "@/lib/shipping-method";
-import { buildShipmentFreight, ShipmentDataError } from "@/lib/shipping/shipment";
+import {
+  buildShipmentFreight,
+  estimatePackageUnitsFromQuoteLines,
+  ShipmentDataError,
+} from "@/lib/shipping/shipment";
 import type { ShippingQuoteLine } from "@/lib/shipping/types";
 import type { WarpDestinationAddress } from "@/lib/shipping/origin";
 import { quoteWarpFreight } from "@/lib/shipping/warp";
@@ -464,51 +468,6 @@ export async function readStoredQuote(
   return { option };
 }
 
-/** Last-resort: honor a still-valid stored Warp quote for this ZIP if freight rebuild fails. */
-async function acceptStoredQuoteForZip(
-  quoteId: string,
-  zip: string
-): Promise<ShippingOption | null> {
-  if (!quoteId || quoteId === "rgv-local" || quoteId === "houston-friday") return null;
-  const memory = quotesById.get(quoteId);
-  if (
-    memory &&
-    memory.destinationZip === zip &&
-    quoteStillPayable(memory.expiresAt) &&
-    Number(memory.freight?.weightLbs || 0) > 0
-  ) {
-    return memory;
-  }
-  try {
-    const supabase = await quoteTable();
-    let columns: string[] = [...QUOTE_SELECT_COLUMNS];
-    let data: unknown = null;
-    for (let attempt = 0; attempt < 6; attempt += 1) {
-      const result = await supabase
-        .from("shipping_quotes")
-        .select(columns.join(", "))
-        .eq("quote_id", quoteId)
-        .maybeSingle();
-      if (!result.error) {
-        data = result.data;
-        break;
-      }
-      const column = missingQuoteColumn(String(result.error.message || ""));
-      if (!column || !columns.includes(column)) throw result.error;
-      columns = columns.filter((name) => name !== column);
-    }
-    const row = quoteRowFromRecord(data);
-    if (!row) return null;
-    if (String(row.destination_zip || "") !== zip) return null;
-    if (!quoteStillPayable(row.expires_at)) return null;
-    if (!(Number(row.weight_lbs) > 0)) return null;
-    return optionFromRow(row);
-  } catch (error) {
-    safeStoreLog(error);
-    return null;
-  }
-}
-
 export async function resolveShippingCharge(input: {
   quoteId: string;
   postalCode: string;
@@ -522,27 +481,36 @@ export async function resolveShippingCharge(input: {
   try {
     freight = await buildShipmentFreight(input.lines);
   } catch (error) {
-    if (
-      input.quoteId === "rgv-local" &&
-      error instanceof ShipmentDataError &&
-      error.code === "missing_dims" &&
-      isRioGrandeValley({ postalCode: zip, city: input.city, state: input.state }) &&
-      qualifiesForFreeLocalDelivery(equivalentPalletCount({ rolls: error.rolls }))
-    ) {
-      return {
-        option: {
-          id: "rgv-local",
-          provider: "plastipac",
-          mode: "local",
-          serviceName: FREE_LOCAL_DELIVERY_LABEL,
-          description:
-            "Plastipac fleet delivery for Rio Grande Valley orders of 3+ full pallets (Manual and/or Automatic, any size).",
-          price: 0,
-          transitDays: 1,
-          expiresAt: null,
-          destinationZip: zip,
-        },
-      };
+    if (input.quoteId === "rgv-local") {
+      const fromError =
+        error instanceof ShipmentDataError
+          ? { boxes: error.boxes, rolls: error.rolls }
+          : { boxes: 0, rolls: 0 };
+      const estimated =
+        fromError.boxes > 0 || fromError.rolls > 0
+          ? fromError
+          : estimatePackageUnitsFromQuoteLines(input.lines);
+      if (
+        isRioGrandeValley({ postalCode: zip, city: input.city, state: input.state }) &&
+        qualifiesForFreeLocalDelivery(
+          equivalentPalletCount({ boxes: estimated.boxes, rolls: estimated.rolls })
+        )
+      ) {
+        return {
+          option: {
+            id: "rgv-local",
+            provider: "plastipac",
+            mode: "local",
+            serviceName: FREE_LOCAL_DELIVERY_LABEL,
+            description:
+              "Plastipac fleet delivery for Rio Grande Valley orders of 3+ full pallets (Manual and/or Automatic, any size).",
+            price: 0,
+            transitDays: 1,
+            expiresAt: null,
+            destinationZip: zip,
+          },
+        };
+      }
     }
     const detail =
       error instanceof ShipmentDataError
@@ -551,11 +519,7 @@ export async function resolveShippingCharge(input: {
           ? error.message
           : "Freight could not be rebuilt for payment.";
     console.error("[checkout] shipping freight rebuild failed", detail);
-    const stored = await acceptStoredQuoteForZip(input.quoteId, zip);
-    if (stored) {
-      console.warn("[checkout] accepting stored shipping quote after freight rebuild failure");
-      return { option: stored };
-    }
+    // Fail closed: do not charge a stored Warp rate when live weight/pallets cannot be verified.
     return {
       error: "We couldn't verify package weight for this shipping quote. Go back and choose shipping again.",
       expired: false,

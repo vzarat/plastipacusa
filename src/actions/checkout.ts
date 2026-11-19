@@ -36,7 +36,23 @@ import {
 } from "@/lib/shipping/friday-delivery";
 import { resolveShippingCharge } from "@/lib/shipping/quote-cache";
 import { evalShippingEligibility, RGV_FREE_DELIVERY_LABEL } from "@/lib/shippingRules";
-import { buildShipmentFreight } from "@/lib/shipping/shipment";
+import {
+  buildShipmentFreight,
+  resolveShipmentPackageUnits,
+  ShipmentDataError,
+} from "@/lib/shipping/shipment";
+
+function localDeliveryFreightError(
+  error: unknown,
+  fallback: string
+): string {
+  if (error instanceof ShipmentDataError) {
+    if (error.code === "missing_weight" || error.code === "missing_dims") {
+      return "We couldn't verify package weight for free local delivery. Go back and choose shipping again.";
+    }
+  }
+  return fallback;
+}
 import { profileIsTaxExempt } from "@/lib/sales-tax";
 import type { ShippingQuoteLine } from "@/lib/shipping/types";
 import { notifyAdminPurchaseOrder } from "@/lib/email";
@@ -374,13 +390,13 @@ export async function createPaymentIntent(
     const freightLines = catalogFreightLines(options.quoteLines);
     if (options.shippingQuoteId === "rgv-local") {
       try {
-        const freight = await buildShipmentFreight(freightLines);
+        const units = await resolveShipmentPackageUnits(freightLines);
         const gate = freeRgvDelivery({
           postalCode: options.shipping?.postalCode,
           city: options.shipping?.city,
           state: options.shipping?.state,
-          rolls: freight.rolls,
-          boxes: freight.boxes,
+          rolls: units.rolls,
+          boxes: units.boxes,
         });
         const local = rgvLocalCharge(gate.eligible);
         if ("error" in local) return { success: false, error: local.error };
@@ -396,18 +412,24 @@ export async function createPaymentIntent(
           transitDays: 1,
           destinationZip: zip,
         };
-      } catch {
-        return { success: false, error: "Free local delivery does not apply to this order." };
+      } catch (error) {
+        return {
+          success: false,
+          error: localDeliveryFreightError(
+            error,
+            "Free local delivery does not apply to this order."
+          ),
+        };
       }
     } else if (options.shippingQuoteId === "houston-friday") {
       try {
-        const freight = await buildShipmentFreight(freightLines);
+        const units = await resolveShipmentPackageUnits(freightLines);
         const gate = evalShippingEligibility(
           options.shipping?.postalCode || "",
           options.shipping?.city || "",
           options.shipping?.state || "",
-          freight.boxes,
-          freight.rolls
+          units.boxes,
+          units.rolls
         );
         const offered = gate.options.find((option) => option.id === "houston-friday");
         if (!offered) {
@@ -425,8 +447,14 @@ export async function createPaymentIntent(
           transitDays: 1,
           destinationZip: zip,
         };
-      } catch {
-        return { success: false, error: "Houston Friday freight does not apply to this order." };
+      } catch (error) {
+        return {
+          success: false,
+          error: localDeliveryFreightError(
+            error,
+            "Houston Friday freight does not apply to this order."
+          ),
+        };
       }
     } else {
       try {
@@ -705,7 +733,7 @@ export async function createPaymentIntent(
             })
             .eq("id", existing.id)
             .eq("status", "pending_payment");
-          reusable = null;
+          // Never mint a second PaymentIntent after one already succeeded/processing.
           if (owned) {
             if (!retrieved.client_secret) {
               return { success: false, error: "Stripe payment intent failed — missing client secret." };
@@ -718,6 +746,11 @@ export async function createPaymentIntent(
               total: priced.total,
             };
           }
+          return {
+            success: false,
+            error:
+              "A previous payment for this cart is still processing. Please wait or contact support — do not pay again.",
+          };
         }
       } catch {
         // A missing intent is replaced below.
@@ -1284,13 +1317,13 @@ export async function placeCommercialCreditOrder(
     const freightLines = catalogFreightLines(options.quoteLines);
     if (options.shippingQuoteId === "rgv-local") {
       try {
-        const freight = await buildShipmentFreight(freightLines);
+        const units = await resolveShipmentPackageUnits(freightLines);
         const gate = freeRgvDelivery({
           postalCode: options.shipping?.postalCode,
           city: options.shipping?.city,
           state: options.shipping?.state,
-          rolls: freight.rolls,
-          boxes: freight.boxes,
+          rolls: units.rolls,
+          boxes: units.boxes,
         });
         const local = rgvLocalCharge(gate.eligible);
         if ("error" in local) return { success: false, error: local.error };
@@ -1306,18 +1339,24 @@ export async function placeCommercialCreditOrder(
           transitDays: 1,
           destinationZip: zip,
         };
-      } catch {
-        return { success: false, error: "Free local delivery does not apply to this order." };
+      } catch (error) {
+        return {
+          success: false,
+          error: localDeliveryFreightError(
+            error,
+            "Free local delivery does not apply to this order."
+          ),
+        };
       }
     } else if (options.shippingQuoteId === "houston-friday") {
       try {
-        const freight = await buildShipmentFreight(freightLines);
+        const units = await resolveShipmentPackageUnits(freightLines);
         const gate = evalShippingEligibility(
           options.shipping?.postalCode || "",
           options.shipping?.city || "",
           options.shipping?.state || "",
-          freight.boxes,
-          freight.rolls
+          units.boxes,
+          units.rolls
         );
         const offered = gate.options.find((option) => option.id === "houston-friday");
         if (!offered) {
@@ -1335,8 +1374,14 @@ export async function placeCommercialCreditOrder(
           transitDays: 1,
           destinationZip: zip,
         };
-      } catch {
-        return { success: false, error: "Houston Friday freight does not apply to this order." };
+      } catch (error) {
+        return {
+          success: false,
+          error: localDeliveryFreightError(
+            error,
+            "Houston Friday freight does not apply to this order."
+          ),
+        };
       }
     } else {
       try {

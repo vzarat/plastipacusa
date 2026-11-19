@@ -53,9 +53,12 @@ function missingStockColumn(error: { message?: string } | null): boolean {
   return /column|schema cache|does not exist/i.test(message);
 }
 
-async function readAvailability(admin: SupabaseClient, lines: HoldLine[]): Promise<string | null> {
+async function readAvailability(
+  admin: SupabaseClient,
+  lines: HoldLine[]
+): Promise<{ ok: true; shortage: string | null } | { ok: false }> {
   const productIds = [...new Set(lines.map((line) => String(line.productId || "")).filter(Boolean))];
-  if (productIds.length === 0) return null;
+  if (productIds.length === 0) return { ok: true, shortage: null };
   let data: unknown[] | null = null;
   let error: { code?: string; message?: string } | null = null;
   for (const columns of STOCK_COLUMN_SETS) {
@@ -70,7 +73,7 @@ async function readAvailability(admin: SupabaseClient, lines: HoldLine[]): Promi
   }
   if (error || !data) {
     console.error("[checkout] stock read failed", error?.code || "error");
-    return null;
+    return { ok: false };
   }
   const boxOnHand = new Map<string, number | null>();
   const palletOnHand = new Map<string, number | null>();
@@ -95,16 +98,19 @@ async function readAvailability(admin: SupabaseClient, lines: HoldLine[]): Promi
       soldOut: row.is_sold_out === true || stock === 0,
     });
   }
-  return (
-    soldOutCheckoutMessage(lines, availability) ||
-    boxStockShortage(lines, boxOnHand) ||
-    palletStockShortage(lines, palletOnHand)
-  );
+  return {
+    ok: true,
+    shortage:
+      soldOutCheckoutMessage(lines, availability) ||
+      boxStockShortage(lines, boxOnHand) ||
+      palletStockShortage(lines, palletOnHand),
+  };
 }
 
 /**
  * Lock pallet stock and a limited promo code onto this pending order.
  * When the SQL functions are not installed yet, fall back to a fresh stock read.
+ * Returns an error string when the hold cannot be confirmed (fail closed).
  */
 export async function syncCheckoutHolds(
   admin: SupabaseClient,
@@ -116,9 +122,15 @@ export async function syncCheckoutHolds(
   const reported = customerHoldMessage(held.error);
   if (reported && !missingHoldFunction(held.error)) return reported;
   const availability = await readAvailability(admin, lines);
-  if (availability) return availability;
-  console.error("[checkout] stock hold skipped", held.error.code || "error");
-  return null;
+  if (!availability.ok) {
+    console.error("[checkout] stock hold failed", held.error.code || "error");
+    return "We couldn't confirm inventory for this cart. Please try again in a moment.";
+  }
+  if (availability.shortage) return availability.shortage;
+  // RPC missing but stock read succeeded with no shortage — allow payment without a hold lock.
+  if (missingHoldFunction(held.error)) return null;
+  console.error("[checkout] stock hold failed", held.error.code || "error");
+  return "We couldn't reserve inventory for this order. Please try again.";
 }
 
 /** Return pallet stock and a promo hold when an unpaid order is deleted. */
