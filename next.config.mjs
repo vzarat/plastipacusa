@@ -11,13 +11,11 @@ const withPWA = withPWAInit({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
-  serverExternalPackages: [
-    "drizzle-orm",
-    "pg",
-    "pg-pool",
-    "@react-pdf/renderer",
-    "@react-pdf/hyphenate",
-  ],
+  serverExternalPackages: ["drizzle-orm", "pg", "pg-pool", "pdfkit"],
+  // pdfkit reads AFM font metrics from its data folder at runtime
+  outputFileTracingIncludes: {
+    "/api/admin/quotes/*/pdf": ["./node_modules/pdfkit/js/data/**/*"],
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],

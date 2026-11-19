@@ -32,10 +32,15 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error(
-      "[sales-quotes] pdf route",
-      error instanceof Error ? error.stack || error.message : error
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error("[sales-quotes] pdf route", stack || message);
+    return NextResponse.json(
+      {
+        error: "Could not generate PDF.",
+        detail: message,
+      },
+      { status: 500 }
     );
-    return NextResponse.json({ error: "Could not generate PDF." }, { status: 500 });
   }
 }
