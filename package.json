@@ -14,7 +14,8 @@
     "db:seed": "tsx src/db/seed.ts",
     "db:fix-genesis-application": "tsx src/db/fix-genesis-application.ts",
     "quote:parity": "tsx --env-file=.env.local scripts/quote-parity.ts",
-    "check:pallet-heights": "tsx scripts/check-pallet-heights.ts"
+    "check:pallet-heights": "tsx scripts/check-pallet-heights.ts",
+    "postinstall": "node scripts/patch-react-pdf-hyphenate.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.92",
@@ -24,7 +25,7 @@
     "@marsidev/react-turnstile": "^1.6.3",
     "@mirawision/usa-map-react": "^2.0.2",
     "@react-email/components": "^1.0.12",
-    "@react-pdf/renderer": "^4.9.0",
+    "@react-pdf/renderer": "4.6.1",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.4.2",
     "@stripe/react-stripe-js": "^6.10.0",

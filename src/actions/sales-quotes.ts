@@ -2,8 +2,6 @@
 
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import React from "react";
-import { renderToBuffer } from "@react-pdf/renderer";
 import { getCurrentUser } from "@/actions/auth";
 import { getAppBaseUrl, sendEmail } from "@/lib/email";
 import { ORDERS_FROM } from "@/lib/company-email";
@@ -20,7 +18,7 @@ import { evalShippingEligibility } from "@/lib/shippingRules";
 import { createServiceRoleClient, isServiceRoleConfigured } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import { mapSalesQuoteRow, nextQuoteNumber } from "@/lib/sales-quotes/map";
-import { SalesQuotePdfDocument } from "@/lib/sales-quotes/pdf";
+import { renderSalesQuotePdfBuffer } from "@/lib/sales-quotes/render-pdf";
 import { quoteMerchandiseTotal } from "@/lib/sales-quotes/totals";
 import {
   emptyFreightSummary,
@@ -32,6 +30,8 @@ import type {
   SalesQuoteFreightSummary,
   SalesQuoteRecord,
 } from "@/lib/sales-quotes/types";
+
+export { renderSalesQuotePdfBuffer };
 
 async function requireAdmin() {
   const currentUser = await getCurrentUser();
@@ -417,19 +417,6 @@ export async function createSalesQuote(
       error: error instanceof Error ? error.message : "Could not create quote.",
     };
   }
-}
-
-export async function renderSalesQuotePdfBuffer(
-  quote: SalesQuoteRecord
-): Promise<Buffer> {
-  const element = React.createElement(SalesQuotePdfDocument, {
-    quote,
-    acceptUrl: acceptUrlForToken(quote.token),
-  });
-  const nodeBuffer = await renderToBuffer(
-    element as Parameters<typeof renderToBuffer>[0]
-  );
-  return Buffer.from(nodeBuffer);
 }
 
 export async function sendSalesQuoteEmail(

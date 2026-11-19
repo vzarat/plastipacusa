@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/actions/auth";
-import { getSalesQuote, renderSalesQuotePdfBuffer } from "@/actions/sales-quotes";
+import { getSalesQuote } from "@/actions/sales-quotes";
+import { renderSalesQuotePdfBuffer } from "@/lib/sales-quotes/render-pdf";
+
+export const runtime = "nodejs";
 
 export async function GET(
   _request: Request,
@@ -31,7 +34,7 @@ export async function GET(
   } catch (error) {
     console.error(
       "[sales-quotes] pdf route",
-      error instanceof Error ? error.message : error
+      error instanceof Error ? error.stack || error.message : error
     );
     return NextResponse.json({ error: "Could not generate PDF." }, { status: 500 });
   }

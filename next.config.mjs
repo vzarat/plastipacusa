@@ -11,7 +11,13 @@ const withPWA = withPWAInit({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
-  serverExternalPackages: ["drizzle-orm", "pg", "pg-pool"],
+  serverExternalPackages: [
+    "drizzle-orm",
+    "pg",
+    "pg-pool",
+    "@react-pdf/renderer",
+    "@react-pdf/hyphenate",
+  ],
   images: {
     formats: ["image/avif", "image/webp"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],

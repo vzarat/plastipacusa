@@ -1,5 +1,4 @@
 import React from "react";
-import path from "node:path";
 import {
   Document,
   Page,
@@ -9,12 +8,11 @@ import {
   Font,
   Image,
 } from "@react-pdf/renderer";
+import { QUOTE_LOGO_DATA_URI } from "./logo-data";
 import { quoteMerchandiseTotal } from "./totals";
 import type { SalesQuoteRecord } from "./types";
 
 Font.registerHyphenationCallback((word) => [word]);
-
-const LOGO_PATH = path.join(process.cwd(), "public", "logo-quote.png");
 
 const styles = StyleSheet.create({
   page: {
@@ -67,8 +65,8 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.55,
   },
-  twoCol: { flexDirection: "row", gap: 28 },
-  col: { flex: 1 },
+  twoCol: { flexDirection: "row" },
+  col: { flex: 1, paddingRight: 14 },
   label: { color: "#64748b", marginBottom: 2, fontSize: 8 },
   value: { fontFamily: "Helvetica-Bold", marginBottom: 4, fontSize: 9 },
   tableHeader: {
@@ -200,7 +198,7 @@ export function SalesQuotePdfDocument({
         <View style={styles.headerRow}>
           <View>
             {/* Logo PNG generated from public/logo.svg for @react-pdf Image support */}
-            <Image src={LOGO_PATH} style={styles.logo} />
+            <Image src={QUOTE_LOGO_DATA_URI} style={styles.logo} />
             <Text style={styles.brandSub}>
               Industrial stretch film · Manual & Automatic{"\n"}
               contact@plastipacusa.com · plastipacusa.com
