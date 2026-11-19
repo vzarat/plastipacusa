@@ -153,9 +153,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`scroll-smooth ${inter.variable} ${teko.variable}`}>
       <head>
-        {/* Critical-path DNS / TLS warm-up for remote product media + API.
-            Fonts: next/font/local self-hosts Inter + Teko and injects
-            <link rel="preload" as="font" crossOrigin> tags automatically. */}}
+        {/* Critical-path DNS / TLS warm-up for remote product media + API. */}
         <link rel="preconnect" href={SUPABASE_ORIGIN} crossOrigin="anonymous" />
         <link rel="dns-prefetch" href={SUPABASE_ORIGIN} />
 
