@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, ShoppingCart } from "lucide-react";
 import { markSalesQuoteAccepted } from "@/actions/sales-quotes";
+import { quoteMerchandiseTotal } from "@/lib/sales-quotes/totals";
 import { useCartStore } from "@/lib/store/useCartStore";
 import type { SalesQuoteRecord } from "@/lib/sales-quotes/types";
 
@@ -102,7 +103,7 @@ export function QuoteAcceptClient({ quote }: { quote: SalesQuoteRecord }) {
                 Terms: {quote.paymentTerms === "net_30" ? "Net 30" : "Prepayment"}
               </p>
               <p className="text-slate-700">
-                Freight: {quote.shippingMethod || "Estimated at checkout"}
+                Shipping &amp; tax: calculated at checkout
               </p>
             </div>
           </div>
@@ -132,18 +133,14 @@ export function QuoteAcceptClient({ quote }: { quote: SalesQuoteRecord }) {
                 <span>-{money(quote.discountAmount)}</span>
               </div>
             ) : null}
-            <div className="flex justify-between text-slate-700">
-              <span>Freight</span>
-              <span>{money(quote.shippingAmount)}</span>
-            </div>
-            <div className="flex justify-between text-slate-700">
-              <span>Est. tax</span>
-              <span>{money(quote.taxAmount)}</span>
-            </div>
             <div className="flex justify-between font-black text-slate-900 border-t border-slate-200 pt-2">
-              <span>Total USD</span>
-              <span>{money(quote.total)}</span>
+              <span>Quote total (USD)</span>
+              <span>{money(quoteMerchandiseTotal(quote))}</span>
             </div>
+            <p className="text-[11px] text-slate-500 pt-2">
+              Sales tax and shipping are calculated at checkout. Freight is quoted through
+              multiple carriers on our site.
+            </p>
           </div>
 
           {expired ? (

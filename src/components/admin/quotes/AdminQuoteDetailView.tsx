@@ -3,8 +3,9 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Copy, Loader2, Mail, ExternalLink } from "lucide-react";
+import { Copy, Download, Loader2, Mail, ExternalLink } from "lucide-react";
 import { sendSalesQuoteEmail } from "@/actions/sales-quotes";
+import { quoteMerchandiseTotal } from "@/lib/sales-quotes/totals";
 import type { SalesQuoteRecord } from "@/lib/sales-quotes/types";
 
 function money(amount: number) {
@@ -64,6 +65,15 @@ export function AdminQuoteDetailView({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <a
+            href={`/api/admin/quotes/${current.id}/pdf`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Print / PDF
+          </a>
           <button
             type="button"
             onClick={copyLink}
@@ -119,16 +129,22 @@ export function AdminQuoteDetailView({
           </h2>
           <Row label="Subtotal" value={money(current.subtotal)} />
           <Row label="Discount" value={`-${money(current.discountAmount)}`} />
-          <Row label="Freight" value={money(current.shippingAmount)} />
-          <Row label="Tax" value={money(current.taxAmount)} />
-          <Row label="Total" value={money(current.total)} strong />
+          <Row
+            label="Quote total"
+            value={money(quoteMerchandiseTotal(current))}
+            strong
+          />
+          <p className="text-[11px] text-slate-500 pt-1">
+            PDF shows merchandise only. Tax and shipping are calculated at checkout.
+          </p>
           <div className="pt-3 border-t border-slate-100 space-y-1 text-[12px] text-slate-600">
             <p>Terms: {current.paymentTerms === "net_30" ? "Net 30" : "Prepayment"}</p>
             <p>Valid: {new Date(current.validUntil).toLocaleDateString("en-US")}</p>
-            <p>Freight: {current.shippingMethod || "TBD"}</p>
             <p>
-              Pallets {current.palletCount.toFixed(2)} · Weight{" "}
-              {current.weightLbs.toLocaleString("en-US")} lbs
+              Pallets {current.palletCount.toFixed(2)}
+              {current.weightLbs > 0
+                ? ` · Weight ${current.weightLbs.toLocaleString("en-US")} lbs`
+                : ""}
             </p>
             {current.sentAt ? (
               <p>Sent: {new Date(current.sentAt).toLocaleString("en-US")}</p>

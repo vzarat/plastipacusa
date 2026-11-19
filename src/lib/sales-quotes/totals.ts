@@ -80,3 +80,14 @@ export function salesQuoteTotals(input: {
 export function emptyFreightSummary(): SalesQuoteFreightSummary {
   return { mode: "none", label: "Shipping TBD" };
 }
+
+/** Merchandise-only quote total (no freight / tax). */
+export function quoteMerchandiseTotal(input: {
+  subtotal: number;
+  discountAmount: number;
+}): number {
+  return Math.max(
+    0,
+    roundMoney(Number(input.subtotal || 0) - Number(input.discountAmount || 0))
+  );
+}

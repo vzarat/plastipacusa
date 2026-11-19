@@ -85,7 +85,7 @@ export function AdminQuotesListView({ quotes }: { quotes: SalesQuoteRecord[] }) 
                       <p className="text-[12px] text-slate-500">{quote.email}</p>
                     </td>
                     <td className="px-4 py-3 font-semibold text-slate-900">
-                      {money(quote.total)}
+                      {money(Math.max(0, quote.subtotal - quote.discountAmount))}
                     </td>
                     <td className="px-4 py-3 text-slate-700">
                       {quote.paymentTerms === "net_30" ? "Net 30" : "Prepay"}

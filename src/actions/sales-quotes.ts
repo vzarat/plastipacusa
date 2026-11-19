@@ -21,6 +21,7 @@ import { createServiceRoleClient, isServiceRoleConfigured } from "@/lib/supabase
 import { createServerClient } from "@/lib/supabase/server";
 import { mapSalesQuoteRow, nextQuoteNumber } from "@/lib/sales-quotes/map";
 import { SalesQuotePdfDocument } from "@/lib/sales-quotes/pdf";
+import { quoteMerchandiseTotal } from "@/lib/sales-quotes/totals";
 import {
   emptyFreightSummary,
   priceSalesQuoteLines,
@@ -444,6 +445,7 @@ export async function sendSalesQuoteEmail(
   try {
     const pdfBuffer = await renderSalesQuotePdfBuffer(quote);
     const link = acceptUrlForToken(quote.token);
+    const merchandiseTotal = quoteMerchandiseTotal(quote);
     const result = await sendEmail({
       to: quote.email,
       from: ORDERS_FROM,
@@ -453,8 +455,10 @@ export async function sendSalesQuoteEmail(
         "",
         `Please find attached quotation ${quote.quoteNumber} from Plastipac USA.`,
         `Company: ${quote.companyName}`,
-        `Total: $${quote.total.toFixed(2)} USD`,
+        `Quote total (merchandise): $${merchandiseTotal.toFixed(2)} USD`,
         `Valid through: ${new Date(quote.validUntil).toLocaleDateString("en-US")}`,
+        "",
+        "Shipping and sales tax are calculated at checkout. Our site quotes freight through multiple carriers.",
         "",
         `Review and convert this quote to an online order:`,
         link,
@@ -468,8 +472,11 @@ export async function sendSalesQuoteEmail(
           <p>Please find attached quotation <strong>${quote.quoteNumber}</strong> from Plastipac USA.</p>
           <p>
             Company: ${quote.companyName}<br/>
-            Total: <strong>$${quote.total.toFixed(2)} USD</strong><br/>
+            Quote total (merchandise): <strong>$${merchandiseTotal.toFixed(2)} USD</strong><br/>
             Valid through: ${new Date(quote.validUntil).toLocaleDateString("en-US")}
+          </p>
+          <p style="color:#475569;font-size:13px">
+            Shipping and sales tax are calculated at checkout. Freight is quoted through multiple carriers on our site.
           </p>
           <p>
             <a href="${link}" style="display:inline-block;background:#0369a1;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:700">
