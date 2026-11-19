@@ -1,7 +1,7 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import dynamic from "next/dynamic";
-import { Inter, Teko } from "next/font/google";
+import localFont from "next/font/local";
 import { Toaster } from "sonner";
 import { LanguageProvider } from "@/context/LanguageContext";
 import ClientPWAProvider from "@/components/providers/ClientPWAProvider";
@@ -14,12 +14,17 @@ import { META_CHECKOUT_BOOTSTRAP_SCRIPT } from "@/lib/meta-checkout-storage";
 
 const SUPABASE_ORIGIN = "https://ahvmjptomjjnqjylofpa.supabase.co";
 
-/** Self-hosted via next/font — avoids render-blocking Google Fonts CSS at runtime. */
-const inter = Inter({
-  subsets: ["latin"],
+/**
+ * Local fonts — do not use next/font/google.
+ * Google intermittently returns extensionless /l/font?kit= URLs that crash
+ * Next 15's font loader (TypeError reading '1' in google/loader.js).
+ */
+const inter = localFont({
+  src: "./fonts/inter-latin-wght-normal.woff2",
   display: "swap",
   preload: true,
-  adjustFontFallback: true,
+  // Required so variable-font weights (including bold) map correctly.
+  weight: "100 900",
   variable: "--font-sans",
   fallback: [
     "-apple-system",
@@ -32,9 +37,19 @@ const inter = Inter({
   ],
 });
 
-const teko = Teko({
-  subsets: ["latin"],
-  weight: ["600", "700"],
+const teko = localFont({
+  src: [
+    {
+      path: "./fonts/teko-latin-600-normal.woff2",
+      weight: "600",
+      style: "normal",
+    },
+    {
+      path: "./fonts/teko-latin-700-normal.woff2",
+      weight: "700",
+      style: "normal",
+    },
+  ],
   display: "swap",
   variable: "--font-teko",
   fallback: ["Arial Narrow", "Impact", "sans-serif"],
@@ -139,9 +154,8 @@ export default function RootLayout({
     <html lang="en" className={`scroll-smooth ${inter.variable} ${teko.variable}`}>
       <head>
         {/* Critical-path DNS / TLS warm-up for remote product media + API.
-            Fonts: next/font self-hosts Inter and injects correct
-            <link rel="preload" as="font" crossOrigin> tags automatically —
-            do not add Google Fonts preconnect/preload (causes unused warnings). */}
+            Fonts: next/font/local self-hosts Inter + Teko and injects
+            <link rel="preload" as="font" crossOrigin> tags automatically. */}}
         <link rel="preconnect" href={SUPABASE_ORIGIN} crossOrigin="anonymous" />
         <link rel="dns-prefetch" href={SUPABASE_ORIGIN} />
 
