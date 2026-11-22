@@ -293,7 +293,7 @@ export async function previewSalesQuoteFreight(
     }
     const freight = await resolveFreightForDraft({
       items: lines,
-      shippingZip: input.shippingZip,
+      shippingZip: input.shippingZip || "",
       shippingCity: input.shippingCity,
       shippingState: input.shippingState,
       shippingAmountOverride: input.shippingAmountOverride,
