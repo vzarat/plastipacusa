@@ -61,7 +61,9 @@ export function AdminQuoteDetailView({
             {current.quoteNumber}
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            {current.companyName} · {current.contactName} · {current.email}
+            {[current.companyName || current.contactName || "Prospect", current.phone, current.email]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

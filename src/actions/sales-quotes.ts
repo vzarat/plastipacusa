@@ -329,12 +329,17 @@ export async function createSalesQuote(
   const email = String(input.email || "").trim().toLowerCase();
   const companyName = String(input.companyName || "").trim();
   const contactName = String(input.contactName || "").trim();
+  const phone = String(input.phone || "").trim();
   const shippingZip = String(input.shippingZip || "").match(/\d{5}/)?.[0] || "";
-  if (!email || !companyName || !contactName) {
-    return { success: false, error: "Company, contact name, and email are required." };
+  // Prospects often only have a name and phone — keep company / email / ZIP optional.
+  if (!contactName && !phone) {
+    return {
+      success: false,
+      error: "Add at least a contact name or phone number.",
+    };
   }
-  if (!shippingZip) {
-    return { success: false, error: "A valid 5-digit shipping ZIP is required." };
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { success: false, error: "Email address looks invalid." };
   }
 
   const lines = priceSalesQuoteLines(input.items || []);
@@ -372,7 +377,7 @@ export async function createSalesQuote(
       company_name: companyName,
       contact_name: contactName,
       email,
-      phone: String(input.phone || "").trim(),
+      phone,
       shipping_zip: shippingZip,
       shipping_city: String(input.shippingCity || "").trim(),
       shipping_state: String(input.shippingState || "").trim().toUpperCase(),
@@ -441,7 +446,8 @@ export async function sendSalesQuoteEmail(
         `Hello ${quote.contactName || "there"},`,
         "",
         `Please find attached quotation ${quote.quoteNumber} from Plastipac USA.`,
-        `Company: ${quote.companyName}`,
+        quote.companyName ? `Company: ${quote.companyName}` : null,
+        quote.contactName ? `Contact: ${quote.contactName}` : null,
         `Quote total (merchandise): $${merchandiseTotal.toFixed(2)} USD`,
         `Valid through: ${new Date(quote.validUntil).toLocaleDateString("en-US")}`,
         "",
@@ -452,13 +458,16 @@ export async function sendSalesQuoteEmail(
         "",
         "Thank you,",
         "Plastipac USA",
-      ].join("\n"),
+      ]
+        .filter((line) => line != null)
+        .join("\n"),
       html: `
         <div style="font-family:Arial,sans-serif;color:#0f172a;line-height:1.5">
           <p>Hello ${quote.contactName || "there"},</p>
           <p>Please find attached quotation <strong>${quote.quoteNumber}</strong> from Plastipac USA.</p>
           <p>
-            Company: ${quote.companyName}<br/>
+            ${quote.companyName ? `Company: ${quote.companyName}<br/>` : ""}
+            ${quote.contactName ? `Contact: ${quote.contactName}<br/>` : ""}
             Quote total (merchandise): <strong>$${merchandiseTotal.toFixed(2)} USD</strong><br/>
             Valid through: ${new Date(quote.validUntil).toLocaleDateString("en-US")}
           </p>

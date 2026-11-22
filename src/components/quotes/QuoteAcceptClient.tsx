@@ -79,7 +79,8 @@ export function QuoteAcceptClient({ quote }: { quote: SalesQuoteRecord }) {
           </p>
           <h1 className="mt-1 text-2xl font-black tracking-tight">{quote.quoteNumber}</h1>
           <p className="mt-1 text-sm text-sky-100">
-            Prepared for {quote.companyName} · Valid through{" "}
+            Prepared for{" "}
+            {quote.companyName || quote.contactName || quote.phone || "you"} · Valid through{" "}
             {new Date(quote.validUntil).toLocaleDateString("en-US")}
           </p>
         </div>
@@ -88,16 +89,23 @@ export function QuoteAcceptClient({ quote }: { quote: SalesQuoteRecord }) {
           <div className="grid gap-3 sm:grid-cols-2 text-sm">
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Customer</p>
-              <p className="font-semibold text-slate-900">{quote.companyName}</p>
-              <p className="text-slate-600">{quote.contactName}</p>
-              <p className="text-slate-600">{quote.email}</p>
+              <p className="font-semibold text-slate-900">
+                {quote.companyName || quote.contactName || "Prospect"}
+              </p>
+              {quote.companyName && quote.contactName ? (
+                <p className="text-slate-600">{quote.contactName}</p>
+              ) : null}
+              {quote.phone ? <p className="text-slate-600">{quote.phone}</p> : null}
+              {quote.email ? <p className="text-slate-600">{quote.email}</p> : null}
             </div>
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Ship to</p>
               <p className="text-slate-700">
-                ZIP {quote.shippingZip}
-                {quote.shippingCity ? ` · ${quote.shippingCity}` : ""}
-                {quote.shippingState ? `, ${quote.shippingState}` : ""}
+                {quote.shippingZip
+                  ? `ZIP ${quote.shippingZip}${
+                      quote.shippingCity ? ` · ${quote.shippingCity}` : ""
+                    }${quote.shippingState ? `, ${quote.shippingState}` : ""}`
+                  : "Shipping address collected at checkout"}
               </p>
               <p className="text-slate-700">
                 Terms: {quote.paymentTerms === "net_30" ? "Net 30" : "Prepayment"}

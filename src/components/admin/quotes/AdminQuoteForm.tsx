@@ -31,6 +31,21 @@ function money(amount: number) {
 
 type DraftLine = SalesQuoteLineInput & { key: string };
 
+type FieldKey =
+  | "customerUserId"
+  | "contactName"
+  | "phone"
+  | "email"
+  | "shippingZip"
+  | "validUntil"
+  | "lines";
+
+type FieldErrors = Partial<Record<FieldKey, string>>;
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 export function AdminQuoteForm({
   customers,
   products,
@@ -42,7 +57,7 @@ export function AdminQuoteForm({
   const [pending, startTransition] = useTransition();
   const catalog = useMemo(() => buildQuoteCatalogOptions(products), [products]);
 
-  const [customerMode, setCustomerMode] = useState<"existing" | "prospect">("existing");
+  const [customerMode, setCustomerMode] = useState<"existing" | "prospect">("prospect");
   const [customerUserId, setCustomerUserId] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [contactName, setContactName] = useState("");
@@ -50,7 +65,7 @@ export function AdminQuoteForm({
   const [phone, setPhone] = useState("");
   const [shippingZip, setShippingZip] = useState("");
   const [shippingCity, setShippingCity] = useState("");
-  const [shippingState, setShippingState] = useState("TX");
+  const [shippingState, setShippingState] = useState("");
   const [paymentTerms, setPaymentTerms] = useState<SalesQuotePaymentTerms>("prepayment");
   const [validUntil, setValidUntil] = useState(defaultValidUntil());
   const [notes, setNotes] = useState("");
@@ -61,12 +76,52 @@ export function AdminQuoteForm({
   const [selectedProductId, setSelectedProductId] = useState(catalog[0]?.id || "");
   const [selectedSku, setSelectedSku] = useState(catalog[0]?.options[0]?.sku || "");
   const [lineQty, setLineQty] = useState(1);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [freightPreview, setFreightPreview] = useState<{
     shippingAmount: number;
     shippingMethod: string;
     weightLbs: number;
     palletCount: number;
   } | null>(null);
+
+  const clearFieldError = (key: FieldKey) => {
+    setFieldErrors((current) => {
+      if (!current[key]) return current;
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const validateQuote = (): FieldErrors => {
+    const next: FieldErrors = {};
+    const trimmedContact = contactName.trim();
+    const trimmedPhone = phone.trim();
+    const trimmedEmail = email.trim();
+    const zipDigits = shippingZip.match(/\d{5}/)?.[0] || "";
+
+    if (customerMode === "existing" && !customerUserId) {
+      next.customerUserId = "Select a customer or switch to Prospect.";
+    }
+    if (!trimmedContact && !trimmedPhone) {
+      next.contactName = "Add a contact name or phone.";
+      next.phone = "Add a contact name or phone.";
+    }
+    if (trimmedEmail && !isValidEmail(trimmedEmail)) {
+      next.email = "Enter a valid email address.";
+    }
+    if (shippingZip.trim() && !zipDigits) {
+      next.shippingZip = "Enter a valid 5-digit ZIP, or leave blank.";
+    }
+    const until = new Date(`${validUntil}T23:59:59`);
+    if (!validUntil || !Number.isFinite(until.getTime()) || until.getTime() <= Date.now()) {
+      next.validUntil = "Choose a future validity date.";
+    }
+    if (lines.length === 0) {
+      next.lines = "Add at least one product line.";
+    }
+    return next;
+  };
 
   const selectedProduct = catalog.find((product) => product.id === selectedProductId) || null;
   const selectedOption =
@@ -84,12 +139,16 @@ export function AdminQuoteForm({
 
   const onSelectCustomer = (id: string) => {
     setCustomerUserId(id);
+    clearFieldError("customerUserId");
     const customer = customers.find((row) => row.id === id);
     if (!customer) return;
     setCompanyName(customer.companyName || "");
     setContactName(customer.contactName || "");
     setEmail(customer.email || "");
     setPhone(customer.phone || "");
+    clearFieldError("contactName");
+    clearFieldError("phone");
+    clearFieldError("email");
     setTaxExempt(Boolean(customer.taxExempt));
     if (customer.creditApplicationStatus === "approved") {
       setPaymentTerms("net_30");
@@ -106,6 +165,7 @@ export function AdminQuoteForm({
       ...current,
       { ...next, key: `${next.sku}-${Date.now()}-${Math.random()}` },
     ]);
+    clearFieldError("lines");
     setFreightPreview(null);
   };
 
@@ -146,6 +206,14 @@ export function AdminQuoteForm({
   };
 
   const saveQuote = () => {
+    const errors = validateQuote();
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      const first = Object.values(errors)[0];
+      toast.error(first || "Fix the highlighted fields.");
+      return;
+    }
+
     startTransition(async () => {
       const result = await createSalesQuote({
         customerUserId: customerMode === "existing" ? customerUserId || null : null,
@@ -167,9 +235,25 @@ export function AdminQuoteForm({
         taxExempt,
       });
       if (!result.success || !result.quote) {
-        toast.error(result.error || "Could not save quote.");
+        const message = result.error || "Could not save quote.";
+        const serverErrors: FieldErrors = {};
+        if (/contact name or phone/i.test(message)) {
+          serverErrors.contactName = message;
+          serverErrors.phone = message;
+        } else if (/email/i.test(message)) {
+          serverErrors.email = message;
+        } else if (/zip/i.test(message)) {
+          serverErrors.shippingZip = message;
+        } else if (/valid/i.test(message)) {
+          serverErrors.validUntil = message;
+        } else if (/product line/i.test(message)) {
+          serverErrors.lines = message;
+        }
+        if (Object.keys(serverErrors).length > 0) setFieldErrors(serverErrors);
+        toast.error(message);
         return;
       }
+      setFieldErrors({});
       toast.success(`Saved ${result.quote.quoteNumber}`);
       router.push(`/admin/quotes/${result.quote.id}`);
     });
@@ -180,8 +264,9 @@ export function AdminQuoteForm({
       <div>
         <h1 className="text-2xl font-black tracking-tight text-slate-900">New Sales Quote</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Select a customer or prospect, add Manual/Automatic tiers, preview freight, then save.
-          Free Local Delivery uses the live 3+ pallet Houston/RGV rule.
+          For prospects you only need a contact name or phone. Company, email, and ZIP are optional
+          until you have them. Free Local Delivery still uses the live 3+ pallet Houston/RGV rule when
+          a ZIP is entered.
         </p>
       </div>
 
@@ -216,13 +301,22 @@ export function AdminQuoteForm({
 
         {customerMode === "existing" ? (
           <label className="block text-sm">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <span
+              className={`text-xs font-bold uppercase tracking-wider ${
+                fieldErrors.customerUserId ? "text-rose-600" : "text-slate-500"
+              }`}
+            >
               Customer
             </span>
             <select
               value={customerUserId}
               onChange={(event) => onSelectCustomer(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+              aria-invalid={Boolean(fieldErrors.customerUserId)}
+              className={`mt-1 w-full rounded-xl border px-3 py-2.5 text-sm ${
+                fieldErrors.customerUserId
+                  ? "border-rose-500 bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-200"
+                  : "border-slate-200"
+              }`}
             >
               <option value="">Select a customer…</option>
               {customers.map((customer) => (
@@ -231,17 +325,61 @@ export function AdminQuoteForm({
                 </option>
               ))}
             </select>
+            {fieldErrors.customerUserId ? (
+              <p className="mt-1 text-xs font-medium text-rose-600">
+                {fieldErrors.customerUserId}
+              </p>
+            ) : null}
           </label>
         ) : null}
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Company" value={companyName} onChange={setCompanyName} />
-          <Field label="Contact name" value={contactName} onChange={setContactName} />
-          <Field label="Email" value={email} onChange={setEmail} type="email" />
-          <Field label="Phone" value={phone} onChange={setPhone} />
-          <Field label="Shipping ZIP" value={shippingZip} onChange={setShippingZip} />
-          <Field label="City" value={shippingCity} onChange={setShippingCity} />
-          <Field label="State" value={shippingState} onChange={setShippingState} />
+          <Field
+            label="Contact name"
+            value={contactName}
+            error={fieldErrors.contactName}
+            onChange={(value) => {
+              setContactName(value);
+              clearFieldError("contactName");
+              if (value.trim()) clearFieldError("phone");
+            }}
+          />
+          <Field
+            label="Phone"
+            value={phone}
+            error={fieldErrors.phone}
+            onChange={(value) => {
+              setPhone(value);
+              clearFieldError("phone");
+              if (value.trim()) clearFieldError("contactName");
+            }}
+          />
+          <Field
+            label="Company (optional)"
+            value={companyName}
+            onChange={setCompanyName}
+          />
+          <Field
+            label="Email (optional)"
+            value={email}
+            error={fieldErrors.email}
+            onChange={(value) => {
+              setEmail(value);
+              clearFieldError("email");
+            }}
+            type="email"
+          />
+          <Field
+            label="Shipping ZIP (optional)"
+            value={shippingZip}
+            error={fieldErrors.shippingZip}
+            onChange={(value) => {
+              setShippingZip(value);
+              clearFieldError("shippingZip");
+            }}
+          />
+          <Field label="City (optional)" value={shippingCity} onChange={setShippingCity} />
+          <Field label="State (optional)" value={shippingState} onChange={setShippingState} />
           <label className="block text-sm">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
               Payment terms
@@ -258,15 +396,30 @@ export function AdminQuoteForm({
             </select>
           </label>
           <label className="block text-sm">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <span
+              className={`text-xs font-bold uppercase tracking-wider ${
+                fieldErrors.validUntil ? "text-rose-600" : "text-slate-500"
+              }`}
+            >
               Valid until
             </span>
             <input
               type="date"
               value={validUntil}
-              onChange={(event) => setValidUntil(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+              onChange={(event) => {
+                setValidUntil(event.target.value);
+                clearFieldError("validUntil");
+              }}
+              aria-invalid={Boolean(fieldErrors.validUntil)}
+              className={`mt-1 w-full rounded-xl border px-3 py-2.5 text-sm ${
+                fieldErrors.validUntil
+                  ? "border-rose-500 bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-200"
+                  : "border-slate-200"
+              }`}
             />
+            {fieldErrors.validUntil ? (
+              <p className="mt-1 text-xs font-medium text-rose-600">{fieldErrors.validUntil}</p>
+            ) : null}
           </label>
           <label className="block text-sm">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -307,10 +460,23 @@ export function AdminQuoteForm({
         </label>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm space-y-4">
-        <h2 className="text-sm font-black uppercase tracking-wider text-slate-800">
-          Products
-        </h2>
+      <section
+        className={`rounded-2xl bg-white p-4 sm:p-6 shadow-sm space-y-4 border ${
+          fieldErrors.lines ? "border-rose-400 ring-1 ring-rose-200" : "border-slate-200"
+        }`}
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2
+            className={`text-sm font-black uppercase tracking-wider ${
+              fieldErrors.lines ? "text-rose-700" : "text-slate-800"
+            }`}
+          >
+            Products
+          </h2>
+          {fieldErrors.lines ? (
+            <p className="text-xs font-medium text-rose-600">{fieldErrors.lines}</p>
+          ) : null}
+        </div>
         <div className="grid gap-3 lg:grid-cols-12">
           <label className="lg:col-span-5 block text-sm">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -507,21 +673,35 @@ function Field({
   value,
   onChange,
   type = "text",
+  error,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
+  error?: string;
 }) {
   return (
     <label className="block text-sm">
-      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</span>
+      <span
+        className={`text-xs font-bold uppercase tracking-wider ${
+          error ? "text-rose-600" : "text-slate-500"
+        }`}
+      >
+        {label}
+      </span>
       <input
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+        aria-invalid={Boolean(error)}
+        className={`mt-1 w-full rounded-xl border px-3 py-2.5 text-sm ${
+          error
+            ? "border-rose-500 bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-200"
+            : "border-slate-200"
+        }`}
       />
+      {error ? <p className="mt-1 text-xs font-medium text-rose-600">{error}</p> : null}
     </label>
   );
 }

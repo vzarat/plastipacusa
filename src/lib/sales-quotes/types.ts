@@ -88,11 +88,11 @@ export interface SalesQuoteRecord {
 
 export interface SalesQuoteDraftInput {
   customerUserId?: string | null;
-  companyName: string;
-  contactName: string;
-  email: string;
+  companyName?: string;
+  contactName?: string;
+  email?: string;
   phone?: string;
-  shippingZip: string;
+  shippingZip?: string;
   shippingCity?: string;
   shippingState?: string;
   paymentTerms: SalesQuotePaymentTerms;

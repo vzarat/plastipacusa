@@ -81,8 +81,14 @@ export function AdminQuotesListView({ quotes }: { quotes: SalesQuoteRecord[] }) 
                       </p>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-semibold text-slate-900">{quote.companyName}</p>
-                      <p className="text-[12px] text-slate-500">{quote.email}</p>
+                      <p className="font-semibold text-slate-900">
+                        {quote.companyName || quote.contactName || quote.phone || "Prospect"}
+                      </p>
+                      <p className="text-[12px] text-slate-500">
+                        {[quote.contactName && quote.companyName ? quote.contactName : null, quote.email || quote.phone]
+                          .filter(Boolean)
+                          .join(" · ") || "—"}
+                      </p>
                     </td>
                     <td className="px-4 py-3 font-semibold text-slate-900">
                       {money(Math.max(0, quote.subtotal - quote.discountAmount))}

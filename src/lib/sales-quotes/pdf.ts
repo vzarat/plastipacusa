@@ -129,7 +129,11 @@ export async function buildSalesQuotePdfBuffer(input: {
   const pdf = await PDFDocument.create();
   pdf.setTitle(`${quote.quoteNumber} — Plastipac USA`);
   pdf.setAuthor("Plastipac USA");
-  pdf.setSubject(`Sales quote for ${quote.companyName || quote.contactName}`);
+  pdf.setSubject(
+    `Sales quote for ${
+      quote.companyName || quote.contactName || quote.phone || "prospect"
+    }`
+  );
 
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -240,7 +244,12 @@ export async function buildSalesQuotePdfBuffer(input: {
   drawText(page, "QUOTE SCOPE", MARGIN + CONTENT_WIDTH / 2 + 10, y, bold, 9, COLOR.brand);
 
   y -= 14;
-  drawText(page, quote.companyName || "—", MARGIN, y, bold, 10, COLOR.ink, {
+  const preparedForTitle =
+    quote.companyName?.trim() ||
+    quote.contactName?.trim() ||
+    quote.phone?.trim() ||
+    "Prospect";
+  drawText(page, preparedForTitle, MARGIN, y, bold, 10, COLOR.ink, {
     maxWidth: CONTENT_WIDTH / 2 - 12,
   });
   const scopeLines = wrapText(
@@ -261,10 +270,13 @@ export async function buildSalesQuotePdfBuffer(input: {
     );
   });
 
-  y -= 14;
-  drawText(page, quote.contactName || "", MARGIN, y, font, 8, COLOR.muted, {
-    maxWidth: CONTENT_WIDTH / 2 - 12,
-  });
+  if (quote.companyName?.trim() && quote.contactName?.trim()) {
+    y -= 14;
+    drawText(page, quote.contactName, MARGIN, y, font, 8, COLOR.muted, {
+      maxWidth: CONTENT_WIDTH / 2 - 12,
+    });
+  }
+
   drawText(
     page,
     `Est. pallets: ${Number(quote.palletCount || 0).toFixed(2)}`,
@@ -275,10 +287,12 @@ export async function buildSalesQuotePdfBuffer(input: {
     COLOR.muted
   );
 
-  y -= 12;
-  drawText(page, quote.email || "", MARGIN, y, font, 8, COLOR.muted, {
-    maxWidth: CONTENT_WIDTH / 2 - 12,
-  });
+  if (quote.email?.trim()) {
+    y -= 12;
+    drawText(page, quote.email, MARGIN, y, font, 8, COLOR.muted, {
+      maxWidth: CONTENT_WIDTH / 2 - 12,
+    });
+  }
   if (Number(quote.weightLbs || 0) > 0) {
     drawText(
       page,
@@ -291,24 +305,26 @@ export async function buildSalesQuotePdfBuffer(input: {
     );
   }
 
-  if (quote.phone) {
+  if (quote.phone?.trim()) {
     y -= 12;
     drawText(page, quote.phone, MARGIN, y, font, 8, COLOR.muted);
   }
 
-  y -= 12;
-  drawText(
-    page,
-    `Ship ZIP ${quote.shippingZip}${
-      quote.shippingCity ? ` · ${quote.shippingCity}` : ""
-    }${quote.shippingState ? `, ${quote.shippingState}` : ""}`,
-    MARGIN,
-    y,
-    font,
-    8,
-    COLOR.muted,
-    { maxWidth: CONTENT_WIDTH / 2 - 12 }
-  );
+  if (quote.shippingZip?.trim()) {
+    y -= 12;
+    drawText(
+      page,
+      `Ship ZIP ${quote.shippingZip}${
+        quote.shippingCity ? ` · ${quote.shippingCity}` : ""
+      }${quote.shippingState ? `, ${quote.shippingState}` : ""}`,
+      MARGIN,
+      y,
+      font,
+      8,
+      COLOR.muted,
+      { maxWidth: CONTENT_WIDTH / 2 - 12 }
+    );
+  }
 
   y -= 26;
   drawText(page, "LINE ITEMS", MARGIN, y, bold, 9, COLOR.brand);
