@@ -240,93 +240,99 @@ export async function buildSalesQuotePdfBuffer(input: {
   });
 
   y -= 22;
-  drawText(page, "PREPARED FOR", MARGIN, y, bold, 9, COLOR.brand);
-  drawText(page, "QUOTE SCOPE", MARGIN + CONTENT_WIDTH / 2 + 10, y, bold, 9, COLOR.brand);
+  const colLeft = MARGIN;
+  const colRight = MARGIN + CONTENT_WIDTH / 2 + 10;
+  const colWidth = CONTENT_WIDTH / 2 - 12;
 
-  y -= 14;
+  drawText(page, "PREPARED FOR", colLeft, y, bold, 9, COLOR.brand);
+  drawText(page, "QUOTE SCOPE", colRight, y, bold, 9, COLOR.brand);
+
+  let leftY = y - 14;
+  let rightY = y - 14;
+
   const preparedForTitle =
     quote.companyName?.trim() ||
     quote.contactName?.trim() ||
     quote.phone?.trim() ||
     "Prospect";
-  drawText(page, preparedForTitle, MARGIN, y, bold, 10, COLOR.ink, {
-    maxWidth: CONTENT_WIDTH / 2 - 12,
+  drawText(page, preparedForTitle, colLeft, leftY, bold, 10, COLOR.ink, {
+    maxWidth: colWidth,
   });
-  const scopeLines = wrapText(
-    "Merchandise only — shipping and sales tax are calculated at checkout.",
-    font,
-    8,
-    CONTENT_WIDTH / 2 - 12
-  );
-  scopeLines.forEach((line, i) => {
-    drawText(
-      page,
-      line,
-      MARGIN + CONTENT_WIDTH / 2 + 10,
-      y - i * 11,
-      font,
-      8,
-      COLOR.muted
-    );
-  });
+  leftY -= 14;
 
   if (quote.companyName?.trim() && quote.contactName?.trim()) {
-    y -= 14;
-    drawText(page, quote.contactName, MARGIN, y, font, 8, COLOR.muted, {
-      maxWidth: CONTENT_WIDTH / 2 - 12,
+    drawText(page, quote.contactName, colLeft, leftY, font, 8, COLOR.muted, {
+      maxWidth: colWidth,
     });
+    leftY -= 12;
   }
-
-  drawText(
-    page,
-    `Est. pallets: ${Number(quote.palletCount || 0).toFixed(2)}`,
-    MARGIN + CONTENT_WIDTH / 2 + 10,
-    y,
-    font,
-    8,
-    COLOR.muted
-  );
-
   if (quote.email?.trim()) {
-    y -= 12;
-    drawText(page, quote.email, MARGIN, y, font, 8, COLOR.muted, {
-      maxWidth: CONTENT_WIDTH / 2 - 12,
+    drawText(page, quote.email, colLeft, leftY, font, 8, COLOR.muted, {
+      maxWidth: colWidth,
     });
+    leftY -= 12;
   }
-  if (Number(quote.weightLbs || 0) > 0) {
-    drawText(
-      page,
-      `Est. product weight: ${Number(quote.weightLbs || 0).toLocaleString("en-US")} lbs`,
-      MARGIN + CONTENT_WIDTH / 2 + 10,
-      y,
-      font,
-      8,
-      COLOR.muted
-    );
-  }
-
   if (quote.phone?.trim()) {
-    y -= 12;
-    drawText(page, quote.phone, MARGIN, y, font, 8, COLOR.muted);
+    drawText(page, quote.phone, colLeft, leftY, font, 8, COLOR.muted, {
+      maxWidth: colWidth,
+    });
+    leftY -= 12;
   }
-
   if (quote.shippingZip?.trim()) {
-    y -= 12;
     drawText(
       page,
       `Ship ZIP ${quote.shippingZip}${
         quote.shippingCity ? ` · ${quote.shippingCity}` : ""
       }${quote.shippingState ? `, ${quote.shippingState}` : ""}`,
-      MARGIN,
-      y,
+      colLeft,
+      leftY,
       font,
       8,
       COLOR.muted,
-      { maxWidth: CONTENT_WIDTH / 2 - 12 }
+      { maxWidth: colWidth }
     );
+    leftY -= 12;
   }
 
-  y -= 26;
+  const scopeLines = wrapText(
+    "Merchandise only — shipping and sales tax are calculated at checkout.",
+    font,
+    8,
+    colWidth
+  );
+  for (const line of scopeLines) {
+    drawText(page, line, colRight, rightY, font, 8, COLOR.muted, {
+      maxWidth: colWidth,
+    });
+    rightY -= 11;
+  }
+  rightY -= 4;
+  drawText(
+    page,
+    `Est. pallets: ${Number(quote.palletCount || 0).toFixed(2)}`,
+    colRight,
+    rightY,
+    font,
+    8,
+    COLOR.muted,
+    { maxWidth: colWidth }
+  );
+  rightY -= 12;
+  if (Number(quote.weightLbs || 0) > 0) {
+    drawText(
+      page,
+      `Est. product weight: ${Number(quote.weightLbs || 0).toLocaleString("en-US")} lbs`,
+      colRight,
+      rightY,
+      font,
+      8,
+      COLOR.muted,
+      { maxWidth: colWidth }
+    );
+    rightY -= 12;
+  }
+
+  y = Math.min(leftY, rightY) - 14;
   drawText(page, "LINE ITEMS", MARGIN, y, bold, 9, COLOR.brand);
   y -= 8;
 
