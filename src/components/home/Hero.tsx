@@ -5,7 +5,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 
-const SLIDE_BACKGROUND_VIDEO =
+const SLIDE_BACKGROUND_VIDEO_1 =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/BACKGROUND%202.mp4";
+const SLIDE_BACKGROUND_VIDEO_2 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/BACKGROUND.mp4";
 const SLIDE_SDK_4 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_4.jpg";
@@ -19,12 +21,13 @@ const SLIDE_MOBILE_STORY =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/Instagram%20story%20-%208.png";
 
 const MOBILE_SLIDE_COUNT = 1;
-const DESKTOP_SLIDE_COUNT = 5;
+const DESKTOP_SLIDE_COUNT = 6;
 const AUTO_MS = 7000;
 const SLIDE_LABELS = [
+  "Featured video",
   "Packaging solutions",
-  "High-performance at competitive prices",
   "Featured",
+  "High-performance at competitive prices",
   "Increase packaging efficiency",
   "Quality you can count on",
 ];
@@ -57,8 +60,16 @@ function MobileStorySlide() {
   );
 }
 
-/** Desktop video slide (3rd). No Shop CTA. */
-function VideoSlide({ active }: { active: boolean }) {
+/** Desktop video slide. No Shop CTA. */
+function VideoSlide({
+  active,
+  src,
+  label,
+}: {
+  active: boolean;
+  src: string;
+  label: string;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -78,13 +89,13 @@ function VideoSlide({ active }: { active: boolean }) {
       <video
         ref={videoRef}
         className="absolute inset-0 h-full w-full object-cover"
-        src={SLIDE_BACKGROUND_VIDEO}
+        src={src}
         muted
         loop
         playsInline
         autoPlay
         preload="metadata"
-        aria-label="Plastipac USA stretch film — featured packaging video"
+        aria-label={label}
       />
     </div>
   );
@@ -97,7 +108,6 @@ function FeaturedImageSlide() {
         src={SLIDE_SDK_4}
         alt="Plastipac USA stretch film — featured packaging solutions"
         fill
-        priority
         sizes="(max-width: 1400px) 100vw, 1400px"
         className="hidden object-contain object-center md:block"
       />
@@ -215,7 +225,11 @@ export function Hero() {
           inert={index !== 0}
         >
           <MobileStorySlide />
-          <FeaturedImageSlide />
+          <VideoSlide
+            active={index === 0}
+            src={SLIDE_BACKGROUND_VIDEO_1}
+            label="Plastipac USA stretch film — featured packaging video"
+          />
         </div>
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
@@ -224,7 +238,7 @@ export function Hero() {
           aria-hidden={index !== 1}
           inert={index !== 1}
         >
-          <PerformanceSlide />
+          <FeaturedImageSlide />
         </div>
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
@@ -233,7 +247,11 @@ export function Hero() {
           aria-hidden={index !== 2}
           inert={index !== 2}
         >
-          <VideoSlide active={index === 2} />
+          <VideoSlide
+            active={index === 2}
+            src={SLIDE_BACKGROUND_VIDEO_2}
+            label="Plastipac USA stretch film — packaging background video"
+          />
         </div>
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
@@ -242,7 +260,7 @@ export function Hero() {
           aria-hidden={index !== 3}
           inert={index !== 3}
         >
-          <EfficiencySlide />
+          <PerformanceSlide />
         </div>
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
@@ -250,6 +268,15 @@ export function Hero() {
           }`}
           aria-hidden={index !== 4}
           inert={index !== 4}
+        >
+          <EfficiencySlide />
+        </div>
+        <div
+          className={`absolute inset-0 transition-opacity duration-500 ${
+            index === 5 ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+          aria-hidden={index !== 5}
+          inert={index !== 5}
         >
           <QualitySlide />
         </div>
