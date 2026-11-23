@@ -1,6 +1,7 @@
 "use client";
 
 import type { CampaignRecord, CampaignSendRecord } from "@/lib/campaigns/types";
+import { AdminCampaignAddRecipients } from "@/components/admin/campaigns/AdminCampaignAddRecipients";
 import { AdminCampaignBuilder } from "@/components/admin/campaigns/AdminCampaignBuilder";
 
 export function AdminCampaignDetailView({
@@ -19,6 +20,8 @@ export function AdminCampaignDetailView({
         campaign={campaign}
         availableTags={availableTags}
       />
+
+      <AdminCampaignAddRecipients campaign={campaign} />
 
       <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div className="border-b border-slate-100 px-4 py-3">

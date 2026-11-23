@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/actions/auth";
+import { upsertLead } from "@/actions/leads";
 import { mapCampaignRow, mapCampaignSendRow, mapLeadRow } from "@/lib/campaigns/map";
 import {
   defaultCampaignBodyHtml,
@@ -190,7 +191,7 @@ async function selectAudience(
  */
 export async function launchCampaign(
   id: string
-): Promise<{ success: boolean; queued?: number; error?: string }> {
+): Promise<{ success: boolean; queued?: number; dispatched?: number; error?: string }> {
   const admin = await requireAdmin();
   if (!admin) return { success: false, error: "Unauthorized." };
 
@@ -256,9 +257,250 @@ export async function launchCampaign(
 
   if (updateError) return { success: false, error: updateError.message };
 
+  // Start dispatching immediately (don't wait for the daily cron / Flush button).
+  let dispatched = 0;
+  try {
+    for (let i = 0; i < 4; i += 1) {
+      const batch = await dispatchPendingCampaignSends({ limit: CAMPAIGN_BATCH_SIZE });
+      dispatched += batch.sent;
+      if (batch.processed === 0) break;
+    }
+  } catch (error) {
+    console.error(
+      "[campaigns] launch dispatch:",
+      error instanceof Error ? error.message : error
+    );
+  }
+
   revalidatePath("/admin/tools/campaigns");
   revalidatePath(`/admin/tools/campaigns/${id}`);
-  return { success: true, queued: audience.length };
+  return { success: true, queued: audience.length, dispatched };
+}
+
+function parseEmailList(raw: string): string[] {
+  return Array.from(
+    new Set(
+      String(raw || "")
+        .split(/[\s,;]+/)
+        .map((email) => email.trim().toLowerCase())
+        .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    )
+  );
+}
+
+/**
+ * Queue extra recipients on an already-launched campaign (sending / sent / paused).
+ * Creates missing leads, skips duplicates and unsubscribed addresses.
+ */
+export async function addRecipientsToCampaign(
+  id: string,
+  input: { emails?: string; includeSegment?: boolean }
+): Promise<{
+  success: boolean;
+  queued?: number;
+  skipped?: number;
+  unsubscribed?: number;
+  invalid?: number;
+  dispatched?: number;
+  error?: string;
+}> {
+  const admin = await requireAdmin();
+  if (!admin) return { success: false, error: "Unauthorized." };
+
+  const db = await adminDb();
+  const { data: campaignRow, error: fetchError } = await db
+    .from("campaigns")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (fetchError) return { success: false, error: fetchError.message };
+  if (!campaignRow) return { success: false, error: "Campaign not found." };
+
+  const campaign = mapCampaignRow(campaignRow as Record<string, unknown>);
+  if (
+    campaign.status !== "sending" &&
+    campaign.status !== "sent" &&
+    campaign.status !== "paused"
+  ) {
+    return {
+      success: false,
+      error: "Launch the campaign first, then add more emails.",
+    };
+  }
+  if (!campaign.subject.trim() || !campaign.htmlBody.trim()) {
+    return { success: false, error: "Subject and HTML body are required." };
+  }
+
+  const typedEmails = parseEmailList(input.emails || "");
+  const rawTokens = String(input.emails || "")
+    .split(/[\s,;]+/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+  const invalid = Math.max(0, rawTokens.length - typedEmails.length);
+
+  const byEmail = new Map<string, { id: string; email: string; subscribed: boolean }>();
+
+  for (const email of typedEmails) {
+    const result = await upsertLead({
+      email,
+      source: "manual",
+      tags: campaign.segmentTags,
+      subscribed: true,
+    });
+    if (result.success && result.lead) {
+      byEmail.set(result.lead.email.toLowerCase(), {
+        id: result.lead.id,
+        email: result.lead.email,
+        subscribed: result.lead.subscribed,
+      });
+    }
+  }
+
+  if (input.includeSegment) {
+    try {
+      const audience = await selectAudience(db, campaign.segmentTags);
+      for (const lead of audience) {
+        byEmail.set(lead.email.toLowerCase(), {
+          id: lead.id,
+          email: lead.email,
+          subscribed: lead.subscribed,
+        });
+      }
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : "Failed to load segment.",
+      };
+    }
+  }
+
+  if (byEmail.size === 0) {
+    return {
+      success: false,
+      error:
+        invalid > 0
+          ? `No valid emails found (${invalid} invalid).`
+          : "Paste emails or include the segment to add recipients.",
+    };
+  }
+
+  const { data: existingSends, error: existingError } = await db
+    .from("campaign_sends")
+    .select("lead_id, email")
+    .eq("campaign_id", id)
+    .eq("step_index", 0);
+  if (existingError) return { success: false, error: existingError.message };
+
+  const alreadyLeadIds = new Set(
+    (existingSends || [])
+      .map((row) => (row.lead_id ? String(row.lead_id) : ""))
+      .filter(Boolean)
+  );
+  const alreadyEmails = new Set(
+    (existingSends || []).map((row) => String(row.email || "").toLowerCase()).filter(Boolean)
+  );
+
+  let skipped = 0;
+  let unsubscribed = 0;
+  const sendRows: Array<{
+    campaign_id: string;
+    lead_id: string;
+    email: string;
+    step_index: number;
+    send_after: string;
+    status: string;
+  }> = [];
+
+  const now = new Date().toISOString();
+  for (const lead of byEmail.values()) {
+    const emailKey = lead.email.toLowerCase();
+    if (alreadyLeadIds.has(lead.id) || alreadyEmails.has(emailKey)) {
+      skipped += 1;
+      continue;
+    }
+    if (!lead.subscribed) {
+      unsubscribed += 1;
+      continue;
+    }
+    sendRows.push({
+      campaign_id: id,
+      lead_id: lead.id,
+      email: lead.email,
+      step_index: 0,
+      send_after: now,
+      status: "pending",
+    });
+  }
+
+  if (sendRows.length === 0) {
+    return {
+      success: true,
+      queued: 0,
+      skipped,
+      unsubscribed,
+      invalid,
+      dispatched: 0,
+      error:
+        skipped || unsubscribed
+          ? undefined
+          : "No new recipients to queue.",
+    };
+  }
+
+  for (let i = 0; i < sendRows.length; i += 200) {
+    const chunk = sendRows.slice(i, i + 200);
+    const { error } = await db.from("campaign_sends").insert(chunk);
+    if (error) {
+      // Race / unique constraint — count as skipped instead of failing the whole batch.
+      if (/duplicate|unique/i.test(error.message)) {
+        skipped += chunk.length;
+        continue;
+      }
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Re-open a finished campaign so the new queue can drain.
+  if (campaign.status === "sent") {
+    await db
+      .from("campaigns")
+      .update({
+        status: "sending",
+        completed_at: null,
+        updated_at: now,
+        started_at: campaign.startedAt || now,
+      })
+      .eq("id", id);
+  } else {
+    await db.from("campaigns").update({ updated_at: now }).eq("id", id);
+  }
+
+  let dispatched = 0;
+  if (campaign.status !== "paused") {
+    try {
+      for (let i = 0; i < 4; i += 1) {
+        const batch = await dispatchPendingCampaignSends({ limit: CAMPAIGN_BATCH_SIZE });
+        dispatched += batch.sent;
+        if (batch.processed === 0) break;
+      }
+    } catch (error) {
+      console.error(
+        "[campaigns] add recipients dispatch:",
+        error instanceof Error ? error.message : error
+      );
+    }
+  }
+
+  revalidatePath("/admin/tools/campaigns");
+  revalidatePath(`/admin/tools/campaigns/${id}`);
+  return {
+    success: true,
+    queued: sendRows.length,
+    skipped,
+    unsubscribed,
+    invalid,
+    dispatched,
+  };
 }
 
 async function queueNextSequenceStep(input: {
@@ -523,21 +765,62 @@ export async function resumeCampaign(
   return { success: true };
 }
 
-/** Admin-triggered flush of the send queue (still rate-limited). */
+/** Count pending campaign_sends waiting for dispatch. */
+export async function getCampaignQueueStats(): Promise<{
+  pending: number;
+  sendingCampaigns: number;
+}> {
+  const admin = await requireAdmin();
+  if (!admin) return { pending: 0, sendingCampaigns: 0 };
+
+  const db = await adminDb();
+  const [{ count: pendingCount }, { count: sendingCount }] = await Promise.all([
+    db
+      .from("campaign_sends")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending"),
+    db
+      .from("campaigns")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "sending"),
+  ]);
+
+  return {
+    pending: pendingCount || 0,
+    sendingCampaigns: sendingCount || 0,
+  };
+}
+
+/** Admin-triggered flush of the send queue (rate-limited, multi-batch). */
 export async function flushCampaignQueue(): Promise<{
   success: boolean;
   processed: number;
   sent: number;
   failed: number;
+  remaining?: number;
   error?: string;
 }> {
   const admin = await requireAdmin();
   if (!admin) {
     return { success: false, processed: 0, sent: 0, failed: 0, error: "Unauthorized." };
   }
-  const result = await dispatchPendingCampaignSends();
+
+  let processed = 0;
+  let sent = 0;
+  let failed = 0;
+
+  // Up to ~250 emails per click (25 × 10), with gaps inside each batch.
+  for (let i = 0; i < 10; i += 1) {
+    const batch = await dispatchPendingCampaignSends({ limit: CAMPAIGN_BATCH_SIZE });
+    processed += batch.processed;
+    sent += batch.sent;
+    failed += batch.failed;
+    if (batch.processed === 0) break;
+  }
+
+  const remaining = (await getCampaignQueueStats()).pending;
   revalidatePath("/admin/tools/campaigns");
-  return { success: true, ...result };
+  return { success: true, processed, sent, failed, remaining };
 }
 
 export async function recordCampaignOpenByResendId(resendId: string) {

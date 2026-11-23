@@ -18,7 +18,13 @@ function Metric({ label, value }: { label: string; value: number }) {
   );
 }
 
-export function AdminCampaignsListView({ campaigns }: { campaigns: CampaignRecord[] }) {
+export function AdminCampaignsListView({
+  campaigns,
+  queuePending = 0,
+}: {
+  campaigns: CampaignRecord[];
+  queuePending?: number;
+}) {
   const [pending, startTransition] = useTransition();
 
   function flushQueue() {
@@ -28,9 +34,19 @@ export function AdminCampaignsListView({ campaigns }: { campaigns: CampaignRecor
         toast.error(result.error || "Flush failed.");
         return;
       }
-      toast.success(
-        `Dispatched ${result.sent} sent / ${result.failed} failed (${result.processed} processed).`
-      );
+      if (result.processed === 0) {
+        toast.message(
+          result.remaining
+            ? `${result.remaining} still queued but not due yet.`
+            : "No pending emails in the send queue."
+        );
+      } else {
+        toast.success(
+          `Sent ${result.sent}` +
+            (result.failed ? ` · ${result.failed} failed` : "") +
+            (result.remaining ? ` · ${result.remaining} still pending — click Flush again.` : "")
+        );
+      }
       window.location.reload();
     });
   }
@@ -41,7 +57,16 @@ export function AdminCampaignsListView({ campaigns }: { campaigns: CampaignRecor
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Email campaigns</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Broadcast or sequence campaigns via Resend with rate-limited dispatch.
+            <span className="font-semibold text-slate-800">SENDING</span> = queued.{" "}
+            <span className="font-semibold text-slate-800">Sent</span> rises as Resend
+            delivers.{" "}
+            {queuePending > 0 ? (
+              <span className="text-amber-700">
+                {queuePending} email{queuePending === 1 ? "" : "s"} waiting — click Flush.
+              </span>
+            ) : (
+              "Queue is empty."
+            )}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -49,10 +74,11 @@ export function AdminCampaignsListView({ campaigns }: { campaigns: CampaignRecor
             type="button"
             disabled={pending}
             onClick={flushQueue}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-950 hover:bg-amber-100 disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${pending ? "animate-spin" : ""}`} />
             Flush send queue
+            {queuePending > 0 ? ` (${queuePending})` : ""}
           </button>
           <Link
             href="/admin/tools/campaigns/new"
@@ -100,6 +126,11 @@ export function AdminCampaignsListView({ campaigns }: { campaigns: CampaignRecor
                 ) : (
                   <p className="mt-2 text-xs text-slate-500">Segment: all subscribed leads</p>
                 )}
+                {campaign.status === "sending" && campaign.sentCount === 0 ? (
+                  <p className="mt-2 text-xs font-semibold text-amber-700">
+                    Queued but not dispatched yet — use Flush send queue.
+                  </p>
+                ) : null}
               </div>
               <div className="grid grid-cols-3 gap-4 sm:grid-cols-5">
                 <Metric label="Sent" value={campaign.sentCount} />

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getCurrentUser } from "@/actions/auth";
-import { listCampaigns } from "@/actions/campaigns";
+import { getCampaignQueueStats, listCampaigns } from "@/actions/campaigns";
 import { AdminToolsShell } from "@/components/admin/tools/AdminToolsShell";
 import { AdminCampaignsListView } from "@/components/admin/campaigns/AdminCampaignsListView";
 
@@ -15,11 +15,14 @@ export default async function AdminToolsCampaignsPage() {
   if (!currentUser) redirect("/login?redirect=/admin/tools/campaigns");
   if (currentUser.profile.role !== "admin") redirect("/dashboard");
 
-  const campaigns = await listCampaigns();
+  const [campaigns, queue] = await Promise.all([
+    listCampaigns(),
+    getCampaignQueueStats(),
+  ]);
 
   return (
     <AdminToolsShell profile={currentUser.profile}>
-      <AdminCampaignsListView campaigns={campaigns} />
+      <AdminCampaignsListView campaigns={campaigns} queuePending={queue.pending} />
     </AdminToolsShell>
   );
 }

@@ -135,7 +135,12 @@ export function AdminCampaignBuilder({
         toast.error(result.error || "Launch failed.");
         return;
       }
-      toast.success(`Queued ${result.queued} recipients. Cron will send in batches.`);
+      toast.success(
+        `Queued ${result.queued} recipients` +
+          (result.dispatched
+            ? ` · started sending ${result.dispatched} now.`
+            : ". Use Flush send queue if Sent stays at 0.")
+      );
       router.refresh();
     });
   }
