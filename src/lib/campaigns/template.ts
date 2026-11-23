@@ -40,31 +40,31 @@ export function freeDeliveryCtaHtml(label = "See Free Delivery Offers"): string 
   return `<a href="${href}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px;margin:4px 6px 4px 0">${escapeEmailHtml(label)}</a>`;
 }
 
-function socialIconButton(href: string, label: string, bg: string, glyph: string): string {
-  return `<a href="${href}" target="_blank" rel="noopener noreferrer" aria-label="${escapeEmailHtml(label)}" style="display:inline-block;width:36px;height:36px;line-height:36px;border-radius:18px;background:${bg};color:#ffffff;text-align:center;text-decoration:none;font-weight:800;font-size:14px;font-family:Arial,Helvetica,sans-serif;margin:0 5px">${glyph}</a>`;
+function socialIconUrl(name: "facebook" | "instagram" | "linkedin" | "whatsapp"): string {
+  return `${getAppBaseUrl()}/email/social/${name}.png`;
+}
+
+function socialIconButton(
+  href: string,
+  label: string,
+  icon: "facebook" | "instagram" | "linkedin" | "whatsapp"
+): string {
+  const src = socialIconUrl(icon);
+  return `<a href="${href}" target="_blank" rel="noopener noreferrer" aria-label="${escapeEmailHtml(label)}" style="display:inline-block;margin:0 6px;text-decoration:none;border:0;line-height:0"><img src="${src}" alt="${escapeEmailHtml(label)}" width="36" height="36" style="display:block;width:36px;height:36px;border:0;border-radius:18px" /></a>`;
 }
 
 function socialLinksHtml(): string {
   return `
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 14px">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto 14px">
   <tr>
     <td style="padding:0;text-align:center">
-      ${socialIconButton(SOCIAL.facebook, "Facebook", "#1877F2", "f")}
-      ${socialIconButton(SOCIAL.instagram, "Instagram", "#E4405F", "ig")}
-      ${socialIconButton(SOCIAL.linkedin, "LinkedIn", "#0A66C2", "in")}
-      ${socialIconButton(SOCIAL.whatsapp, "WhatsApp", "#25D366", "wa")}
+      ${socialIconButton(SOCIAL.facebook, "Facebook", "facebook")}
+      ${socialIconButton(SOCIAL.instagram, "Instagram", "instagram")}
+      ${socialIconButton(SOCIAL.linkedin, "LinkedIn", "linkedin")}
+      ${socialIconButton(SOCIAL.whatsapp, "WhatsApp", "whatsapp")}
     </td>
   </tr>
-</table>
-<p style="margin:0 0 12px;font-size:11px;color:#94a3b8;line-height:1.5">
-  <a href="${SOCIAL.facebook}" style="color:#64748b;text-decoration:none">Facebook</a>
-  &nbsp;·&nbsp;
-  <a href="${SOCIAL.instagram}" style="color:#64748b;text-decoration:none">Instagram</a>
-  &nbsp;·&nbsp;
-  <a href="${SOCIAL.linkedin}" style="color:#64748b;text-decoration:none">LinkedIn</a>
-  &nbsp;·&nbsp;
-  <a href="${SOCIAL.whatsapp}" style="color:#64748b;text-decoration:none">WhatsApp</a>
-</p>`.trim();
+</table>`.trim();
 }
 
 /** Default promo-style body for mass campaigns (catalog / offers — no credit CTA). */
