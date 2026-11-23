@@ -25,22 +25,27 @@ export default function CheckoutSuccessPage() {
   const getSubtotal = useCartStore((state) => state.getSubtotal);
   const getDiscountedTotal = useCartStore((state) => state.getDiscountedTotal);
 
-  const [status, setStatus] = useState<"loading" | "success" | "error">(
+  const [status, setStatus] = useState<"loading" | "success" | "processing" | "error">(
     "loading"
   );
   const [orderId, setOrderId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [confirmedTotal, setConfirmedTotal] = useState<number | null>(null);
   const [fridayDelivery, setFridayDelivery] = useState<string | null>(null);
+  const [isCreditOrder, setIsCreditOrder] = useState(false);
   const hasTriggeredToast = useRef(false);
   const hasFinalized = useRef(false);
 
   useEffect(() => {
     if (status === "success" && !hasTriggeredToast.current) {
       hasTriggeredToast.current = true;
-      toast.success("Order confirmed successfully.");
+      toast.success(
+        isCreditOrder
+          ? "Commercial credit order placed."
+          : "Order confirmed successfully."
+      );
     }
-  }, [status]);
+  }, [status, isCreditOrder]);
 
   useEffect(() => {
     let active = true;
@@ -53,14 +58,18 @@ export default function CheckoutSuccessPage() {
         const params = searchParams;
         const creditCheckout = params.get("credit") === "1";
         const creditOrderId = params.get("order_id") || "";
+        const creditTotalParam = Number(params.get("total") || "");
 
         if (creditCheckout) {
           if (!active) return;
+          const creditTotal =
+            Number.isFinite(creditTotalParam) && creditTotalParam > 0
+              ? creditTotalParam
+              : Number(getDiscountedTotal().toFixed(2));
           const creditKey = `meta-purchase:${creditOrderId || "credit"}`;
           if (creditOrderId && !sessionStorage.getItem(creditKey)) {
             sessionStorage.setItem(creditKey, "1");
             const creditItems = [...cartItems];
-            const creditTotal = Number(getDiscountedTotal().toFixed(2));
             trackCartFunnelEvent({
               eventName: "order_completed",
               cartValueUsd: creditTotal,
@@ -70,6 +79,8 @@ export default function CheckoutSuccessPage() {
           }
           clearCheckoutShipping();
           clearCart();
+          setIsCreditOrder(true);
+          setConfirmedTotal(creditTotal > 0 ? creditTotal : null);
           setOrderId(creditOrderId || "Commercial credit order");
           setStatus("success");
           return;
@@ -114,6 +125,12 @@ export default function CheckoutSuccessPage() {
           return;
         }
 
+        if (redirectStatus === "processing") {
+          if (!active) return;
+          setStatus("processing");
+          return;
+        }
+
         if (redirectStatus && redirectStatus !== "succeeded") {
           if (!active) return;
           setStatus("error");
@@ -126,6 +143,11 @@ export default function CheckoutSuccessPage() {
         const verification = await verifyPaymentIntent(paymentIntentId);
 
         if (!active) return;
+
+        if (verification.paymentIntent.status === "processing") {
+          setStatus("processing");
+          return;
+        }
 
         if (verification.paymentIntent.status !== "succeeded") {
           setStatus("error");
@@ -249,17 +271,41 @@ export default function CheckoutSuccessPage() {
           </div>
         )}
 
+        {status === "processing" && (
+          <div className="text-center">
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-amber-700">
+              Payment processing
+            </p>
+            <h1 className="mt-4 text-3xl font-black text-slate-900">
+              Your payment is still processing
+            </h1>
+            <p className="mt-3 text-sm text-slate-600">
+              Do not pay again. We will confirm your order by email as soon as Stripe
+              finishes processing. You can also check your dashboard in a few minutes.
+            </p>
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+              <Button asChild variant="gradient">
+                <Link href="/dashboard">Go to dashboard</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/products">Continue shopping</Link>
+              </Button>
+            </div>
+          </div>
+        )}
+
         {status === "success" && (
           <div className="text-center">
             <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-700">
-              Payment received
+              {isCreditOrder ? "Order placed" : "Payment received"}
             </p>
             <h1 className="mt-4 text-3xl font-black text-slate-900">
               Thank you for your order
             </h1>
             <p className="mt-3 text-sm text-slate-600">
-              Your payment has been successfully processed and your order has
-              been confirmed.
+              {isCreditOrder
+                ? "Your commercial credit order was placed and an unpaid Net terms invoice was created for your account."
+                : "Your payment has been successfully processed and your order has been confirmed."}
             </p>
 
             <div className="mt-8 rounded-2xl border border-emerald-100 bg-emerald-50 p-5 text-left">

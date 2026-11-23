@@ -296,8 +296,10 @@ export function CartDrawer() {
                       max={cartQuantityMax(item)}
                       value={item.quantity}
                       onChange={(event) => {
-                        const next = Math.floor(Number(event.target.value));
-                        if (!Number.isFinite(next)) return;
+                        const raw = event.target.value.trim();
+                        if (raw === "") return;
+                        const next = Math.floor(Number(raw));
+                        if (!Number.isFinite(next) || next < 1) return;
                         updateQuantity(item.id, next);
                       }}
                       aria-label={`Quantity for ${item.productName}`}

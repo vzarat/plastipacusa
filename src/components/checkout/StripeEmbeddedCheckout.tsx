@@ -411,7 +411,8 @@ export function StripeEmbeddedCheckout({
     selectedShippingOption?.id,
     selectedShippingOption?.deliveryDate,
     appliedCoupon?.code,
-    taxExemptRequested,
+    // taxExemptRequested only flags admin review — profile drives tax; omit so
+    // submitting the exemption form does not burn a one-time Turnstile token.
     selectedAddress?.id,
     shipping.fullName,
     shipping.line1,

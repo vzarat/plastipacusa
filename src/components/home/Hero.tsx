@@ -5,10 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 
-const SLIDE_BACKGROUND_VIDEO_1 =
+const SLIDE_BACKGROUND_VIDEO =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/BACKGROUND%202.mp4";
-const SLIDE_BACKGROUND_VIDEO_2 =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/BACKGROUND.mp4";
 const SLIDE_SDK_4 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_4.jpg";
 const SLIDE_SDK_5 =
@@ -21,12 +19,11 @@ const SLIDE_MOBILE_STORY =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/Instagram%20story%20-%208.png";
 
 const MOBILE_SLIDE_COUNT = 1;
-const DESKTOP_SLIDE_COUNT = 6;
+const DESKTOP_SLIDE_COUNT = 5;
 const AUTO_MS = 7000;
 const SLIDE_LABELS = [
   "Featured video",
   "Packaging solutions",
-  "Featured",
   "High-performance at competitive prices",
   "Increase packaging efficiency",
   "Quality you can count on",
@@ -60,16 +57,8 @@ function MobileStorySlide() {
   );
 }
 
-/** Desktop video slide. No Shop CTA. */
-function VideoSlide({
-  active,
-  src,
-  label,
-}: {
-  active: boolean;
-  src: string;
-  label: string;
-}) {
+/** Desktop first slide: BACKGROUND 2 video. No Shop CTA. */
+function VideoSlide({ active }: { active: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -89,13 +78,13 @@ function VideoSlide({
       <video
         ref={videoRef}
         className="absolute inset-0 h-full w-full object-cover"
-        src={src}
+        src={SLIDE_BACKGROUND_VIDEO}
         muted
         loop
         playsInline
         autoPlay
         preload="metadata"
-        aria-label={label}
+        aria-label="Plastipac USA stretch film — featured packaging video"
       />
     </div>
   );
@@ -225,11 +214,7 @@ export function Hero() {
           inert={index !== 0}
         >
           <MobileStorySlide />
-          <VideoSlide
-            active={index === 0}
-            src={SLIDE_BACKGROUND_VIDEO_1}
-            label="Plastipac USA stretch film — featured packaging video"
-          />
+          <VideoSlide active={index === 0} />
         </div>
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
@@ -247,11 +232,7 @@ export function Hero() {
           aria-hidden={index !== 2}
           inert={index !== 2}
         >
-          <VideoSlide
-            active={index === 2}
-            src={SLIDE_BACKGROUND_VIDEO_2}
-            label="Plastipac USA stretch film — packaging background video"
-          />
+          <PerformanceSlide />
         </div>
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
@@ -260,7 +241,7 @@ export function Hero() {
           aria-hidden={index !== 3}
           inert={index !== 3}
         >
-          <PerformanceSlide />
+          <EfficiencySlide />
         </div>
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
@@ -268,15 +249,6 @@ export function Hero() {
           }`}
           aria-hidden={index !== 4}
           inert={index !== 4}
-        >
-          <EfficiencySlide />
-        </div>
-        <div
-          className={`absolute inset-0 transition-opacity duration-500 ${
-            index === 5 ? "opacity-100" : "pointer-events-none opacity-0"
-          }`}
-          aria-hidden={index !== 5}
-          inert={index !== 5}
         >
           <QualitySlide />
         </div>

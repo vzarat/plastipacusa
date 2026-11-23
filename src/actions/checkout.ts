@@ -144,9 +144,54 @@ function catalogFreightLines(
     .filter((line) => line.sku && line.quantity > 0);
 }
 
+/** Boxes/pallets already reserved by this user's open pending_payment order. */
+async function ownPendingHoldByProductId(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  userId: string,
+  lines: PricedCheckoutLine[]
+): Promise<Map<string, { boxes: number; pallets: number }>> {
+  const held = new Map<string, { boxes: number; pallets: number }>();
+  if (!userId) return held;
+
+  const { data: pending } = await supabase
+    .from("orders")
+    .select("items, stock_hold")
+    .eq("user_id", userId)
+    .eq("status", "pending_payment")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!pending || pending.stock_hold !== true) return held;
+
+  const skuToProduct = new Map<string, string>();
+  for (const line of lines) {
+    if (line.productId && line.sku) {
+      skuToProduct.set(String(line.sku).trim().toUpperCase(), String(line.productId));
+    }
+  }
+
+  const items = Array.isArray(pending.items) ? pending.items : [];
+  for (const raw of items) {
+    const item = (raw || {}) as Record<string, unknown>;
+    const sku = String(item.sku || "").trim().toUpperCase();
+    const productId =
+      String(item.productId || item.product_id || "") || skuToProduct.get(sku) || "";
+    if (!productId) continue;
+    const boxes = Math.max(0, Math.floor(Number(item.boxes ?? item.totalBoxes ?? 0) || 0));
+    const pallets = Math.max(0, Number(item.pallets) || 0);
+    const current = held.get(productId) || { boxes: 0, pallets: 0 };
+    current.boxes += boxes;
+    current.pallets += pallets;
+    held.set(productId, current);
+  }
+  return held;
+}
+
 async function loadCatalogLines(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
-  requested: Array<{ sku: string; quantity: number }>
+  requested: Array<{ sku: string; quantity: number }>,
+  options?: { userId?: string }
 ): Promise<PricedCheckoutLine[]> {
   const skus = [
     ...new Set(requested.flatMap((line) => catalogSkuCandidates(line.sku))),
@@ -191,6 +236,7 @@ async function loadCatalogLines(
   const palletOnHand = new Map<string, number | null>();
   const availability = new Map<string, { stock: number | null; soldOut: boolean }>();
   for (const [id, product] of productsById) {
+    const flaggedSoldOut = product.is_sold_out === true || product.isSoldOut === true;
     if (product.stock_boxes !== undefined || product.stockBoxes !== undefined) {
       const raw = product.stock_boxes !== undefined ? product.stock_boxes : product.stockBoxes;
       const boxes = raw == null || raw === "" ? null : Math.max(0, Math.floor(Number(raw)));
@@ -198,7 +244,7 @@ async function loadCatalogLines(
       boxOnHand.set(id, stock);
       availability.set(id, {
         stock,
-        soldOut: product.is_sold_out === true || product.isSoldOut === true || stock === 0,
+        soldOut: flaggedSoldOut || stock === 0,
       });
       continue;
     }
@@ -206,14 +252,94 @@ async function loadCatalogLines(
     palletOnHand.set(id, stock);
     availability.set(id, {
       stock,
-      soldOut: product.is_sold_out === true || product.isSoldOut === true || stock === 0,
+      soldOut: flaggedSoldOut || stock === 0,
     });
   }
+
+  // Don't let this user's own checkout hold block a retry of the same cart.
+  if (options?.userId) {
+    const ownHolds = await ownPendingHoldByProductId(supabase, options.userId, lines);
+    for (const [productId, credit] of ownHolds) {
+      const boxes = boxOnHand.get(productId);
+      if (boxes != null) boxOnHand.set(productId, boxes + credit.boxes);
+      const pallets = palletOnHand.get(productId);
+      if (pallets != null) palletOnHand.set(productId, pallets + credit.pallets);
+      const avail = availability.get(productId);
+      if (avail?.stock != null) {
+        const nextStock = avail.stock + (credit.boxes > 0 ? credit.boxes : credit.pallets);
+        const product = productsById.get(productId);
+        const flaggedSoldOut =
+          product?.is_sold_out === true || product?.isSoldOut === true;
+        availability.set(productId, {
+          stock: nextStock,
+          soldOut: flaggedSoldOut || nextStock === 0,
+        });
+      }
+    }
+  }
+
   const unavailable = soldOutCheckoutMessage(lines, availability);
   if (unavailable) throw new Error(unavailable);
   const shortage = boxStockShortage(lines, boxOnHand) || palletStockShortage(lines, palletOnHand);
   if (shortage) throw new Error(shortage);
   return lines;
+}
+
+/**
+ * Cancel open card PaymentIntent + release stock holds so Net 30 (or a fresh card attempt)
+ * is not blocked by the unique pending_payment-per-user index.
+ */
+async function clearOpenCardPendingCheckout(input: {
+  admin: ReturnType<typeof createServiceRoleClient>;
+  userId: string;
+  stripeSecretKey?: string;
+}): Promise<void> {
+  const { data: pending } = await input.admin
+    .from("orders")
+    .select("id, payment_intent_id, payment_method")
+    .eq("user_id", input.userId)
+    .eq("status", "pending_payment")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!pending?.id) return;
+
+  const intentId = String(pending.payment_intent_id || "");
+  if (intentId && input.stripeSecretKey) {
+    try {
+      const stripe = new Stripe(input.stripeSecretKey, {
+        apiVersion: "2026-08-26.dahlia" as any,
+      });
+      const intent = await stripe.paymentIntents.retrieve(intentId);
+      if (intent.status === "succeeded" || intent.status === "processing") {
+        throw new Error(
+          "A card payment for this cart is already processing. Wait for confirmation before placing a credit order."
+        );
+      }
+      if (
+        intent.status === "requires_payment_method" ||
+        intent.status === "requires_confirmation" ||
+        intent.status === "requires_action" ||
+        intent.status === "requires_capture"
+      ) {
+        await stripe.paymentIntents.cancel(intentId);
+      }
+    } catch (error) {
+      if (error instanceof Error && /already processing/i.test(error.message)) {
+        throw error;
+      }
+      // Intent may already be canceled or missing.
+    }
+  }
+
+  await releaseCheckoutHolds(input.admin, String(pending.id));
+  refreshCatalogStock();
+  await input.admin
+    .from("orders")
+    .delete()
+    .eq("id", pending.id)
+    .eq("status", "pending_payment");
 }
 
 function publicOrderError(message: string): string {
@@ -327,7 +453,7 @@ export async function createPaymentIntent(
     }
     let pricedLines: PricedCheckoutLine[];
     try {
-      pricedLines = await loadCatalogLines(supabase, requested);
+      pricedLines = await loadCatalogLines(supabase, requested, { userId });
     } catch (error) {
       const message = error instanceof Error ? error.message : "We couldn't price this cart.";
       return { success: false, error: message };
@@ -1278,9 +1404,28 @@ export async function placeCommercialCreditOrder(
       return { success: false, error: "Your cart is empty." };
     }
 
+    // Card step may already hold a pending_payment row + stock — clear it first.
+    if (isServiceRoleConfigured()) {
+      try {
+        await clearOpenCardPendingCheckout({
+          admin: createServiceRoleClient(),
+          userId,
+          stripeSecretKey: process.env.STRIPE_SECRET_KEY,
+        });
+      } catch (error) {
+        return {
+          success: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Unable to clear the open card checkout before placing a credit order.",
+        };
+      }
+    }
+
     let pricedLines: PricedCheckoutLine[];
     try {
-      pricedLines = await loadCatalogLines(supabase, requested);
+      pricedLines = await loadCatalogLines(supabase, requested, { userId });
     } catch (error) {
       const message = error instanceof Error ? error.message : "We couldn't price this cart.";
       return { success: false, error: message };

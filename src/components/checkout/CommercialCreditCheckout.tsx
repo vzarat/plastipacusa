@@ -162,6 +162,8 @@ export function CommercialCreditCheckout({
         onServerTotal?.(result.total);
       }
 
+      const creditTotal =
+        typeof result.total === "number" ? result.total : Number(orderTotal.toFixed(2));
       clearCart();
       toast.success(
         result.orderId
@@ -169,7 +171,7 @@ export function CommercialCreditCheckout({
           : "Credit order placed — unpaid commercial credit invoice created."
       );
       router.push(
-        `/checkout/success?credit=1&order_id=${encodeURIComponent(result.orderId || "")}`
+        `/checkout/success?credit=1&order_id=${encodeURIComponent(result.orderId || "")}&total=${encodeURIComponent(String(creditTotal))}`
       );
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Unable to place credit order.");

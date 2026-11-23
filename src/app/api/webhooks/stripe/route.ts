@@ -223,16 +223,8 @@ async function findOrderForSession(input: {
   );
   if (bySession) return bySession;
 
-  if (input.userId) {
-    const pendingForUser = list.find(
-      (order) =>
-        order.user_id === input.userId &&
-        String(order.status || "").toLowerCase() !== "paid" &&
-        String(order.status || "").toLowerCase() !== "paid & cleared"
-    );
-    if (pendingForUser) return pendingForUser;
-  }
-
+  // Do not fall back to "any unpaid order for this user" — that could mark the
+  // wrong pending_payment paid when a legacy hosted session has no order_id.
   return null;
 }
 
@@ -636,6 +628,8 @@ async function handleCheckoutSessionCompleted(
 
   const totalAmount = centsToUsd(session.amount_total);
 
+  // Legacy hosted Checkout is disabled (/api/checkout → 410). Only settle when
+  // we can correlate to an existing order with a matching amount.
   let order = await findOrderForSession({
     orderIdHint,
     paymentIntentId,
@@ -643,38 +637,29 @@ async function handleCheckoutSessionCompleted(
     userId,
   });
 
-  if (order) {
-    order = await markOrderPaidAndCleared(order, {
-      paymentIntentId,
-      checkoutSessionId: session.id,
-    });
-  } else if (userId) {
-    order = await ensurePaidOrderForSession({
-      session,
-      paymentIntentId,
-      userId,
-      customerEmail,
-      customerName,
-      shippingAddress: {
-        full_name: structuredShipping.fullName || null,
-        line1: structuredShipping.line1 || null,
-        street: structuredShipping.line1 || null,
-        line2: structuredShipping.line2 || null,
-        city: structuredShipping.city || null,
-        state: structuredShipping.state || null,
-        postal_code: structuredShipping.postalCode || null,
-        zip: structuredShipping.postalCode || null,
-        phone: structuredShipping.phone || null,
-        country: shippingDetails?.country || metaShip.country || "US",
-      },
-      itemsSummary,
-      totalAmount,
-    });
-  } else {
+  if (!order) {
+    console.warn(
+      "[stripe webhook] checkout.session.completed ignored — no correlated order",
+      session.id
+    );
+    return;
+  }
+
+  const orderTotal = Number(order.total ?? order.total_amount ?? 0);
+  if (
+    Number.isFinite(orderTotal) &&
+    orderTotal > 0 &&
+    Math.abs(orderTotal - totalAmount) > 0.02
+  ) {
     throw new Error(
-      "Unable to correlate Checkout Session to a Plastipac order (missing order_id / userId)."
+      `Checkout Session amount mismatch for order ${order.id}: order=${orderTotal} session=${totalAmount}`
     );
   }
+
+  order = await markOrderPaidAndCleared(order, {
+    paymentIntentId,
+    checkoutSessionId: session.id,
+  });
 
   // PDF generation is required — failures must surface as HTTP 500 for Stripe retries.
   const pdfBytes = await generateOrderSummaryPdf(order);
