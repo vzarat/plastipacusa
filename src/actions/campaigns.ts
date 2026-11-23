@@ -294,7 +294,7 @@ function parseEmailList(raw: string): string[] {
  */
 export async function addRecipientsToCampaign(
   id: string,
-  input: { emails?: string; includeSegment?: boolean }
+  input: { emails?: string; leadIds?: string[]; includeSegment?: boolean }
 ): Promise<{
   success: boolean;
   queued?: number;
@@ -337,8 +337,28 @@ export async function addRecipientsToCampaign(
     .map((t) => t.trim())
     .filter(Boolean);
   const invalid = Math.max(0, rawTokens.length - typedEmails.length);
+  const leadIds = Array.from(
+    new Set((input.leadIds || []).map((value) => String(value || "").trim()).filter(Boolean))
+  );
 
   const byEmail = new Map<string, { id: string; email: string; subscribed: boolean }>();
+
+  if (leadIds.length > 0) {
+    const { data: leadRows, error: leadError } = await db
+      .from("leads")
+      .select("id, email, subscribed")
+      .in("id", leadIds);
+    if (leadError) return { success: false, error: leadError.message };
+    for (const row of leadRows || []) {
+      const email = String(row.email || "").toLowerCase();
+      if (!email) continue;
+      byEmail.set(email, {
+        id: String(row.id),
+        email: String(row.email),
+        subscribed: row.subscribed !== false,
+      });
+    }
+  }
 
   for (const email of typedEmails) {
     const result = await upsertLead({
@@ -380,7 +400,7 @@ export async function addRecipientsToCampaign(
       error:
         invalid > 0
           ? `No valid emails found (${invalid} invalid).`
-          : "Paste emails or include the segment to add recipients.",
+          : "Select leads from the list to add recipients.",
     };
   }
 
