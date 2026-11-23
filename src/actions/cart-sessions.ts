@@ -443,5 +443,6 @@ export async function getCartFunnelSummary(lookbackHours = 24 * 7): Promise<{
 export async function refreshAbandonedCartsAdmin(): Promise<void> {
   if (!(await requireAdmin())) return;
   await markStaleCartsAbandoned();
+  revalidatePath("/admin/tools/abandoned-carts");
   revalidatePath("/admin/abandoned-carts");
 }
