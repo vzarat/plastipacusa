@@ -1,4 +1,4 @@
-import { getAppBaseUrl } from "@/lib/email";
+import { getAppBaseUrl } from "@/lib/app-url";
 import { CONTACT_EMAIL, CONTACT_FROM } from "@/lib/company-email";
 
 const LOGO_URL =

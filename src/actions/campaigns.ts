@@ -22,9 +22,9 @@ import { createServiceRoleClient, isServiceRoleConfigured } from "@/lib/supabase
 import { createServerClient } from "@/lib/supabase/server";
 
 /** Max emails dispatched per cron tick to protect domain reputation. */
-export const CAMPAIGN_BATCH_SIZE = 25;
+const CAMPAIGN_BATCH_SIZE = 25;
 /** Minimum gap between sends inside a batch (ms). */
-export const CAMPAIGN_SEND_GAP_MS = 200;
+const CAMPAIGN_SEND_GAP_MS = 200;
 
 async function requireAdmin() {
   const currentUser = await getCurrentUser();

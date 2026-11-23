@@ -11,6 +11,9 @@ import {
   SUPPORT_FROM,
 } from "@/lib/company-email";
 import { logEmailDispatch } from "@/lib/resend-usage";
+import { getAppBaseUrl } from "@/lib/app-url";
+
+export { getAppBaseUrl };
 
 /** Prefer ADMIN_NOTIFICATION_EMAIL for all admin alerts. */
 export function getAdminNotificationEmail(): string {
@@ -19,15 +22,6 @@ export function getAdminNotificationEmail(): string {
     process.env.ADMIN_EMAIL ||
     ""
   ).trim();
-}
-
-export function getAppBaseUrl(): string {
-  const explicit = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  if (explicit) return explicit.replace(/\/$/, "");
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL.replace(/\/$/, "")}`;
-  }
-  return "https://plastipacusa.com";
 }
 
 export function getSenderEmail(fallback = CONTACT_EMAIL): string {
