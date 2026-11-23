@@ -12,9 +12,9 @@ import {
 } from "@/actions/campaigns";
 import {
   catalogCtaHtml,
-  creditCtaHtml,
   defaultCampaignBodyHtml,
   defaultCampaignFromAddress,
+  freeDeliveryCtaHtml,
   wrapCampaignHtml,
 } from "@/lib/campaigns/template";
 import type { CampaignRecord, CampaignType, SequenceStep } from "@/lib/campaigns/types";
@@ -336,10 +336,10 @@ export function AdminCampaignBuilder({
                 <button
                   type="button"
                   disabled={!editable}
-                  onClick={() => insertSnippet(creditCtaHtml())}
+                  onClick={() => insertSnippet(freeDeliveryCtaHtml())}
                   className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-bold text-slate-700"
                 >
-                  + Net 30 CTA
+                  + Free Delivery CTA
                 </button>
                 <button
                   type="button"

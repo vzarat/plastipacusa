@@ -1,8 +1,18 @@
 import { getAppBaseUrl } from "@/lib/app-url";
 import { CONTACT_EMAIL, CONTACT_FROM } from "@/lib/company-email";
+import { WHATSAPP_URL_BARE } from "@/lib/company-contact";
 
-const LOGO_URL =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PLASTIPAC_USA_LOGO%202.svg";
+/** White logo for dark email headers (PNG for Outlook/Gmail compatibility). */
+function campaignLogoUrl(): string {
+  return `${getAppBaseUrl()}/email/plastipac-logo-white.png`;
+}
+
+const SOCIAL = {
+  facebook: "https://www.facebook.com/profile.php?id=61557962543741",
+  instagram: "https://www.instagram.com/plastipacusallc/",
+  linkedin: "https://www.linkedin.com/company/plastipacusa",
+  whatsapp: WHATSAPP_URL_BARE,
+} as const;
 
 export function escapeEmailHtml(value: string): string {
   return String(value || "")
@@ -20,27 +30,54 @@ export function unsubscribeUrl(token: string): string {
   return `${getAppBaseUrl()}/unsubscribe?token=${encodeURIComponent(token)}`;
 }
 
-export function catalogCtaHtml(label = "View Stretch Film Catalog"): string {
+export function catalogCtaHtml(label = "Shop Stretch Film Catalog"): string {
   const href = `${getAppBaseUrl()}/#product-catalog-section`;
-  return `<a href="${href}" style="display:inline-block;background:#0284c7;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 20px;border-radius:10px;margin:4px 6px 4px 0">${escapeEmailHtml(label)}</a>`;
+  return `<a href="${href}" style="display:inline-block;background:#0284c7;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px;margin:4px 6px 4px 0">${escapeEmailHtml(label)}</a>`;
 }
 
-export function creditCtaHtml(label = "Apply for Net 30 Credit"): string {
-  const href = `${getAppBaseUrl()}/credit-application`;
-  return `<a href="${href}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 20px;border-radius:10px;margin:4px 6px 4px 0">${escapeEmailHtml(label)}</a>`;
+export function freeDeliveryCtaHtml(label = "See Free Delivery Offers"): string {
+  const href = `${getAppBaseUrl()}/#product-catalog-section`;
+  return `<a href="${href}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px;margin:4px 6px 4px 0">${escapeEmailHtml(label)}</a>`;
 }
 
-/** Default branded inner body used when creating a new campaign. */
+function socialIconButton(href: string, label: string, bg: string, glyph: string): string {
+  return `<a href="${href}" target="_blank" rel="noopener noreferrer" aria-label="${escapeEmailHtml(label)}" style="display:inline-block;width:36px;height:36px;line-height:36px;border-radius:18px;background:${bg};color:#ffffff;text-align:center;text-decoration:none;font-weight:800;font-size:14px;font-family:Arial,Helvetica,sans-serif;margin:0 5px">${glyph}</a>`;
+}
+
+function socialLinksHtml(): string {
+  return `
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 14px">
+  <tr>
+    <td style="padding:0;text-align:center">
+      ${socialIconButton(SOCIAL.facebook, "Facebook", "#1877F2", "f")}
+      ${socialIconButton(SOCIAL.instagram, "Instagram", "#E4405F", "ig")}
+      ${socialIconButton(SOCIAL.linkedin, "LinkedIn", "#0A66C2", "in")}
+      ${socialIconButton(SOCIAL.whatsapp, "WhatsApp", "#25D366", "wa")}
+    </td>
+  </tr>
+</table>
+<p style="margin:0 0 12px;font-size:11px;color:#94a3b8;line-height:1.5">
+  <a href="${SOCIAL.facebook}" style="color:#64748b;text-decoration:none">Facebook</a>
+  &nbsp;·&nbsp;
+  <a href="${SOCIAL.instagram}" style="color:#64748b;text-decoration:none">Instagram</a>
+  &nbsp;·&nbsp;
+  <a href="${SOCIAL.linkedin}" style="color:#64748b;text-decoration:none">LinkedIn</a>
+  &nbsp;·&nbsp;
+  <a href="${SOCIAL.whatsapp}" style="color:#64748b;text-decoration:none">WhatsApp</a>
+</p>`.trim();
+}
+
+/** Default promo-style body for mass campaigns (catalog / offers — no credit CTA). */
 export function defaultCampaignBodyHtml(): string {
   return `
 <p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#0f172a">Hello {{contact_name}},</p>
 <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#334155">
-  Plastipac USA manufactures high-performance stretch film for distributors and high-volume shippers.
-  Explore our catalog or apply for Net 30 terms when you're ready to scale.
+  This week from Plastipac USA: factory-direct stretch film, promo pricing, and free delivery offers
+  for qualifying RGV / Houston orders. Browse the catalog and grab what your warehouse needs.
 </p>
 <p style="margin:0 0 8px;text-align:center">
   ${catalogCtaHtml()}
-  ${creditCtaHtml()}
+  ${freeDeliveryCtaHtml()}
 </p>
 `.trim();
 }
@@ -61,6 +98,7 @@ export function wrapCampaignHtml(input: {
 
   const unsub = unsubscribeUrl(input.unsubscribeToken);
   const preview = escapeEmailHtml(String(input.previewText || "").trim());
+  const logoUrl = campaignLogoUrl();
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -73,14 +111,15 @@ export function wrapCampaignHtml(input: {
   ${preview ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${preview}</div>` : ""}
   <div style="padding:24px 12px">
     <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden">
-      <div style="background:#0f172a;padding:20px 24px;text-align:center">
-        <img src="${LOGO_URL}" alt="Plastipac USA" width="160" style="display:inline-block;max-width:160px;height:auto" />
-        <p style="margin:10px 0 0;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8">Expert Manufacturer of Stretch Film</p>
+      <div style="background:#0f172a;padding:22px 24px;text-align:center">
+        <img src="${logoUrl}" alt="Plastipac USA" width="180" style="display:inline-block;max-width:180px;height:auto;border:0" />
+        <p style="margin:12px 0 0;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8">Expert Manufacturer of Stretch Film</p>
       </div>
       <div style="padding:28px 24px;color:#0f172a;font-size:15px;line-height:1.6">
         ${body}
       </div>
-      <div style="padding:18px 24px 24px;border-top:1px solid #e2e8f0;background:#f8fafc;text-align:center">
+      <div style="padding:20px 24px 24px;border-top:1px solid #e2e8f0;background:#f8fafc;text-align:center">
+        ${socialLinksHtml()}
         <p style="margin:0 0 8px;font-size:12px;color:#64748b;line-height:1.5">
           Plastipac USA · ${escapeEmailHtml(CONTACT_EMAIL)}
         </p>
