@@ -46,12 +46,6 @@ export function AdminCampaignDetailView({
 
   return (
     <div className="space-y-8">
-      <AdminCampaignBuilder
-        mode="edit"
-        campaign={campaign}
-        availableTags={availableTags}
-      />
-
       <AdminCampaignAddRecipients campaign={campaign} leads={leads} sends={sends} />
 
       <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -121,6 +115,12 @@ export function AdminCampaignDetailView({
           </table>
         </div>
       </section>
+
+      <AdminCampaignBuilder
+        mode="edit"
+        campaign={campaign}
+        availableTags={availableTags}
+      />
     </div>
   );
 }

@@ -20,11 +20,7 @@ export function AdminCampaignAddRecipients({
   const [pending, startTransition] = useTransition();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
-
-  const canAdd =
-    campaign.status === "sending" ||
-    campaign.status === "sent" ||
-    campaign.status === "paused";
+  const [showInCampaign, setShowInCampaign] = useState(false);
 
   const alreadyInCampaign = useMemo(() => {
     const emails = new Set(
@@ -36,33 +32,46 @@ export function AdminCampaignAddRecipients({
     return { emails, leadIds };
   }, [sends]);
 
-  const availableLeads = useMemo(() => {
+  const filteredLeads = useMemo(() => {
     const q = query.trim().toLowerCase();
     return leads.filter((lead) => {
-      if (!lead.subscribed) return false;
-      if (alreadyInCampaign.leadIds.has(lead.id)) return false;
-      if (alreadyInCampaign.emails.has(lead.email.toLowerCase())) return false;
+      const inCampaign =
+        alreadyInCampaign.leadIds.has(lead.id) ||
+        alreadyInCampaign.emails.has(lead.email.toLowerCase());
+      if (inCampaign && !showInCampaign) return false;
       if (!q) return true;
       return (
         lead.email.toLowerCase().includes(q) ||
         lead.companyName.toLowerCase().includes(q) ||
-        lead.contactName.toLowerCase().includes(q)
+        lead.contactName.toLowerCase().includes(q) ||
+        lead.tags.some((tag) => tag.includes(q))
       );
     });
-  }, [leads, alreadyInCampaign, query]);
+  }, [leads, alreadyInCampaign, query, showInCampaign]);
+
+  const selectableLeads = useMemo(
+    () =>
+      filteredLeads.filter((lead) => {
+        if (!lead.subscribed) return false;
+        if (alreadyInCampaign.leadIds.has(lead.id)) return false;
+        if (alreadyInCampaign.emails.has(lead.email.toLowerCase())) return false;
+        return true;
+      }),
+    [filteredLeads, alreadyInCampaign]
+  );
 
   const allSelected =
-    availableLeads.length > 0 &&
-    availableLeads.every((lead) => selected.has(lead.id));
+    selectableLeads.length > 0 &&
+    selectableLeads.every((lead) => selected.has(lead.id));
 
-  if (!canAdd) return null;
+  const blocked = campaign.status === "cancelled";
 
   function toggleAll() {
     if (allSelected) {
       setSelected(new Set());
       return;
     }
-    setSelected(new Set(availableLeads.map((lead) => lead.id)));
+    setSelected(new Set(selectableLeads.map((lead) => lead.id)));
   }
 
   function toggleOne(id: string) {
@@ -75,6 +84,10 @@ export function AdminCampaignAddRecipients({
   }
 
   function submit() {
+    if (blocked) {
+      toast.error("Cancelled campaigns cannot accept recipients.");
+      return;
+    }
     if (selected.size === 0) {
       toast.message("Select at least one lead.");
       return;
@@ -105,15 +118,15 @@ export function AdminCampaignAddRecipients({
   }
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-100 px-4 py-3">
+    <section className="rounded-2xl border border-sky-200 bg-white shadow-sm overflow-hidden">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-sky-100 bg-sky-50/70 px-4 py-3">
         <div>
-          <h2 className="text-sm font-bold text-slate-900">Add leads to campaign</h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Check the emails you want to include. Already queued/sent leads are hidden.
-            {campaign.status === "paused"
-              ? " Paused — new rows stay queued until Resume or Flush."
-              : null}
+          <h2 className="text-sm font-bold text-slate-900">
+            Leads ({leads.length}) — select emails to add
+          </h2>
+          <p className="mt-1 text-xs text-slate-600">
+            Check one, check all, then Add selected. Already-in-campaign leads stay hidden
+            unless you toggle them below.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -121,11 +134,11 @@ export function AdminCampaignAddRecipients({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search leads…"
-            className="w-48 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900"
+            className="w-48 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
           />
           <button
             type="button"
-            disabled={pending || selected.size === 0}
+            disabled={pending || selected.size === 0 || blocked}
             onClick={submit}
             className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2 text-sm font-bold text-white hover:bg-sky-700 disabled:opacity-50"
           >
@@ -135,15 +148,30 @@ export function AdminCampaignAddRecipients({
         </div>
       </div>
 
-      <div className="overflow-x-auto max-h-[28rem]">
+      <div className="flex flex-wrap items-center gap-4 border-b border-slate-100 px-4 py-2 text-xs text-slate-600">
+        <label className="inline-flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={showInCampaign}
+            onChange={(event) => setShowInCampaign(event.target.checked)}
+          />
+          Show leads already in this campaign
+        </label>
+        <span>
+          Showing {filteredLeads.length} · selectable {selectableLeads.length}
+        </span>
+      </div>
+
+      <div className="overflow-x-auto max-h-[32rem]">
         <table className="min-w-full text-left text-sm">
-          <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <thead className="sticky top-0 z-10 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-4 py-3">
                 <input
                   type="checkbox"
                   checked={allSelected}
                   onChange={toggleAll}
+                  disabled={selectableLeads.length === 0 || blocked}
                   aria-label="Select all leads"
                 />
               </th>
@@ -151,33 +179,66 @@ export function AdminCampaignAddRecipients({
               <th className="px-4 py-3 font-semibold">Contact</th>
               <th className="px-4 py-3 font-semibold">Company</th>
               <th className="px-4 py-3 font-semibold">Tags</th>
+              <th className="px-4 py-3 font-semibold">Status</th>
             </tr>
           </thead>
           <tbody>
-            {availableLeads.map((lead) => (
-              <tr key={lead.id} className="border-t border-slate-100">
-                <td className="px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(lead.id)}
-                    onChange={() => toggleOne(lead.id)}
-                    aria-label={`Select ${lead.email}`}
-                  />
-                </td>
-                <td className="px-4 py-3 text-slate-800">{lead.email}</td>
-                <td className="px-4 py-3 text-slate-600">{lead.contactName || "—"}</td>
-                <td className="px-4 py-3 text-slate-600">{lead.companyName || "—"}</td>
-                <td className="px-4 py-3 text-xs text-slate-500">
-                  {lead.tags.length ? lead.tags.join(", ") : "—"}
-                </td>
-              </tr>
-            ))}
-            {availableLeads.length === 0 ? (
+            {filteredLeads.map((lead) => {
+              const inCampaign =
+                alreadyInCampaign.leadIds.has(lead.id) ||
+                alreadyInCampaign.emails.has(lead.email.toLowerCase());
+              const canSelect = lead.subscribed && !inCampaign && !blocked;
+              return (
+                <tr
+                  key={lead.id}
+                  className={`border-t border-slate-100 ${
+                    canSelect ? "bg-white" : "bg-slate-50/80"
+                  }`}
+                >
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(lead.id)}
+                      disabled={!canSelect}
+                      onChange={() => toggleOne(lead.id)}
+                      aria-label={`Select ${lead.email}`}
+                    />
+                  </td>
+                  <td className="px-4 py-3 font-medium text-slate-900">{lead.email}</td>
+                  <td className="px-4 py-3 text-slate-600">{lead.contactName || "—"}</td>
+                  <td className="px-4 py-3 text-slate-600">{lead.companyName || "—"}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500">
+                    {lead.tags.length ? lead.tags.join(", ") : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {!lead.subscribed ? (
+                      <span className="font-semibold text-rose-700">Unsubscribed</span>
+                    ) : inCampaign ? (
+                      <span className="font-semibold text-slate-500">In campaign</span>
+                    ) : (
+                      <span className="font-semibold text-emerald-700">Available</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {filteredLeads.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-500">
-                  {leads.length === 0
-                    ? "No leads yet. Import them under Tools → Leads."
-                    : "No subscribed leads left to add (or none match your search)."}
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
+                  {leads.length === 0 ? (
+                    <>
+                      No leads loaded. Import them under{" "}
+                      <a
+                        href="/admin/tools/leads"
+                        className="font-semibold text-sky-700 underline"
+                      >
+                        Tools → Leads
+                      </a>
+                      .
+                    </>
+                  ) : (
+                    "No leads match this search. Clear search or show leads already in campaign."
+                  )}
                 </td>
               </tr>
             ) : null}

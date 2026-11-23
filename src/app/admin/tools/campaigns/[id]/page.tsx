@@ -24,7 +24,7 @@ export default async function AdminToolsCampaignDetailPage({
   const [{ campaign, sends }, tags, leads] = await Promise.all([
     getCampaign(id),
     listLeadTags(),
-    listLeads({ subscribedOnly: true, limit: 2000 }),
+    listLeads({ limit: 2000 }),
   ]);
 
   if (!campaign) notFound();

@@ -317,15 +317,8 @@ export async function addRecipientsToCampaign(
   if (!campaignRow) return { success: false, error: "Campaign not found." };
 
   const campaign = mapCampaignRow(campaignRow as Record<string, unknown>);
-  if (
-    campaign.status !== "sending" &&
-    campaign.status !== "sent" &&
-    campaign.status !== "paused"
-  ) {
-    return {
-      success: false,
-      error: "Launch the campaign first, then add more emails.",
-    };
+  if (campaign.status === "cancelled") {
+    return { success: false, error: "Cancelled campaigns cannot accept recipients." };
   }
   if (!campaign.subject.trim() || !campaign.htmlBody.trim()) {
     return { success: false, error: "Subject and HTML body are required." };
@@ -480,8 +473,8 @@ export async function addRecipientsToCampaign(
     }
   }
 
-  // Re-open a finished campaign so the new queue can drain.
-  if (campaign.status === "sent") {
+  // Ensure the campaign is in a dispatchable state (draft / sent → sending).
+  if (campaign.status !== "paused") {
     await db
       .from("campaigns")
       .update({

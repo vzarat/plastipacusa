@@ -1,10 +1,19 @@
-import { getAppBaseUrl } from "@/lib/app-url";
+import { getAppBaseUrl, PRODUCTION_SITE_URL } from "@/lib/app-url";
 import { CONTACT_EMAIL, CONTACT_FROM } from "@/lib/company-email";
 import { WHATSAPP_URL_BARE } from "@/lib/company-contact";
 
+/**
+ * Email image hosts must be a stable public HTTPS origin.
+ * Never use Vercel preview / localhost — clients cannot fetch those.
+ */
+function emailAssetUrl(path: string): string {
+  const clean = path.startsWith("/") ? path : `/${path}`;
+  return `${PRODUCTION_SITE_URL}${clean}`;
+}
+
 /** White logo for dark email headers (PNG for Outlook/Gmail compatibility). */
 function campaignLogoUrl(): string {
-  return `${getAppBaseUrl()}/email/plastipac-logo-white.png`;
+  return emailAssetUrl("/email/plastipac-logo-white.png");
 }
 
 const SOCIAL = {
@@ -41,7 +50,7 @@ export function freeDeliveryCtaHtml(label = "See Free Delivery Offers"): string 
 }
 
 function socialIconUrl(name: "facebook" | "instagram" | "linkedin" | "whatsapp"): string {
-  return `${getAppBaseUrl()}/email/social/${name}.png`;
+  return emailAssetUrl(`/email/social/${name}.png`);
 }
 
 function socialIconButton(
