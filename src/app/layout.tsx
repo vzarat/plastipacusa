@@ -11,6 +11,7 @@ import { MetaPixel } from "@/components/analytics/MetaPixel";
 import { metaPixelId, metaPixelSnippet } from "@/lib/meta-pixel";
 import { CONTACT_EMAIL } from "@/lib/company-email";
 import { META_CHECKOUT_BOOTSTRAP_SCRIPT } from "@/lib/meta-checkout-storage";
+import { CartSessionSync } from "@/components/cart/CartSessionSync";
 
 const SUPABASE_ORIGIN = "https://ahvmjptomjjnqjylofpa.supabase.co";
 
@@ -198,6 +199,7 @@ export default function RootLayout({
             </noscript>
           ) : null}
           <ClientPWAProvider />
+          <CartSessionSync />
           {children}
           <CartDrawer />
           <AssistAI />

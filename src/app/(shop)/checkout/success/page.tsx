@@ -15,6 +15,8 @@ import {
   toOrderShippingAddress,
 } from "@/lib/shipping-address";
 import { pixelItemFromCart, trackPurchase } from "@/lib/meta-pixel";
+import { trackCartFunnelEvent } from "@/lib/cart-sessions/funnel-client";
+import { countCartPallets } from "@/lib/shipping-method";
 
 export default function CheckoutSuccessPage() {
   const searchParams = useSearchParams();
@@ -54,6 +56,18 @@ export default function CheckoutSuccessPage() {
 
         if (creditCheckout) {
           if (!active) return;
+          const creditKey = `meta-purchase:${creditOrderId || "credit"}`;
+          if (creditOrderId && !sessionStorage.getItem(creditKey)) {
+            sessionStorage.setItem(creditKey, "1");
+            const creditItems = [...cartItems];
+            const creditTotal = Number(getDiscountedTotal().toFixed(2));
+            trackCartFunnelEvent({
+              eventName: "order_completed",
+              cartValueUsd: creditTotal,
+              palletCount: countCartPallets(creditItems),
+              metadata: { orderId: creditOrderId, paymentMethod: "commercial_credit" },
+            });
+          }
           clearCheckoutShipping();
           clearCart();
           setOrderId(creditOrderId || "Commercial credit order");
@@ -157,14 +171,21 @@ export default function CheckoutSuccessPage() {
         const purchaseKey = `meta-purchase:${purchaseOrderId}`;
         if (!sessionStorage.getItem(purchaseKey)) {
           sessionStorage.setItem(purchaseKey, "1");
+          const purchaseTotal =
+            chargedTotal > 0
+              ? chargedTotal
+              : Number(getDiscountedTotal().toFixed(2));
           trackPurchase({
             orderId: purchaseOrderId,
-            total:
-              chargedTotal > 0
-                ? chargedTotal
-                : Number(getDiscountedTotal().toFixed(2)),
+            total: purchaseTotal,
             currency: "USD",
             items: snapshotItems.map((item) => pixelItemFromCart(item)),
+          });
+          trackCartFunnelEvent({
+            eventName: "order_completed",
+            cartValueUsd: purchaseTotal,
+            palletCount: countCartPallets(snapshotItems),
+            metadata: { orderId: purchaseOrderId },
           });
         }
         clearCart();

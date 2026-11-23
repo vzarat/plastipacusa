@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getCurrentUser } from "@/actions/auth";
@@ -23,10 +24,12 @@ export default async function AdminNewQuotePage() {
 
   return (
     <AdminQuotesShell profile={currentUser.profile} title="New Quote">
-      <AdminQuoteForm
-        customers={customers}
-        products={products as unknown as Array<Record<string, unknown>>}
-      />
+      <Suspense fallback={<p className="text-sm text-slate-500">Loading quote form…</p>}>
+        <AdminQuoteForm
+          customers={customers}
+          products={products as unknown as Array<Record<string, unknown>>}
+        />
+      </Suspense>
     </AdminQuotesShell>
   );
 }

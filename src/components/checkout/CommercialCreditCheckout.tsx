@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -11,12 +11,14 @@ import {
   TurnstileField,
 } from "@/components/security/TurnstileField";
 import { BRAND_GRADIENT_CTA } from "@/lib/brand-styles";
+import { trackCartFunnelEvent } from "@/lib/cart-sessions/funnel-client";
 import { quotePackageWeightLbs } from "@/lib/package-weight";
 import {
   persistCheckoutShipping,
   validateCheckoutShipping,
   type CheckoutShippingAddress,
 } from "@/lib/shipping-address";
+import { countCartPallets } from "@/lib/shipping-method";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { formatCurrency } from "@/lib/utils";
 
@@ -55,6 +57,18 @@ export function CommercialCreditCheckout({
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const turnstileRequired = isBrowserTurnstileEnabled();
+
+  useEffect(() => {
+    if (!account.approved) return;
+    trackCartFunnelEvent({
+      eventName: "credit_auth_prompted",
+      cartValueUsd: orderTotal,
+      palletCount: countCartPallets(items),
+      metadata: { paymentTerms: account.paymentTerms },
+    });
+    // Fire once when credit checkout UI is shown for this mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account.approved]);
 
   const canCover = account.approved && orderTotal <= account.availableCredit;
   const itemsSummary = useMemo(

@@ -12,6 +12,7 @@ import {
   readFridayDeliveryIso,
 } from "@/lib/shipping/friday-delivery";
 import { calculateOrderTotal, roundMoney } from "@/lib/sales-tax";
+import { markCartSessionsConverted } from "@/actions/cart-sessions";
 
 async function insertOrderDroppingUnknownColumns(
   supabase: { from: (table: string) => any },
@@ -394,37 +395,57 @@ export async function createOrderFromCheckout(
       } catch (settleError) {
         console.warn("[createOrderFromCheckout] pending settle:", settleError);
       }
+      const settledOrderId = formatOrderId({
+        id: pendingPayment.id,
+        createdAt: String(pendingPayment.created_at || new Date().toISOString()),
+        items:
+          (Array.isArray(pendingPayment.items)
+            ? (pendingPayment.items as {
+                gauge?: string | number | null;
+                quantity?: number;
+              }[])
+            : null) || cartItems,
+      });
+      await markCartSessionsConverted({
+        userId: user?.id || null,
+        email:
+          shippingDetails?.email ||
+          paymentIntentDetails?.receipt_email ||
+          paymentIntentDetails?.metadata?.email ||
+          null,
+        orderId: settledOrderId,
+      });
       return {
         success: true,
-        orderId: formatOrderId({
-          id: pendingPayment.id,
-          createdAt: String(pendingPayment.created_at || new Date().toISOString()),
-          items:
-            (Array.isArray(pendingPayment.items)
-              ? (pendingPayment.items as {
-                  gauge?: string | number | null;
-                  quantity?: number;
-                }[])
-              : null) || cartItems,
-        }),
+        orderId: settledOrderId,
       };
     }
 
     if (existingByIntent) {
       // Already settled (webhook or prior success). Do not rewrite lines/address from the client.
+      const existingOrderId = formatOrderId({
+        id: existingByIntent.id,
+        createdAt: String(existingByIntent.created_at || new Date().toISOString()),
+        items:
+          (Array.isArray(existingByIntent.items)
+            ? (existingByIntent.items as {
+                gauge?: string | number | null;
+                quantity?: number;
+              }[])
+            : null) || cartItems,
+      });
+      await markCartSessionsConverted({
+        userId: user?.id || null,
+        email:
+          shippingDetails?.email ||
+          paymentIntentDetails?.receipt_email ||
+          paymentIntentDetails?.metadata?.email ||
+          null,
+        orderId: existingOrderId,
+      });
       return {
         success: true,
-        orderId: formatOrderId({
-          id: existingByIntent.id,
-          createdAt: String(existingByIntent.created_at || new Date().toISOString()),
-          items:
-            (Array.isArray(existingByIntent.items)
-              ? (existingByIntent.items as {
-                  gauge?: string | number | null;
-                  quantity?: number;
-                }[])
-              : null) || cartItems,
-        }),
+        orderId: existingOrderId,
       };
     }
 

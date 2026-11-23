@@ -27,6 +27,7 @@ import {
 } from "@/lib/payments/settle-payment";
 import { runIdempotentSideEffect, stripeEventSideEffect } from "@/lib/payments/webhook-events";
 import { formatFridayDeliveryDate, fridayDeliveryTitleForAddress, readFridayDeliveryIso } from "@/lib/shipping/friday-delivery";
+import { markCartSessionsConverted } from "@/actions/cart-sessions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -1123,6 +1124,31 @@ async function handlePaymentIntentSucceeded(
       applyPaidEffects: async () => {
         const rpc = await supabase.rpc("settle_paid_order", { p_order_id: String(order!.id) });
         if (rpc.error) return "failed";
+        try {
+          const shipping =
+            order?.shipping_address && typeof order.shipping_address === "object"
+              ? (order.shipping_address as Record<string, unknown>)
+              : {};
+          await markCartSessionsConverted({
+            userId: order?.user_id ? String(order.user_id) : null,
+            email:
+              (shipping.email ? String(shipping.email) : null) ||
+              (order?.customer_email ? String(order.customer_email) : null) ||
+              paymentIntent.receipt_email ||
+              paymentIntent.metadata?.email ||
+              null,
+            orderId: formatOrderId({
+              id: order!.id,
+              createdAt: String(order!.created_at || new Date().toISOString()),
+              items: Array.isArray(order?.items) ? order.items : [],
+            }),
+          });
+        } catch (cartError) {
+          console.warn(
+            "[stripe webhook] mark cart converted:",
+            cartError instanceof Error ? cartError.message : cartError
+          );
+        }
         revalidatePath("/");
         revalidatePath("/products", "layout");
         return "done";

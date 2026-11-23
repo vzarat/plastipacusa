@@ -41,6 +41,9 @@ import {
 } from "@/lib/shipping-address";
 import { blocksCardStep } from "@/lib/shipping/quote-window";
 import { pixelItemFromCart, trackInitiateCheckout } from "@/lib/meta-pixel";
+import { trackCartFunnelEvent } from "@/lib/cart-sessions/funnel-client";
+import { writeStoredCartContact } from "@/lib/cart-sessions/client";
+import { countCartPallets } from "@/lib/shipping-method";
 import { applyMetaCheckoutQuery } from "@/lib/apply-meta-checkout";
 import { parseMetaProducts } from "@/lib/meta-checkout";
 import { checkoutLoginPath, readMetaCheckoutQuery, rememberMetaCheckoutQuery } from "@/lib/meta-checkout-storage";
@@ -141,13 +144,33 @@ function CheckoutPageInner({
   useEffect(() => {
     if (!cartReady || checkoutTracked.current || items.length === 0) return;
     checkoutTracked.current = true;
+    const cartValueUsd = getSubtotal();
+    const palletCount = countCartPallets(items);
     trackInitiateCheckout({
-      cartSubtotal: getSubtotal(),
+      cartSubtotal: cartValueUsd,
       currency: "USD",
       itemsCount: items.reduce((count, item) => count + item.quantity, 0),
       items: items.map((item) => pixelItemFromCart(item)),
     });
+    trackCartFunnelEvent({
+      eventName: "checkout_started",
+      cartValueUsd,
+      palletCount,
+      metadata: { itemsCount: items.length },
+    });
   }, [cartReady, items, getSubtotal]);
+
+  useEffect(() => {
+    if (!selectedAddress) return;
+    writeStoredCartContact({
+      contactName: selectedAddress.fullName || "",
+      companyName: selectedAddress.companyName || "",
+      phone: selectedAddress.phone || "",
+      shippingZip: selectedAddress.postalCode || "",
+      shippingCity: selectedAddress.city || "",
+      shippingState: selectedAddress.state || "",
+    });
+  }, [selectedAddress]);
 
   useEffect(() => {
     let cancelled = false;

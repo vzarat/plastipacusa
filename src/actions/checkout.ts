@@ -56,6 +56,7 @@ function localDeliveryFreightError(
 import { profileIsTaxExempt } from "@/lib/sales-tax";
 import type { ShippingQuoteLine } from "@/lib/shipping/types";
 import { notifyAdminPurchaseOrder } from "@/lib/email";
+import { markCartSessionsConverted } from "@/actions/cart-sessions";
 import { formatOrderId } from "@/lib/utils";
 
 function refreshCatalogStock() {
@@ -1692,6 +1693,12 @@ export async function placeCommercialCreditOrder(
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/credit");
     revalidatePath("/checkout");
+
+    await markCartSessionsConverted({
+      userId,
+      email: shippingAddress.email || sessionEmail || null,
+      orderId: displayOrderId,
+    });
 
     return {
       success: true,

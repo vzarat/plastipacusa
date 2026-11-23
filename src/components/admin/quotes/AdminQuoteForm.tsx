@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import type { AdminCustomer } from "@/actions/admin";
@@ -54,6 +54,7 @@ export function AdminQuoteForm({
   products: Array<Record<string, unknown>>;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const catalog = useMemo(() => buildQuoteCatalogOptions(products), [products]);
 
@@ -66,6 +67,25 @@ export function AdminQuoteForm({
   const [shippingZip, setShippingZip] = useState("");
   const [shippingCity, setShippingCity] = useState("");
   const [shippingState, setShippingState] = useState("");
+
+  useEffect(() => {
+    const company = searchParams.get("company");
+    const contact = searchParams.get("contact");
+    const emailParam = searchParams.get("email");
+    const phoneParam = searchParams.get("phone");
+    const zip = searchParams.get("zip");
+    const city = searchParams.get("city");
+    const state = searchParams.get("state");
+    if (!company && !contact && !emailParam && !phoneParam && !zip) return;
+    setCustomerMode("prospect");
+    if (company) setCompanyName(company);
+    if (contact) setContactName(contact);
+    if (emailParam) setEmail(emailParam);
+    if (phoneParam) setPhone(phoneParam);
+    if (zip) setShippingZip(zip);
+    if (city) setShippingCity(city);
+    if (state) setShippingState(state);
+  }, [searchParams]);
   const [paymentTerms, setPaymentTerms] = useState<SalesQuotePaymentTerms>("prepayment");
   const [validUntil, setValidUntil] = useState(defaultValidUntil());
   const [notes, setNotes] = useState("");

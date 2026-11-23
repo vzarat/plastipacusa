@@ -4,6 +4,7 @@ import { CartItem } from "@/types";
 import type { AppliedCoupon } from "@/types/coupon";
 import { canonicalCatalogSku, catalogSkusMatch } from "@/lib/catalog-sku";
 import { pixelItemFromCart, trackAddToCart } from "@/lib/meta-pixel";
+import { trackCartFunnelEvent } from "@/lib/cart-sessions/funnel-client";
 import { totalsFromCartLines, type PricedCheckoutLine } from "@/lib/checkout-pricing";
 import { fullPalletsForPackage } from "@/lib/pallet-stock";
 import { clampCartQuantity, type CartPackageInput } from "@/lib/cart-quantity";
@@ -195,6 +196,11 @@ export const useCartStore = create<CartState>()(
               currency: "USD",
               quantity: added,
             });
+            trackCartFunnelEvent({
+              eventName: "add_to_cart",
+              cartValueUsd: priced.unitPrice * added,
+              metadata: { sku: existingItem.sku, quantity: added },
+            });
           }
         } else {
           const clamped = applyPackageQuantity(itemData, itemData.quantity);
@@ -217,6 +223,11 @@ export const useCartStore = create<CartState>()(
               ...pixelItemFromCart(newItem),
               currency: "USD",
               quantity,
+            });
+            trackCartFunnelEvent({
+              eventName: "add_to_cart",
+              cartValueUsd: priced.totalPrice,
+              metadata: { sku: newItem.sku, quantity },
             });
           }
         }
