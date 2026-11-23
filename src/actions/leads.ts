@@ -223,7 +223,7 @@ export async function createManualLead(input: {
     source: "manual",
   });
   if (!result.success) return { success: false, error: result.error };
-  revalidatePath("/admin/leads");
+  revalidatePath("/admin/tools/leads");
   return { success: true };
 }
 
@@ -273,7 +273,7 @@ export async function importLeadsCsv(
     else imported += 1;
   }
 
-  revalidatePath("/admin/leads");
+  revalidatePath("/admin/tools/leads");
   return {
     success: errors.length < parsed.rows.length,
     imported,
@@ -299,7 +299,7 @@ export async function updateLeadStatus(input: {
 
   const { error } = await db.from("leads").update(patch).eq("id", input.id);
   if (error) return { success: false, error: error.message };
-  revalidatePath("/admin/leads");
+  revalidatePath("/admin/tools/leads");
   return { success: true };
 }
 

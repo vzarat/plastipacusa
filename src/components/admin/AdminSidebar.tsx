@@ -21,8 +21,6 @@ import {
   FileText,
   ClipboardList,
   Wrench,
-  Users,
-  Megaphone,
 } from "lucide-react";
 
 export type AdminTabKey = "overview" | "orders" | "products" | "customers" | "settings";
@@ -41,10 +39,6 @@ interface AdminSidebarProps {
   creditApplicationsActive?: boolean;
   /** When true (or path is /admin/quotes), highlight Sales Quotes */
   quotesActive?: boolean;
-  /** When true (or path is /admin/leads), highlight Leads */
-  leadsActive?: boolean;
-  /** When true (or path is /admin/campaigns), highlight Campaigns */
-  campaignsActive?: boolean;
   /** When true (or path is /admin/tools), highlight Tools */
   toolsActive?: boolean;
 }
@@ -61,8 +55,6 @@ export function AdminSidebar({
   onToggleCollapse,
   creditApplicationsActive: creditApplicationsActiveProp,
   quotesActive: quotesActiveProp,
-  leadsActive: leadsActiveProp,
-  campaignsActive: campaignsActiveProp,
   toolsActive: toolsActiveProp,
 }: AdminSidebarProps) {
   const pathname = usePathname();
@@ -71,15 +63,13 @@ export function AdminSidebar({
     pathname?.startsWith("/admin/credit-applications");
   const quotesActive =
     quotesActiveProp === true || pathname?.startsWith("/admin/quotes");
-  const leadsActive =
-    leadsActiveProp === true || pathname?.startsWith("/admin/leads");
-  const campaignsActive =
-    campaignsActiveProp === true || pathname?.startsWith("/admin/campaigns");
   const toolsActive =
     toolsActiveProp === true ||
     pathname?.startsWith("/admin/tools") ||
     pathname?.startsWith("/admin/abandoned-carts") ||
-    pathname?.startsWith("/admin/discounts");
+    pathname?.startsWith("/admin/discounts") ||
+    pathname?.startsWith("/admin/leads") ||
+    pathname?.startsWith("/admin/campaigns");
   const customersRouteActive = Boolean(
     pathname?.startsWith("/admin/customers")
   );
@@ -266,8 +256,6 @@ export function AdminSidebar({
               const isActive =
                 !creditApplicationsActive &&
                 !quotesActive &&
-                !leadsActive &&
-                !campaignsActive &&
                 !toolsActive &&
                 (customersRouteActive
                   ? item.key === "customers"
@@ -387,68 +375,6 @@ export function AdminSidebar({
               {isCollapsed && (
                 <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap hidden md:flex items-center gap-2">
                   Sales Quotes
-                </div>
-              )}
-            </Link>
-
-            {/* Leads — CRM capture */}
-            <Link
-              href="/admin/leads"
-              onClick={onCloseMobile}
-              className={`w-full flex items-center ${
-                isCollapsed ? "justify-center p-3" : "justify-between px-3.5 py-2.5 border-l-4"
-              } rounded-xl text-xs transition-all duration-200 relative group ${
-                leadsActive
-                  ? isCollapsed
-                    ? "bg-blue-50 text-blue-900 ring-1 ring-blue-300 shadow-xs font-bold"
-                    : "border-blue-600 bg-blue-50/70 font-bold text-blue-950 shadow-xs"
-                  : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-medium"
-              }`}
-              aria-label="Leads"
-            >
-              <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
-                <Users
-                  className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${
-                    leadsActive ? "text-blue-600" : "text-slate-400 group-hover:text-slate-700"
-                  }`}
-                />
-                {!isCollapsed && <span>Leads</span>}
-              </div>
-              {isCollapsed && (
-                <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap hidden md:flex items-center gap-2">
-                  Leads
-                </div>
-              )}
-            </Link>
-
-            {/* Campaigns — email broadcasts */}
-            <Link
-              href="/admin/campaigns"
-              onClick={onCloseMobile}
-              className={`w-full flex items-center ${
-                isCollapsed ? "justify-center p-3" : "justify-between px-3.5 py-2.5 border-l-4"
-              } rounded-xl text-xs transition-all duration-200 relative group ${
-                campaignsActive
-                  ? isCollapsed
-                    ? "bg-blue-50 text-blue-900 ring-1 ring-blue-300 shadow-xs font-bold"
-                    : "border-blue-600 bg-blue-50/70 font-bold text-blue-950 shadow-xs"
-                  : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-medium"
-              }`}
-              aria-label="Campaigns"
-            >
-              <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
-                <Megaphone
-                  className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${
-                    campaignsActive
-                      ? "text-blue-600"
-                      : "text-slate-400 group-hover:text-slate-700"
-                  }`}
-                />
-                {!isCollapsed && <span>Campaigns</span>}
-              </div>
-              {isCollapsed && (
-                <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap hidden md:flex items-center gap-2">
-                  Campaigns
                 </div>
               )}
             </Link>

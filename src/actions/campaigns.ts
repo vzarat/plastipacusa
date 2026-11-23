@@ -127,7 +127,7 @@ export async function createCampaign(
     .single();
 
   if (error) return { success: false, error: error.message };
-  revalidatePath("/admin/campaigns");
+  revalidatePath("/admin/tools/campaigns");
   return { success: true, id: data.id as string };
 }
 
@@ -167,8 +167,8 @@ export async function updateCampaign(
 
   const { error } = await db.from("campaigns").update(patch).eq("id", id);
   if (error) return { success: false, error: error.message };
-  revalidatePath("/admin/campaigns");
-  revalidatePath(`/admin/campaigns/${id}`);
+  revalidatePath("/admin/tools/campaigns");
+  revalidatePath(`/admin/tools/campaigns/${id}`);
   return { success: true };
 }
 
@@ -256,8 +256,8 @@ export async function launchCampaign(
 
   if (updateError) return { success: false, error: updateError.message };
 
-  revalidatePath("/admin/campaigns");
-  revalidatePath(`/admin/campaigns/${id}`);
+  revalidatePath("/admin/tools/campaigns");
+  revalidatePath(`/admin/tools/campaigns/${id}`);
   return { success: true, queued: audience.length };
 }
 
@@ -501,8 +501,8 @@ export async function pauseCampaign(
     .eq("id", id)
     .eq("status", "sending");
   if (error) return { success: false, error: error.message };
-  revalidatePath("/admin/campaigns");
-  revalidatePath(`/admin/campaigns/${id}`);
+  revalidatePath("/admin/tools/campaigns");
+  revalidatePath(`/admin/tools/campaigns/${id}`);
   return { success: true };
 }
 
@@ -518,8 +518,8 @@ export async function resumeCampaign(
     .eq("id", id)
     .eq("status", "paused");
   if (error) return { success: false, error: error.message };
-  revalidatePath("/admin/campaigns");
-  revalidatePath(`/admin/campaigns/${id}`);
+  revalidatePath("/admin/tools/campaigns");
+  revalidatePath(`/admin/tools/campaigns/${id}`);
   return { success: true };
 }
 
@@ -536,7 +536,7 @@ export async function flushCampaignQueue(): Promise<{
     return { success: false, processed: 0, sent: 0, failed: 0, error: "Unauthorized." };
   }
   const result = await dispatchPendingCampaignSends();
-  revalidatePath("/admin/campaigns");
+  revalidatePath("/admin/tools/campaigns");
   return { success: true, ...result };
 }
 

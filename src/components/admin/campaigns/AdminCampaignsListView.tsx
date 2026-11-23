@@ -55,7 +55,7 @@ export function AdminCampaignsListView({ campaigns }: { campaigns: CampaignRecor
             Flush send queue
           </button>
           <Link
-            href="/admin/campaigns/new"
+            href="/admin/tools/campaigns/new"
             className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2 text-sm font-bold text-white hover:bg-sky-700"
           >
             <Plus className="h-4 w-4" />
@@ -68,7 +68,7 @@ export function AdminCampaignsListView({ campaigns }: { campaigns: CampaignRecor
         {campaigns.map((campaign) => (
           <Link
             key={campaign.id}
-            href={`/admin/campaigns/${campaign.id}`}
+            href={`/admin/tools/campaigns/${campaign.id}`}
             className="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-sky-300 hover:shadow-md"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -116,7 +116,7 @@ export function AdminCampaignsListView({ campaigns }: { campaigns: CampaignRecor
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
             <p className="text-sm text-slate-600">No campaigns yet.</p>
             <Link
-              href="/admin/campaigns/new"
+              href="/admin/tools/campaigns/new"
               className="mt-4 inline-flex rounded-xl bg-sky-600 px-4 py-2 text-sm font-bold text-white hover:bg-sky-700"
             >
               Create your first campaign

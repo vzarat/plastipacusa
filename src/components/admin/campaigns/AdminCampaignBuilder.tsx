@@ -96,7 +96,7 @@ export function AdminCampaignBuilder({
           return;
         }
         toast.success("Campaign draft saved.");
-        router.push(`/admin/campaigns/${result.id}`);
+        router.push(`/admin/tools/campaigns/${result.id}`);
         router.refresh();
         return;
       }
