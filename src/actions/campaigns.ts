@@ -503,6 +503,140 @@ export async function addRecipientsToCampaign(
   };
 }
 
+/**
+ * Remove recipients from a campaign so they can be re-added and flushed again.
+ * Deletes campaign_sends rows (by id and/or email). Does not delete leads.
+ */
+export async function removeCampaignRecipients(
+  campaignId: string,
+  input: {
+    sendIds?: string[];
+    emails?: string;
+    pendingOnly?: boolean;
+  }
+): Promise<{ success: boolean; removed?: number; error?: string }> {
+  const admin = await requireAdmin();
+  if (!admin) return { success: false, error: "Unauthorized." };
+
+  const sendIds = Array.from(
+    new Set((input.sendIds || []).map((id) => String(id || "").trim()).filter(Boolean))
+  );
+  const emails = parseEmailList(input.emails || "");
+
+  if (sendIds.length === 0 && emails.length === 0 && !input.pendingOnly) {
+    return { success: false, error: "Select sends or paste emails to remove." };
+  }
+
+  const db = await adminDb();
+  const { data: campaignRow } = await db
+    .from("campaigns")
+    .select("id, status")
+    .eq("id", campaignId)
+    .maybeSingle();
+  if (!campaignRow) return { success: false, error: "Campaign not found." };
+
+  const status = String(campaignRow.status || "");
+  if (
+    status !== "sending" &&
+    status !== "sent" &&
+    status !== "paused" &&
+    status !== "draft" &&
+    status !== "scheduled"
+  ) {
+    return { success: false, error: "Cannot edit recipients for this campaign." };
+  }
+
+  let removed = 0;
+
+  if (sendIds.length > 0) {
+    let query = db
+      .from("campaign_sends")
+      .delete({ count: "exact" })
+      .eq("campaign_id", campaignId)
+      .in("id", sendIds);
+    if (input.pendingOnly) query = query.eq("status", "pending");
+    const { error, count } = await query;
+    if (error) return { success: false, error: error.message };
+    removed += count || 0;
+  }
+
+  if (emails.length > 0) {
+    // Match case-insensitively by fetching then deleting ids (PostgREST has no lower() filter helper).
+    const { data: rows, error: fetchError } = await db
+      .from("campaign_sends")
+      .select("id, email, status")
+      .eq("campaign_id", campaignId);
+    if (fetchError) return { success: false, error: fetchError.message };
+
+    const emailSet = new Set(emails);
+    const ids = (rows || [])
+      .filter((row) => {
+        const email = String(row.email || "").toLowerCase();
+        if (!emailSet.has(email)) return false;
+        if (input.pendingOnly && row.status !== "pending") return false;
+        return true;
+      })
+      .map((row) => String(row.id));
+
+    if (ids.length > 0) {
+      for (let i = 0; i < ids.length; i += 200) {
+        const chunk = ids.slice(i, i + 200);
+        const { error, count } = await db
+          .from("campaign_sends")
+          .delete({ count: "exact" })
+          .eq("campaign_id", campaignId)
+          .in("id", chunk);
+        if (error) return { success: false, error: error.message };
+        removed += count || 0;
+      }
+    }
+  }
+
+  if (input.pendingOnly && sendIds.length === 0 && emails.length === 0) {
+    const { error, count } = await db
+      .from("campaign_sends")
+      .delete({ count: "exact" })
+      .eq("campaign_id", campaignId)
+      .eq("status", "pending");
+    if (error) return { success: false, error: error.message };
+    removed += count || 0;
+  }
+
+  // If anything is still pending, keep/reopen as sending so Flush works.
+  const { count: pendingLeft } = await db
+    .from("campaign_sends")
+    .select("id", { count: "exact", head: true })
+    .eq("campaign_id", campaignId)
+    .eq("status", "pending");
+
+  const now = new Date().toISOString();
+  if ((pendingLeft || 0) > 0 && (status === "sent" || status === "sending")) {
+    await db
+      .from("campaigns")
+      .update({
+        status: "sending",
+        completed_at: null,
+        updated_at: now,
+      })
+      .eq("id", campaignId);
+  } else if ((pendingLeft || 0) === 0 && status === "sending") {
+    await db
+      .from("campaigns")
+      .update({
+        status: "sent",
+        completed_at: now,
+        updated_at: now,
+      })
+      .eq("id", campaignId);
+  } else {
+    await db.from("campaigns").update({ updated_at: now }).eq("id", campaignId);
+  }
+
+  revalidatePath("/admin/tools/campaigns");
+  revalidatePath(`/admin/tools/campaigns/${campaignId}`);
+  return { success: true, removed };
+}
+
 async function queueNextSequenceStep(input: {
   db: Awaited<ReturnType<typeof adminDb>>;
   campaignId: string;
