@@ -303,6 +303,63 @@ export async function updateLeadStatus(input: {
   return { success: true };
 }
 
+export async function updateLead(input: {
+  id: string;
+  email: string;
+  companyName?: string;
+  contactName?: string;
+  phone?: string;
+  zipCode?: string;
+  tags?: string[];
+  status?: LeadStatus;
+  subscribed?: boolean;
+}): Promise<{ success: boolean; lead?: LeadRecord; error?: string }> {
+  const admin = await requireAdmin();
+  if (!admin) return { success: false, error: "Unauthorized." };
+
+  const id = String(input.id || "").trim();
+  if (!id) return { success: false, error: "Lead id is required." };
+
+  const email = normalizeEmail(input.email);
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { success: false, error: "Valid email is required." };
+  }
+
+  const db = await adminDb();
+  const { data: conflict } = await db
+    .from("leads")
+    .select("id")
+    .ilike("email", email)
+    .neq("id", id)
+    .maybeSingle();
+  if (conflict?.id) {
+    return { success: false, error: "Another lead already uses that email." };
+  }
+
+  const patch: Record<string, unknown> = {
+    email,
+    company_name: String(input.companyName || "").trim(),
+    contact_name: String(input.contactName || "").trim(),
+    phone: String(input.phone || "").trim(),
+    zip_code: String(input.zipCode || "").trim(),
+    tags: normalizeTags(input.tags),
+    updated_at: new Date().toISOString(),
+  };
+  if (input.status) patch.status = input.status;
+  if (typeof input.subscribed === "boolean") patch.subscribed = input.subscribed;
+
+  const { data, error } = await db
+    .from("leads")
+    .update(patch)
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/admin/tools/leads");
+  return { success: true, lead: mapLeadRow(data as Record<string, unknown>) };
+}
+
 export async function unsubscribeByToken(
   token: string
 ): Promise<{ success: boolean; already?: boolean; error?: string }> {

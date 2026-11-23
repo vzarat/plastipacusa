@@ -2,13 +2,64 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Upload, UserPlus } from "lucide-react";
+import { Pencil, Upload, UserPlus, X } from "lucide-react";
 import {
   createManualLead,
   importLeadsCsv,
+  updateLead,
   updateLeadStatus,
 } from "@/actions/leads";
-import type { LeadRecord } from "@/lib/campaigns/types";
+import type { LeadRecord, LeadStatus } from "@/lib/campaigns/types";
+
+const LEAD_STATUSES: LeadStatus[] = [
+  "new",
+  "contacted",
+  "qualified",
+  "converted",
+  "archived",
+];
+
+type LeadFormState = {
+  email: string;
+  contactName: string;
+  companyName: string;
+  phone: string;
+  zipCode: string;
+  tags: string;
+  status: LeadStatus;
+  subscribed: boolean;
+};
+
+const EMPTY_FORM: LeadFormState = {
+  email: "",
+  contactName: "",
+  companyName: "",
+  phone: "",
+  zipCode: "",
+  tags: "",
+  status: "new",
+  subscribed: true,
+};
+
+function formFromLead(lead: LeadRecord): LeadFormState {
+  return {
+    email: lead.email,
+    contactName: lead.contactName,
+    companyName: lead.companyName,
+    phone: lead.phone,
+    zipCode: lead.zipCode,
+    tags: lead.tags.join(", "),
+    status: lead.status,
+    subscribed: lead.subscribed,
+  };
+}
+
+function parseTags(value: string): string[] {
+  return value
+    .split(/[|,]/)
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
 
 export function AdminLeadsView({
   initialLeads,
@@ -23,15 +74,9 @@ export function AdminLeadsView({
   const [csvText, setCsvText] = useState("");
   const [csvTags, setCsvTags] = useState("");
   const [pending, startTransition] = useTransition();
-
-  const [manual, setManual] = useState({
-    email: "",
-    contactName: "",
-    companyName: "",
-    phone: "",
-    zipCode: "",
-    tags: "",
-  });
+  const [manual, setManual] = useState(EMPTY_FORM);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<LeadFormState>(EMPTY_FORM);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -48,6 +93,9 @@ export function AdminLeadsView({
   }, [leads, query, tagFilter]);
 
   const subscribedCount = leads.filter((lead) => lead.subscribed).length;
+  const editingLead = editingId
+    ? leads.find((lead) => lead.id === editingId) || null
+    : null;
 
   function onCsvFile(file: File | null) {
     if (!file) return;
@@ -58,10 +106,7 @@ export function AdminLeadsView({
 
   function handleImport() {
     startTransition(async () => {
-      const tags = csvTags
-        .split(/[|,]/)
-        .map((tag) => tag.trim())
-        .filter(Boolean);
+      const tags = parseTags(csvTags);
       const result = await importLeadsCsv(csvText, tags);
       if (!result.success && result.imported === 0 && result.updated === 0) {
         toast.error(result.errors[0] || "Import failed.");
@@ -84,25 +129,51 @@ export function AdminLeadsView({
         companyName: manual.companyName,
         phone: manual.phone,
         zipCode: manual.zipCode,
-        tags: manual.tags
-          .split(/[|,]/)
-          .map((tag) => tag.trim())
-          .filter(Boolean),
+        tags: parseTags(manual.tags),
       });
       if (!result.success) {
         toast.error(result.error || "Could not create lead.");
         return;
       }
       toast.success("Lead saved.");
-      setManual({
-        email: "",
-        contactName: "",
-        companyName: "",
-        phone: "",
-        zipCode: "",
-        tags: "",
-      });
+      setManual(EMPTY_FORM);
       window.location.reload();
+    });
+  }
+
+  function openEdit(lead: LeadRecord) {
+    setEditingId(lead.id);
+    setEditForm(formFromLead(lead));
+  }
+
+  function closeEdit() {
+    setEditingId(null);
+    setEditForm(EMPTY_FORM);
+  }
+
+  function handleSaveEdit() {
+    if (!editingId) return;
+    startTransition(async () => {
+      const result = await updateLead({
+        id: editingId,
+        email: editForm.email,
+        contactName: editForm.contactName,
+        companyName: editForm.companyName,
+        phone: editForm.phone,
+        zipCode: editForm.zipCode,
+        tags: parseTags(editForm.tags),
+        status: editForm.status,
+        subscribed: editForm.subscribed,
+      });
+      if (!result.success || !result.lead) {
+        toast.error(result.error || "Could not update lead.");
+        return;
+      }
+      setLeads((current) =>
+        current.map((row) => (row.id === result.lead!.id ? result.lead! : row))
+      );
+      toast.success("Lead updated.");
+      closeEdit();
     });
   }
 
@@ -119,6 +190,9 @@ export function AdminLeadsView({
           row.id === lead.id ? { ...row, subscribed: next } : row
         )
       );
+      if (editingId === lead.id) {
+        setEditForm((current) => ({ ...current, subscribed: next }));
+      }
       toast.success(next ? "Lead re-subscribed." : "Lead unsubscribed.");
     });
   }
@@ -246,6 +320,7 @@ export function AdminLeadsView({
                 <th className="px-4 py-3 font-semibold">Tags</th>
                 <th className="px-4 py-3 font-semibold">Status</th>
                 <th className="px-4 py-3 font-semibold">Subscribed</th>
+                <th className="px-4 py-3 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -296,11 +371,22 @@ export function AdminLeadsView({
                       {lead.subscribed ? "Yes" : "No"}
                     </button>
                   </td>
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() => openEdit(lead)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      Edit
+                    </button>
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-500">
+                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-500">
                     No leads match this filter.
                   </td>
                 </tr>
@@ -309,6 +395,118 @@ export function AdminLeadsView({
           </table>
         </div>
       </section>
+
+      {editingLead ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-lead-title"
+            className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-5 shadow-xl"
+          >
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 id="edit-lead-title" className="text-lg font-bold text-slate-900">
+                  Edit lead
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Source: {editingLead.source}
+                  {editingLead.externalId ? ` · ${editingLead.externalId}` : ""}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeEdit}
+                className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(
+                [
+                  ["email", "Email *"],
+                  ["contactName", "Contact name"],
+                  ["companyName", "Company"],
+                  ["phone", "Phone"],
+                  ["zipCode", "ZIP"],
+                  ["tags", "Tags"],
+                ] as const
+              ).map(([key, label]) => (
+                <label key={key} className="block text-xs font-semibold text-slate-600">
+                  {label}
+                  <input
+                    value={editForm[key]}
+                    onChange={(event) =>
+                      setEditForm((current) => ({
+                        ...current,
+                        [key]: event.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-normal text-slate-900"
+                  />
+                </label>
+              ))}
+
+              <label className="block text-xs font-semibold text-slate-600">
+                Status
+                <select
+                  value={editForm.status}
+                  onChange={(event) =>
+                    setEditForm((current) => ({
+                      ...current,
+                      status: event.target.value as LeadStatus,
+                    }))
+                  }
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-normal text-slate-900"
+                >
+                  {LEAD_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="flex items-center gap-2 self-end rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={editForm.subscribed}
+                  onChange={(event) =>
+                    setEditForm((current) => ({
+                      ...current,
+                      subscribed: event.target.checked,
+                    }))
+                  }
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                Subscribed
+              </label>
+            </div>
+
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={closeEdit}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={pending || !editForm.email.trim()}
+                onClick={handleSaveEdit}
+                className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-bold text-white hover:bg-sky-700 disabled:opacity-50"
+              >
+                Save changes
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
