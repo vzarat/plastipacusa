@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Menu, ShieldCheck, Wrench } from "lucide-react";
 import type { UserProfile } from "@/actions/auth";
 import { AdminSidebar, type AdminTabKey } from "@/components/admin/AdminSidebar";
+import { BRAND_GRADIENT_PILL_ACTIVE } from "@/lib/brand-styles";
 import { ADMIN_TOOLS, adminToolFromPath } from "@/lib/admin-tools";
 
 export function AdminToolsShell({
@@ -81,7 +82,7 @@ export function AdminToolsShell({
                   href={tool.href}
                   className={`inline-flex items-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold border transition-colors ${
                     isActive
-                      ? "bg-sky-600 text-white border-sky-600 shadow-sm"
+                      ? BRAND_GRADIENT_PILL_ACTIVE
                       : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                   }`}
                   aria-current={isActive ? "page" : undefined}

@@ -35,7 +35,7 @@ export function AdminDiscountsClient({ profile }: AdminDiscountsClientProps) {
         profile={profile}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed((v) => !v)}
-        discountsActive
+        toolsActive
       />
 
       <div className="flex-1 flex flex-col min-w-0">

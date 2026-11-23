@@ -22,9 +22,9 @@ const MOBILE_SLIDE_COUNT = 1;
 const DESKTOP_SLIDE_COUNT = 5;
 const AUTO_MS = 7000;
 const SLIDE_LABELS = [
-  "Featured",
   "Packaging solutions",
   "High-performance at competitive prices",
+  "Featured",
   "Increase packaging efficiency",
   "Quality you can count on",
 ];
@@ -35,8 +35,30 @@ const SLIDE_CTA_CLASS =
 const MOBILE_CTA_CLASS =
   "inline-flex w-fit items-center gap-2 rounded-xl bg-gradient-to-r from-[#00b2e3] to-[#2563eb] px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white shadow-md shadow-blue-500/30";
 
-/** First slide: background video on desktop only; Instagram story on mobile. */
-function LeadSlide({ active }: { active: boolean }) {
+/** Mobile-only first slide (Instagram story). */
+function MobileStorySlide() {
+  return (
+    <div className="absolute inset-0 md:hidden">
+      <Image
+        src={SLIDE_MOBILE_STORY}
+        alt="We are the manufacturers. We manufacture high-quality stretch film designed to meet your packaging needs."
+        fill
+        priority
+        sizes="100vw"
+        className="object-contain object-center"
+      />
+      <div className="absolute left-1/2 top-[41.5%] z-20 -translate-x-1/2">
+        <Link href="/#product-catalog-section" className={MOBILE_CTA_CLASS}>
+          Shop Now
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+/** Desktop video slide (3rd). No Shop CTA. */
+function VideoSlide({ active }: { active: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -52,43 +74,18 @@ function LeadSlide({ active }: { active: boolean }) {
   }, [active]);
 
   return (
-    <div className="absolute inset-0">
-      <div className="absolute inset-0 hidden bg-slate-950 md:block">
-        <video
-          ref={videoRef}
-          className="absolute inset-0 h-full w-full object-cover"
-          src={SLIDE_BACKGROUND_VIDEO}
-          muted
-          loop
-          playsInline
-          autoPlay
-          preload="metadata"
-          aria-label="Plastipac USA stretch film — featured packaging video"
-        />
-        <div className="absolute left-[8.1%] top-[64.5%] z-20">
-          <Link href="/#product-catalog-section" className={SLIDE_CTA_CLASS}>
-            Shop Now
-            <ArrowRight className="h-[1.05cqw] w-[1.05cqw]" />
-          </Link>
-        </div>
-      </div>
-
-      <div className="absolute inset-0 md:hidden">
-        <Image
-          src={SLIDE_MOBILE_STORY}
-          alt="We are the manufacturers. We manufacture high-quality stretch film designed to meet your packaging needs."
-          fill
-          priority
-          sizes="100vw"
-          className="object-contain object-center"
-        />
-        <div className="absolute left-1/2 top-[41.5%] z-20 -translate-x-1/2">
-          <Link href="/#product-catalog-section" className={MOBILE_CTA_CLASS}>
-            Shop Now
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-      </div>
+    <div className="absolute inset-0 hidden bg-slate-950 md:block">
+      <video
+        ref={videoRef}
+        className="absolute inset-0 h-full w-full object-cover"
+        src={SLIDE_BACKGROUND_VIDEO}
+        muted
+        loop
+        playsInline
+        autoPlay
+        preload="metadata"
+        aria-label="Plastipac USA stretch film — featured packaging video"
+      />
     </div>
   );
 }
@@ -100,6 +97,7 @@ function FeaturedImageSlide() {
         src={SLIDE_SDK_4}
         alt="Plastipac USA stretch film — featured packaging solutions"
         fill
+        priority
         sizes="(max-width: 1400px) 100vw, 1400px"
         className="hidden object-contain object-center md:block"
       />
@@ -216,7 +214,8 @@ export function Hero() {
           aria-hidden={index !== 0}
           inert={index !== 0}
         >
-          <LeadSlide active={index === 0} />
+          <MobileStorySlide />
+          <FeaturedImageSlide />
         </div>
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
@@ -225,7 +224,7 @@ export function Hero() {
           aria-hidden={index !== 1}
           inert={index !== 1}
         >
-          <FeaturedImageSlide />
+          <PerformanceSlide />
         </div>
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
@@ -234,7 +233,7 @@ export function Hero() {
           aria-hidden={index !== 2}
           inert={index !== 2}
         >
-          <PerformanceSlide />
+          <VideoSlide active={index === 2} />
         </div>
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
