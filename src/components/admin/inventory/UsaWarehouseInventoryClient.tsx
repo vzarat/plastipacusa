@@ -20,6 +20,7 @@ import {
 import type { UserProfile } from "@/actions/auth";
 import { AdminInventoryShell } from "@/components/admin/inventory/AdminInventoryShell";
 import {
+  formatStretchSpec,
   tarimaBreakdown,
   tarimasToUnits,
   usStockAvailability,
@@ -48,7 +49,19 @@ export function UsaWarehouseInventoryClient({
     const q = query.trim().toLowerCase();
     if (!q) return inventory;
     return inventory.filter((row) => {
-      const hay = `${row.productName || ""} ${row.productSlug || ""} ${row.application || ""}`.toLowerCase();
+      const hay = [
+        row.productName,
+        row.productSlug,
+        row.application,
+        row.partNumber,
+        row.gauge != null ? `${row.gauge} ga` : "",
+        row.gauge != null ? String(row.gauge) : "",
+        row.widthInches != null ? `${row.widthInches}"` : "",
+        row.widthInches != null ? String(row.widthInches) : "",
+        formatStretchSpec(row),
+      ]
+        .join(" ")
+        .toLowerCase();
       return hay.includes(q);
     });
   }, [inventory, query]);
@@ -213,12 +226,30 @@ export function UsaWarehouseInventoryClient({
                         {order.shippingSummary}
                       </div>
                       <ul className="mt-2 space-y-0.5 text-xs text-slate-600">
-                        {order.lines.map((line) => (
-                          <li key={`${order.id}-${line.productId}-${line.sku}`}>
-                            {line.units} {line.unitLabel} · {line.productName}
-                            {line.sku ? ` (${line.sku})` : ""}
-                          </li>
-                        ))}
+                        {order.lines.map((line) => {
+                          const spec = formatStretchSpec({
+                            widthInches: line.widthInches,
+                            gauge: line.gauge,
+                            lengthFeet: line.lengthFeet,
+                            application: line.application,
+                          });
+                          const pallets =
+                            line.pallets ??
+                            tarimaBreakdown(line.units, line.application, null)
+                              .tarimas;
+                          return (
+                            <li key={`${order.id}-${line.productId}-${line.sku}`}>
+                              <span className="font-bold text-slate-800">
+                                {pallets} pallet{pallets === 1 ? "" : "s"}
+                              </span>
+                              {" · "}
+                              {spec}
+                              {" · "}
+                              {line.units} {line.unitLabel}
+                              {line.sku ? ` · ${line.sku}` : ""}
+                            </li>
+                          );
+                        })}
                       </ul>
                     </div>
                     <button
@@ -267,10 +298,10 @@ export function UsaWarehouseInventoryClient({
                   >
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-semibold text-slate-800">
-                        {row.productName}
+                        {formatStretchSpec(row)}
                       </div>
-                      <div className="text-[11px] text-slate-500">
-                        {row.application === "machine" ? "Machine" : "Hand"} · 1 pallet ={" "}
+                      <div className="truncate text-[11px] text-slate-500">
+                        {row.productName} · on hand {meta.tarimas} pallets · 1 pallet ={" "}
                         {meta.perTarima} {meta.unitLabel}
                       </div>
                     </div>
@@ -285,7 +316,7 @@ export function UsaWarehouseInventoryClient({
                       }
                       placeholder="0"
                       className="w-20 rounded-lg border border-slate-200 px-2 py-1.5 text-center text-sm font-bold"
-                      aria-label={`Pallets for ${row.productName}`}
+                      aria-label={`Pallets for ${formatStretchSpec(row)}`}
                     />
                     <span className="w-14 text-[11px] font-bold uppercase text-slate-400">
                       pallets
@@ -312,7 +343,7 @@ export function UsaWarehouseInventoryClient({
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search film SKU…"
+            placeholder='Search gauge, width, SKU… e.g. "80" or 18"'
             className="w-full max-w-xs rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm sm:w-64"
           />
         </div>
@@ -329,7 +360,7 @@ export function UsaWarehouseInventoryClient({
               reorderPoint: row.reorderPoint,
               tracked: true,
             });
-            const filmKind = row.application === "machine" ? "Machine" : "Hand";
+            const spec = formatStretchSpec(row);
             return (
               <article
                 key={row.id}
@@ -337,17 +368,35 @@ export function UsaWarehouseInventoryClient({
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      {row.gauge != null ? (
+                        <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-black uppercase tracking-wide text-amber-950">
+                          {row.gauge} GA
+                        </span>
+                      ) : null}
+                      {row.widthInches != null ? (
+                        <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-black text-sky-950">
+                          {row.widthInches}&quot; wide
+                        </span>
+                      ) : null}
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-600">
-                        {filmKind} stretch
-                      </span>
-                      <span className="text-[10px] font-semibold text-slate-400">
-                        1 pallet = {meta.perTarima} {meta.unitLabel}
+                        {row.application === "machine" ? "Machine" : "Hand"}
                       </span>
                     </div>
-                    <h3 className="truncate text-base font-bold text-slate-900">
-                      {row.productName || row.productId}
+                    <h3 className="text-lg font-black tracking-tight text-slate-900">
+                      {spec}
                     </h3>
+                    <p className="mt-0.5 truncate text-sm text-slate-600">
+                      {row.productName || row.productId}
+                    </p>
+                    {row.partNumber ? (
+                      <p className="mt-0.5 text-xs font-semibold text-slate-500">
+                        PN {row.partNumber}
+                      </p>
+                    ) : null}
+                    <p className="mt-1 text-[11px] font-semibold text-slate-400">
+                      1 pallet = {meta.perTarima} {meta.unitLabel}
+                    </p>
                     <p
                       className={`mt-1 text-xs font-bold ${
                         status === "in_stock"
@@ -360,19 +409,19 @@ export function UsaWarehouseInventoryClient({
                       {usStockStatusLabel(status)}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-right">
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-emerald-800">
+                      Pallets on hand
+                    </div>
                     <div className="text-4xl font-black tabular-nums text-slate-900">
                       {meta.tarimas}
-                    </div>
-                    <div className="text-xs font-black uppercase tracking-wide text-emerald-700">
-                      pallets
                     </div>
                     {meta.loose > 0 ? (
                       <div className="mt-1 text-xs font-semibold text-amber-700">
                         + {meta.loose} loose {meta.unitLabel}
                       </div>
                     ) : (
-                      <div className="mt-1 text-xs text-slate-400">
+                      <div className="mt-1 text-xs text-slate-500">
                         {row.stockBoxes.toLocaleString()} {meta.unitLabel} total
                       </div>
                     )}

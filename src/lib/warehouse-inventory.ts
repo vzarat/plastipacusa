@@ -41,6 +41,33 @@ export interface WarehouseInventoryRow {
   boxesPerPallet?: number | null;
   skuHint?: string;
   isActive?: boolean;
+  /** Stretch film width in inches (e.g. 18). */
+  widthInches?: number | null;
+  /** Film gauge / calibre (e.g. 80). */
+  gauge?: number | null;
+  /** Roll length in feet when available. */
+  lengthFeet?: number | null;
+  partNumber?: string | null;
+}
+
+/** Human-readable stretch film spec for warehouse floor cards. */
+export function formatStretchSpec(row: {
+  widthInches?: number | null;
+  gauge?: number | null;
+  lengthFeet?: number | null;
+  application?: string | null;
+}): string {
+  const parts: string[] = [];
+  const width = Number(row.widthInches);
+  const gauge = Number(row.gauge);
+  const length = Number(row.lengthFeet);
+  if (Number.isFinite(width) && width > 0) parts.push(`${width}"`);
+  if (Number.isFinite(gauge) && gauge > 0) parts.push(`${gauge} GA`);
+  if (Number.isFinite(length) && length > 0) parts.push(`${length} ft`);
+  const kind =
+    String(row.application || "").toLowerCase() === "machine" ? "Machine" : "Hand";
+  parts.push(`${kind} stretch`);
+  return parts.join(" · ");
 }
 
 export function mapWarehouseRow(row: Record<string, unknown>): WarehouseRecord {
@@ -53,32 +80,59 @@ export function mapWarehouseRow(row: Record<string, unknown>): WarehouseRecord {
   };
 }
 
+function readPositiveNumber(value: unknown): number | null {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n;
+}
+
 export function mapWarehouseInventoryRow(
   row: Record<string, unknown>
 ): WarehouseInventoryRow {
   const product = (row.products || row.product || null) as Record<string, unknown> | null;
+  const application = product
+    ? (String(product.application || "hand").toLowerCase() as "hand" | "machine")
+    : undefined;
+  const stockBoxes = Math.max(
+    0,
+    Math.floor(Number(row.stock_boxes ?? row.stockBoxes) || 0)
+  );
+  const boxesPerPallet = product
+    ? unitsPerTarima(
+        application,
+        Math.floor(Number(product.boxes_per_pallet) || 0) || null
+      )
+    : null;
+  const breakdown = tarimaBreakdown(stockBoxes, application, boxesPerPallet);
+
   return {
     id: String(row.id),
     warehouseId: String(row.warehouse_id || row.warehouseId || ""),
     productId: String(row.product_id || row.productId || ""),
-    stockBoxes: Math.max(0, Math.floor(Number(row.stock_boxes ?? row.stockBoxes) || 0)),
-    stockPallets: Math.max(0, Number(row.stock_pallets ?? row.stockPallets) || 0),
+    stockBoxes,
+    stockPallets: Math.max(
+      breakdown.tarimas,
+      Number(row.stock_pallets ?? row.stockPallets) || 0
+    ),
     reorderPoint: Math.max(0, Math.floor(Number(row.reorder_point ?? row.reorderPoint) || 0)),
     updatedAt: String(row.updated_at || row.updatedAt || ""),
     productName: product
       ? String(product.name || product.storefront_title || product.title || "")
       : undefined,
     productSlug: product ? String(product.slug || "") : undefined,
-    application: product
-      ? (String(product.application || "hand").toLowerCase() as "hand" | "machine")
-      : undefined,
-    boxesPerPallet: product
-      ? unitsPerTarima(
-          String(product.application || "hand"),
-          Math.floor(Number(product.boxes_per_pallet) || 0) || null
-        )
-      : null,
+    application,
+    boxesPerPallet,
     isActive: product ? product.is_active !== false : undefined,
+    widthInches: product
+      ? readPositiveNumber(product.width_inches ?? product.widthInches)
+      : null,
+    gauge: product ? readPositiveNumber(product.gauge) : null,
+    lengthFeet: product
+      ? readPositiveNumber(product.length_feet ?? product.lengthFeet)
+      : null,
+    partNumber: product
+      ? String(product.part_number || product.partNumber || "").trim() || null
+      : null,
   };
 }
 

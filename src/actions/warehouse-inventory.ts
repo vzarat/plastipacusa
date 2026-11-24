@@ -6,6 +6,7 @@ import { lineStockUnits } from "@/lib/pallet-stock";
 import {
   mapWarehouseInventoryRow,
   mapWarehouseRow,
+  tarimaBreakdown,
   USA_WAREHOUSE_CODE,
   type InventoryAdjustReason,
   type WarehouseInventoryRow,
@@ -66,7 +67,7 @@ export async function listWarehouseInventory(
   const { data, error } = await client
     .from("warehouse_inventory")
     .select(
-      "*, products ( id, name, slug, application, boxes_per_pallet, is_active, storefront_title )"
+      "*, products ( id, name, slug, application, boxes_per_pallet, is_active, storefront_title, width_inches, gauge, length_feet, part_number )"
     )
     .eq("warehouse_id", warehouse.id)
     .order("updated_at", { ascending: false });
@@ -79,9 +80,15 @@ export async function listWarehouseInventory(
   return (data || [])
     .map((row) => mapWarehouseInventoryRow(row as Record<string, unknown>))
     .filter((row) => row.isActive !== false)
-    .sort((a, b) =>
-      String(a.productName || "").localeCompare(String(b.productName || ""))
-    );
+    .sort((a, b) => {
+      const app = String(a.application || "").localeCompare(String(b.application || ""));
+      if (app !== 0) return app;
+      const gauge = (a.gauge || 0) - (b.gauge || 0);
+      if (gauge !== 0) return gauge;
+      const width = (a.widthInches || 0) - (b.widthInches || 0);
+      if (width !== 0) return width;
+      return String(a.productName || "").localeCompare(String(b.productName || ""));
+    });
 }
 
 export async function adjustWarehouseInventory(input: {
@@ -185,6 +192,10 @@ export interface WarehouseDispatchOrder {
     units: number;
     unitLabel: "boxes" | "rolls";
     application: string;
+    widthInches?: number | null;
+    gauge?: number | null;
+    lengthFeet?: number | null;
+    pallets?: number;
   }>;
 }
 
@@ -260,6 +271,10 @@ export async function listUsaDispatchQueue(): Promise<WarehouseDispatchOrder[]> 
             rolls: Number(raw.totalRolls ?? raw.rolls) || 0,
           });
           if (!productId || units < 1) return null;
+          const widthInches = Number(raw.widthInches ?? raw.width_inches);
+          const gauge = Number(raw.gauge);
+          const lengthFeet = Number(raw.lengthFeet ?? raw.length_feet);
+          const breakdown = tarimaBreakdown(units, application, null);
           return {
             productId,
             productName: String(raw.productName || raw.product_name || raw.name || "Item"),
@@ -267,6 +282,12 @@ export async function listUsaDispatchQueue(): Promise<WarehouseDispatchOrder[]> 
             units,
             unitLabel,
             application,
+            widthInches:
+              Number.isFinite(widthInches) && widthInches > 0 ? widthInches : null,
+            gauge: Number.isFinite(gauge) && gauge > 0 ? gauge : null,
+            lengthFeet:
+              Number.isFinite(lengthFeet) && lengthFeet > 0 ? lengthFeet : null,
+            pallets: breakdown.tarimas,
           };
         })
         .filter((line): line is NonNullable<typeof line> => Boolean(line));
