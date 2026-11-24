@@ -153,7 +153,7 @@ export function AdminSidebar({
           <div className="flex items-center justify-between gap-2">
             {!isCollapsed ? (
               <>
-                <Link href="/admin" className="inline-block">
+                <Link href="/admin" prefetch className="inline-block">
                   <Image
                     src="https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/PLASTIPAC_USA_LOGO%202.svg"
                     alt="Plastipac USA Admin"

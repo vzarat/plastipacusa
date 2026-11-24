@@ -44,13 +44,6 @@ export async function middleware(request: NextRequest) {
     error,
   } = await supabase.auth.getUser();
 
-  console.log("[middleware]", {
-    pathname,
-    cookieNames: request.cookies.getAll().map((cookie) => cookie.name),
-    hasUser: !!user,
-    error: error?.message,
-  });
-
   const isProtectedRoute =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/admin") ||

@@ -1,5 +1,6 @@
 "use server";
 
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { EMAIL_RATE_LIMIT_MESSAGE, isEmailRateLimitError } from "@/lib/auth/email-rate-limit";
@@ -468,8 +469,9 @@ export async function signOut() {
 
 /**
  * Retrieve current user and profile data from cookies & Supabase.
+ * Cached per-request so layout + page auth checks share one round-trip.
  */
-export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
+export const getCurrentUser = cache(async (): Promise<CurrentUserResponse | null> => {
   try {
     const supabaseServer = await createServerClient();
 
@@ -649,5 +651,5 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
   } catch {
     return null;
   }
-}
+});
 

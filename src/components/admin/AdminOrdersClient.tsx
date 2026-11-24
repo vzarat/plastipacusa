@@ -1,10 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
-import { AdminOrder, updateOrderStatus, type PaymentReviewItem } from "@/actions/admin";
+import {
+  getAdminCustomers,
+  AdminOrder,
+  updateOrderStatus,
+  type PaymentReviewItem,
+} from "@/actions/admin";
+import { getAdminProducts } from "@/actions/products";
 import { AdminProduct } from "@/types/product";
 import { UserProfile } from "@/actions/auth";
 import { useLanguage } from "@/context/LanguageContext";
@@ -79,24 +85,55 @@ interface AdminOrdersClientProps {
   paymentsToReview?: PaymentReviewItem[];
   /** Optional Settings subsection tab (e.g. email-templates | users). */
   settingsSection?: "email-templates" | "users";
+  /** When true, customers load the first time that tab (or overview) opens. */
+  deferCustomers?: boolean;
+  /** When true, products load the first time the catalog tab opens. */
+  deferProducts?: boolean;
 }
 
 export function AdminOrdersClient({
   initialOrders,
   profile,
-  customers = [],
+  customers: initialCustomers = [],
   initialProducts = [],
   initialTab = "overview",
   paymentsToReview = [],
   settingsSection,
+  deferCustomers = false,
+  deferProducts = false,
 }: AdminOrdersClientProps) {
   const { t } = useLanguage();
   const [orders, setOrders] = useState<AdminOrder[]>(initialOrders);
+  const [customers, setCustomers] = useState<CustomerRecord[]>(initialCustomers);
+  const [products, setProducts] = useState<AdminProduct[]>(initialProducts);
+  const [customersReady, setCustomersReady] = useState(!deferCustomers);
+  const [productsReady, setProductsReady] = useState(!deferProducts);
   const [activeTab, setActiveTab] = useState<AdminTabKey>(initialTab);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    const needCustomers =
+      !customersReady && (activeTab === "customers" || activeTab === "overview");
+    const needProducts = !productsReady && activeTab === "products";
+    if (!needCustomers && !needProducts) return;
+
+    startTransition(async () => {
+      if (needCustomers) {
+        const rows = await getAdminCustomers();
+        setCustomers(rows as CustomerRecord[]);
+        setCustomersReady(true);
+      }
+      if (needProducts) {
+        const rows = await getAdminProducts();
+        setProducts(rows);
+        setProductsReady(true);
+      }
+    });
+  }, [activeTab, customersReady, productsReady]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -270,11 +307,19 @@ export function AdminOrdersClient({
           )}
 
           {activeTab === "products" && (
-            <AdminCatalogView initialProducts={initialProducts} showToast={showToast} />
+            productsReady ? (
+              <AdminCatalogView initialProducts={products} showToast={showToast} />
+            ) : (
+              <div className="min-h-[320px] rounded-2xl border border-slate-200 bg-white animate-pulse" />
+            )
           )}
 
           {activeTab === "customers" && (
-            <AdminCustomersView customers={customers} currentAdminId={profile.id} />
+            customersReady ? (
+              <AdminCustomersView customers={customers} currentAdminId={profile.id} />
+            ) : (
+              <div className="min-h-[320px] rounded-2xl border border-slate-200 bg-white animate-pulse" />
+            )
           )}
 
           {activeTab === "settings" && (

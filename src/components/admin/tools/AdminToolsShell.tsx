@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, ShieldCheck, Wrench } from "lucide-react";
@@ -21,13 +21,25 @@ export function AdminToolsShell({
   const activeTool = adminToolFromPath(pathname);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isNavigating, startTransition] = useTransition();
+
+  useEffect(() => {
+    router.prefetch("/admin");
+    router.prefetch("/admin?tab=overview");
+    router.prefetch("/admin/orders");
+    for (const tool of ADMIN_TOOLS) {
+      router.prefetch(tool.href);
+    }
+  }, [router]);
 
   const handleTabChange = (tab: AdminTabKey) => {
-    if (tab === "orders") {
-      router.push("/admin/orders");
-      return;
-    }
-    router.push(`/admin?tab=${tab}`);
+    startTransition(() => {
+      if (tab === "orders") {
+        router.push("/admin/orders");
+        return;
+      }
+      router.push(`/admin?tab=${tab}`);
+    });
   };
 
   return (
@@ -60,9 +72,13 @@ export function AdminToolsShell({
                 <Wrench className="w-3.5 h-3.5 text-blue-600" />
                 Tools
               </div>
+              {isNavigating ? (
+                <span className="text-[11px] font-semibold text-slate-400">Loading…</span>
+              ) : null}
             </div>
             <Link
               href="/admin"
+              prefetch
               className="text-xs font-bold text-slate-600 hover:text-blue-700 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50"
             >
               Dashboard
@@ -80,6 +96,7 @@ export function AdminToolsShell({
                 <Link
                   key={tool.key}
                   href={tool.href}
+                  prefetch
                   className={`inline-flex items-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold border transition-colors ${
                     isActive
                       ? BRAND_GRADIENT_PILL_ACTIVE

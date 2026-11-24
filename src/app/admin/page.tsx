@@ -35,7 +35,6 @@ export default async function AdminIndexPage({
 }) {
   const currentUser = await getCurrentUser();
 
-  // If unauthenticated -> redirect to /login
   if (!currentUser) {
     redirect("/login?redirect=/admin");
   }
@@ -44,7 +43,6 @@ export default async function AdminIndexPage({
     redirect("/admin/inventory/usa");
   }
 
-  // If profile.role !== 'admin' -> redirect to /dashboard
   if (currentUser.profile.role !== "admin") {
     redirect("/dashboard");
   }
@@ -59,11 +57,14 @@ export default async function AdminIndexPage({
       ? sectionRaw
       : undefined;
 
-  // If profile.role === 'admin' -> RENDER the admin dashboard (DO NOT REDIRECT)
+  // Only fetch what the landing tab needs — catalog/customers load on demand.
+  const needsCustomers = initialTab === "customers" || initialTab === "overview";
+  const needsProducts = initialTab === "products";
+
   const [orders, customers, products] = await Promise.all([
     getAdminOrders(),
-    getAdminCustomers(),
-    getAdminProducts(),
+    needsCustomers ? getAdminCustomers() : Promise.resolve([]),
+    needsProducts ? getAdminProducts() : Promise.resolve([]),
   ]);
 
   return (
@@ -74,6 +75,8 @@ export default async function AdminIndexPage({
       initialProducts={products}
       initialTab={initialTab}
       settingsSection={settingsSection}
+      deferCustomers={!needsCustomers}
+      deferProducts={!needsProducts}
     />
   );
 }

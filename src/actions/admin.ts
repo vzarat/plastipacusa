@@ -309,7 +309,8 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
       .from("orders")
       .select("*")
       .neq("status", "pending_payment")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(400);
 
     if (error) {
       console.warn(

@@ -1,8 +1,5 @@
-import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { getCurrentUser } from "@/actions/auth";
-import { listLeadTags } from "@/actions/leads";
-import { AdminToolsShell } from "@/components/admin/tools/AdminToolsShell";
+import { listLeads } from "@/actions/leads";
 import { AdminCampaignBuilder } from "@/components/admin/campaigns/AdminCampaignBuilder";
 
 export const metadata: Metadata = {
@@ -11,15 +8,8 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminToolsNewCampaignPage() {
-  const currentUser = await getCurrentUser();
-  if (!currentUser) redirect("/login?redirect=/admin/tools/campaigns/new");
-  if (currentUser.profile.role !== "admin") redirect("/dashboard");
+  const leads = await listLeads({ limit: 500 });
+  const tags = Array.from(new Set(leads.flatMap((lead) => lead.tags))).sort();
 
-  const tags = await listLeadTags();
-
-  return (
-    <AdminToolsShell profile={currentUser.profile}>
-      <AdminCampaignBuilder mode="create" availableTags={tags} />
-    </AdminToolsShell>
-  );
+  return <AdminCampaignBuilder mode="create" availableTags={tags} />;
 }

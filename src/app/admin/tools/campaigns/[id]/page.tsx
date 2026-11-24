@@ -1,9 +1,7 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getCurrentUser } from "@/actions/auth";
 import { getCampaign } from "@/actions/campaigns";
-import { listLeads, listLeadTags } from "@/actions/leads";
-import { AdminToolsShell } from "@/components/admin/tools/AdminToolsShell";
+import { listLeads } from "@/actions/leads";
 import { AdminCampaignDetailView } from "@/components/admin/campaigns/AdminCampaignDetailView";
 
 export const metadata: Metadata = {
@@ -16,27 +14,22 @@ export default async function AdminToolsCampaignDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const currentUser = await getCurrentUser();
-  if (!currentUser) redirect("/login?redirect=/admin/tools/campaigns");
-  if (currentUser.profile.role !== "admin") redirect("/dashboard");
-
   const { id } = await params;
-  const [{ campaign, sends }, tags, leads] = await Promise.all([
+  const [{ campaign, sends }, leads] = await Promise.all([
     getCampaign(id),
-    listLeadTags(),
-    listLeads({ limit: 2000 }),
+    listLeads({ limit: 1000 }),
   ]);
 
   if (!campaign) notFound();
 
+  const tags = Array.from(new Set(leads.flatMap((lead) => lead.tags))).sort();
+
   return (
-    <AdminToolsShell profile={currentUser.profile}>
-      <AdminCampaignDetailView
-        campaign={campaign}
-        sends={sends}
-        leads={leads}
-        availableTags={tags}
-      />
-    </AdminToolsShell>
+    <AdminCampaignDetailView
+      campaign={campaign}
+      sends={sends}
+      leads={leads}
+      availableTags={tags}
+    />
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
 import { Plus, RefreshCw } from "lucide-react";
@@ -25,6 +26,7 @@ export function AdminCampaignsListView({
   campaigns: CampaignRecord[];
   queuePending?: number;
 }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   function flushQueue() {
@@ -47,7 +49,7 @@ export function AdminCampaignsListView({
             (result.remaining ? ` · ${result.remaining} still pending — click Flush again.` : "")
         );
       }
-      window.location.reload();
+      router.refresh();
     });
   }
 
