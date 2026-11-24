@@ -11,7 +11,5 @@ export default async function AdminToolsLayout({
   if (!currentUser) redirect("/login?redirect=/admin/tools");
   if (currentUser.profile.role !== "admin") redirect("/dashboard");
 
-  return (
-    <AdminToolsShell profile={currentUser.profile}>{children}</AdminToolsShell>
-  );
+  return <AdminToolsShell>{children}</AdminToolsShell>;
 }

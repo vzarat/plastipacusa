@@ -1,14 +1,24 @@
 import React from "react";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/actions/auth";
+import { AdminAppShell } from "@/components/admin/AdminAppShell";
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    redirect("/login?redirect=/admin");
+  }
+
+  const role = currentUser.profile.role;
+  if (role !== "admin" && role !== "warehouse_supervisor") {
+    redirect("/dashboard");
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50/80 text-slate-900 antialiased font-sans">
-      {children}
-    </div>
+    <AdminAppShell profile={currentUser.profile}>{children}</AdminAppShell>
   );
 }
-

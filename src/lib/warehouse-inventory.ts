@@ -143,8 +143,8 @@ export function tarimaBreakdown(
 
 export function formatPalletDisplay(stockBoxes: number, boxesPerPallet?: number | null): string {
   const { tarimas, loose, unitLabel } = tarimaBreakdown(stockBoxes, null, boxesPerPallet);
-  if (loose === 0) return `${tarimas} tarima${tarimas === 1 ? "" : "s"}`;
-  return `${tarimas} tarima${tarimas === 1 ? "" : "s"} + ${loose} ${unitLabel}`;
+  if (loose === 0) return `${tarimas} pallet${tarimas === 1 ? "" : "s"}`;
+  return `${tarimas} pallet${tarimas === 1 ? "" : "s"} + ${loose} ${unitLabel}`;
 }
 
 /** Convert tarima count → inventory units (boxes/rolls) for RPC adjust. */

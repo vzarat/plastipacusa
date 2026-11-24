@@ -84,7 +84,7 @@ export function AdminCustomerDossierView({
           patch.creditLimit !== undefined ? patch.creditLimit : prev.creditLimit,
         creditTerms: patch.creditTerms || prev.creditTerms,
       }));
-      toast.success("Expediente del Cliente updated.");
+      toast.success("Customer file updated.");
     });
   };
 
@@ -133,7 +133,7 @@ export function AdminCustomerDossierView({
             <span>/</span>
             <span>Customers</span>
             <span>/</span>
-            <span className="text-slate-900 font-bold">Expediente del Cliente</span>
+            <span className="text-slate-900 font-bold">Customer file</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
             {dossier.companyName || "Customer File"}

@@ -41,8 +41,8 @@ export function UsaWarehouseInventoryClient({
   const [query, setQuery] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkNotes, setBulkNotes] = useState("");
-  const [bulkTarimas, setBulkTarimas] = useState<Record<string, string>>({});
-  const [stepTarimasById, setStepTarimasById] = useState<Record<string, string>>({});
+  const [bulkPallets, setBulkPallets] = useState<Record<string, string>>({});
+  const [stepPalletsById, setStepPalletsById] = useState<Record<string, string>>({});
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -54,28 +54,28 @@ export function UsaWarehouseInventoryClient({
   }, [inventory, query]);
 
   const totals = useMemo(() => {
-    let tarimas = 0;
+    let pallets = 0;
     for (const row of inventory) {
-      tarimas += tarimaBreakdown(row.stockBoxes, row.application, row.boxesPerPallet).tarimas;
+      pallets += tarimaBreakdown(row.stockBoxes, row.application, row.boxesPerPallet).tarimas;
     }
-    return { skus: inventory.length, tarimas };
+    return { skus: inventory.length, pallets };
   }, [inventory]);
 
   function refresh() {
     router.refresh();
   }
 
-  function nudgeTarimas(row: WarehouseInventoryRow, direction: 1 | -1) {
-    const stepTarimas = Math.max(
+  function nudgePallets(row: WarehouseInventoryRow, direction: 1 | -1) {
+    const stepPallets = Math.max(
       1,
-      Math.floor(Number(stepTarimasById[row.productId]) || 1)
+      Math.floor(Number(stepPalletsById[row.productId]) || 1)
     );
     const deltaUnits =
       direction *
-      tarimasToUnits(stepTarimas, row.application, row.boxesPerPallet);
+      tarimasToUnits(stepPallets, row.application, row.boxesPerPallet);
 
     if (direction < 0 && row.stockBoxes < Math.abs(deltaUnits)) {
-      toast.error("Not enough tarimas / units on hand.");
+      toast.error("Not enough pallets / units on hand.");
       return;
     }
 
@@ -86,8 +86,8 @@ export function UsaWarehouseInventoryClient({
         reason: direction > 0 ? "received" : "recount",
         notes:
           direction > 0
-            ? `+${stepTarimas} tarima(s) stretch film`
-            : `−${stepTarimas} tarima(s) stretch film`,
+            ? `+${stepPallets} stretch film pallet(s)`
+            : `−${stepPallets} stretch film pallet(s)`,
       });
       if (!result.success) {
         toast.error(result.error || "Adjustment failed.");
@@ -99,43 +99,43 @@ export function UsaWarehouseInventoryClient({
         row.boxesPerPallet
       );
       toast.success(
-        `${direction > 0 ? "+" : "−"}${stepTarimas} tarima → ${next.tarimas} tarimas on hand`
+        `${direction > 0 ? "+" : "−"}${stepPallets} pallet → ${next.tarimas} pallets on hand`
       );
       refresh();
     });
   }
 
   function submitBulk() {
-    const lines = Object.entries(bulkTarimas)
+    const lines = Object.entries(bulkPallets)
       .map(([productId, raw]) => {
         const row = inventory.find((item) => item.productId === productId);
-        const tarimas = Math.max(0, Math.floor(Number(raw) || 0));
-        if (!row || tarimas < 1) return null;
+        const pallets = Math.max(0, Math.floor(Number(raw) || 0));
+        if (!row || pallets < 1) return null;
         return {
           productId,
-          quantity: tarimasToUnits(tarimas, row.application, row.boxesPerPallet),
-          tarimas,
+          quantity: tarimasToUnits(pallets, row.application, row.boxesPerPallet),
+          pallets,
         };
       })
       .filter((line): line is NonNullable<typeof line> => Boolean(line));
 
     if (lines.length === 0) {
-      toast.message("Enter tarimas to receive.");
+      toast.message("Enter pallets to receive.");
       return;
     }
 
     startTransition(async () => {
       const result = await bulkReceiveShipment({
         lines: lines.map(({ productId, quantity }) => ({ productId, quantity })),
-        notes: bulkNotes || "Inbound stretch film tarimas",
+        notes: bulkNotes || "Inbound stretch film pallets",
       });
       if (!result.success) {
         toast.error(result.error || "Receive failed.");
         return;
       }
-      const tarimaCount = lines.reduce((sum, line) => sum + line.tarimas, 0);
-      toast.success(`Received ${tarimaCount} tarima(s) into USA warehouse.`);
-      setBulkTarimas({});
+      const palletCount = lines.reduce((sum, line) => sum + line.pallets, 0);
+      toast.success(`Received ${palletCount} pallet(s) into USA warehouse.`);
+      setBulkPallets({});
       setBulkNotes("");
       setBulkOpen(false);
       refresh();
@@ -161,14 +161,13 @@ export function UsaWarehouseInventoryClient({
           <div>
             <h1 className="flex items-center gap-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
               <Warehouse className="h-7 w-7 text-emerald-700" />
-              Inventario USA · Tarimas
+              USA Inventory · Pallets
             </h1>
             <p className="mt-1 text-sm text-slate-600">
-              Stretch film by tarima (pallet). Hand = 48 boxes / tarima · Machine = 40 rolls /
-              tarima.
+              Stretch film by pallet. Hand = 48 boxes / pallet · Machine = 40 rolls / pallet.
             </p>
             <p className="mt-2 text-xs font-bold uppercase tracking-wide text-slate-500">
-              {totals.skus} SKUs · {totals.tarimas.toLocaleString()} tarimas on floor
+              {totals.skus} SKUs · {totals.pallets.toLocaleString()} pallets on floor
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -187,7 +186,7 @@ export function UsaWarehouseInventoryClient({
               className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-3 py-2 text-sm font-bold text-white"
             >
               <Truck className="h-4 w-4" />
-              {bulkOpen ? "Hide receive" : "Recibir tarimas"}
+              {bulkOpen ? "Hide receive" : "Receive pallets"}
             </button>
           </div>
         </div>
@@ -240,10 +239,10 @@ export function UsaWarehouseInventoryClient({
         {bulkOpen ? (
           <section className="rounded-2xl border border-sky-200 bg-sky-50 p-4 shadow-sm">
             <h2 className="text-sm font-black uppercase tracking-wide text-sky-950">
-              Recibir tarimas (inbound)
+              Receive pallets (inbound)
             </h2>
             <p className="mt-1 text-xs text-sky-900/80">
-              Enter how many stretch-film tarimas arrived per SKU.
+              Enter how many stretch-film pallets arrived per SKU.
             </p>
             <label className="mt-3 block text-xs font-semibold text-slate-600">
               Notes
@@ -271,25 +270,25 @@ export function UsaWarehouseInventoryClient({
                         {row.productName}
                       </div>
                       <div className="text-[11px] text-slate-500">
-                        {row.application === "machine" ? "Machine" : "Hand"} · 1 tarima ={" "}
+                        {row.application === "machine" ? "Machine" : "Hand"} · 1 pallet ={" "}
                         {meta.perTarima} {meta.unitLabel}
                       </div>
                     </div>
                     <input
                       inputMode="numeric"
-                      value={bulkTarimas[row.productId] || ""}
+                      value={bulkPallets[row.productId] || ""}
                       onChange={(event) =>
-                        setBulkTarimas((current) => ({
+                        setBulkPallets((current) => ({
                           ...current,
                           [row.productId]: event.target.value,
                         }))
                       }
                       placeholder="0"
                       className="w-20 rounded-lg border border-slate-200 px-2 py-1.5 text-center text-sm font-bold"
-                      aria-label={`Tarimas for ${row.productName}`}
+                      aria-label={`Pallets for ${row.productName}`}
                     />
                     <span className="w-14 text-[11px] font-bold uppercase text-slate-400">
-                      tarimas
+                      pallets
                     </span>
                   </div>
                 );
@@ -301,7 +300,7 @@ export function UsaWarehouseInventoryClient({
               onClick={submitBulk}
               className="mt-3 rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
             >
-              Post tarimas received
+              Post pallets received
             </button>
           </section>
         ) : null}
@@ -343,7 +342,7 @@ export function UsaWarehouseInventoryClient({
                         {filmKind} stretch
                       </span>
                       <span className="text-[10px] font-semibold text-slate-400">
-                        1 tarima = {meta.perTarima} {meta.unitLabel}
+                        1 pallet = {meta.perTarima} {meta.unitLabel}
                       </span>
                     </div>
                     <h3 className="truncate text-base font-bold text-slate-900">
@@ -366,11 +365,11 @@ export function UsaWarehouseInventoryClient({
                       {meta.tarimas}
                     </div>
                     <div className="text-xs font-black uppercase tracking-wide text-emerald-700">
-                      tarimas
+                      pallets
                     </div>
                     {meta.loose > 0 ? (
                       <div className="mt-1 text-xs font-semibold text-amber-700">
-                        + {meta.loose} {meta.unitLabel} sueltos
+                        + {meta.loose} loose {meta.unitLabel}
                       </div>
                     ) : (
                       <div className="mt-1 text-xs text-slate-400">
@@ -384,19 +383,19 @@ export function UsaWarehouseInventoryClient({
                   <button
                     type="button"
                     disabled={pending || meta.tarimas < 1}
-                    onClick={() => nudgeTarimas(row, -1)}
+                    onClick={() => nudgePallets(row, -1)}
                     className="inline-flex h-14 min-w-14 flex-1 items-center justify-center rounded-2xl bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-40 sm:flex-none"
-                    aria-label="Quitar tarimas"
+                    aria-label="Remove pallets"
                   >
                     <Minus className="h-7 w-7" strokeWidth={3} />
                   </button>
                   <label className="flex flex-col items-center text-[10px] font-bold uppercase text-slate-400">
-                    Tarimas
+                    Pallets
                     <input
                       inputMode="numeric"
-                      value={stepTarimasById[row.productId] ?? "1"}
+                      value={stepPalletsById[row.productId] ?? "1"}
                       onChange={(event) =>
-                        setStepTarimasById((current) => ({
+                        setStepPalletsById((current) => ({
                           ...current,
                           [row.productId]: event.target.value,
                         }))
@@ -407,9 +406,9 @@ export function UsaWarehouseInventoryClient({
                   <button
                     type="button"
                     disabled={pending}
-                    onClick={() => nudgeTarimas(row, 1)}
+                    onClick={() => nudgePallets(row, 1)}
                     className="inline-flex h-14 min-w-14 flex-1 items-center justify-center rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 sm:flex-none"
-                    aria-label="Agregar tarimas"
+                    aria-label="Add pallets"
                   >
                     <Plus className="h-7 w-7" strokeWidth={3} />
                   </button>
