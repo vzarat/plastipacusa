@@ -61,7 +61,7 @@ function MobileVideoSlide({ active }: { active: boolean }) {
     <div className="absolute inset-0 bg-slate-950 md:hidden">
       <video
         ref={videoRef}
-        className="absolute inset-0 h-full w-full object-cover object-center"
+        className="absolute inset-0 h-full w-full object-contain object-center"
         src={SLIDE_MOBILE_VIDEO}
         muted
         loop
@@ -216,8 +216,8 @@ export function Hero() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      {/* Mobile: 1920×1080. Desktop: 2560×800. */}
-      <div className="relative mx-auto aspect-[1920/1080] h-auto max-h-[70dvh] w-full max-w-[1400px] overflow-hidden rounded-2xl [container-type:inline-size] md:aspect-[2560/800] md:max-h-none md:rounded-3xl">
+      {/* Mobile: 1920×1080 only. Desktop: 2560×800. */}
+      <div className="relative mx-auto aspect-[1920/1080] w-full max-w-[1400px] overflow-hidden rounded-2xl [container-type:inline-size] md:aspect-[2560/800] md:rounded-3xl">
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
             index === 0 ? "opacity-100" : "pointer-events-none opacity-0"
