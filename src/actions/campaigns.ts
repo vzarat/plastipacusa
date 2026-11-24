@@ -895,6 +895,29 @@ export async function pauseCampaign(
   return { success: true };
 }
 
+/** Permanently delete a campaign and its sends (cascade). Leads stay intact. */
+export async function deleteCampaign(
+  id: string
+): Promise<{ success: boolean; error?: string }> {
+  const admin = await requireAdmin();
+  if (!admin) return { success: false, error: "Unauthorized." };
+
+  const campaignId = String(id || "").trim();
+  if (!campaignId) return { success: false, error: "Campaign id required." };
+
+  const db = await adminDb();
+  const { error } = await db.from("campaigns").delete().eq("id", campaignId);
+  if (error) {
+    console.error("[campaigns] deleteCampaign:", error.message);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/admin/tools/campaigns");
+  revalidatePath("/admin/campaigns");
+  revalidatePath(`/admin/tools/campaigns/${campaignId}`);
+  return { success: true };
+}
+
 export async function resumeCampaign(
   id: string
 ): Promise<{ success: boolean; error?: string }> {
