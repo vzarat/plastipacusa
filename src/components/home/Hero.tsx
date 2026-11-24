@@ -7,6 +7,9 @@ import { ArrowRight } from "lucide-react";
 
 const SLIDE_BACKGROUND_VIDEO =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/BACKGROUND%202.mp4";
+/** Mobile-only first slide video. */
+const SLIDE_MOBILE_VIDEO =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/1124.mp4";
 const SLIDE_SDK_4 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_4.jpg";
 const SLIDE_SDK_5 =
@@ -15,9 +18,6 @@ const SLIDE_SDK_2 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_2.jpg";
 const SLIDE_SDK_3 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_3.jpg";
-const SLIDE_MOBILE_STORY =
-  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/Instagram%20story%20-%208.png";
-
 const MOBILE_SLIDE_COUNT = 1;
 const DESKTOP_SLIDE_COUNT = 5;
 const AUTO_MS = 7000;
@@ -35,30 +35,7 @@ const SLIDE_CTA_CLASS =
 const MOBILE_CTA_CLASS =
   "inline-flex w-fit items-center gap-2 rounded-xl bg-gradient-to-r from-[#00b2e3] to-[#2563eb] px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white shadow-md shadow-blue-500/30";
 
-/** Mobile-only first slide (Instagram story). */
-function MobileStorySlide() {
-  return (
-    <div className="absolute inset-0 md:hidden">
-      <Image
-        src={SLIDE_MOBILE_STORY}
-        alt="We are the manufacturers. We manufacture high-quality stretch film designed to meet your packaging needs."
-        fill
-        priority
-        sizes="100vw"
-        className="object-contain object-center"
-      />
-      <div className="absolute left-1/2 top-[41.5%] z-20 -translate-x-1/2">
-        <Link href="/#product-catalog-section" className={MOBILE_CTA_CLASS}>
-          Shop Now
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-/** Desktop first slide: BACKGROUND 2 video. No Shop CTA. */
-function VideoSlide({ active }: { active: boolean }) {
+function useAutoplayVideo(active: boolean) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -73,11 +50,45 @@ function VideoSlide({ active }: { active: boolean }) {
     }
   }, [active]);
 
+  return videoRef;
+}
+
+/** Mobile-only first slide: 1124.mp4 */
+function MobileVideoSlide({ active }: { active: boolean }) {
+  const videoRef = useAutoplayVideo(active);
+
+  return (
+    <div className="absolute inset-0 bg-slate-950 md:hidden">
+      <video
+        ref={videoRef}
+        className="absolute inset-0 h-full w-full object-cover object-center"
+        src={SLIDE_MOBILE_VIDEO}
+        muted
+        loop
+        playsInline
+        autoPlay
+        preload="metadata"
+        aria-label="Plastipac USA stretch film — mobile featured video"
+      />
+      <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center bg-gradient-to-t from-black/50 to-transparent px-4 pb-8 pt-16">
+        <Link href="/#product-catalog-section" className={MOBILE_CTA_CLASS}>
+          Shop Now
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+/** Desktop first slide: BACKGROUND 2 video. */
+function DesktopVideoSlide({ active }: { active: boolean }) {
+  const videoRef = useAutoplayVideo(active);
+
   return (
     <div className="absolute inset-0 hidden bg-slate-950 md:block">
       <video
         ref={videoRef}
-        className="absolute inset-0 h-full w-full object-cover"
+        className="absolute inset-0 h-full w-full object-cover object-center"
         src={SLIDE_BACKGROUND_VIDEO}
         muted
         loop
@@ -205,7 +216,8 @@ export function Hero() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="relative mx-auto aspect-[1080/1920] h-auto w-full max-w-[1400px] overflow-hidden rounded-2xl [container-type:inline-size] md:aspect-[2560/800] md:rounded-3xl">
+      {/* Mobile: 1920×1080. Desktop: 2560×800. */}
+      <div className="relative mx-auto aspect-[1920/1080] h-auto max-h-[70dvh] w-full max-w-[1400px] overflow-hidden rounded-2xl [container-type:inline-size] md:aspect-[2560/800] md:max-h-none md:rounded-3xl">
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
             index === 0 ? "opacity-100" : "pointer-events-none opacity-0"
@@ -213,8 +225,8 @@ export function Hero() {
           aria-hidden={index !== 0}
           inert={index !== 0}
         >
-          <MobileStorySlide />
-          <VideoSlide active={index === 0} />
+          <MobileVideoSlide active={index === 0} />
+          <DesktopVideoSlide active={index === 0} />
         </div>
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
