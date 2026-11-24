@@ -67,11 +67,13 @@ export function UsaWarehouseInventoryClient({
   inventory,
   dispatchQueue,
   stretchCatalog,
+  warehouseReady = true,
 }: {
   profile: UserProfile;
   inventory: WarehouseInventoryRow[];
   dispatchQueue: WarehouseDispatchOrder[];
   stretchCatalog: StretchCatalogItem[];
+  warehouseReady?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -116,25 +118,55 @@ export function UsaWarehouseInventoryClient({
     [stretchCatalog, draft.application]
   );
 
+  /** Always keep measure dropdowns filled — catalog first, master sheets as backup. */
+  const measureSource = useMemo(() => {
+    if (catalogForApp.length > 0) {
+      return catalogForApp.map((item) => ({
+        widthInches: item.widthInches,
+        gauge: item.gauge,
+        lengthFeet: item.lengthFeet,
+      }));
+    }
+    if (draft.application === "machine") {
+      return [
+        { widthInches: 20, gauge: 51, lengthFeet: 7000 },
+        { widthInches: 20, gauge: 51, lengthFeet: 9000 },
+        { widthInches: 20, gauge: 70, lengthFeet: 5000 },
+        { widthInches: 20, gauge: 80, lengthFeet: 5000 },
+      ];
+    }
+    return [
+      { widthInches: 15, gauge: 40, lengthFeet: 1500 },
+      { widthInches: 15, gauge: 60, lengthFeet: 1000 },
+      { widthInches: 15, gauge: 60, lengthFeet: 1500 },
+      { widthInches: 15, gauge: 70, lengthFeet: 1500 },
+      { widthInches: 15, gauge: 80, lengthFeet: 1500 },
+      { widthInches: 18, gauge: 60, lengthFeet: 1000 },
+      { widthInches: 18, gauge: 60, lengthFeet: 1500 },
+      { widthInches: 18, gauge: 70, lengthFeet: 1500 },
+      { widthInches: 18, gauge: 80, lengthFeet: 1500 },
+    ];
+  }, [catalogForApp, draft.application]);
+
   const widthOptions = useMemo(
-    () => uniqueSortedNumbers(catalogForApp.map((item) => item.widthInches)),
-    [catalogForApp]
+    () => uniqueSortedNumbers(measureSource.map((item) => item.widthInches)),
+    [measureSource]
   );
 
   const gaugeOptions = useMemo(() => {
     const width = Math.round(Number(draft.widthInches) || 0);
     return uniqueSortedNumbers(
-      catalogForApp
+      measureSource
         .filter((item) => !width || Math.round(Number(item.widthInches)) === width)
         .map((item) => item.gauge)
     );
-  }, [catalogForApp, draft.widthInches]);
+  }, [measureSource, draft.widthInches]);
 
   const lengthOptions = useMemo(() => {
     const width = Math.round(Number(draft.widthInches) || 0);
     const gauge = Math.round(Number(draft.gauge) || 0);
     return uniqueSortedNumbers(
-      catalogForApp
+      measureSource
         .filter((item) => {
           if (width && Math.round(Number(item.widthInches)) !== width) return false;
           if (gauge && Math.round(Number(item.gauge)) !== gauge) return false;
@@ -142,7 +174,7 @@ export function UsaWarehouseInventoryClient({
         })
         .map((item) => item.lengthFeet)
     );
-  }, [catalogForApp, draft.widthInches, draft.gauge]);
+  }, [measureSource, draft.widthInches, draft.gauge]);
 
   const draftMatches = useMemo(() => {
     const widthInches = Math.round(Number(draft.widthInches) || 0);
@@ -340,6 +372,9 @@ export function UsaWarehouseInventoryClient({
             </p>
             <p className="mt-2 text-xs font-bold uppercase tracking-wide text-slate-500">
               {totals.skus} SKUs · {totals.pallets.toLocaleString()} pallets on floor
+              {stretchCatalog.length > 0
+                ? ` · ${stretchCatalog.length} catalog specs`
+                : " · catalog not linked yet"}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -426,14 +461,33 @@ export function UsaWarehouseInventoryClient({
           )}
         </section>
 
+        {!warehouseReady ? (
+          <div className="rounded-2xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-950">
+            USA warehouse tables are missing. Run{" "}
+            <code className="rounded bg-white px-1 text-xs">
+              20261124160000_multi_warehouse_inventory.sql
+            </code>{" "}
+            in Supabase, then refresh this page.
+          </div>
+        ) : null}
+
+        {warehouseReady && stretchCatalog.length === 0 ? (
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            Stretch SKU catalog did not load measures from products. Dropdowns still
+            show official sizes; after you pick them, posting needs matching product
+            rows (width / gauge / length or slug like{" "}
+            <code className="text-xs">stretch-film-18-x-80-ga-x-1500ft</code>).
+          </div>
+        ) : null}
+
         {bulkOpen ? (
           <section className="rounded-2xl border border-sky-200 bg-sky-50 p-4 shadow-sm">
             <h2 className="text-sm font-black uppercase tracking-wide text-sky-950">
               Receive by measures
             </h2>
             <p className="mt-1 text-xs text-sky-900/80">
-              Supervisor enters Hand/Machine, width, gauge, length, and pallet count.
-              System assigns the matching SKU automatically.
+              Open each dropdown (film type → width → gauge → length), enter pallets,
+              then add. The system assigns the SKU from your catalog.
             </p>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

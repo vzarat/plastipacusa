@@ -3,11 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/actions/auth";
 import { lineStockUnits } from "@/lib/pallet-stock";
+import { MANUAL_FILM_MASTER } from "@/lib/manual-film-master";
+import { MACHINE_FILM_MASTER } from "@/lib/machine-film-master";
+import { HAND_FULL_PALLET_BOXES } from "@/lib/pricing";
 import {
   assignStretchSkuForReceive,
   mapWarehouseInventoryRow,
   mapWarehouseRow,
   matchStretchCatalog,
+  resolveProductStretchFields,
   scoreStretchReceiveCandidate,
   tarimaBreakdown,
   tarimasToUnits,
@@ -20,6 +24,8 @@ import {
 } from "@/lib/warehouse-inventory";
 import { createServiceRoleClient, isServiceRoleConfigured } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
+import { handFilmBaseSku } from "@/lib/hand-film-sku";
+import { machineFilmBaseSku } from "@/lib/machine-film-sku";
 
 export type WarehouseStaffRole = "admin" | "warehouse_supervisor";
 
@@ -60,6 +66,35 @@ export async function getWarehouseByCode(
   return mapWarehouseRow(data as Record<string, unknown>);
 }
 
+/** Ensure every stretch product has a USA warehouse_inventory row (0 if new). */
+async function ensureUsaStretchInventorySeeded(
+  warehouseId: string,
+  catalog: StretchCatalogItem[]
+): Promise<void> {
+  if (!catalog.length) return;
+  const client = await db();
+  const rows = catalog.map((item) => ({
+    warehouse_id: warehouseId,
+    product_id: item.productId,
+    stock_boxes: 0,
+    stock_pallets: 0,
+    reorder_point: Math.max(8, item.boxesPerPallet || 8),
+    updated_at: new Date().toISOString(),
+  }));
+  // Upsert in chunks; ignore conflicts so existing stock is never wiped.
+  for (let i = 0; i < rows.length; i += 50) {
+    const chunk = rows.slice(i, i + 50);
+    const { error } = await client.from("warehouse_inventory").upsert(chunk, {
+      onConflict: "warehouse_id,product_id",
+      ignoreDuplicates: true,
+    });
+    if (error) {
+      console.warn("[warehouse] seed inventory:", error.message);
+      break;
+    }
+  }
+}
+
 export async function listWarehouseInventory(
   warehouseCode: string = USA_WAREHOUSE_CODE
 ): Promise<WarehouseInventoryRow[]> {
@@ -69,62 +104,147 @@ export async function listWarehouseInventory(
   const warehouse = await getWarehouseByCode(warehouseCode);
   if (!warehouse) return [];
 
+  const catalog = await listStretchReceiveCatalog();
+  if (warehouse.code === USA_WAREHOUSE_CODE) {
+    await ensureUsaStretchInventorySeeded(warehouse.id, catalog);
+  }
+
   const client = await db();
-  const { data, error } = await client
+  let { data, error } = await client
     .from("warehouse_inventory")
-    .select(
-      "*, products ( id, name, slug, application, boxes_per_pallet, is_active, storefront_title, width_inches, gauge, length_feet, part_number )"
-    )
+    .select("*, products ( * )")
     .eq("warehouse_id", warehouse.id)
     .order("updated_at", { ascending: false });
 
+  // Fallback if nested select shape fails on older PostgREST.
   if (error) {
     console.error("[warehouse] listWarehouseInventory:", error.message);
-    return [];
+    const plain = await client
+      .from("warehouse_inventory")
+      .select("*")
+      .eq("warehouse_id", warehouse.id);
+    data = plain.data;
+    error = plain.error;
+    if (error) {
+      console.error("[warehouse] listWarehouseInventory plain:", error.message);
+      return [];
+    }
+    // Attach products manually
+    const productIds = Array.from(
+      new Set((data || []).map((row) => String((row as { product_id?: string }).product_id || "")))
+    ).filter(Boolean);
+    const { data: products } = await client.from("products").select("*").in("id", productIds);
+    const byId = new Map(
+      (products || []).map((p) => [String((p as { id: string }).id), p as Record<string, unknown>])
+    );
+    data = (data || []).map((row) => {
+      const r = row as Record<string, unknown>;
+      return { ...r, products: byId.get(String(r.product_id || "")) || null };
+    });
   }
 
-  return (data || [])
+  const mapped = (data || [])
     .map((row) => mapWarehouseInventoryRow(row as Record<string, unknown>))
-    .filter((row) => row.isActive !== false)
-    .sort((a, b) => {
-      const app = String(a.application || "").localeCompare(String(b.application || ""));
-      if (app !== 0) return app;
-      const gauge = (a.gauge || 0) - (b.gauge || 0);
-      if (gauge !== 0) return gauge;
-      const width = (a.widthInches || 0) - (b.widthInches || 0);
-      if (width !== 0) return width;
-      return String(a.productName || "").localeCompare(String(b.productName || ""));
-    });
+    .filter((row) => row.isActive !== false);
+
+  // If inventory rows exist but product join missing measures, overlay catalog measures.
+  const catalogById = new Map(catalog.map((item) => [item.productId, item]));
+  for (const row of mapped) {
+    const cat = catalogById.get(row.productId);
+    if (!cat) continue;
+    if (row.widthInches == null) row.widthInches = cat.widthInches;
+    if (row.gauge == null) row.gauge = cat.gauge;
+    if (row.lengthFeet == null) row.lengthFeet = cat.lengthFeet;
+    if (!row.partNumber) row.partNumber = cat.partNumber;
+    if (!row.application) row.application = cat.application;
+    if (!row.productName) row.productName = cat.productName;
+    if (row.boxesPerPallet == null) row.boxesPerPallet = cat.boxesPerPallet;
+  }
+
+  return mapped.sort((a, b) => {
+    const app = String(a.application || "").localeCompare(String(b.application || ""));
+    if (app !== 0) return app;
+    const gauge = (a.gauge || 0) - (b.gauge || 0);
+    if (gauge !== 0) return gauge;
+    const width = (a.widthInches || 0) - (b.widthInches || 0);
+    if (width !== 0) return width;
+    return String(a.productName || "").localeCompare(String(b.productName || ""));
+  });
 }
 
 function mapStretchCatalogRow(raw: Record<string, unknown>): StretchCatalogItem | null {
-  const applicationRaw = String(raw.application || "").toLowerCase();
-  const application =
-    applicationRaw === "machine" ? "machine" : applicationRaw === "hand" ? "hand" : null;
-  if (!application) return null;
-  const width = Number(raw.width_inches ?? raw.widthInches);
-  const gauge = Number(raw.gauge);
-  const length = Number(raw.length_feet ?? raw.lengthFeet);
-  if (
-    !Number.isFinite(width) ||
-    width <= 0 ||
-    !Number.isFinite(gauge) ||
-    gauge <= 0 ||
-    !Number.isFinite(length) ||
-    length <= 0
-  ) {
-    return null;
+  if (raw.is_active === false) return null;
+  const resolved = resolveProductStretchFields(raw);
+  let application = resolved.application;
+  let width = resolved.widthInches;
+  let gauge = resolved.gauge;
+  let length = resolved.lengthFeet;
+
+  // Fill gaps from official master sheets via slug / measures.
+  const slug = resolved.productSlug.toLowerCase();
+  const manual = MANUAL_FILM_MASTER.find((row) => row.slug === slug) ||
+    (width && gauge && length
+      ? MANUAL_FILM_MASTER.find(
+          (row) =>
+            row.widthInches === width &&
+            row.gauge === gauge &&
+            row.lengthFeet === length
+        )
+      : null);
+  const machine =
+    MACHINE_FILM_MASTER.find((row) => row.slug === slug) ||
+    (width && gauge && length
+      ? MACHINE_FILM_MASTER.find(
+          (row) =>
+            row.widthInches === width &&
+            row.gauge === gauge &&
+            row.lengthFeet === length
+        )
+      : null);
+
+  if (manual) {
+    application = application || "hand";
+    width = width || manual.widthInches;
+    gauge = gauge || manual.gauge;
+    length = length || manual.lengthFeet;
   }
+  if (machine) {
+    application = "machine";
+    width = width || machine.widthInches;
+    gauge = gauge || machine.gauge;
+    length = length || machine.lengthFeet;
+  }
+
+  if (!application || !width || !gauge || !length) return null;
+
   const bpp = Math.floor(Number(raw.boxes_per_pallet ?? raw.boxesPerPallet) || 0);
+  const partNumber =
+    resolved.partNumber ||
+    (application === "machine"
+      ? machineFilmBaseSku(width, gauge, length)
+      : handFilmBaseSku({
+          widthInches: width,
+          gauge,
+          lengthFeet: length,
+          partNumber: resolved.partNumber,
+          name: resolved.productName,
+          title: resolved.productName,
+        }));
+
   return {
     productId: String(raw.id),
-    productName: String(raw.name || raw.storefront_title || ""),
-    partNumber: String(raw.part_number || raw.partNumber || "").trim() || null,
+    productName: resolved.productName || `${width}" ${gauge} GA ${length} ft`,
+    partNumber,
     application,
     widthInches: Math.round(width),
     gauge: Math.round(gauge),
     lengthFeet: Math.round(length),
-    boxesPerPallet: bpp > 0 ? bpp : null,
+    boxesPerPallet:
+      bpp > 0
+        ? bpp
+        : application === "machine"
+          ? 40
+          : HAND_FULL_PALLET_BOXES,
   };
 }
 
@@ -134,33 +254,56 @@ export async function listStretchReceiveCatalog(): Promise<StretchCatalogItem[]>
   if (!staff) return [];
 
   const client = await db();
+  // Broad select — do not require application=hand|machine in SQL (many rows use type).
   const { data, error } = await client
     .from("products")
-    .select(
-      "id, name, storefront_title, application, boxes_per_pallet, is_active, width_inches, gauge, length_feet, part_number"
-    )
-    .in("application", ["hand", "machine"])
-    .eq("is_active", true)
-    .limit(500);
+    .select("*")
+    .limit(800);
 
   if (error) {
     console.error("[warehouse] listStretchReceiveCatalog:", error.message);
     return [];
   }
 
-  return (data || [])
+  const fromDb = (data || [])
     .map((row) => mapStretchCatalogRow(row as Record<string, unknown>))
-    .filter((row): row is StretchCatalogItem => Boolean(row))
-    .sort((a, b) => {
-      const app = a.application.localeCompare(b.application);
-      if (app !== 0) return app;
-      return (
-        (a.widthInches || 0) - (b.widthInches || 0) ||
-        (a.gauge || 0) - (b.gauge || 0) ||
-        (a.lengthFeet || 0) - (b.lengthFeet || 0) ||
-        String(a.partNumber || "").localeCompare(String(b.partNumber || ""))
-      );
-    });
+    .filter((row): row is StretchCatalogItem => Boolean(row));
+
+  // If DB mapping found nothing usable, try slug lookups against master sheets.
+  if (fromDb.length === 0 && (data || []).length > 0) {
+    const bySlug = new Map(
+      (data || []).map((row) => {
+        const r = row as Record<string, unknown>;
+        return [String(r.slug || "").toLowerCase(), r];
+      })
+    );
+    for (const master of [...MANUAL_FILM_MASTER, ...MACHINE_FILM_MASTER]) {
+      const raw = bySlug.get(master.slug.toLowerCase());
+      if (!raw) continue;
+      const mapped = mapStretchCatalogRow(raw);
+      if (mapped) fromDb.push(mapped);
+    }
+  }
+
+  // Deduplicate by productId keeping best receive candidate.
+  const best = new Map<string, StretchCatalogItem>();
+  for (const item of fromDb) {
+    const prev = best.get(item.productId);
+    if (!prev || scoreStretchReceiveCandidate(item) > scoreStretchReceiveCandidate(prev)) {
+      best.set(item.productId, item);
+    }
+  }
+
+  return [...best.values()].sort((a, b) => {
+    const app = a.application.localeCompare(b.application);
+    if (app !== 0) return app;
+    return (
+      (a.widthInches || 0) - (b.widthInches || 0) ||
+      (a.gauge || 0) - (b.gauge || 0) ||
+      (a.lengthFeet || 0) - (b.lengthFeet || 0) ||
+      String(a.partNumber || "").localeCompare(String(b.partNumber || ""))
+    );
+  });
 }
 
 /**

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getCurrentUser } from "@/actions/auth";
 import {
+  getWarehouseByCode,
   listStretchReceiveCatalog,
   listUsaDispatchQueue,
   listWarehouseInventory,
@@ -22,10 +23,12 @@ export default async function UsaWarehouseInventoryPage() {
     redirect("/dashboard");
   }
 
-  const [inventory, dispatchQueue, stretchCatalog] = await Promise.all([
+  // Catalog first so inventory seeding can attach USA rows for every stretch SKU.
+  const stretchCatalog = await listStretchReceiveCatalog();
+  const [warehouse, inventory, dispatchQueue] = await Promise.all([
+    getWarehouseByCode("usa"),
     listWarehouseInventory("usa"),
     listUsaDispatchQueue(),
-    listStretchReceiveCatalog(),
   ]);
 
   return (
@@ -34,6 +37,7 @@ export default async function UsaWarehouseInventoryPage() {
       inventory={inventory}
       dispatchQueue={dispatchQueue}
       stretchCatalog={stretchCatalog}
+      warehouseReady={Boolean(warehouse)}
     />
   );
 }

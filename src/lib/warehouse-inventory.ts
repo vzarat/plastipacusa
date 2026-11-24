@@ -163,13 +163,146 @@ function readPositiveNumber(value: unknown): number | null {
   return n;
 }
 
+/** Infer hand vs machine from product fields / slug / name. */
+export function inferStretchApplication(
+  raw: Record<string, unknown>
+): "hand" | "machine" | null {
+  const hay = [
+    raw.application,
+    raw.type,
+    raw.film_type,
+    raw.filmType,
+    raw.slug,
+    raw.name,
+    raw.title,
+    raw.storefront_title,
+    raw.part_number,
+    raw.partNumber,
+  ]
+    .map((part) => String(part || "").toLowerCase())
+    .join(" ");
+  if (!hay.trim()) return null;
+  if (
+    hay.includes("machine") ||
+    hay.includes("automatic") ||
+    hay.includes("genesis") ||
+    /-hlp\b|-flp\b/.test(hay)
+  ) {
+    return "machine";
+  }
+  if (hay.includes("hand") || hay.includes("manual") || hay.includes("stretch")) {
+    return "hand";
+  }
+  return null;
+}
+
+/**
+ * Parse width / gauge / length from slug, title, or SKU codes.
+ * Examples: stretch-film-18-x-80-ga-x-1500ft · STD-SF188015 · 18" x 80 GA x 1500
+ */
+export function parseStretchMeasuresFromText(text: string): {
+  widthInches: number | null;
+  gauge: number | null;
+  lengthFeet: number | null;
+} {
+  const raw = String(text || "");
+  const lower = raw.toLowerCase();
+
+  let widthInches: number | null = null;
+  let gauge: number | null = null;
+  let lengthFeet: number | null = null;
+
+  const slugMatch = lower.match(
+    /(\d{2})\s*[x×-]\s*(\d{2,3})\s*(?:ga|gauge)?\s*[x×-]\s*(\d{3,5})\s*(?:ft|feet)?/
+  );
+  if (slugMatch) {
+    widthInches = Number(slugMatch[1]);
+    gauge = Number(slugMatch[2]);
+    lengthFeet = Number(slugMatch[3]);
+  }
+
+  const prettyMatch = raw.match(
+    /(\d{2})\s*"?\s*[x×]\s*(\d{2,3})\s*ga(?:uge)?\s*[x×]\s*([\d,]+)\s*(?:ft|feet)?/i
+  );
+  if (prettyMatch) {
+    widthInches = Number(prettyMatch[1]);
+    gauge = Number(prettyMatch[2]);
+    lengthFeet = Number(String(prettyMatch[3]).replace(/,/g, ""));
+  }
+
+  // SKU measurement block: SF188015 → 18 / 80 / 1500
+  const skuMatch = raw.toUpperCase().match(/SF(\d{2})(\d{2})(\d{2})/);
+  if (skuMatch) {
+    widthInches = widthInches || Number(skuMatch[1]);
+    gauge = gauge || Number(skuMatch[2]);
+    lengthFeet = lengthFeet || Number(skuMatch[3]) * 100;
+  }
+
+  // Machine SKU: SF205170 → 20 / 51 / 7000
+  const machineSku = raw.toUpperCase().match(/SF(20)(\d{2})(\d{2})/);
+  if (machineSku && Number(machineSku[3]) >= 50) {
+    widthInches = widthInches || 20;
+    gauge = gauge || Number(machineSku[2]);
+    lengthFeet = lengthFeet || Number(machineSku[3]) * 100;
+  }
+
+  return {
+    widthInches: readPositiveNumber(widthInches),
+    gauge: readPositiveNumber(gauge),
+    lengthFeet: readPositiveNumber(lengthFeet),
+  };
+}
+
+export function resolveProductStretchFields(product: Record<string, unknown>): {
+  application: "hand" | "machine" | null;
+  widthInches: number | null;
+  gauge: number | null;
+  lengthFeet: number | null;
+  partNumber: string | null;
+  productName: string;
+  productSlug: string;
+} {
+  const parsed = parseStretchMeasuresFromText(
+    [
+      product.slug,
+      product.name,
+      product.title,
+      product.storefront_title,
+      product.part_number,
+      product.partNumber,
+    ]
+      .map((part) => String(part || ""))
+      .join(" ")
+  );
+
+  return {
+    application: inferStretchApplication(product),
+    widthInches:
+      readPositiveNumber(product.width_inches ?? product.widthInches) ||
+      parsed.widthInches,
+    gauge: readPositiveNumber(product.gauge) || parsed.gauge,
+    lengthFeet:
+      readPositiveNumber(product.length_feet ?? product.lengthFeet) ||
+      parsed.lengthFeet,
+    partNumber:
+      String(product.part_number || product.partNumber || "").trim() || null,
+    productName: String(
+      product.name || product.storefront_title || product.title || ""
+    ),
+    productSlug: String(product.slug || ""),
+  };
+}
+
 export function mapWarehouseInventoryRow(
   row: Record<string, unknown>
 ): WarehouseInventoryRow {
   const product = (row.products || row.product || null) as Record<string, unknown> | null;
-  const application = product
-    ? (String(product.application || "hand").toLowerCase() as "hand" | "machine")
-    : undefined;
+  const resolved = product ? resolveProductStretchFields(product) : null;
+  const application =
+    resolved?.application ||
+    (product
+      ? (String(product.application || "hand").toLowerCase() as "hand" | "machine")
+      : undefined);
   const stockBoxes = Math.max(
     0,
     Math.floor(Number(row.stock_boxes ?? row.stockBoxes) || 0)
@@ -193,23 +326,15 @@ export function mapWarehouseInventoryRow(
     ),
     reorderPoint: Math.max(0, Math.floor(Number(row.reorder_point ?? row.reorderPoint) || 0)),
     updatedAt: String(row.updated_at || row.updatedAt || ""),
-    productName: product
-      ? String(product.name || product.storefront_title || product.title || "")
-      : undefined,
-    productSlug: product ? String(product.slug || "") : undefined,
-    application,
+    productName: resolved?.productName || undefined,
+    productSlug: resolved?.productSlug || undefined,
+    application: application || undefined,
     boxesPerPallet,
     isActive: product ? product.is_active !== false : undefined,
-    widthInches: product
-      ? readPositiveNumber(product.width_inches ?? product.widthInches)
-      : null,
-    gauge: product ? readPositiveNumber(product.gauge) : null,
-    lengthFeet: product
-      ? readPositiveNumber(product.length_feet ?? product.lengthFeet)
-      : null,
-    partNumber: product
-      ? String(product.part_number || product.partNumber || "").trim() || null
-      : null,
+    widthInches: resolved?.widthInches ?? null,
+    gauge: resolved?.gauge ?? null,
+    lengthFeet: resolved?.lengthFeet ?? null,
+    partNumber: resolved?.partNumber ?? null,
   };
 }
 
