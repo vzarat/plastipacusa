@@ -122,7 +122,7 @@ export function AdminCustomerDossierView({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs">
         <div>
           <Link
-            href="/admin"
+            href="/admin?tab=customers"
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 mb-2"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -173,22 +173,30 @@ export function AdminCustomerDossierView({
           <section className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs space-y-4">
             <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
               <Building2 className="w-4 h-4 text-blue-700" />
-              Company Profile
+              Registration profile
             </h2>
             <dl className="space-y-3 text-xs">
               <div>
                 <dt className="text-slate-400 font-semibold uppercase tracking-wider">
-                  Contact
+                  Full name
                 </dt>
                 <dd className="font-bold text-slate-900 mt-0.5">
                   {dossier.fullName || "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-400 font-semibold uppercase tracking-wider">
+                  Company
+                </dt>
+                <dd className="font-bold text-slate-900 mt-0.5">
+                  {dossier.companyName || "—"}
                 </dd>
               </div>
               <div className="flex items-start gap-2">
                 <Mail className="w-3.5 h-3.5 text-slate-400 mt-0.5" />
                 <div>
                   <dt className="text-slate-400 font-semibold uppercase tracking-wider">
-                    Email
+                    Work email
                   </dt>
                   <dd className="font-medium text-slate-800 break-all">
                     {dossier.email || "—"}
@@ -206,6 +214,63 @@ export function AdminCustomerDossierView({
                   </dd>
                 </div>
               </div>
+              {(dossier.billingAddress ||
+                dossier.billingCity ||
+                dossier.billingState ||
+                dossier.billingZip) && (
+                <div>
+                  <dt className="text-slate-400 font-semibold uppercase tracking-wider">
+                    Billing address
+                  </dt>
+                  <dd className="font-medium text-slate-800 mt-0.5">
+                    {[
+                      dossier.billingAddress,
+                      [dossier.billingCity, dossier.billingState]
+                        .filter(Boolean)
+                        .join(", "),
+                      dossier.billingZip,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </dd>
+                </div>
+              )}
+              <div>
+                <dt className="text-slate-400 font-semibold uppercase tracking-wider">
+                  Registered
+                </dt>
+                <dd className="font-medium text-slate-800 mt-0.5">
+                  {dossier.createdAt
+                    ? new Date(dossier.createdAt).toLocaleString()
+                    : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-400 font-semibold uppercase tracking-wider">
+                  Terms accepted
+                </dt>
+                <dd className="font-medium text-slate-800 mt-0.5">
+                  {dossier.termsAcceptedAt
+                    ? new Date(dossier.termsAcceptedAt).toLocaleString()
+                    : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-400 font-semibold uppercase tracking-wider">
+                  Marketing opt-in
+                </dt>
+                <dd className="font-medium text-slate-800 mt-0.5">
+                  {dossier.marketingOptIn ? "Yes" : "No"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-400 font-semibold uppercase tracking-wider">
+                  Role
+                </dt>
+                <dd className="font-medium text-slate-800 mt-0.5 capitalize">
+                  {dossier.role || "client"}
+                </dd>
+              </div>
               <div>
                 <dt className="text-slate-400 font-semibold uppercase tracking-wider">
                   User ID
@@ -214,6 +279,16 @@ export function AdminCustomerDossierView({
                   {dossier.id}
                 </dd>
               </div>
+              {dossier.creditApplicationId ? (
+                <div>
+                  <Link
+                    href={`/admin/credit-applications/${dossier.creditApplicationId}`}
+                    className="inline-flex text-[11px] font-bold text-blue-700 hover:underline"
+                  >
+                    Open credit application →
+                  </Link>
+                </div>
+              ) : null}
             </dl>
           </section>
 

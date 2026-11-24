@@ -32,6 +32,15 @@ export interface CustomerDossier {
   creditLimit: number;
   creditTerms: string;
   createdAt: string | null;
+  /** Registration / profile extras */
+  marketingOptIn: boolean;
+  termsAcceptedAt: string | null;
+  avatarUrl: string | null;
+  billingAddress: string | null;
+  billingCity: string | null;
+  billingState: string | null;
+  billingZip: string | null;
+  creditApplicationId: string | null;
 }
 
 export interface UpdateCustomerDossierInput {
@@ -100,27 +109,32 @@ export async function getAdminCustomerDossier(
       return null;
     }
 
+    const id = String(customerId || "").trim();
+    if (!id) return null;
+
     // Prefer service role so Open File works for every customer row
     // (RLS on the cookie client often blocks reading other profiles).
+    // Use select("*") so missing optional columns (e.g. tax_exempt_verified)
+    // never 404 the whole expediente.
     const supabase = await getAdminDbClient();
     const { data, error } = await supabase
       .from("profiles")
-      .select(
-        "id, email, full_name, company_name, phone, role, tax_id, is_tax_exempt, tax_exemption_number, tax_certificate_url, tax_exempt_verified, credit_application_status, credit_limit, credit_terms, created_at"
-      )
-      .eq("id", customerId)
+      .select("*")
+      .eq("id", id)
       .maybeSingle();
 
     if (error || !data) {
       console.warn(
         "getAdminCustomerDossier failed:",
-        error?.message || "not found"
+        error?.message || "not found",
+        id
       );
       return null;
     }
 
+    const row = data as Record<string, unknown>;
     let signedUrl: string | null = null;
-    const certUrl = data.tax_certificate_url as string | null;
+    const certUrl = (row.tax_certificate_url as string | null) || null;
     if (certUrl) {
       // Prefer private storage path: tax-certificates/{user_id}/...
       const marker = "tax-certificates/";
@@ -141,25 +155,65 @@ export async function getAdminCustomerDossier(
       }
     }
 
+    let billingAddress: string | null = null;
+    let billingCity: string | null = null;
+    let billingState: string | null = null;
+    let billingZip: string | null = null;
+    let creditApplicationId: string | null = null;
+
+    try {
+      const { data: app } = await supabase
+        .from("credit_applications")
+        .select(
+          "id, billing_address, billing_city, billing_state, billing_zip, legal_business_name, company_name, work_email, phone"
+        )
+        .eq("user_id", id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (app) {
+        const a = app as Record<string, unknown>;
+        creditApplicationId = String(a.id || "") || null;
+        billingAddress = String(a.billing_address || "").trim() || null;
+        billingCity = String(a.billing_city || "").trim() || null;
+        billingState = String(a.billing_state || "").trim() || null;
+        billingZip = String(a.billing_zip || "").trim() || null;
+      }
+    } catch {
+      // credit_applications optional
+    }
+
     return {
-      id: data.id,
-      email: data.email || "",
-      fullName: data.full_name || "",
-      companyName: data.company_name || "",
-      phone: data.phone || "",
-      role: data.role || "client",
-      taxId: data.tax_id || "",
-      isTaxExempt: Boolean(data.is_tax_exempt),
-      taxExemptionNumber: data.tax_exemption_number || "",
+      id: String(row.id),
+      email: String(row.email || ""),
+      fullName: String(row.full_name || ""),
+      companyName: String(row.company_name || ""),
+      phone: String(row.phone || ""),
+      role: String(row.role || "client"),
+      taxId: String(row.tax_id || ""),
+      isTaxExempt: Boolean(row.is_tax_exempt),
+      taxExemptionNumber: String(row.tax_exemption_number || ""),
       taxCertificateUrl: certUrl,
       taxCertificateSignedUrl: signedUrl,
-      taxExemptVerified: Boolean(data.tax_exempt_verified),
-      creditApplicationStatus: normalizeCreditStatus(
-        data.credit_application_status
+      taxExemptVerified: Boolean(
+        row.tax_exempt_verified ?? row.is_tax_exempt
       ),
-      creditLimit: Number(data.credit_limit || 0),
-      creditTerms: data.credit_terms || "Registered",
-      createdAt: data.created_at || null,
+      creditApplicationStatus: normalizeCreditStatus(
+        row.credit_application_status
+      ),
+      creditLimit: Number(row.credit_limit || 0),
+      creditTerms: String(row.credit_terms || row.payment_terms || "Registered"),
+      createdAt: row.created_at ? String(row.created_at) : null,
+      marketingOptIn: Boolean(row.marketing_opt_in),
+      termsAcceptedAt: row.terms_accepted_at
+        ? String(row.terms_accepted_at)
+        : null,
+      avatarUrl: row.avatar_url ? String(row.avatar_url) : null,
+      billingAddress,
+      billingCity,
+      billingState,
+      billingZip,
+      creditApplicationId,
     };
   } catch (err) {
     console.warn("getAdminCustomerDossier exception:", err);
@@ -225,10 +279,23 @@ export async function updateAdminCustomerDossier(
     }
 
     const supabase = await getAdminDbClient();
-    const { error } = await supabase
+    let { error } = await supabase
       .from("profiles")
       .update(patch)
       .eq("id", customerId);
+
+    // Older DBs may lack tax_exempt_verified / available_credit / payment_terms.
+    if (
+      error &&
+      /tax_exempt_verified|available_credit|payment_terms/i.test(error.message || "")
+    ) {
+      const slim = { ...patch };
+      delete slim.tax_exempt_verified;
+      delete slim.available_credit;
+      delete slim.payment_terms;
+      const retry = await supabase.from("profiles").update(slim).eq("id", customerId);
+      error = retry.error;
+    }
 
     if (error) {
       return { success: false, error: error.message || "Update failed." };
