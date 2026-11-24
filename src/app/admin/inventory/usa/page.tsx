@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getCurrentUser } from "@/actions/auth";
 import {
+  listStretchReceiveCatalog,
   listUsaDispatchQueue,
   listWarehouseInventory,
 } from "@/actions/warehouse-inventory";
@@ -21,9 +22,10 @@ export default async function UsaWarehouseInventoryPage() {
     redirect("/dashboard");
   }
 
-  const [inventory, dispatchQueue] = await Promise.all([
+  const [inventory, dispatchQueue, stretchCatalog] = await Promise.all([
     listWarehouseInventory("usa"),
     listUsaDispatchQueue(),
+    listStretchReceiveCatalog(),
   ]);
 
   return (
@@ -31,6 +33,7 @@ export default async function UsaWarehouseInventoryPage() {
       profile={currentUser.profile}
       inventory={inventory}
       dispatchQueue={dispatchQueue}
+      stretchCatalog={stretchCatalog}
     />
   );
 }

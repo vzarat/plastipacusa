@@ -4,11 +4,17 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/actions/auth";
 import { lineStockUnits } from "@/lib/pallet-stock";
 import {
+  assignStretchSkuForReceive,
   mapWarehouseInventoryRow,
   mapWarehouseRow,
+  matchStretchCatalog,
+  scoreStretchReceiveCandidate,
   tarimaBreakdown,
+  tarimasToUnits,
   USA_WAREHOUSE_CODE,
   type InventoryAdjustReason,
+  type StretchCatalogItem,
+  type StretchMeasureInput,
   type WarehouseInventoryRow,
   type WarehouseRecord,
 } from "@/lib/warehouse-inventory";
@@ -89,6 +95,183 @@ export async function listWarehouseInventory(
       if (width !== 0) return width;
       return String(a.productName || "").localeCompare(String(b.productName || ""));
     });
+}
+
+function mapStretchCatalogRow(raw: Record<string, unknown>): StretchCatalogItem | null {
+  const applicationRaw = String(raw.application || "").toLowerCase();
+  const application =
+    applicationRaw === "machine" ? "machine" : applicationRaw === "hand" ? "hand" : null;
+  if (!application) return null;
+  const width = Number(raw.width_inches ?? raw.widthInches);
+  const gauge = Number(raw.gauge);
+  const length = Number(raw.length_feet ?? raw.lengthFeet);
+  if (
+    !Number.isFinite(width) ||
+    width <= 0 ||
+    !Number.isFinite(gauge) ||
+    gauge <= 0 ||
+    !Number.isFinite(length) ||
+    length <= 0
+  ) {
+    return null;
+  }
+  const bpp = Math.floor(Number(raw.boxes_per_pallet ?? raw.boxesPerPallet) || 0);
+  return {
+    productId: String(raw.id),
+    productName: String(raw.name || raw.storefront_title || ""),
+    partNumber: String(raw.part_number || raw.partNumber || "").trim() || null,
+    application,
+    widthInches: Math.round(width),
+    gauge: Math.round(gauge),
+    lengthFeet: Math.round(length),
+    boxesPerPallet: bpp > 0 ? bpp : null,
+  };
+}
+
+/** Active stretch SKUs with measures — used to assign SKU from floor measures. */
+export async function listStretchReceiveCatalog(): Promise<StretchCatalogItem[]> {
+  const staff = await requireWarehouseStaff();
+  if (!staff) return [];
+
+  const client = await db();
+  const { data, error } = await client
+    .from("products")
+    .select(
+      "id, name, storefront_title, application, boxes_per_pallet, is_active, width_inches, gauge, length_feet, part_number"
+    )
+    .in("application", ["hand", "machine"])
+    .eq("is_active", true)
+    .limit(500);
+
+  if (error) {
+    console.error("[warehouse] listStretchReceiveCatalog:", error.message);
+    return [];
+  }
+
+  return (data || [])
+    .map((row) => mapStretchCatalogRow(row as Record<string, unknown>))
+    .filter((row): row is StretchCatalogItem => Boolean(row))
+    .sort((a, b) => {
+      const app = a.application.localeCompare(b.application);
+      if (app !== 0) return app;
+      return (
+        (a.widthInches || 0) - (b.widthInches || 0) ||
+        (a.gauge || 0) - (b.gauge || 0) ||
+        (a.lengthFeet || 0) - (b.lengthFeet || 0) ||
+        String(a.partNumber || "").localeCompare(String(b.partNumber || ""))
+      );
+    });
+}
+
+/**
+ * Receive full pallets by film measures. System assigns the matching SKU
+ * (prefers full-pallet catalog row). Pass productId when multiple SKUs share measures.
+ */
+export async function receiveStretchByMeasures(input: {
+  warehouseCode?: string;
+  application: "hand" | "machine";
+  widthInches: number;
+  gauge: number;
+  lengthFeet: number;
+  pallets: number;
+  productId?: string;
+  notes?: string;
+}): Promise<{
+  success: boolean;
+  error?: string;
+  sku?: string | null;
+  productName?: string;
+  productId?: string;
+  stockBoxes?: number;
+  matches?: StretchCatalogItem[];
+}> {
+  const staff = await requireWarehouseStaff();
+  if (!staff) return { success: false, error: "Unauthorized." };
+
+  const measure: StretchMeasureInput = {
+    application: input.application === "machine" ? "machine" : "hand",
+    widthInches: Math.round(Number(input.widthInches) || 0),
+    gauge: Math.round(Number(input.gauge) || 0),
+    lengthFeet: Math.round(Number(input.lengthFeet) || 0),
+  };
+  const pallets = Math.max(0, Math.floor(Number(input.pallets) || 0));
+  if (
+    measure.widthInches < 1 ||
+    measure.gauge < 1 ||
+    measure.lengthFeet < 1 ||
+    pallets < 1
+  ) {
+    return {
+      success: false,
+      error: "Enter width, gauge, length, and pallet count.",
+    };
+  }
+
+  const catalog = await listStretchReceiveCatalog();
+  const matches = matchStretchCatalog(catalog, measure);
+  if (matches.length === 0) {
+    return {
+      success: false,
+      error: `No SKU matches ${measure.widthInches}" · ${measure.gauge} GA · ${measure.lengthFeet} ft (${measure.application}).`,
+      matches: [],
+    };
+  }
+
+  const preferredId = String(input.productId || "").trim();
+  const assigned =
+    (preferredId
+      ? matches.find((item) => item.productId === preferredId)
+      : null) ||
+    assignStretchSkuForReceive(catalog, measure);
+
+  if (!assigned) {
+    return {
+      success: false,
+      error: "Could not assign a SKU for those measures.",
+      matches,
+    };
+  }
+
+  if (!preferredId && matches.length > 1) {
+    const topScore = scoreStretchReceiveCandidate(assigned);
+    const tied = matches.filter(
+      (item) => scoreStretchReceiveCandidate(item) === topScore
+    );
+    if (tied.length > 1) {
+      return {
+        success: false,
+        error: "Several SKUs share these measures — pick one.",
+        matches: tied,
+      };
+    }
+  }
+
+  const quantity = tarimasToUnits(
+    pallets,
+    assigned.application,
+    assigned.boxesPerPallet
+  );
+  const result = await adjustWarehouseInventory({
+    warehouseCode: input.warehouseCode || USA_WAREHOUSE_CODE,
+    productId: assigned.productId,
+    delta: quantity,
+    reason: "received",
+    notes:
+      String(input.notes || "").trim() ||
+      `Inbound ${pallets} pallet(s) · ${measure.widthInches}" · ${measure.gauge} GA · ${measure.lengthFeet} ft → ${assigned.partNumber || assigned.productId}`,
+  });
+
+  if (!result.success) {
+    return { success: false, error: result.error, matches };
+  }
+
+  return {
+    success: true,
+    sku: assigned.partNumber,
+    productName: assigned.productName,
+    productId: assigned.productId,
+    stockBoxes: result.stockBoxes,
+  };
 }
 
 export async function adjustWarehouseInventory(input: {

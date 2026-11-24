@@ -70,6 +70,83 @@ export function formatStretchSpec(row: {
   return parts.join(" · ");
 }
 
+/** Catalog row used to assign a SKU from width / gauge / length. */
+export interface StretchCatalogItem {
+  productId: string;
+  productName: string;
+  partNumber: string | null;
+  application: "hand" | "machine";
+  widthInches: number | null;
+  gauge: number | null;
+  lengthFeet: number | null;
+  boxesPerPallet: number | null;
+}
+
+export type StretchMeasureInput = {
+  application: "hand" | "machine";
+  widthInches: number;
+  gauge: number;
+  lengthFeet: number;
+};
+
+function sameMeasure(a: number | null | undefined, b: number): boolean {
+  if (a == null) return false;
+  return Math.round(Number(a)) === Math.round(Number(b));
+}
+
+/** Prefer full-pallet catalog rows (48 boxes / 40 rolls / FLP / 64B). */
+export function scoreStretchReceiveCandidate(item: StretchCatalogItem): number {
+  const pn = String(item.partNumber || "").toUpperCase();
+  const bpp = Math.floor(Number(item.boxesPerPallet) || 0);
+  let score = 0;
+  if (item.application === "machine") {
+    if (pn.endsWith("-FLP") || bpp === 40) score += 100;
+    if (pn.endsWith("-HLP") || bpp === 20) score += 20;
+  } else {
+    if (pn.endsWith("-64B") || bpp === 48 || bpp === 64) score += 100;
+    if (pn.endsWith("-32B") || bpp === 32) score += 40;
+    if (pn.endsWith("-16B") || bpp === 16) score += 20;
+  }
+  if (pn) score += 5;
+  return score;
+}
+
+export function matchStretchCatalog(
+  catalog: StretchCatalogItem[],
+  input: StretchMeasureInput
+): StretchCatalogItem[] {
+  const app = input.application;
+  return catalog
+    .filter((item) => {
+      if (item.application !== app) return false;
+      if (!sameMeasure(item.widthInches, input.widthInches)) return false;
+      if (!sameMeasure(item.gauge, input.gauge)) return false;
+      if (!sameMeasure(item.lengthFeet, input.lengthFeet)) return false;
+      return true;
+    })
+    .sort((a, b) => scoreStretchReceiveCandidate(b) - scoreStretchReceiveCandidate(a));
+}
+
+/** Best single SKU for inbound full pallets, or null if none match. */
+export function assignStretchSkuForReceive(
+  catalog: StretchCatalogItem[],
+  input: StretchMeasureInput
+): StretchCatalogItem | null {
+  const matches = matchStretchCatalog(catalog, input);
+  return matches[0] || null;
+}
+
+export function uniqueSortedNumbers(
+  values: Array<number | null | undefined>
+): number[] {
+  const set = new Set<number>();
+  for (const value of values) {
+    const n = Math.round(Number(value));
+    if (Number.isFinite(n) && n > 0) set.add(n);
+  }
+  return [...set].sort((a, b) => a - b);
+}
+
 export function mapWarehouseRow(row: Record<string, unknown>): WarehouseRecord {
   return {
     id: String(row.id),
