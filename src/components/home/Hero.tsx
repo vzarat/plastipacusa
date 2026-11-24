@@ -10,6 +10,8 @@ const SLIDE_BACKGROUND_VIDEO =
 /** Mobile-only first slide video. */
 const SLIDE_MOBILE_VIDEO =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/1124.mp4";
+const SLIDE_MOBILE_STORY =
+  "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/Instagram%20story%20-%208.png";
 const SLIDE_SDK_4 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_4.jpg";
 const SLIDE_SDK_5 =
@@ -18,7 +20,7 @@ const SLIDE_SDK_2 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_2.jpg";
 const SLIDE_SDK_3 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_3.jpg";
-const MOBILE_SLIDE_COUNT = 1;
+const MOBILE_SLIDE_COUNT = 2;
 const DESKTOP_SLIDE_COUNT = 5;
 const AUTO_MS = 7000;
 const SLIDE_LABELS = [
@@ -53,7 +55,7 @@ function useAutoplayVideo(active: boolean) {
   return videoRef;
 }
 
-/** Mobile-only first slide: 1124.mp4 */
+/** Mobile-only first slide: 1124.mp4 (no CTA). */
 function MobileVideoSlide({ active }: { active: boolean }) {
   const videoRef = useAutoplayVideo(active);
 
@@ -70,7 +72,22 @@ function MobileVideoSlide({ active }: { active: boolean }) {
         preload="metadata"
         aria-label="Plastipac USA stretch film — mobile featured video"
       />
-      <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center bg-gradient-to-t from-black/50 to-transparent px-4 pb-10 pt-16">
+    </div>
+  );
+}
+
+/** Mobile second slide: Instagram story + Shop Now. */
+function MobileStorySlide() {
+  return (
+    <div className="absolute inset-0 md:hidden">
+      <Image
+        src={SLIDE_MOBILE_STORY}
+        alt="We are the manufacturers. We manufacture high-quality stretch film designed to meet your packaging needs."
+        fill
+        sizes="100vw"
+        className="object-contain object-center"
+      />
+      <div className="absolute left-1/2 top-[41.5%] z-20 -translate-x-1/2">
         <Link href="/#product-catalog-section" className={MOBILE_CTA_CLASS}>
           Shop Now
           <ArrowRight className="h-4 w-4" />
@@ -235,6 +252,7 @@ export function Hero() {
           aria-hidden={index !== 1}
           inert={index !== 1}
         >
+          <MobileStorySlide />
           <FeaturedImageSlide />
         </div>
         <div
