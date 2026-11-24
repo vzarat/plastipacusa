@@ -361,6 +361,7 @@ export function AdminSidebar({
 
             {/* Credit Applications — dedicated route */}
             {!warehouseOnly ? (
+            <>
             <Link
               href="/admin/credit-applications"
               onClick={onCloseMobile}
@@ -453,6 +454,7 @@ export function AdminSidebar({
                 </div>
               )}
             </Link>
+            </>
             ) : null}
           </nav>
 
