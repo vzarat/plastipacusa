@@ -127,9 +127,15 @@ function MobileStorySlide() {
   );
 }
 
-/** Desktop first slide: BACKGROUND 2 video. */
-function DesktopVideoSlide({ active }: { active: boolean }) {
-  const videoRef = useAutoplayVideo(active, { loop: true });
+/** Desktop first slide: BACKGROUND 2 — one full play, then next slide. */
+function DesktopVideoSlide({
+  active,
+  onEnded,
+}: {
+  active: boolean;
+  onEnded: () => void;
+}) {
+  const videoRef = useAutoplayVideo(active, { onEnded, loop: false });
 
   return (
     <div className="absolute inset-0 hidden bg-slate-950 md:block">
@@ -138,10 +144,9 @@ function DesktopVideoSlide({ active }: { active: boolean }) {
         className="absolute inset-0 h-full w-full object-cover object-center"
         src={SLIDE_BACKGROUND_VIDEO}
         muted
-        loop
         playsInline
         autoPlay
-        preload="metadata"
+        preload="auto"
         aria-label="Plastipac USA stretch film — featured packaging video"
       />
     </div>
@@ -257,13 +262,13 @@ export function Hero() {
     return () => media.removeEventListener("change", apply);
   }, []);
 
-  // Prefetch mobile video ASAP for faster first paint.
+  // Prefetch the active hero video for faster start.
   useEffect(() => {
-    if (isDesktop) return;
+    const href = isDesktop ? SLIDE_BACKGROUND_VIDEO : SLIDE_MOBILE_VIDEO;
     const link = document.createElement("link");
     link.rel = "preload";
     link.as = "video";
-    link.href = SLIDE_MOBILE_VIDEO;
+    link.href = href;
     link.type = "video/mp4";
     document.head.appendChild(link);
     return () => {
@@ -271,14 +276,14 @@ export function Hero() {
     };
   }, [isDesktop]);
 
-  // Auto-advance: on mobile video slide, wait for video `ended`. Otherwise timer.
+  // Auto-advance: on video slide (mobile or desktop), wait for `ended`.
+  // Other slides use the timer. When the carousel returns to slide 0, video plays again.
   useEffect(() => {
     if (paused || slideCount <= 1) return;
-    const videoDrivesAdvance = !isDesktop && index === 0;
-    if (videoDrivesAdvance) return;
+    if (index === 0) return;
     const timer = window.setInterval(goNext, AUTO_MS);
     return () => window.clearInterval(timer);
-  }, [paused, slideCount, isDesktop, index, goNext]);
+  }, [paused, slideCount, index, goNext]);
 
   function onTouchStart(event: ReactTouchEvent) {
     touchStartX.current = event.changedTouches[0]?.clientX ?? null;
@@ -320,7 +325,7 @@ export function Hero() {
           inert={index !== 0}
         >
           <MobileVideoSlide active={index === 0 && !isDesktop} onEnded={goNext} />
-          <DesktopVideoSlide active={index === 0 && isDesktop} />
+          <DesktopVideoSlide active={index === 0 && isDesktop} onEnded={goNext} />
         </div>
         <div
           className={`absolute inset-0 transition-opacity duration-300 ${
