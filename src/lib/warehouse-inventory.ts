@@ -73,7 +73,10 @@ export function mapWarehouseInventoryRow(
       ? (String(product.application || "hand").toLowerCase() as "hand" | "machine")
       : undefined,
     boxesPerPallet: product
-      ? Math.floor(Number(product.boxes_per_pallet) || 0) || null
+      ? unitsPerTarima(
+          String(product.application || "hand"),
+          Math.floor(Number(product.boxes_per_pallet) || 0) || null
+        )
       : null,
     isActive: product ? product.is_active !== false : undefined,
   };
@@ -112,11 +115,45 @@ export function unitLabelForApplication(application?: string | null): "boxes" | 
   return String(application || "").toLowerCase() === "machine" ? "rolls" : "boxes";
 }
 
-export function formatPalletDisplay(stockBoxes: number, boxesPerPallet?: number | null): string {
+/** Units that make one stretch-film tarima (pallet) for this SKU. */
+export function unitsPerTarima(
+  application?: string | null,
+  boxesPerPallet?: number | null
+): number {
   const bpp = Math.floor(Number(boxesPerPallet) || 0);
-  if (bpp < 1) return "—";
-  const full = Math.floor(stockBoxes / bpp);
-  const loose = stockBoxes % bpp;
-  if (loose === 0) return `${full} pal`;
-  return `${full} pal + ${loose}`;
+  if (bpp > 0) return bpp;
+  // Hand stretch: 48 boxes / tarima. Machine: 40 rolls / tarima.
+  return String(application || "").toLowerCase() === "machine" ? 40 : 48;
+}
+
+export function tarimaBreakdown(
+  stockUnits: number,
+  application?: string | null,
+  boxesPerPallet?: number | null
+): { tarimas: number; loose: number; perTarima: number; unitLabel: "boxes" | "rolls" } {
+  const perTarima = unitsPerTarima(application, boxesPerPallet);
+  const units = Math.max(0, Math.floor(Number(stockUnits) || 0));
+  return {
+    tarimas: Math.floor(units / perTarima),
+    loose: units % perTarima,
+    perTarima,
+    unitLabel: unitLabelForApplication(application),
+  };
+}
+
+export function formatPalletDisplay(stockBoxes: number, boxesPerPallet?: number | null): string {
+  const { tarimas, loose, unitLabel } = tarimaBreakdown(stockBoxes, null, boxesPerPallet);
+  if (loose === 0) return `${tarimas} tarima${tarimas === 1 ? "" : "s"}`;
+  return `${tarimas} tarima${tarimas === 1 ? "" : "s"} + ${loose} ${unitLabel}`;
+}
+
+/** Convert tarima count → inventory units (boxes/rolls) for RPC adjust. */
+export function tarimasToUnits(
+  tarimas: number,
+  application?: string | null,
+  boxesPerPallet?: number | null
+): number {
+  const count = Math.floor(Number(tarimas) || 0);
+  if (count === 0) return 0;
+  return count * unitsPerTarima(application, boxesPerPallet);
 }

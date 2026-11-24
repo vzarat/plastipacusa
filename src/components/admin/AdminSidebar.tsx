@@ -75,6 +75,7 @@ export function AdminSidebar({
   const customersRouteActive = Boolean(
     pathname?.startsWith("/admin/customers")
   );
+  const warehouseOnly = profile.role === "warehouse_supervisor";
   const { t } = useLanguage();
   const [internalIsCollapsed, setInternalIsCollapsed] = useState(false);
 
@@ -235,9 +236,15 @@ export function AdminSidebar({
 
           {/* Admin Context Badge */}
           {!isCollapsed ? (
-            <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-blue-900 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-200/80">
-              <ShieldCheck className="w-4 h-4 text-blue-600 flex-shrink-0" />
-              <span className="truncate">Admin Portal</span>
+            <div className={`flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border ${
+              warehouseOnly
+                ? "text-emerald-900 bg-emerald-50 border-emerald-200/80"
+                : "text-blue-900 bg-blue-50 border-blue-200/80"
+            }`}>
+              <ShieldCheck className={`w-4 h-4 flex-shrink-0 ${warehouseOnly ? "text-emerald-600" : "text-blue-600"}`} />
+              <span className="truncate">
+                {warehouseOnly ? "USA Warehouse" : "Admin Portal"}
+              </span>
             </div>
           ) : (
             <div
@@ -253,7 +260,7 @@ export function AdminSidebar({
 
           {/* Navigation Links */}
           <nav className="space-y-1.5">
-            {NAV_ITEMS.map((item) => {
+            {!warehouseOnly && NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive =
                 !creditApplicationsActive &&
@@ -353,6 +360,7 @@ export function AdminSidebar({
             </Link>
 
             {/* Credit Applications — dedicated route */}
+            {!warehouseOnly ? (
             <Link
               href="/admin/credit-applications"
               onClick={onCloseMobile}
@@ -445,6 +453,7 @@ export function AdminSidebar({
                 </div>
               )}
             </Link>
+            ) : null}
           </nav>
 
           {/* Quick Storefront Link */}
