@@ -237,76 +237,77 @@ export async function listUsaDispatchQueue(): Promise<WarehouseDispatchOrder[]> 
     "succeeded",
   ]);
 
-  return (data || [])
-    .map((row) => {
-      const payment = String(row.payment_status || "").trim();
-      const fulfillment = String(
-        row.fulfillment_status || row.status || "unfulfilled"
-      ).toLowerCase();
-      const orderStatus = String(row.status || "").toLowerCase();
-      if (orderStatus === "pending_payment") return null;
-      if (!paidStatuses.has(payment) && payment.toLowerCase() !== "paid") {
-        // Allow Paid & Cleared variants already covered; skip unpaid.
-        if (!/paid/i.test(payment)) return null;
-      }
-      if (
-        fulfillment === "fulfilled" ||
-        fulfillment === "cancelled" ||
-        fulfillment === "canceled"
-      ) {
-        return null;
-      }
+  const orders: WarehouseDispatchOrder[] = [];
 
-      const rawItems = Array.isArray(row.items) ? row.items : [];
-      const lines = rawItems
-        .map((item) => {
-          const raw = item as Record<string, unknown>;
-          const productId = String(
-            raw.productId || raw.product_id || ""
-          ).trim();
-          const application = String(raw.application || "hand");
-          const { units, unitLabel } = lineStockUnits({
-            application,
-            boxes: Number(raw.totalBoxes ?? raw.boxes ?? raw.quantity) || 0,
-            rolls: Number(raw.totalRolls ?? raw.rolls) || 0,
-          });
-          if (!productId || units < 1) return null;
-          const widthInches = Number(raw.widthInches ?? raw.width_inches);
-          const gauge = Number(raw.gauge);
-          const lengthFeet = Number(raw.lengthFeet ?? raw.length_feet);
-          const breakdown = tarimaBreakdown(units, application, null);
-          return {
-            productId,
-            productName: String(raw.productName || raw.product_name || raw.name || "Item"),
-            sku: String(raw.sku || ""),
-            units,
-            unitLabel,
-            application,
-            widthInches:
-              Number.isFinite(widthInches) && widthInches > 0 ? widthInches : null,
-            gauge: Number.isFinite(gauge) && gauge > 0 ? gauge : null,
-            lengthFeet:
-              Number.isFinite(lengthFeet) && lengthFeet > 0 ? lengthFeet : null,
-            pallets: breakdown.tarimas,
-          };
-        })
-        .filter((line): line is NonNullable<typeof line> => Boolean(line));
+  for (const row of data || []) {
+    const payment = String(row.payment_status || "").trim();
+    const fulfillment = String(
+      row.fulfillment_status || row.status || "unfulfilled"
+    ).toLowerCase();
+    const orderStatus = String(row.status || "").toLowerCase();
+    if (orderStatus === "pending_payment") continue;
+    if (!paidStatuses.has(payment) && payment.toLowerCase() !== "paid") {
+      // Allow Paid & Cleared variants already covered; skip unpaid.
+      if (!/paid/i.test(payment)) continue;
+    }
+    if (
+      fulfillment === "fulfilled" ||
+      fulfillment === "cancelled" ||
+      fulfillment === "canceled"
+    ) {
+      continue;
+    }
 
-      if (lines.length === 0) return null;
+    const rawItems = Array.isArray(row.items) ? row.items : [];
+    const lines: WarehouseDispatchOrder["lines"] = [];
+    for (const item of rawItems) {
+      const raw = item as Record<string, unknown>;
+      const productId = String(raw.productId || raw.product_id || "").trim();
+      const application = String(raw.application || "hand");
+      const { units, unitLabel } = lineStockUnits({
+        application,
+        boxes: Number(raw.totalBoxes ?? raw.boxes ?? raw.quantity) || 0,
+        rolls: Number(raw.totalRolls ?? raw.rolls) || 0,
+      });
+      if (!productId || units < 1) continue;
+      const widthInches = Number(raw.widthInches ?? raw.width_inches);
+      const gauge = Number(raw.gauge);
+      const lengthFeet = Number(raw.lengthFeet ?? raw.length_feet);
+      const breakdown = tarimaBreakdown(units, application, null);
+      lines.push({
+        productId,
+        productName: String(
+          raw.productName || raw.product_name || raw.name || "Item"
+        ),
+        sku: String(raw.sku || ""),
+        units,
+        unitLabel,
+        application,
+        widthInches:
+          Number.isFinite(widthInches) && widthInches > 0 ? widthInches : null,
+        gauge: Number.isFinite(gauge) && gauge > 0 ? gauge : null,
+        lengthFeet:
+          Number.isFinite(lengthFeet) && lengthFeet > 0 ? lengthFeet : null,
+        pallets: breakdown.tarimas,
+      });
+    }
 
-      return {
-        id: String(row.id),
-        createdAt: String(row.created_at || ""),
-        customerName: String(row.customer_name || ""),
-        customerCompany: String(row.company_name || ""),
-        customerEmail: String(row.customer_email || ""),
-        shippingSummary: shippingSummary(row.shipping_address),
-        totalUsd: Number(row.total_usd) || 0,
-        inventorySettled: row.inventory_settled === true,
-        lines,
-      } satisfies WarehouseDispatchOrder;
-    })
-    .filter((order): order is WarehouseDispatchOrder => Boolean(order));
+    if (lines.length === 0) continue;
+
+    orders.push({
+      id: String(row.id),
+      createdAt: String(row.created_at || ""),
+      customerName: String(row.customer_name || ""),
+      customerCompany: String(row.company_name || ""),
+      customerEmail: String(row.customer_email || ""),
+      shippingSummary: shippingSummary(row.shipping_address),
+      totalUsd: Number(row.total_usd) || 0,
+      inventorySettled: row.inventory_settled === true,
+      lines,
+    });
+  }
+
+  return orders;
 }
 
 /**
