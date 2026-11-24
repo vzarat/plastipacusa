@@ -21,6 +21,7 @@ import {
   FileText,
   ClipboardList,
   Wrench,
+  Warehouse,
 } from "lucide-react";
 
 export type AdminTabKey = "overview" | "orders" | "products" | "customers" | "settings";
@@ -70,6 +71,7 @@ export function AdminSidebar({
     pathname?.startsWith("/admin/discounts") ||
     pathname?.startsWith("/admin/leads") ||
     pathname?.startsWith("/admin/campaigns");
+  const inventoryActive = Boolean(pathname?.startsWith("/admin/inventory"));
   const customersRouteActive = Boolean(
     pathname?.startsWith("/admin/customers")
   );
@@ -257,6 +259,7 @@ export function AdminSidebar({
                 !creditApplicationsActive &&
                 !quotesActive &&
                 !toolsActive &&
+                !inventoryActive &&
                 (customersRouteActive
                   ? item.key === "customers"
                   : activeTab === item.key);
@@ -316,6 +319,38 @@ export function AdminSidebar({
                 </button>
               );
             })}
+
+            {/* USA Warehouse inventory */}
+            <Link
+              href="/admin/inventory/usa"
+              onClick={onCloseMobile}
+              className={`w-full flex items-center ${
+                isCollapsed ? "justify-center p-3" : "justify-between px-3.5 py-2.5 border-l-4"
+              } rounded-xl text-xs transition-all duration-200 relative group ${
+                inventoryActive
+                  ? isCollapsed
+                    ? "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-300 shadow-xs font-bold"
+                    : "border-emerald-600 bg-emerald-50/70 font-bold text-emerald-950 shadow-xs"
+                  : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-medium"
+              }`}
+              aria-label="USA Warehouse"
+            >
+              <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
+                <Warehouse
+                  className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${
+                    inventoryActive
+                      ? "text-emerald-600"
+                      : "text-slate-400 group-hover:text-slate-700"
+                  }`}
+                />
+                {!isCollapsed && <span>USA Warehouse</span>}
+              </div>
+              {isCollapsed && (
+                <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap hidden md:flex items-center gap-2">
+                  USA Warehouse
+                </div>
+              )}
+            </Link>
 
             {/* Credit Applications — dedicated route */}
             <Link

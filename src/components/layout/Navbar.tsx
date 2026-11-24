@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Menu,
   Sparkles,
+  Package,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -186,7 +187,9 @@ export function Navbar() {
       ? "Admin"
       : currentUser?.profile.role === "specialist"
         ? "Specialist"
-        : "Customer";
+        : currentUser?.profile.role === "warehouse_supervisor"
+          ? "Warehouse"
+          : "Customer";
 
   const accountMenu = (compact: boolean) =>
     currentUser ? (
@@ -267,6 +270,16 @@ export function Navbar() {
               >
                 <ShieldCheck className="h-4 w-4 text-purple-600" />
                 <span>Admin</span>
+              </Link>
+            ) : currentUser.profile.role === "warehouse_supervisor" ? (
+              <Link
+                href="/admin/inventory/usa"
+                prefetch={false}
+                onClick={() => setIsUserMenuOpen(false)}
+                className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-50"
+              >
+                <Package className="h-4 w-4 text-emerald-600" />
+                <span>USA Warehouse</span>
               </Link>
             ) : (
               <Link

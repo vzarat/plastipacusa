@@ -23,6 +23,7 @@ import {
   getDisplayPrice,
   handCatalogQuote,
 } from "@/lib/pricing";
+import { UsWarehouseStockBadge } from "@/components/products/UsWarehouseStockBadge";
 function isolateCardAction(event: React.MouseEvent | React.TouchEvent) {
   event.stopPropagation();
 }
@@ -409,17 +410,12 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               <span>{volumeTierLabel}</span>
             </div>
 
-            <div className="flex items-center gap-3 text-[11px] text-slate-600">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className={`w-3.5 h-3.5 ${catStyles.iconColor} flex-shrink-0`} />
                 <span>{isGenesis ? "Power Pre-Stretch" : "Multi-Layer Cast"}</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <CheckCircle2 className={`w-3.5 h-3.5 ${catStyles.iconColor} flex-shrink-0`} />
-                <span>
-                  {isSoldOut ? t("products.soldOut") : t("products.inStock")}
-                </span>
-              </div>
+              <UsWarehouseStockBadge product={product} />
             </div>
           </div>
         </div>

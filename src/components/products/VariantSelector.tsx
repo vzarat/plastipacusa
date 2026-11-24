@@ -28,6 +28,7 @@ import { packageTotalWeightLbs } from "@/lib/package-weight";
 import { BOX_QTY_NOTE, HALF_PALLET_QTY_NOTE } from "@/lib/cart-quantity";
 import { houstonFridayPresetLabel } from "@/lib/shippingRules";
 import { getProductBySlug } from "@/actions/products";
+import { UsWarehouseStockBadge } from "@/components/products/UsWarehouseStockBadge";
 import {
   HAND_FULL_PALLET_BOXES,
   buildHandFullPalletCartItem,
@@ -943,13 +944,14 @@ export function VariantSelector({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Badge
-            variant={isSoldOut ? "secondary" : "success"}
-            className="text-xs font-semibold px-3 py-1"
-          >
-            ● {isSoldOut ? t("products.soldOut") : t("products.inStock")}
-          </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          {isSoldOut ? (
+            <Badge variant="secondary" className="text-xs font-semibold px-3 py-1">
+              ● {t("products.soldOut")}
+            </Badge>
+          ) : (
+            <UsWarehouseStockBadge product={product} className="text-[11px] normal-case tracking-normal" />
+          )}
         </div>
       </div>
 

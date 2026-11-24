@@ -60,7 +60,12 @@ function normalizeApiUser(row: Record<string, unknown>): AdminManagedUser {
     email: String(row.email ?? ""),
     companyName: String(row.companyName ?? row.company_name ?? ""),
     phone: String(row.phone ?? ""),
-    role: roleRaw === "admin" ? "admin" : "client",
+    role:
+      roleRaw === "admin"
+        ? "admin"
+        : roleRaw === "warehouse_supervisor"
+          ? "warehouse_supervisor"
+          : "client",
     taxId,
     hasTaxId: Boolean(taxId || row.hasTaxId),
     createdAt: row.createdAt
@@ -211,7 +216,13 @@ export function AdminUsersView({
   const openRole = (user: AdminManagedUser) => {
     closeMenu();
     setRoleUser(user);
-    setNextRole(user.role === "admin" ? "client" : "admin");
+    setNextRole(
+      user.role === "warehouse_supervisor"
+        ? "warehouse_supervisor"
+        : user.role === "admin"
+          ? "admin"
+          : "client"
+    );
   };
 
   const openDelete = (user: AdminManagedUser) => {
@@ -459,6 +470,10 @@ export function AdminUsersView({
                           <ShieldCheck className="w-3 h-3" />
                           admin
                         </span>
+                      ) : user.role === "warehouse_supervisor" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
+                          warehouse
+                        </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-[10px] font-bold">
                           client
@@ -637,6 +652,7 @@ export function AdminUsersView({
           >
             <option value="client">client</option>
             <option value="admin">admin</option>
+            <option value="warehouse_supervisor">warehouse_supervisor</option>
           </select>
           <ModalActions
             onCancel={() => setRoleUser(null)}

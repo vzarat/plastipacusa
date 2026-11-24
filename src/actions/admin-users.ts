@@ -24,7 +24,10 @@ async function requireAdmin() {
 }
 
 function normalizeRole(value: unknown): AdminManagedRole {
-  return String(value || "").toLowerCase() === "admin" ? "admin" : "client";
+  const role = String(value || "").toLowerCase();
+  if (role === "admin") return "admin";
+  if (role === "warehouse_supervisor") return "warehouse_supervisor";
+  return "client";
 }
 
 export async function getAdminManagedUsers(): Promise<AdminManagedUser[]> {

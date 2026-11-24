@@ -40,6 +40,10 @@ export default async function AdminIndexPage({
     redirect("/login?redirect=/admin");
   }
 
+  if (currentUser.profile.role === "warehouse_supervisor") {
+    redirect("/admin/inventory/usa");
+  }
+
   // If profile.role !== 'admin' -> redirect to /dashboard
   if (currentUser.profile.role !== "admin") {
     redirect("/dashboard");

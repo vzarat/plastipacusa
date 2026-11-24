@@ -17,7 +17,7 @@ export interface UserProfile {
   companyName: string;
   phone?: string;
   avatarUrl?: string;
-  role: "client" | "admin" | "specialist";
+  role: "client" | "admin" | "specialist" | "warehouse_supervisor";
   hasPassword?: boolean;
   passwordSetupSkipped?: boolean;
   backupPasswordPending?: boolean;

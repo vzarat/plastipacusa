@@ -4,7 +4,7 @@ import {
 } from "@/lib/supabase/admin";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
-export type AdminManagedRole = "client" | "admin";
+export type AdminManagedRole = "client" | "admin" | "warehouse_supervisor";
 
 export interface AdminManagedUser {
   id: string;
@@ -19,7 +19,10 @@ export interface AdminManagedUser {
 }
 
 function normalizeRole(value: unknown): AdminManagedRole {
-  return String(value || "").toLowerCase() === "admin" ? "admin" : "client";
+  const role = String(value || "").toLowerCase();
+  if (role === "admin") return "admin";
+  if (role === "warehouse_supervisor") return "warehouse_supervisor";
+  return "client";
 }
 
 /**

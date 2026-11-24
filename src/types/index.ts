@@ -114,6 +114,11 @@ export interface ProductWithVariants
   price_64_boxes?: number | null;
   /** Exact featured-series label used for tab filtering (no partial matches). */
   series?: string;
+  /** USA warehouse ecommerce availability (US ship-from zones). */
+  usWarehouseStock?: number | null;
+  usWarehouseReorderPoint?: number | null;
+  usStockStatus?: "in_stock" | "low" | "backorder" | "untracked";
+  usStockLabel?: string;
 }
 export type Product = DbProduct;
 export type Inquiry = DbInquiry;

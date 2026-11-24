@@ -15,6 +15,11 @@ import {
   getApplicationForCategory,
 } from "@/data/categories";
 import { verifyAdmin } from "./admin";
+import { getUsaWarehouseStockMap } from "@/actions/warehouse-inventory";
+import {
+  usStockAvailability,
+  usStockStatusLabel,
+} from "@/lib/warehouse-inventory";
 import {
   isExcludedFifteenInchEightyGauge,
   resolvePalletizingSpecs,
@@ -876,7 +881,7 @@ export async function getProducts(
     return p.categorySlug === filter || p.categoryId === filter;
   };
 
-  const finalizeCatalog = (items: ProductWithVariants[]) => {
+  const finalizeCatalog = async (items: ProductWithVariants[]) => {
     let next = ensureGenesisMachineProducts(
       items.filter((p) => p.isActive !== false)
     );
@@ -886,7 +891,8 @@ export async function getProducts(
     if (categoryFilter && categoryFilter !== "all") {
       next = next.filter((p) => matchesCategory(p, categoryFilter));
     }
-    return sortProductsByDimensions(excludeFiftyGaugeFromStorefront(next));
+    next = sortProductsByDimensions(excludeFiftyGaugeFromStorefront(next));
+    return attachUsaWarehouseAvailability(next);
   };
 
   try {
@@ -922,6 +928,54 @@ export async function getProducts(
   return finalizeCatalog([]);
 }
 
+async function attachUsaWarehouseAvailability(
+  items: ProductWithVariants[]
+): Promise<ProductWithVariants[]> {
+  if (items.length === 0) return items;
+  try {
+    const stockMap = await getUsaWarehouseStockMap();
+    if (stockMap.size === 0) {
+      return items.map((product) => {
+        const status = usStockAvailability({
+          stockBoxes: product.stockBoxes,
+          tracked: product.stockBoxes != null,
+        });
+        return {
+          ...product,
+          usWarehouseStock: product.stockBoxes ?? null,
+          usWarehouseReorderPoint: null,
+          usStockStatus: status,
+          usStockLabel: usStockStatusLabel(status),
+        };
+      });
+    }
+
+    return items.map((product) => {
+      const key = String(product.sourceId || product.id || "");
+      const entry = stockMap.get(key);
+      const stockBoxes =
+        entry?.stockBoxes ??
+        (product.stockBoxes == null ? null : product.stockBoxes);
+      const reorderPoint = entry?.reorderPoint ?? null;
+      const status = usStockAvailability({
+        stockBoxes,
+        reorderPoint,
+        tracked: stockBoxes != null || entry != null,
+      });
+      return {
+        ...product,
+        usWarehouseStock: stockBoxes,
+        usWarehouseReorderPoint: reorderPoint,
+        usStockStatus: status,
+        usStockLabel: usStockStatusLabel(status),
+      };
+    });
+  } catch (err) {
+    console.warn("[products] attachUsaWarehouseAvailability:", err);
+    return items;
+  }
+}
+
 /**
  * Fetch a single product by slug joined with its parent category and product_variants
  */
@@ -954,7 +1008,8 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
           if (detectMachineFilm(product) && !isOfficialMachineFilmProduct(product)) {
             return null;
           }
-          return product;
+          const [enriched] = await attachUsaWarehouseAvailability([product]);
+          return enriched || product;
         }
       } catch (sbErr: any) {
         console.error("Supabase getProductBySlug exception:", sbErr?.message || sbErr);
