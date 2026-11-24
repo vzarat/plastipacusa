@@ -61,7 +61,7 @@ function MobileVideoSlide({ active }: { active: boolean }) {
     <div className="absolute inset-0 bg-slate-950 md:hidden">
       <video
         ref={videoRef}
-        className="absolute inset-0 h-full w-full object-contain object-center"
+        className="absolute inset-0 h-full w-full object-cover object-center"
         src={SLIDE_MOBILE_VIDEO}
         muted
         loop
@@ -70,7 +70,7 @@ function MobileVideoSlide({ active }: { active: boolean }) {
         preload="metadata"
         aria-label="Plastipac USA stretch film — mobile featured video"
       />
-      <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center bg-gradient-to-t from-black/50 to-transparent px-4 pb-8 pt-16">
+      <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center bg-gradient-to-t from-black/50 to-transparent px-4 pb-10 pt-16">
         <Link href="/#product-catalog-section" className={MOBILE_CTA_CLASS}>
           Shop Now
           <ArrowRight className="h-4 w-4" />
@@ -216,8 +216,8 @@ export function Hero() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      {/* Mobile: 1920×1080 only. Desktop: 2560×800. */}
-      <div className="relative mx-auto aspect-[1920/1080] w-full max-w-[1400px] overflow-hidden rounded-2xl [container-type:inline-size] md:aspect-[2560/800] md:rounded-3xl">
+      {/* Mobile vertical video 1080×1920. Desktop banner 2560×800. */}
+      <div className="relative mx-auto aspect-[1080/1920] w-full max-w-[1400px] overflow-hidden rounded-2xl [container-type:inline-size] md:aspect-[2560/800] md:rounded-3xl">
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
             index === 0 ? "opacity-100" : "pointer-events-none opacity-0"
