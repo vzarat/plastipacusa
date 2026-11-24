@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type TouchEvent as ReactTouchEvent,
+} from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
@@ -22,7 +28,9 @@ const SLIDE_SDK_3 =
   "https://ahvmjptomjjnqjylofpa.supabase.co/storage/v1/object/public/Products/SLIDES/SLIDE_SDK_3.jpg";
 const MOBILE_SLIDE_COUNT = 2;
 const DESKTOP_SLIDE_COUNT = 5;
-const AUTO_MS = 7000;
+/** Desktop + mobile story slide dwell. Video advances on `ended`. */
+const AUTO_MS = 5000;
+const SWIPE_PX = 40;
 const SLIDE_LABELS = [
   "Featured video",
   "Packaging solutions",
@@ -37,27 +45,49 @@ const SLIDE_CTA_CLASS =
 const MOBILE_CTA_CLASS =
   "inline-flex w-fit items-center gap-2 rounded-xl bg-gradient-to-r from-[#00b2e3] to-[#2563eb] px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white shadow-md shadow-blue-500/30";
 
-function useAutoplayVideo(active: boolean) {
+function useAutoplayVideo(active: boolean, opts?: { onEnded?: () => void; loop?: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const onEnded = opts?.onEnded;
+  const loop = opts?.loop ?? true;
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+    video.loop = loop;
     if (active) {
-      video.play().catch(() => {
-        // Autoplay can be blocked; muted + playsInline usually allows it.
-      });
+      video.currentTime = 0;
+      const play = () => {
+        video.play().catch(() => {
+          // Autoplay can be blocked; muted + playsInline usually allows it.
+        });
+      };
+      if (video.readyState >= 2) play();
+      else video.addEventListener("loadeddata", play, { once: true });
     } else {
       video.pause();
     }
-  }, [active]);
+  }, [active, loop]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !onEnded) return;
+    const handleEnded = () => onEnded();
+    video.addEventListener("ended", handleEnded);
+    return () => video.removeEventListener("ended", handleEnded);
+  }, [onEnded]);
 
   return videoRef;
 }
 
-/** Mobile-only first slide: 1124.mp4 (no CTA). */
-function MobileVideoSlide({ active }: { active: boolean }) {
-  const videoRef = useAutoplayVideo(active);
+/** Mobile-only first slide: 1124.mp4 — advances after one full play. */
+function MobileVideoSlide({
+  active,
+  onEnded,
+}: {
+  active: boolean;
+  onEnded: () => void;
+}) {
+  const videoRef = useAutoplayVideo(active, { onEnded, loop: false });
 
   return (
     <div className="absolute inset-0 bg-slate-950 md:hidden">
@@ -66,10 +96,9 @@ function MobileVideoSlide({ active }: { active: boolean }) {
         className="absolute inset-0 h-full w-full object-cover object-center"
         src={SLIDE_MOBILE_VIDEO}
         muted
-        loop
         playsInline
         autoPlay
-        preload="metadata"
+        preload="auto"
         aria-label="Plastipac USA stretch film — mobile featured video"
       />
     </div>
@@ -84,6 +113,7 @@ function MobileStorySlide() {
         src={SLIDE_MOBILE_STORY}
         alt="We are the manufacturers. We manufacture high-quality stretch film designed to meet your packaging needs."
         fill
+        priority
         sizes="100vw"
         className="object-contain object-center"
       />
@@ -99,7 +129,7 @@ function MobileStorySlide() {
 
 /** Desktop first slide: BACKGROUND 2 video. */
 function DesktopVideoSlide({ active }: { active: boolean }) {
-  const videoRef = useAutoplayVideo(active);
+  const videoRef = useAutoplayVideo(active, { loop: true });
 
   return (
     <div className="absolute inset-0 hidden bg-slate-950 md:block">
@@ -201,12 +231,24 @@ function QualitySlide() {
 export function Hero() {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
   const [slideCount, setSlideCount] = useState(MOBILE_SLIDE_COUNT);
+  const touchStartX = useRef<number | null>(null);
+
+  const goNext = useCallback(() => {
+    setIndex((current) => (current + 1) % slideCount);
+  }, [slideCount]);
+
+  const goPrev = useCallback(() => {
+    setIndex((current) => (current - 1 + slideCount) % slideCount);
+  }, [slideCount]);
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 768px)");
     const apply = () => {
-      const nextCount = media.matches ? DESKTOP_SLIDE_COUNT : MOBILE_SLIDE_COUNT;
+      const desktop = media.matches;
+      const nextCount = desktop ? DESKTOP_SLIDE_COUNT : MOBILE_SLIDE_COUNT;
+      setIsDesktop(desktop);
       setSlideCount(nextCount);
       setIndex((current) => (current >= nextCount ? 0 : current));
     };
@@ -215,13 +257,44 @@ export function Hero() {
     return () => media.removeEventListener("change", apply);
   }, []);
 
+  // Prefetch mobile video ASAP for faster first paint.
+  useEffect(() => {
+    if (isDesktop) return;
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "video";
+    link.href = SLIDE_MOBILE_VIDEO;
+    link.type = "video/mp4";
+    document.head.appendChild(link);
+    return () => {
+      link.remove();
+    };
+  }, [isDesktop]);
+
+  // Auto-advance: on mobile video slide, wait for video `ended`. Otherwise timer.
   useEffect(() => {
     if (paused || slideCount <= 1) return;
-    const timer = window.setInterval(() => {
-      setIndex((current) => (current + 1) % slideCount);
-    }, AUTO_MS);
+    const videoDrivesAdvance = !isDesktop && index === 0;
+    if (videoDrivesAdvance) return;
+    const timer = window.setInterval(goNext, AUTO_MS);
     return () => window.clearInterval(timer);
-  }, [paused, slideCount]);
+  }, [paused, slideCount, isDesktop, index, goNext]);
+
+  function onTouchStart(event: ReactTouchEvent) {
+    touchStartX.current = event.changedTouches[0]?.clientX ?? null;
+  }
+
+  function onTouchEnd(event: ReactTouchEvent) {
+    const start = touchStartX.current;
+    touchStartX.current = null;
+    if (start == null) return;
+    const end = event.changedTouches[0]?.clientX;
+    if (end == null) return;
+    const delta = end - start;
+    if (Math.abs(delta) < SWIPE_PX) return;
+    if (delta < 0) goNext();
+    else goPrev();
+  }
 
   return (
     <section
@@ -234,19 +307,23 @@ export function Hero() {
       onMouseLeave={() => setPaused(false)}
     >
       {/* Mobile vertical video 1080×1920. Desktop banner 2560×800. */}
-      <div className="relative mx-auto aspect-[1080/1920] w-full max-w-[1400px] overflow-hidden rounded-2xl [container-type:inline-size] md:aspect-[2560/800] md:rounded-3xl">
+      <div
+        className="relative mx-auto aspect-[1080/1920] w-full max-w-[1400px] touch-pan-y overflow-hidden rounded-2xl [container-type:inline-size] md:aspect-[2560/800] md:rounded-3xl"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
         <div
-          className={`absolute inset-0 transition-opacity duration-500 ${
+          className={`absolute inset-0 transition-opacity duration-300 ${
             index === 0 ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
           aria-hidden={index !== 0}
           inert={index !== 0}
         >
-          <MobileVideoSlide active={index === 0} />
-          <DesktopVideoSlide active={index === 0} />
+          <MobileVideoSlide active={index === 0 && !isDesktop} onEnded={goNext} />
+          <DesktopVideoSlide active={index === 0 && isDesktop} />
         </div>
         <div
-          className={`absolute inset-0 transition-opacity duration-500 ${
+          className={`absolute inset-0 transition-opacity duration-300 ${
             index === 1 ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
           aria-hidden={index !== 1}
@@ -256,7 +333,7 @@ export function Hero() {
           <FeaturedImageSlide />
         </div>
         <div
-          className={`absolute inset-0 transition-opacity duration-500 ${
+          className={`absolute inset-0 transition-opacity duration-300 ${
             index === 2 ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
           aria-hidden={index !== 2}
@@ -265,7 +342,7 @@ export function Hero() {
           <PerformanceSlide />
         </div>
         <div
-          className={`absolute inset-0 transition-opacity duration-500 ${
+          className={`absolute inset-0 transition-opacity duration-300 ${
             index === 3 ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
           aria-hidden={index !== 3}
@@ -274,7 +351,7 @@ export function Hero() {
           <EfficiencySlide />
         </div>
         <div
-          className={`absolute inset-0 transition-opacity duration-500 ${
+          className={`absolute inset-0 transition-opacity duration-300 ${
             index === 4 ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
           aria-hidden={index !== 4}
@@ -288,15 +365,13 @@ export function Hero() {
             <button
               type="button"
               aria-label="Previous slide"
-              onClick={() =>
-                setIndex((current) => (current - 1 + slideCount) % slideCount)
-              }
+              onClick={goPrev}
               className="absolute inset-y-0 left-0 z-30 w-12 cursor-pointer bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-8px] focus-visible:outline-white md:w-16"
             />
             <button
               type="button"
               aria-label="Next slide"
-              onClick={() => setIndex((current) => (current + 1) % slideCount)}
+              onClick={goNext}
               className="absolute inset-y-0 right-0 z-30 w-12 cursor-pointer bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-8px] focus-visible:outline-white md:w-16"
             />
 
