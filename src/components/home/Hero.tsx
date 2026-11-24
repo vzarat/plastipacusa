@@ -45,36 +45,100 @@ const SLIDE_CTA_CLASS =
 const MOBILE_CTA_CLASS =
   "inline-flex w-fit items-center gap-2 rounded-xl bg-gradient-to-r from-[#00b2e3] to-[#2563eb] px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white shadow-md shadow-blue-500/30";
 
-function useAutoplayVideo(active: boolean, opts?: { onEnded?: () => void; loop?: boolean }) {
+/**
+ * Restart + play after an `ended` state. Browsers often leave a black frame
+ * if you only set currentTime=0 without waiting for seeked.
+ */
+function restartVideo(video: HTMLVideoElement): Promise<void> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      video.play().catch(() => undefined).finally(resolve);
+    };
+
+    video.pause();
+    video.loop = false;
+
+    const onSeeked = () => {
+      video.removeEventListener("seeked", onSeeked);
+      finish();
+    };
+
+    video.addEventListener("seeked", onSeeked);
+
+    try {
+      // Clearing ended requires a real seek; 0 → 0 may not fire seeked.
+      if (video.currentTime === 0) {
+        video.currentTime = 0.001;
+      }
+      video.currentTime = 0;
+    } catch {
+      video.removeEventListener("seeked", onSeeked);
+      video.load();
+      video.addEventListener("loadeddata", finish, { once: true });
+      return;
+    }
+
+    // Fallback if seeked never fires (already at start / cached).
+    window.setTimeout(() => {
+      video.removeEventListener("seeked", onSeeked);
+      finish();
+    }, 250);
+  });
+}
+
+function useAutoplayVideo(
+  active: boolean,
+  opts?: { onEnded?: () => void; playCycle?: number }
+) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const onEnded = opts?.onEnded;
-  const loop = opts?.loop ?? true;
+  const onEndedRef = useRef(opts?.onEnded);
+  onEndedRef.current = opts?.onEnded;
+  const playCycle = opts?.playCycle ?? 0;
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    video.loop = loop;
+    let cancelled = false;
+
     if (active) {
-      video.currentTime = 0;
-      const play = () => {
-        video.play().catch(() => {
-          // Autoplay can be blocked; muted + playsInline usually allows it.
-        });
+      const run = async () => {
+        await restartVideo(video);
+        if (cancelled) video.pause();
       };
-      if (video.readyState >= 2) play();
-      else video.addEventListener("loadeddata", play, { once: true });
+      if (video.readyState >= 1) {
+        void run();
+      } else {
+        const onReady = () => {
+          void run();
+        };
+        video.addEventListener("loadedmetadata", onReady, { once: true });
+        video.load();
+        return () => {
+          cancelled = true;
+          video.removeEventListener("loadedmetadata", onReady);
+        };
+      }
     } else {
       video.pause();
     }
-  }, [active, loop]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [active, playCycle]);
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !onEnded) return;
-    const handleEnded = () => onEnded();
+    if (!video) return;
+    const handleEnded = () => {
+      onEndedRef.current?.();
+    };
     video.addEventListener("ended", handleEnded);
     return () => video.removeEventListener("ended", handleEnded);
-  }, [onEnded]);
+  }, [playCycle]);
 
   return videoRef;
 }
@@ -83,15 +147,18 @@ function useAutoplayVideo(active: boolean, opts?: { onEnded?: () => void; loop?:
 function MobileVideoSlide({
   active,
   onEnded,
+  playCycle,
 }: {
   active: boolean;
   onEnded: () => void;
+  playCycle: number;
 }) {
-  const videoRef = useAutoplayVideo(active, { onEnded, loop: false });
+  const videoRef = useAutoplayVideo(active, { onEnded, playCycle });
 
   return (
     <div className="absolute inset-0 bg-slate-950 md:hidden">
       <video
+        key={`mobile-video-${playCycle}`}
         ref={videoRef}
         className="absolute inset-0 h-full w-full object-cover object-center"
         src={SLIDE_MOBILE_VIDEO}
@@ -131,15 +198,18 @@ function MobileStorySlide() {
 function DesktopVideoSlide({
   active,
   onEnded,
+  playCycle,
 }: {
   active: boolean;
   onEnded: () => void;
+  playCycle: number;
 }) {
-  const videoRef = useAutoplayVideo(active, { onEnded, loop: false });
+  const videoRef = useAutoplayVideo(active, { onEnded, playCycle });
 
   return (
     <div className="absolute inset-0 hidden bg-slate-950 md:block">
       <video
+        key={`desktop-video-${playCycle}`}
         ref={videoRef}
         className="absolute inset-0 h-full w-full object-cover object-center"
         src={SLIDE_BACKGROUND_VIDEO}
@@ -238,6 +308,9 @@ export function Hero() {
   const [paused, setPaused] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
   const [slideCount, setSlideCount] = useState(MOBILE_SLIDE_COUNT);
+  /** Bumps each time we return to the video slide so playback remounts cleanly. */
+  const [videoPlayCycle, setVideoPlayCycle] = useState(0);
+  const prevIndexRef = useRef(0);
   const touchStartX = useRef<number | null>(null);
 
   const goNext = useCallback(() => {
@@ -247,6 +320,14 @@ export function Hero() {
   const goPrev = useCallback(() => {
     setIndex((current) => (current - 1 + slideCount) % slideCount);
   }, [slideCount]);
+
+  useEffect(() => {
+    const prev = prevIndexRef.current;
+    if (index === 0 && prev !== 0) {
+      setVideoPlayCycle((cycle) => cycle + 1);
+    }
+    prevIndexRef.current = index;
+  }, [index]);
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 768px)");
@@ -324,8 +405,16 @@ export function Hero() {
           aria-hidden={index !== 0}
           inert={index !== 0}
         >
-          <MobileVideoSlide active={index === 0 && !isDesktop} onEnded={goNext} />
-          <DesktopVideoSlide active={index === 0 && isDesktop} onEnded={goNext} />
+          <MobileVideoSlide
+            active={index === 0 && !isDesktop}
+            onEnded={goNext}
+            playCycle={videoPlayCycle}
+          />
+          <DesktopVideoSlide
+            active={index === 0 && isDesktop}
+            onEnded={goNext}
+            playCycle={videoPlayCycle}
+          />
         </div>
         <div
           className={`absolute inset-0 transition-opacity duration-300 ${
