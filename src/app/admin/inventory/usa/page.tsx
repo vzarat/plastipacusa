@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getCurrentUser } from "@/actions/auth";
-import { listBespokeInventoryItems } from "@/actions/bespoke-inventory";
+import {
+  listBespokeImportBatches,
+  listBespokeInventoryItems,
+} from "@/actions/bespoke-inventory";
 import {
   getWarehouseByCode,
   listStretchReceiveCatalog,
@@ -27,12 +30,14 @@ export default async function UsaWarehouseInventoryPage() {
 
   // Catalog first so inventory seeding can attach USA rows for every stretch SKU.
   const stretchCatalog = await listStretchReceiveCatalog();
-  const [warehouse, inventory, dispatchQueue, bespokeItems] = await Promise.all([
-    getWarehouseByCode("usa"),
-    listWarehouseInventory("usa"),
-    listUsaDispatchQueue(),
-    listBespokeInventoryItems("USA"),
-  ]);
+  const [warehouse, inventory, dispatchQueue, bespokeItems, importBatches] =
+    await Promise.all([
+      getWarehouseByCode("usa"),
+      listWarehouseInventory("usa"),
+      listUsaDispatchQueue(),
+      listBespokeInventoryItems("USA"),
+      listBespokeImportBatches("USA"),
+    ]);
 
   return (
     <UsaWarehouseInventoryClient
@@ -41,6 +46,7 @@ export default async function UsaWarehouseInventoryPage() {
       dispatchQueue={dispatchQueue}
       stretchCatalog={stretchCatalog}
       bespokeItems={bespokeItems}
+      importBatches={importBatches}
       warehouseReady={Boolean(warehouse)}
     />
   );

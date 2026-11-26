@@ -20,6 +20,7 @@ import {
 import type { UserProfile } from "@/actions/auth";
 import { AdminInventoryShell } from "@/components/admin/inventory/AdminInventoryShell";
 import { BespokeInventorySheet } from "@/components/admin/inventory/BespokeInventorySheet";
+import type { BespokeImportBatch } from "@/actions/bespoke-inventory";
 import type { BespokeInventoryItem } from "@/lib/bespoke-inventory";
 import {
   assignStretchSkuForReceive,
@@ -70,6 +71,7 @@ export function UsaWarehouseInventoryClient({
   dispatchQueue,
   stretchCatalog,
   bespokeItems = [],
+  importBatches = [],
   warehouseReady = true,
 }: {
   profile: UserProfile;
@@ -77,6 +79,7 @@ export function UsaWarehouseInventoryClient({
   dispatchQueue: WarehouseDispatchOrder[];
   stretchCatalog: StretchCatalogItem[];
   bespokeItems?: BespokeInventoryItem[];
+  importBatches?: BespokeImportBatch[];
   warehouseReady?: boolean;
 }) {
   const router = useRouter();
@@ -397,6 +400,7 @@ export function UsaWarehouseInventoryClient({
         {tab === "bespoke" ? (
           <BespokeInventorySheet
             items={bespokeItems}
+            importBatches={importBatches}
             canManageMaster
             canDelete={profile.role === "admin"}
           />
