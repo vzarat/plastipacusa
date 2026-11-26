@@ -1,6 +1,5 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
-import dynamic from "next/dynamic";
 import localFont from "next/font/local";
 import { Toaster } from "sonner";
 import { LanguageProvider } from "@/context/LanguageContext";
@@ -12,6 +11,7 @@ import { metaPixelId, metaPixelSnippet } from "@/lib/meta-pixel";
 import { CONTACT_EMAIL } from "@/lib/company-email";
 import { META_CHECKOUT_BOOTSTRAP_SCRIPT } from "@/lib/meta-checkout-storage";
 import { CartSessionSync } from "@/components/cart/CartSessionSync";
+import { DeferredChrome } from "@/components/layout/DeferredChrome";
 
 const SUPABASE_ORIGIN = "https://ahvmjptomjjnqjylofpa.supabase.co";
 
@@ -54,13 +54,6 @@ const teko = localFont({
   display: "swap",
   variable: "--font-teko",
   fallback: ["Arial Narrow", "Impact", "sans-serif"],
-});
-
-const CartDrawer = dynamic(() => import("@/components/layout/CartDrawer"), {
-  ssr: false,
-});
-const AssistAI = dynamic(() => import("@/components/AssistAI"), {
-  ssr: false,
 });
 
 const APP_ICON = `${SUPABASE_ORIGIN}/storage/v1/object/public/Products/ICON_APP.png`;
@@ -205,8 +198,7 @@ export default function RootLayout({
           <ClientPWAProvider />
           <CartSessionSync />
           {children}
-          <CartDrawer />
-          <AssistAI />
+          <DeferredChrome />
           <OnboardingTourWrapper />
           <Toaster closeButton position="top-right" richColors />
         </LanguageProvider>
