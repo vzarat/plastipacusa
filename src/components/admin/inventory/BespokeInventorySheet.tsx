@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -84,31 +84,6 @@ function formatQty(n: number): string {
     : n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
-type ColKey =
-  | "num"
-  | "item"
-  | "client"
-  | "part"
-  | "uom"
-  | "perPallet"
-  | "minInv"
-  | "physical"
-  | "pallets"
-  | "move";
-
-const DEFAULT_COL_WIDTHS: Record<ColKey, number> = {
-  num: 40,
-  item: 220,
-  client: 130,
-  part: 110,
-  uom: 70,
-  perPallet: 90,
-  minInv: 80,
-  physical: 100,
-  pallets: 80,
-  move: 176,
-};
-
 const ACTION_BTN =
   "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-[11px] font-bold disabled:opacity-40";
 
@@ -132,61 +107,6 @@ export function BespokeInventorySheet({
   const [showStats, setShowStats] = useState(false);
   const [editingQtyId, setEditingQtyId] = useState<string | null>(null);
   const [editingQtyValue, setEditingQtyValue] = useState("");
-  const [colWidths, setColWidths] = useState(DEFAULT_COL_WIDTHS);
-  const [tableHeight, setTableHeight] = useState(520);
-  const resizeRef = useRef<{
-    key: ColKey;
-    startX: number;
-    startW: number;
-  } | null>(null);
-  const heightDragRef = useRef<{ startY: number; startH: number } | null>(
-    null
-  );
-
-  const onColResizeStart = useCallback(
-    (key: ColKey, clientX: number) => {
-      resizeRef.current = {
-        key,
-        startX: clientX,
-        startW: colWidths[key],
-      };
-      const onMove = (e: MouseEvent) => {
-        const drag = resizeRef.current;
-        if (!drag) return;
-        const next = Math.max(56, drag.startW + (e.clientX - drag.startX));
-        setColWidths((prev) => ({ ...prev, [drag.key]: next }));
-      };
-      const onUp = () => {
-        resizeRef.current = null;
-        window.removeEventListener("mousemove", onMove);
-        window.removeEventListener("mouseup", onUp);
-      };
-      window.addEventListener("mousemove", onMove);
-      window.addEventListener("mouseup", onUp);
-    },
-    [colWidths]
-  );
-
-  const onHeightResizeStart = useCallback(
-    (clientY: number) => {
-      heightDragRef.current = { startY: clientY, startH: tableHeight };
-      const onMove = (e: MouseEvent) => {
-        const drag = heightDragRef.current;
-        if (!drag) return;
-        setTableHeight(
-          Math.max(280, Math.min(900, drag.startH + (e.clientY - drag.startY)))
-        );
-      };
-      const onUp = () => {
-        heightDragRef.current = null;
-        window.removeEventListener("mousemove", onMove);
-        window.removeEventListener("mouseup", onUp);
-      };
-      window.addEventListener("mousemove", onMove);
-      window.addEventListener("mouseup", onUp);
-    },
-    [tableHeight]
-  );
 
   const stats = useMemo(() => computeBespokeWarehouseStats(items), [items]);
 
@@ -532,118 +452,91 @@ export function BespokeInventorySheet({
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm print:rounded-none print:border-black print:shadow-none">
-        <div className="overflow-auto" style={{ height: tableHeight }}>
-          <table
-            className="w-full min-w-[960px] border-collapse text-[12px]"
-            style={{ tableLayout: "fixed" }}
-          >
-            <thead className="sticky top-0 z-10">
-              <tr className="bg-slate-100 text-[10px] font-bold uppercase tracking-wide text-slate-700">
-                {(
-                  [
-                    ["num", "#", "center"],
-                    ["item", t("Artículo", "Item"), "left"],
-                    ["client", t("Cliente", "Client"), "left"],
-                    ["part", t("No. parte cliente", "Client part #"), "left"],
-                    ["uom", t("U. medida", "UOM"), "center"],
-                    ["perPallet", t("Cant x tarima", "Qty / pallet"), "right"],
-                    ["minInv", t("Inv mín", "Min inv"), "right"],
-                    ["physical", t("Cant física", "Physical qty"), "right"],
-                    ["pallets", t("Tarimas", "Pallets"), "right"],
-                    ["move", t("Movimiento", "Move"), "center"],
-                  ] as const
-                ).map(([key, label, align]) => (
-                  <th
-                    key={key}
-                    className={`relative border border-slate-300 bg-slate-100 px-2 py-2.5 font-bold ${
-                      align === "center"
-                        ? "text-center"
-                        : align === "right"
-                          ? "text-right"
-                          : "text-left"
-                    } ${key === "move" ? "print:hidden" : ""}`}
-                    style={{ width: colWidths[key] }}
-                  >
-                    {label}
-                    <span
-                      role="separator"
-                      aria-orientation="vertical"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        onColResizeStart(key, e.clientX);
-                      }}
-                      className="absolute right-0 top-0 z-10 h-full w-1.5 cursor-col-resize touch-none bg-transparent hover:bg-emerald-400/50 print:hidden"
-                      title={t("Ajustar ancho", "Resize width")}
-                    />
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {items.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={10}
-                    className="border-b border-slate-100 px-4 py-10 text-center"
-                  >
-                    <p className="text-sm font-bold text-slate-800">
-                      {t(
-                        "Aún no hay artículos en inventario",
-                        "No inventory items yet"
-                      )}
-                    </p>
-                    <p className="mx-auto mt-1 max-w-lg text-xs text-slate-600">
-                      {t(
-                        "Usa Agregar artículo para cargar productos nuevos.",
-                        "Use Add item to load new products."
-                      )}
-                    </p>
-                    <div className="mt-4 flex flex-wrap justify-center gap-2">
-                      {canManageMaster ? (
-                        <button
-                          type="button"
-                          onClick={() => setAddOpen(true)}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                          {t("Agregar artículo", "Add item")}
-                        </button>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ) : grouped.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={10}
-                    className="px-4 py-8 text-center text-sm text-slate-600"
-                  >
-                    {t(
-                      "Ningún renglón con ese filtro.",
-                      "No rows match this filter."
-                    )}
-                  </td>
-                </tr>
-              ) : (
-                (() => {
-                  let rowNum = 0;
-                  return grouped.flatMap((group) => {
-                    const sectionRow = (
-                      <tr
-                        key={`sec-${group.category}`}
-                        className="break-inside-avoid"
-                      >
-                        <td
-                          colSpan={10}
-                          className="border border-slate-300 bg-slate-100 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-slate-700"
-                        >
-                          {group.label}
-                        </td>
-                      </tr>
-                    );
-                    const dataRows = group.rows.map((item) => {
-                      rowNum += 1;
+      {items.length === 0 ? (
+        <div className="rounded-xl border border-slate-300 bg-white px-4 py-10 text-center">
+          <p className="text-sm font-bold text-slate-800">
+            {t(
+              "Aún no hay artículos en inventario",
+              "No inventory items yet"
+            )}
+          </p>
+          <p className="mx-auto mt-1 max-w-lg text-xs text-slate-600">
+            {t(
+              "Usa Agregar artículo para cargar productos nuevos.",
+              "Use Add item to load new products."
+            )}
+          </p>
+          {canManageMaster ? (
+            <button
+              type="button"
+              onClick={() => setAddOpen(true)}
+              className="mt-4 inline-flex h-10 items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 text-xs font-bold text-white hover:bg-emerald-700"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t("Agregar artículo", "Add item")}
+            </button>
+          ) : null}
+        </div>
+      ) : grouped.length === 0 ? (
+        <div className="rounded-xl border border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-600">
+          {t(
+            "Ningún renglón con ese filtro.",
+            "No rows match this filter."
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {grouped.map((group) => (
+            <section
+              key={group.category}
+              className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm print:break-inside-avoid print:shadow-none"
+            >
+              <div className="border-b border-slate-300 bg-slate-100 px-3 py-2.5">
+                <h3 className="text-xs font-black uppercase tracking-wide text-slate-800">
+                  {group.label}
+                  <span className="ml-2 font-semibold text-slate-500">
+                    ({group.rows.length})
+                  </span>
+                </h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px] border-collapse text-[12px]">
+                  <thead>
+                    <tr className="bg-slate-50 text-[10px] font-bold uppercase tracking-wide text-slate-700">
+                      <th className="w-10 border border-slate-300 px-2 py-2 text-center">
+                        #
+                      </th>
+                      <th className="border border-slate-300 px-2 py-2 text-left">
+                        {t("Artículo", "Item")}
+                      </th>
+                      <th className="border border-slate-300 px-2 py-2 text-left">
+                        {t("Cliente", "Client")}
+                      </th>
+                      <th className="border border-slate-300 px-2 py-2 text-left">
+                        {t("No. parte cliente", "Client part #")}
+                      </th>
+                      <th className="w-16 border border-slate-300 px-2 py-2 text-center">
+                        {t("U. medida", "UOM")}
+                      </th>
+                      <th className="w-24 border border-slate-300 px-2 py-2 text-right">
+                        {t("Cant x tarima", "Qty / pallet")}
+                      </th>
+                      <th className="w-20 border border-slate-300 px-2 py-2 text-right">
+                        {t("Inv mín", "Min inv")}
+                      </th>
+                      <th className="w-24 border border-slate-300 px-2 py-2 text-right">
+                        {t("Cant física", "Physical qty")}
+                      </th>
+                      <th className="w-20 border border-slate-300 px-2 py-2 text-right">
+                        {t("Tarimas", "Pallets")}
+                      </th>
+                      <th className="w-[176px] border border-slate-300 px-2 py-2 text-center print:hidden">
+                        {t("Movimiento", "Move")}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.rows.map((item, idx) => {
                       const low = isBelowMinInventory(item);
                       const pallets =
                         item.palletCount > 0
@@ -662,13 +555,11 @@ export function BespokeInventorySheet({
                         <tr key={item.id}>
                           <td
                             className={`border border-slate-300 px-2 py-2 text-center tabular-nums text-slate-500 ${cellBg}`}
-                            style={{ width: colWidths.num }}
                           >
-                            {rowNum}
+                            {idx + 1}
                           </td>
                           <td
                             className={`border border-slate-300 px-2 py-2 font-semibold text-slate-900 ${cellBg}`}
-                            style={{ width: colWidths.item }}
                           >
                             <span className="line-clamp-2">{item.itemName}</span>
                             {item.isObsolete ? (
@@ -684,7 +575,6 @@ export function BespokeInventorySheet({
                           </td>
                           <td
                             className={`border border-slate-300 px-2 py-2 text-slate-800 ${cellBg}`}
-                            style={{ width: colWidths.client }}
                           >
                             <span className="line-clamp-2">
                               {item.clientName || "—"}
@@ -692,7 +582,6 @@ export function BespokeInventorySheet({
                           </td>
                           <td
                             className={`border border-slate-300 px-2 py-2 font-mono text-[11px] ${cellBg}`}
-                            style={{ width: colWidths.part }}
                           >
                             {item.isObsolete
                               ? "OBSOLETO"
@@ -700,13 +589,11 @@ export function BespokeInventorySheet({
                           </td>
                           <td
                             className={`border border-slate-300 px-2 py-2 text-center font-mono text-[11px] font-bold ${cellBg}`}
-                            style={{ width: colWidths.uom }}
                           >
                             {item.unitOfMeasure}
                           </td>
                           <td
                             className={`border border-slate-300 px-2 py-2 text-right tabular-nums ${cellBg}`}
-                            style={{ width: colWidths.perPallet }}
                           >
                             {item.unitsPerPalletOrPack > 0
                               ? formatQty(item.unitsPerPalletOrPack)
@@ -714,7 +601,6 @@ export function BespokeInventorySheet({
                           </td>
                           <td
                             className={`border border-slate-300 px-2 py-2 text-right tabular-nums ${cellBg}`}
-                            style={{ width: colWidths.minInv }}
                           >
                             {item.minInventory > 0
                               ? formatQty(item.minInventory)
@@ -722,7 +608,6 @@ export function BespokeInventorySheet({
                           </td>
                           <td
                             className={`border border-slate-300 px-1 py-1.5 text-right ${cellBg}`}
-                            style={{ width: colWidths.physical }}
                             onDoubleClick={() => {
                               if (!item.isObsolete) startEditQty(item);
                             }}
@@ -765,13 +650,11 @@ export function BespokeInventorySheet({
                           </td>
                           <td
                             className={`border border-slate-300 px-2 py-2 text-right tabular-nums text-slate-700 ${cellBg}`}
-                            style={{ width: colWidths.pallets }}
                           >
                             {pallets > 0 ? formatQty(pallets) : "—"}
                           </td>
                           <td
                             className={`border border-slate-300 px-1.5 py-1.5 print:hidden ${cellBg}`}
-                            style={{ width: colWidths.move }}
                           >
                             <div
                               className={`mx-auto flex items-center justify-center gap-1 ${
@@ -842,27 +725,14 @@ export function BespokeInventorySheet({
                           </td>
                         </tr>
                       );
-                    });
-                    return [sectionRow, ...dataRows];
-                  });
-                })()
-              )}
-            </tbody>
-          </table>
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ))}
         </div>
-        <div
-          role="separator"
-          aria-orientation="horizontal"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            onHeightResizeStart(e.clientY);
-          }}
-          className="flex h-3 cursor-row-resize items-center justify-center border-t border-slate-300 bg-slate-50 print:hidden"
-          title={t("Arrastra para ajustar alto", "Drag to resize height")}
-        >
-          <span className="h-1 w-10 rounded-full bg-slate-300" />
-        </div>
-      </div>
+      )}
 
       {move ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center print:hidden">
