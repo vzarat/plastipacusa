@@ -678,48 +678,8 @@ export function BespokeInventorySheet({
         </div>
       ) : null}
 
-      {importBatches.length > 0 ? (
-        <details className="print:hidden rounded-lg border border-slate-300 bg-white">
-          <summary className="cursor-pointer list-none px-3 py-2 text-xs font-bold text-slate-700 flex items-center gap-2">
-            <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-700" />
-            {t(
-              `Historial Excel (${importBatches.length})`,
-              `Excel history (${importBatches.length})`
-            )}
-          </summary>
-          <div className="overflow-x-auto border-t border-slate-200">
-            <table className="min-w-full text-xs">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-3 py-1.5 text-left font-bold">
-                    {t("Fecha", "Date")}
-                  </th>
-                  <th className="px-3 py-1.5 text-left font-bold">
-                    {t("Archivo", "File")}
-                  </th>
-                  <th className="px-3 py-1.5 text-right font-bold">
-                    {t("Filas", "Rows")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {importBatches.slice(0, 8).map((batch) => (
-                  <tr key={batch.id} className="border-t border-slate-100">
-                    <td className="px-3 py-1.5 tabular-nums">{batch.countedDate}</td>
-                    <td className="px-3 py-1.5">{batch.fileName}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">
-                      {batch.rowCount}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </details>
-      ) : null}
-
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm print:rounded-none print:border-black print:shadow-none">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2.5 print:bg-white">
+      <div className="rounded-xl border border-slate-300 bg-white shadow-sm print:rounded-none print:border-black print:shadow-none">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-300 bg-slate-50 px-3 py-2.5 print:bg-white">
           <p className="text-sm font-bold text-slate-800">
             {t("Lista de inventario", "Inventory list")}
           </p>
@@ -754,17 +714,13 @@ export function BespokeInventorySheet({
                 ).map(([key, label, align]) => (
                   <th
                     key={key}
-                    className={`relative border-b border-slate-200 px-2 py-2.5 font-bold ${
+                    className={`relative border border-slate-300 bg-slate-100 px-2 py-2.5 font-bold ${
                       align === "center"
                         ? "text-center"
                         : align === "right"
                           ? "text-right"
                           : "text-left"
-                    } ${
-                      key === "move"
-                        ? "sticky right-0 z-20 bg-slate-100 print:hidden shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.12)]"
-                        : ""
-                    }`}
+                    } ${key === "move" ? "print:hidden" : ""}`}
                     style={{ width: colWidths[key] }}
                   >
                     {label}
@@ -848,7 +804,7 @@ export function BespokeInventorySheet({
                       >
                         <td
                           colSpan={10}
-                          className="border-y border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-slate-700"
+                          className="border border-slate-300 bg-slate-100 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-slate-700"
                         >
                           {group.label}
                         </td>
@@ -865,25 +821,21 @@ export function BespokeInventorySheet({
                               item.unitsPerPalletOrPack
                             );
                       const editing = editingQtyId === item.id;
+                      const cellBg = item.isObsolete
+                        ? "bg-slate-50 text-slate-400"
+                        : low
+                          ? "bg-amber-50"
+                          : "bg-white";
                       return (
-                        <tr
-                          key={item.id}
-                          className={[
-                            "border-b border-slate-100",
-                            item.isObsolete ? "bg-slate-50 text-slate-400" : "",
-                            low && !item.isObsolete ? "bg-amber-50/70" : "",
-                          ]
-                            .filter(Boolean)
-                            .join(" ")}
-                        >
+                        <tr key={item.id}>
                           <td
-                            className="px-2 py-2 text-center tabular-nums text-slate-400"
+                            className={`border border-slate-300 px-2 py-2 text-center tabular-nums text-slate-500 ${cellBg}`}
                             style={{ width: colWidths.num }}
                           >
                             {rowNum}
                           </td>
                           <td
-                            className="px-2 py-2 font-semibold text-slate-900"
+                            className={`border border-slate-300 px-2 py-2 font-semibold text-slate-900 ${cellBg}`}
                             style={{ width: colWidths.item }}
                           >
                             <span className="line-clamp-2">{item.itemName}</span>
@@ -899,7 +851,7 @@ export function BespokeInventorySheet({
                             ) : null}
                           </td>
                           <td
-                            className="px-2 py-2 text-slate-800"
+                            className={`border border-slate-300 px-2 py-2 text-slate-800 ${cellBg}`}
                             style={{ width: colWidths.client }}
                           >
                             <span className="line-clamp-2">
@@ -907,7 +859,7 @@ export function BespokeInventorySheet({
                             </span>
                           </td>
                           <td
-                            className="px-2 py-2 font-mono text-[11px]"
+                            className={`border border-slate-300 px-2 py-2 font-mono text-[11px] ${cellBg}`}
                             style={{ width: colWidths.part }}
                           >
                             {item.isObsolete
@@ -915,13 +867,13 @@ export function BespokeInventorySheet({
                               : item.clientPartNumber || "—"}
                           </td>
                           <td
-                            className="px-2 py-2 text-center font-mono text-[11px] font-bold"
+                            className={`border border-slate-300 px-2 py-2 text-center font-mono text-[11px] font-bold ${cellBg}`}
                             style={{ width: colWidths.uom }}
                           >
                             {item.unitOfMeasure}
                           </td>
                           <td
-                            className="px-2 py-2 text-right tabular-nums"
+                            className={`border border-slate-300 px-2 py-2 text-right tabular-nums ${cellBg}`}
                             style={{ width: colWidths.perPallet }}
                           >
                             {item.unitsPerPalletOrPack > 0
@@ -929,7 +881,7 @@ export function BespokeInventorySheet({
                               : "—"}
                           </td>
                           <td
-                            className="px-2 py-2 text-right tabular-nums"
+                            className={`border border-slate-300 px-2 py-2 text-right tabular-nums ${cellBg}`}
                             style={{ width: colWidths.minInv }}
                           >
                             {item.minInventory > 0
@@ -937,7 +889,7 @@ export function BespokeInventorySheet({
                               : "—"}
                           </td>
                           <td
-                            className="px-1 py-1.5 text-right"
+                            className={`border border-slate-300 px-1 py-1.5 text-right ${cellBg}`}
                             style={{ width: colWidths.physical }}
                             onDoubleClick={() => {
                               if (!item.isObsolete) startEditQty(item);
@@ -980,23 +932,16 @@ export function BespokeInventorySheet({
                             )}
                           </td>
                           <td
-                            className="px-2 py-2 text-right tabular-nums text-slate-700"
+                            className={`border border-slate-300 px-2 py-2 text-right tabular-nums text-slate-700 ${cellBg}`}
                             style={{ width: colWidths.pallets }}
                           >
                             {pallets > 0 ? formatQty(pallets) : "—"}
                           </td>
                           <td
-                            className={[
-                              "sticky right-0 z-10 px-1 py-1 print:hidden shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.1)]",
-                              item.isObsolete
-                                ? "bg-slate-50"
-                                : low
-                                  ? "bg-amber-50"
-                                  : "bg-white",
-                            ].join(" ")}
+                            className={`border border-slate-300 px-1 py-1 print:hidden ${cellBg}`}
                             style={{ width: colWidths.move }}
                           >
-                            <div className="flex flex-wrap items-center justify-end gap-0.5">
+                            <div className="flex flex-nowrap items-center justify-center gap-0.5">
                               <button
                                 type="button"
                                 disabled={pending || item.isObsolete}
@@ -1005,9 +950,6 @@ export function BespokeInventorySheet({
                                 title={t("Entrada", "In")}
                               >
                                 <ArrowDownToLine className="h-3.5 w-3.5" />
-                                <span className="hidden xl:inline">
-                                  {t("Entrada", "In")}
-                                </span>
                               </button>
                               <button
                                 type="button"
@@ -1017,9 +959,6 @@ export function BespokeInventorySheet({
                                 title={t("Salida", "Out")}
                               >
                                 <ArrowUpFromLine className="h-3.5 w-3.5" />
-                                <span className="hidden xl:inline">
-                                  {t("Salida", "Out")}
-                                </span>
                               </button>
                               <button
                                 type="button"
@@ -1029,9 +968,6 @@ export function BespokeInventorySheet({
                                 title={t("Conteo", "Count")}
                               >
                                 Σ
-                                <span className="hidden xl:inline">
-                                  {t("Conteo", "Count")}
-                                </span>
                               </button>
                               <button
                                 type="button"
@@ -1076,12 +1012,56 @@ export function BespokeInventorySheet({
             e.preventDefault();
             onHeightResizeStart(e.clientY);
           }}
-          className="flex h-3 cursor-row-resize items-center justify-center border-t border-slate-200 bg-slate-50 print:hidden"
+          className="flex h-3 cursor-row-resize items-center justify-center border-t border-slate-300 bg-slate-50 print:hidden"
           title={t("Arrastra para ajustar alto", "Drag to resize height")}
         >
           <span className="h-1 w-10 rounded-full bg-slate-300" />
         </div>
       </div>
+
+      {importBatches.length > 0 ? (
+        <details className="print:hidden rounded-xl border border-slate-200 bg-slate-50">
+          <summary className="cursor-pointer list-none px-3 py-2.5 text-xs font-bold text-slate-600 flex items-center gap-2">
+            <FileSpreadsheet className="h-3.5 w-3.5 text-slate-500" />
+            {t(
+              `Historial de cargas Excel (${importBatches.length})`,
+              `Excel load history (${importBatches.length})`
+            )}
+          </summary>
+          <div className="overflow-x-auto border-t border-slate-200 bg-white">
+            <table className="min-w-full border-collapse text-xs">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="border border-slate-200 px-3 py-1.5 text-left font-bold">
+                    {t("Fecha", "Date")}
+                  </th>
+                  <th className="border border-slate-200 px-3 py-1.5 text-left font-bold">
+                    {t("Archivo", "File")}
+                  </th>
+                  <th className="border border-slate-200 px-3 py-1.5 text-right font-bold">
+                    {t("Filas", "Rows")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {importBatches.slice(0, 12).map((batch) => (
+                  <tr key={batch.id}>
+                    <td className="border border-slate-200 px-3 py-1.5 tabular-nums">
+                      {batch.countedDate}
+                    </td>
+                    <td className="border border-slate-200 px-3 py-1.5">
+                      {batch.fileName}
+                    </td>
+                    <td className="border border-slate-200 px-3 py-1.5 text-right tabular-nums">
+                      {batch.rowCount}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      ) : null}
 
       {move ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center print:hidden">
@@ -1485,6 +1465,25 @@ export function BespokeInventorySheet({
               >
                 Descargar plantilla CSV
               </button>
+              {importBatches.length > 0 ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                    {t("Historial de cargas", "Load history")}
+                  </p>
+                  <ul className="mt-1 max-h-28 space-y-1 overflow-y-auto text-xs text-slate-700">
+                    {importBatches.slice(0, 8).map((batch) => (
+                      <li key={batch.id} className="flex justify-between gap-2">
+                        <span className="truncate">
+                          {batch.countedDate} · {batch.fileName}
+                        </span>
+                        <span className="shrink-0 tabular-nums text-slate-500">
+                          {batch.rowCount}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </div>
             <div className="flex justify-end gap-2 border-t border-slate-100 px-4 py-3">
               <button
