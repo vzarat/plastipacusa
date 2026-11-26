@@ -1,3 +1,10 @@
+import { HAND_FULL_PALLET_ROLLS } from "@/lib/pricing";
+import { MANUAL_FILM_MASTER } from "@/lib/manual-film-master";
+import {
+  MACHINE_FILM_MASTER,
+  MACHINE_FULL_PALLET_ROLLS,
+} from "@/lib/machine-film-master";
+
 export const BESPOKE_WAREHOUSE_CODE = "USA" as const;
 
 export const BESPOKE_CATEGORIES = [
@@ -18,6 +25,144 @@ export const BESPOKE_CATEGORY_LABELS: Record<BespokeCategory, string> = {
   corner_board: "ESQUINEROS",
   other: "OTROS",
 };
+
+export type BespokeArticleOption = {
+  label: string;
+  category: BespokeCategory;
+  unitOfMeasure: BespokeUom;
+  /** Default cant x tarima / paq when known. */
+  unitsPerPalletOrPack?: number;
+};
+
+function formatStretchSheetLabel(
+  widthInches: number,
+  gauge: number,
+  lengthFeet: number
+): string {
+  return `STRETCH FILM ${widthInches}" X ${gauge} X ${lengthFeet}FT`;
+}
+
+function uniqueArticleOptions(
+  rows: BespokeArticleOption[]
+): BespokeArticleOption[] {
+  const seen = new Set<string>();
+  const out: BespokeArticleOption[] = [];
+  for (const row of rows) {
+    const key = `${row.category}::${row.label}`.toUpperCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(row);
+  }
+  return out.sort((a, b) => a.label.localeCompare(b.label, "en"));
+}
+
+/**
+ * Dropdown measures for ARTICULO — catalog masters + USA bespoke sheet lines.
+ */
+export const BESPOKE_ARTICLE_OPTIONS: readonly BespokeArticleOption[] =
+  uniqueArticleOptions([
+    ...MANUAL_FILM_MASTER.map((row) => ({
+      label: formatStretchSheetLabel(row.widthInches, row.gauge, row.lengthFeet),
+      category: "stretch_film" as const,
+      unitOfMeasure: "RLL" as const,
+      unitsPerPalletOrPack: HAND_FULL_PALLET_ROLLS,
+    })),
+    ...MACHINE_FILM_MASTER.map((row) => ({
+      label: formatStretchSheetLabel(row.widthInches, row.gauge, row.lengthFeet),
+      category: "stretch_film" as const,
+      unitOfMeasure: "RLL" as const,
+      unitsPerPalletOrPack: MACHINE_FULL_PALLET_ROLLS,
+    })),
+    // Extra USA warehouse sheet measures (client holds / specials).
+    {
+      label: 'STRETCH FILM 20" TRICO TITAN',
+      category: "stretch_film",
+      unitOfMeasure: "RLL",
+    },
+    {
+      label: 'STRETCH FILM 20" X 50 X 6000FT',
+      category: "stretch_film",
+      unitOfMeasure: "RLL",
+      unitsPerPalletOrPack: MACHINE_FULL_PALLET_ROLLS,
+    },
+    {
+      label: 'STRETCH FILM 20" X 80 X 6000FT',
+      category: "stretch_film",
+      unitOfMeasure: "RLL",
+      unitsPerPalletOrPack: MACHINE_FULL_PALLET_ROLLS,
+    },
+    {
+      label: 'STRETCH FILM 20" X 55/60 X 7000',
+      category: "stretch_film",
+      unitOfMeasure: "RLL",
+      unitsPerPalletOrPack: MACHINE_FULL_PALLET_ROLLS,
+    },
+    {
+      label: 'STRETCH FILM 15" X 40 X 2000FT',
+      category: "stretch_film",
+      unitOfMeasure: "RLL",
+      unitsPerPalletOrPack: HAND_FULL_PALLET_ROLLS,
+    },
+    {
+      label: 'STRETCH FILM 18" X 80 X 1500FT EN CAJA',
+      category: "stretch_film",
+      unitOfMeasure: "CJA",
+      unitsPerPalletOrPack: 48,
+    },
+    {
+      label: 'STRETCH FILM 5" PAQ C 12 RLLS',
+      category: "stretch_film",
+      unitOfMeasure: "PAQ",
+      unitsPerPalletOrPack: 12,
+    },
+    {
+      label: "FOAM EN CUADRITO BLANCO",
+      category: "foam",
+      unitOfMeasure: "PZA",
+    },
+    {
+      label: 'ESQUINERO 1.5 X 1.5 X 39 1/4"',
+      category: "corner_board",
+      unitOfMeasure: "PZA",
+    },
+    {
+      label: 'ESQUINERO 1.5 X 1.5 X 37 1/4"',
+      category: "corner_board",
+      unitOfMeasure: "PZA",
+    },
+    {
+      label: 'ESQUINERO 1.75 X 1.75 X 40 3/8"',
+      category: "corner_board",
+      unitOfMeasure: "PZA",
+    },
+    {
+      label: 'ESQUINERO 1.75 X 1.75 X 38 1/4"',
+      category: "corner_board",
+      unitOfMeasure: "PZA",
+    },
+    {
+      label: 'ESQUINERO 1.75 X 1.75 X 26 3/8"',
+      category: "corner_board",
+      unitOfMeasure: "PZA",
+    },
+    {
+      label: 'ESQ BCO 2 1/2" X 2 1/2" X 29 1/2" C120',
+      category: "corner_board",
+      unitOfMeasure: "PZA",
+    },
+    {
+      label: 'ESQ BCO 2 1/2" X 2 1/2" X 32" C120',
+      category: "corner_board",
+      unitOfMeasure: "PZA",
+    },
+  ]);
+
+export function bespokeArticlesForCategory(
+  category: BespokeCategory | "all"
+): BespokeArticleOption[] {
+  if (category === "all") return [...BESPOKE_ARTICLE_OPTIONS];
+  return BESPOKE_ARTICLE_OPTIONS.filter((row) => row.category === category);
+}
 
 /** Derived tarimas from physical qty when pack size is known. */
 export function derivePalletCount(
