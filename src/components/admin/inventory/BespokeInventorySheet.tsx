@@ -24,7 +24,6 @@ import {
   BESPOKE_CATEGORIES,
   BESPOKE_CATEGORY_LABELS,
   BESPOKE_UOMS,
-  bespokeArticlesForCategory,
   buildBespokeInventoryCsv,
   derivePalletCount,
   isBelowMinInventory,
@@ -65,28 +64,6 @@ const EMPTY_NEW: NewItemState = {
   isObsolete: false,
 };
 
-function applyArticleSelection(
-  prev: NewItemState,
-  label: string
-): NewItemState {
-  const option = bespokeArticlesForCategory(prev.category).find(
-    (row) => row.label === label
-  );
-  if (!option) {
-    return { ...prev, itemName: label };
-  }
-  return {
-    ...prev,
-    itemName: option.label,
-    category: option.category,
-    unitOfMeasure: option.unitOfMeasure,
-    unitsPerPalletOrPack:
-      option.unitsPerPalletOrPack != null
-        ? String(option.unitsPerPalletOrPack)
-        : prev.unitsPerPalletOrPack,
-  };
-}
-
 function todayLocal(): string {
   const d = new Date();
   const yyyy = d.getFullYear();
@@ -118,11 +95,6 @@ export function BespokeInventorySheet({
   const [move, setMove] = useState<MoveState | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [newItem, setNewItem] = useState<NewItemState>(EMPTY_NEW);
-
-  const articleOptions = useMemo(
-    () => bespokeArticlesForCategory(newItem.category),
-    [newItem.category]
-  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -661,64 +633,39 @@ export function BespokeInventorySheet({
               </button>
             </div>
             <div className="grid gap-3 px-4 py-4 sm:grid-cols-2">
+              <label className="block text-xs font-bold text-slate-600 sm:col-span-2">
+                Artículo
+                <input
+                  value={newItem.itemName}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, itemName: e.target.value })
+                  }
+                  placeholder='Ej. STRETCH FILM 18" X 80 X 1500FT'
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                />
+              </label>
               <label className="block text-xs font-bold text-slate-600">
                 Sección
                 <select
                   value={newItem.category}
                   onChange={(e) => {
                     const category = e.target.value as BespokeCategory;
-                    const first = bespokeArticlesForCategory(category)[0];
-                    setNewItem(
-                      first
-                        ? applyArticleSelection(
-                            { ...EMPTY_NEW, category, clientName: newItem.clientName },
-                            first.label
-                          )
-                        : {
-                            ...newItem,
-                            category,
-                            itemName: "",
-                            unitOfMeasure:
-                              category === "stretch_film"
-                                ? "RLL"
-                                : category === "other"
-                                  ? "PAQ"
-                                  : "PZA",
-                            unitsPerPalletOrPack: "",
-                          }
-                    );
+                    setNewItem({
+                      ...newItem,
+                      category,
+                      unitOfMeasure:
+                        category === "stretch_film"
+                          ? "RLL"
+                          : category === "other"
+                            ? "PAQ"
+                            : "PZA",
+                    });
                   }}
                   className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                 >
-                  {BESPOKE_CATEGORIES.filter(
-                    (c) => bespokeArticlesForCategory(c).length > 0
-                  ).map((c) => (
+                  {BESPOKE_CATEGORIES.map((c) => (
                     <option key={c} value={c}>
                       {BESPOKE_CATEGORY_LABELS[c]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-xs font-bold text-slate-600 sm:col-span-2">
-                Artículo (medidas)
-                <select
-                  value={
-                    articleOptions.some((o) => o.label === newItem.itemName)
-                      ? newItem.itemName
-                      : ""
-                  }
-                  onChange={(e) =>
-                    setNewItem(applyArticleSelection(newItem, e.target.value))
-                  }
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                  required
-                >
-                  <option value="" disabled>
-                    Selecciona la medida…
-                  </option>
-                  {articleOptions.map((opt) => (
-                    <option key={opt.label} value={opt.label}>
-                      {opt.label}
                     </option>
                   ))}
                 </select>
@@ -813,11 +760,7 @@ export function BespokeInventorySheet({
               </button>
               <button
                 type="button"
-                disabled={
-                  pending ||
-                  !newItem.itemName.trim() ||
-                  !articleOptions.some((o) => o.label === newItem.itemName)
-                }
+                disabled={pending || !newItem.itemName.trim()}
                 onClick={saveNewItem}
                 className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
               >
