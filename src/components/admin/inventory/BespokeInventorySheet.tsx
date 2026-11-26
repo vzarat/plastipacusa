@@ -116,6 +116,9 @@ export function BespokeInventorySheet({
     ReturnType<typeof parseBespokeInventoryWorkbook>["rows"] | null
   >(null);
   const [newItem, setNewItem] = useState<NewItemState>(EMPTY_NEW);
+  const [showStats, setShowStats] = useState(false);
+  const [editingQtyId, setEditingQtyId] = useState<string | null>(null);
+  const [editingQtyValue, setEditingQtyValue] = useState("");
 
   const stats = useMemo(() => computeBespokeWarehouseStats(items), [items]);
 
@@ -157,6 +160,32 @@ export function BespokeInventorySheet({
       quantity: mode === "count" ? String(item.physicalQty) : "",
       notes: "",
       countedDate: item.countedDate || todayLocal(),
+    });
+  }
+
+  function startEditQty(item: BespokeInventoryItem) {
+    setEditingQtyId(item.id);
+    setEditingQtyValue(String(item.physicalQty));
+  }
+
+  function commitEditQty(item: BespokeInventoryItem) {
+    if (editingQtyId !== item.id) return;
+    const next = Number(editingQtyValue);
+    setEditingQtyId(null);
+    if (!Number.isFinite(next) || next < 0 || next === item.physicalQty) return;
+    startTransition(async () => {
+      const res = await updateBespokeInventoryCount({
+        itemId: item.id,
+        physicalQty: next,
+        countedDate: todayLocal(),
+        countNotes: item.countNotes,
+      });
+      if (!res.ok) {
+        toast.error(res.error || t("No se pudo guardar", "Could not save"));
+        return;
+      }
+      toast.success(t("Cant. física actualizada", "Physical qty updated"));
+      router.refresh();
     });
   }
 
@@ -407,432 +436,445 @@ export function BespokeInventorySheet({
         </div>
       </div>
 
-      {importBatches.length > 0 ? (
-        <div className="print:hidden rounded-2xl border border-slate-200 bg-white overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2">
-            <FileSpreadsheet className="h-4 w-4 text-sky-700" />
-            <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-              {t(
-                "Conteos guardados por fecha (Excel)",
-                "Counts saved by date (Excel)"
-              )}
-            </h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-[10px] uppercase text-slate-500">
-                  <th className="px-3 py-2 text-left font-bold">Fecha conteo</th>
-                  <th className="px-3 py-2 text-left font-bold">Archivo</th>
-                  <th className="px-3 py-2 text-right font-bold">Filas</th>
-                  <th className="px-3 py-2 text-right font-bold">Nuevos</th>
-                  <th className="px-3 py-2 text-right font-bold">Actualizados</th>
-                </tr>
-              </thead>
-              <tbody>
-                {importBatches.slice(0, 12).map((batch) => (
-                  <tr key={batch.id} className="border-t border-slate-100">
-                    <td className="px-3 py-2 font-semibold tabular-nums text-slate-900">
-                      {batch.countedDate}
-                    </td>
-                    <td className="px-3 py-2 text-slate-600">{batch.fileName}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {batch.rowCount}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {batch.createdCount}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {batch.updatedCount}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : null}
-
-      {items.length > 0 ? (
-        <section className="print:hidden space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            {t(
-              "Estadísticas del almacén USA · datos reales",
-              "USA warehouse stats · live data"
-            )}
-          </h3>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            {[
-              {
-                label: t("Artículos activos", "Active items"),
-                value: formatQty(stats.activeSkus),
-              },
-              {
-                label: t("Clientes", "Clients"),
-                value: formatQty(stats.clients),
-              },
-              {
-                label: t("Cant. física total", "Total physical qty"),
-                value: formatQty(stats.totalPhysicalQty),
-              },
-              {
-                label: t("Tarimas estimadas", "Est. pallets"),
-                value: formatQty(stats.totalPallets),
-              },
-              {
-                label: t("Bajo mínimo", "Below min"),
-                value: formatQty(stats.lowStockSkus),
-                warn: stats.lowStockSkus > 0,
-              },
-              {
-                label: t("Sin existencia", "Zero stock"),
-                value: formatQty(stats.zeroStockSkus),
-                warn: stats.zeroStockSkus > 0,
-              },
-            ].map((card) => (
-              <div
-                key={card.label}
-                className={`rounded-2xl border px-3 py-3 ${
-                  card.warn
-                    ? "border-amber-300 bg-amber-50"
-                    : "border-slate-200 bg-white"
-                }`}
-              >
-                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                  {card.label}
-                </p>
-                <p className="mt-1 text-xl font-black tabular-nums text-slate-900">
-                  {card.value}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid gap-3 lg:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-              <div className="border-b border-slate-100 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                {t("Por sección", "By section")}
-              </div>
-              {stats.byCategory.length === 0 ? (
-                <p className="px-3 py-4 text-sm text-slate-500">Sin datos aún</p>
-              ) : (
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="text-[10px] uppercase text-slate-500">
-                      <th className="px-3 py-2 text-left font-bold">Sección</th>
-                      <th className="px-3 py-2 text-right font-bold">Arts</th>
-                      <th className="px-3 py-2 text-right font-bold">Cant física</th>
-                      <th className="px-3 py-2 text-right font-bold">Tarimas</th>
-                      <th className="px-3 py-2 text-right font-bold">Bajo mín</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stats.byCategory.map((row) => (
-                      <tr key={row.category} className="border-t border-slate-100">
-                        <td className="px-3 py-2 font-semibold text-slate-800">
-                          {row.label}
-                        </td>
-                        <td className="px-3 py-2 text-right tabular-nums">
-                          {formatQty(row.skus)}
-                        </td>
-                        <td className="px-3 py-2 text-right tabular-nums font-semibold">
-                          {formatQty(row.physicalQty)}
-                        </td>
-                        <td className="px-3 py-2 text-right tabular-nums">
-                          {formatQty(row.pallets)}
-                        </td>
-                        <td
-                          className={`px-3 py-2 text-right tabular-nums ${
-                            row.lowStock > 0 ? "font-bold text-amber-700" : ""
-                          }`}
-                        >
-                          {formatQty(row.lowStock)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-              <div className="border-b border-slate-100 px-3 py-2 flex items-center justify-between gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                  {t("Por cliente", "By client")}
-                </span>
-                {stats.lastCountedDate ? (
-                  <span className="text-[10px] font-semibold text-slate-400">
-                    {t("Último conteo", "Last count")}: {stats.lastCountedDate}
-                  </span>
-                ) : null}
-              </div>
-              {stats.byClient.length === 0 ? (
-                <p className="px-3 py-4 text-sm text-slate-500">Sin datos aún</p>
-              ) : (
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="text-[10px] uppercase text-slate-500">
-                      <th className="px-3 py-2 text-left font-bold">Cliente</th>
-                      <th className="px-3 py-2 text-right font-bold">Arts</th>
-                      <th className="px-3 py-2 text-right font-bold">Cant física</th>
-                      <th className="px-3 py-2 text-right font-bold">Tarimas</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stats.byClient.map((row) => (
-                      <tr key={row.clientName} className="border-t border-slate-100">
-                        <td className="px-3 py-2 font-semibold text-slate-800">
-                          {row.clientName}
-                        </td>
-                        <td className="px-3 py-2 text-right tabular-nums">
-                          {formatQty(row.skus)}
-                        </td>
-                        <td className="px-3 py-2 text-right tabular-nums font-semibold">
-                          {formatQty(row.physicalQty)}
-                        </td>
-                        <td className="px-3 py-2 text-right tabular-nums">
-                          {formatQty(row.pallets)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-              {stats.obsoleteSkus > 0 ? (
-                <p className="border-t border-slate-100 px-3 py-2 text-xs text-slate-500">
-                  {formatQty(stats.obsoleteSkus)} artículo(s) OBSOLETO fuera de
-                  estos totales activos
-                </p>
-              ) : null}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      <div className="print:hidden flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="print:hidden flex flex-col gap-2 lg:flex-row lg:items-center">
         <label className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t(
-              "Buscar artículo, cliente o no. de parte…",
-              "Search item, client, or part #…"
+              "Buscar en la hoja… artículo, cliente o parte",
+              "Search sheet… item, client, or part #"
             )}
-            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+            className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
           />
         </label>
-        <label className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-700">
-          <input
-            type="checkbox"
-            checked={showObsolete}
-            onChange={(e) => setShowObsolete(e.target.checked)}
-          />
-          {t("Mostrar OBSOLETO", "Show OBSOLETE")}
-        </label>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+            <input
+              type="checkbox"
+              checked={showObsolete}
+              onChange={(e) => setShowObsolete(e.target.checked)}
+            />
+            {t("Mostrar OBSOLETO", "Show OBSOLETE")}
+          </label>
+          <button
+            type="button"
+            onClick={() => setShowStats((v) => !v)}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+          >
+            {showStats
+              ? t("Ocultar resumen", "Hide summary")
+              : t("Ver resumen", "Show summary")}
+          </button>
+        </div>
       </div>
 
-      {items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-14 text-center">
-          <p className="text-base font-bold text-slate-800">
-            La lista está vacía
-          </p>
-          <p className="mt-2 text-sm text-slate-600 max-w-md mx-auto">
-            Agrega los mismos renglones de tu hoja de papel (stretch film, foam,
-            esquineros). Después solo registras entradas, salidas o el conteo
-            físico.
-          </p>
-          {canManageMaster ? (
-            <button
-              type="button"
-              onClick={() => setAddOpen(true)}
-              className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700"
+      {showStats && items.length > 0 ? (
+        <div className="print:hidden grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          {[
+            {
+              label: t("Artículos", "Items"),
+              value: formatQty(stats.activeSkus),
+            },
+            {
+              label: t("Clientes", "Clients"),
+              value: formatQty(stats.clients),
+            },
+            {
+              label: t("Cant. física", "Physical qty"),
+              value: formatQty(stats.totalPhysicalQty),
+            },
+            {
+              label: t("Tarimas", "Pallets"),
+              value: formatQty(stats.totalPallets),
+            },
+            {
+              label: t("Bajo mín", "Below min"),
+              value: formatQty(stats.lowStockSkus),
+              warn: stats.lowStockSkus > 0,
+            },
+            {
+              label: t("Sin stock", "Zero stock"),
+              value: formatQty(stats.zeroStockSkus),
+              warn: stats.zeroStockSkus > 0,
+            },
+          ].map((card) => (
+            <div
+              key={card.label}
+              className={`border px-3 py-2 ${
+                card.warn
+                  ? "border-amber-400 bg-amber-50"
+                  : "border-slate-300 bg-white"
+              }`}
             >
-              <Plus className="h-4 w-4" />
-              Agregar primer artículo
-            </button>
-          ) : null}
+              <p className="text-[10px] font-bold uppercase text-slate-500">
+                {card.label}
+              </p>
+              <p className="text-lg font-black tabular-nums text-slate-900">
+                {card.value}
+              </p>
+            </div>
+          ))}
         </div>
-      ) : grouped.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-sm text-slate-600">
-          No hay renglones con ese filtro.
-        </div>
-      ) : (
-        grouped.map((group) => (
-          <section key={group.category} className="space-y-2 break-inside-avoid">
-            {group.category !== "stretch_film" ? (
-              <h3 className="px-1 text-sm font-black uppercase tracking-wide text-slate-800">
-                {group.label}
-              </h3>
-            ) : null}
-            <div className="overflow-x-auto rounded-xl border border-slate-300 bg-white print:rounded-none print:border-black">
-              <table className="min-w-full border-collapse text-left text-[13px]">
-                <thead>
-                  <tr className="bg-slate-100 text-[10px] uppercase tracking-wide text-slate-700 print:bg-white">
-                    <th className="border-b border-slate-300 px-2.5 py-2 font-bold">
-                      Artículo
-                    </th>
-                    <th className="border-b border-slate-300 px-2.5 py-2 font-bold">
-                      Cliente
-                    </th>
-                    <th className="border-b border-slate-300 px-2.5 py-2 font-bold">
-                      No. parte cliente
-                    </th>
-                    <th className="border-b border-slate-300 px-2.5 py-2 font-bold text-center">
-                      Unidad de medida
-                    </th>
-                    <th className="border-b border-slate-300 px-2.5 py-2 font-bold text-right">
-                      Cant x tarima / paq
-                    </th>
-                    <th className="border-b border-slate-300 px-2.5 py-2 font-bold text-right">
-                      Inv mín
-                    </th>
-                    <th className="border-b border-slate-300 px-2.5 py-2 font-bold text-right">
-                      Cant física
-                    </th>
-                    <th className="border-b border-slate-300 px-2.5 py-2 font-bold text-right print:hidden">
-                      Acciones
-                    </th>
+      ) : null}
+
+      {importBatches.length > 0 ? (
+        <details className="print:hidden rounded-lg border border-slate-300 bg-white">
+          <summary className="cursor-pointer list-none px-3 py-2 text-xs font-bold text-slate-700 flex items-center gap-2">
+            <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-700" />
+            {t(
+              `Historial Excel (${importBatches.length})`,
+              `Excel history (${importBatches.length})`
+            )}
+          </summary>
+          <div className="overflow-x-auto border-t border-slate-200">
+            <table className="min-w-full text-xs">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-3 py-1.5 text-left font-bold">
+                    {t("Fecha", "Date")}
+                  </th>
+                  <th className="px-3 py-1.5 text-left font-bold">
+                    {t("Archivo", "File")}
+                  </th>
+                  <th className="px-3 py-1.5 text-right font-bold">
+                    {t("Filas", "Rows")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {importBatches.slice(0, 8).map((batch) => (
+                  <tr key={batch.id} className="border-t border-slate-100">
+                    <td className="px-3 py-1.5 tabular-nums">{batch.countedDate}</td>
+                    <td className="px-3 py-1.5">{batch.fileName}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums">
+                      {batch.rowCount}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {group.rows.map((item) => {
-                    const low = isBelowMinInventory(item);
-                    const pallets =
-                      item.palletCount > 0
-                        ? item.palletCount
-                        : derivePalletCount(
-                            item.physicalQty,
-                            item.unitsPerPalletOrPack
-                          );
-                    return (
-                      <tr
-                        key={item.id}
-                        className={[
-                          "border-b border-slate-200 last:border-b-0",
-                          item.isObsolete ? "bg-slate-50 text-slate-400" : "",
-                          low && !item.isObsolete ? "bg-amber-50" : "",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
-                      >
-                        <td className="px-2.5 py-2 align-top font-semibold text-slate-900">
-                          {item.itemName}
-                          {item.isObsolete ? (
-                            <span className="ml-2 inline-block rounded bg-slate-200 px-1.5 py-0.5 text-[9px] font-bold uppercase text-slate-600">
-                              Obsoleto
-                            </span>
-                          ) : null}
-                          {low && !item.isObsolete ? (
-                            <span className="ml-2 inline-block rounded bg-amber-200 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-950">
-                              Bajo mín
-                            </span>
-                          ) : null}
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      ) : null}
+
+      {/* Excel-like sheet */}
+      <div className="overflow-hidden border border-slate-400 bg-white shadow-sm print:border-black print:shadow-none">
+        <div className="flex items-center justify-between gap-2 border-b border-slate-400 bg-[#217346] px-3 py-2 text-white print:bg-white print:text-black">
+          <div className="flex items-center gap-2 text-sm font-bold">
+            <FileSpreadsheet className="h-4 w-4 print:hidden" />
+            {t(
+              "Hoja de inventario · estilo Excel",
+              "Inventory sheet · Excel style"
+            )}
+          </div>
+          <p className="hidden text-[11px] text-emerald-50 sm:block print:hidden">
+            {t(
+              "Doble clic en Cant física para editar · Enter guarda",
+              "Double-click Physical qty to edit · Enter saves"
+            )}
+          </p>
+        </div>
+
+        <div className="overflow-auto max-h-[70vh]">
+          <table className="min-w-[980px] w-full border-collapse text-[12px]">
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-[#e2efda] text-[10px] font-bold uppercase tracking-wide text-slate-800">
+                <th className="sticky left-0 z-20 w-10 border border-slate-400 bg-[#c6e0b4] px-1 py-2 text-center">
+                  #
+                </th>
+                <th className="min-w-[220px] border border-slate-400 px-2 py-2 text-left">
+                  {t("Artículo", "Item")}
+                </th>
+                <th className="min-w-[140px] border border-slate-400 px-2 py-2 text-left">
+                  {t("Cliente", "Client")}
+                </th>
+                <th className="min-w-[110px] border border-slate-400 px-2 py-2 text-left">
+                  {t("No. parte cliente", "Client part #")}
+                </th>
+                <th className="w-16 border border-slate-400 px-2 py-2 text-center">
+                  {t("U. medida", "UOM")}
+                </th>
+                <th className="w-24 border border-slate-400 px-2 py-2 text-right">
+                  {t("Cant x tarima", "Qty / pallet")}
+                </th>
+                <th className="w-20 border border-slate-400 px-2 py-2 text-right">
+                  {t("Inv mín", "Min inv")}
+                </th>
+                <th className="w-28 border border-slate-400 bg-[#fff2cc] px-2 py-2 text-right">
+                  {t("Cant física", "Physical qty")}
+                </th>
+                <th className="w-20 border border-slate-400 px-2 py-2 text-right">
+                  {t("Tarimas", "Pallets")}
+                </th>
+                <th className="w-[132px] border border-slate-400 px-2 py-2 text-center print:hidden">
+                  {t("Movimiento", "Move")}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.length === 0 ? (
+                <>
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <tr key={`empty-${i}`} className="h-9">
+                      <td className="border border-slate-300 bg-[#f3f3f3] text-center text-slate-400">
+                        {i + 1}
+                      </td>
+                      {Array.from({ length: 9 }).map((__, j) => (
+                        <td
+                          key={`e-${i}-${j}`}
+                          className={`border border-slate-300 ${
+                            j === 6 ? "bg-[#fffef5]" : "bg-white"
+                          }`}
+                        />
+                      ))}
+                    </tr>
+                  ))}
+                  <tr>
+                    <td
+                      colSpan={10}
+                      className="border border-slate-300 bg-slate-50 px-4 py-6 text-center"
+                    >
+                      <p className="text-sm font-bold text-slate-800">
+                        {t(
+                          "Hoja lista (vacía) — cárgala como Excel",
+                          "Blank sheet ready — load it like Excel"
+                        )}
+                      </p>
+                      <p className="mx-auto mt-1 max-w-lg text-xs text-slate-600">
+                        {t(
+                          "Sube tu archivo Excel/CSV de la lista Bespoke o agrega renglones. La cant. física se edita directo en la celda amarilla.",
+                          "Upload your Bespoke Excel/CSV or add rows. Edit physical qty right in the yellow cell."
+                        )}
+                      </p>
+                      <div className="mt-4 flex flex-wrap justify-center gap-2">
+                        {canManageMaster ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setImportOpen(true)}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-[#217346] px-3 py-2 text-xs font-bold text-white"
+                            >
+                              <Upload className="h-3.5 w-3.5" />
+                              {t("Subir Excel", "Upload Excel")}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAddOpen(true)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              {t("Agregar renglón", "Add row")}
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                </>
+              ) : grouped.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={10}
+                    className="border border-slate-300 px-4 py-8 text-center text-sm text-slate-600"
+                  >
+                    {t(
+                      "Ningún renglón con ese filtro.",
+                      "No rows match this filter."
+                    )}
+                  </td>
+                </tr>
+              ) : (
+                (() => {
+                  let rowNum = 0;
+                  return grouped.flatMap((group) => {
+                    const sectionRow = (
+                      <tr key={`sec-${group.category}`} className="break-inside-avoid">
+                        <td
+                          colSpan={10}
+                          className="border border-slate-400 bg-[#d9e2f3] px-2 py-1.5 text-[11px] font-black uppercase tracking-wide text-slate-800"
+                        >
+                          {group.label}
                         </td>
-                        <td className="px-2.5 py-2 align-top text-slate-800">
-                          {item.clientName || "—"}
-                        </td>
-                        <td className="px-2.5 py-2 align-top font-mono text-xs text-slate-700">
-                          {item.isObsolete
-                            ? "OBSOLETO"
-                            : item.clientPartNumber || "—"}
-                        </td>
-                        <td className="px-2.5 py-2 align-top text-center font-mono text-xs font-bold">
-                          {item.unitOfMeasure}
-                        </td>
-                        <td className="px-2.5 py-2 align-top text-right tabular-nums">
-                          {item.unitsPerPalletOrPack > 0
-                            ? formatQty(item.unitsPerPalletOrPack)
-                            : "—"}
-                        </td>
-                        <td className="px-2.5 py-2 align-top text-right tabular-nums">
-                          {item.minInventory > 0
-                            ? formatQty(item.minInventory)
-                            : "—"}
-                        </td>
-                        <td className="px-2.5 py-2 align-top text-right">
-                          <div className="font-black tabular-nums text-slate-900">
-                            {formatQty(item.physicalQty)}
-                          </div>
-                          {pallets > 0 ? (
-                            <div className="text-[10px] font-bold uppercase text-slate-500">
-                              {formatQty(pallets)} tarima
-                              {pallets === 1 ? "" : "s"}
-                            </div>
-                          ) : null}
-                          {item.countedDate ? (
-                            <div className="text-[10px] text-slate-400">
-                              {item.countedDate}
-                            </div>
-                          ) : null}
-                        </td>
-                        <td className="px-2.5 py-2 align-top print:hidden">
-                          <div className="flex flex-col gap-1.5 sm:min-w-[9.5rem]">
-                            <div className="grid grid-cols-2 gap-1">
+                      </tr>
+                    );
+                    const dataRows = group.rows.map((item) => {
+                      rowNum += 1;
+                      const low = isBelowMinInventory(item);
+                      const pallets =
+                        item.palletCount > 0
+                          ? item.palletCount
+                          : derivePalletCount(
+                              item.physicalQty,
+                              item.unitsPerPalletOrPack
+                            );
+                      const editing = editingQtyId === item.id;
+                      return (
+                        <tr
+                          key={item.id}
+                          className={[
+                            "h-9",
+                            item.isObsolete ? "bg-slate-100 text-slate-400" : "",
+                            low && !item.isObsolete ? "bg-amber-50" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                        >
+                          <td className="sticky left-0 border border-slate-300 bg-[#f3f3f3] text-center tabular-nums text-slate-500">
+                            {rowNum}
+                          </td>
+                          <td className="border border-slate-300 px-2 font-semibold text-slate-900">
+                            {item.itemName}
+                            {item.isObsolete ? (
+                              <span className="ml-1 text-[9px] font-bold uppercase text-slate-500">
+                                OBSOLETO
+                              </span>
+                            ) : null}
+                            {low && !item.isObsolete ? (
+                              <span className="ml-1 text-[9px] font-bold uppercase text-amber-800">
+                                {t("BAJO MÍN", "LOW")}
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="border border-slate-300 px-2 text-slate-800">
+                            {item.clientName || ""}
+                          </td>
+                          <td className="border border-slate-300 px-2 font-mono text-[11px]">
+                            {item.isObsolete
+                              ? "OBSOLETO"
+                              : item.clientPartNumber || ""}
+                          </td>
+                          <td className="border border-slate-300 px-2 text-center font-mono text-[11px] font-bold">
+                            {item.unitOfMeasure}
+                          </td>
+                          <td className="border border-slate-300 px-2 text-right tabular-nums">
+                            {item.unitsPerPalletOrPack > 0
+                              ? formatQty(item.unitsPerPalletOrPack)
+                              : ""}
+                          </td>
+                          <td className="border border-slate-300 px-2 text-right tabular-nums">
+                            {item.minInventory > 0
+                              ? formatQty(item.minInventory)
+                              : ""}
+                          </td>
+                          <td
+                            className="border border-slate-300 bg-[#fff2cc] px-1 text-right"
+                            onDoubleClick={() => {
+                              if (!item.isObsolete) startEditQty(item);
+                            }}
+                          >
+                            {editing ? (
+                              <input
+                                autoFocus
+                                type="number"
+                                min={0}
+                                step="any"
+                                value={editingQtyValue}
+                                onChange={(e) =>
+                                  setEditingQtyValue(e.target.value)
+                                }
+                                onBlur={() => commitEditQty(item)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.currentTarget.blur();
+                                  }
+                                  if (e.key === "Escape") {
+                                    setEditingQtyId(null);
+                                  }
+                                }}
+                                className="w-full bg-white px-1 py-0.5 text-right text-sm font-black outline-none ring-2 ring-emerald-500"
+                              />
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={pending || item.isObsolete}
+                                onClick={() => startEditQty(item)}
+                                className="w-full px-1 py-0.5 text-right font-black tabular-nums text-slate-900 hover:bg-amber-100 disabled:opacity-50"
+                                title={t(
+                                  "Clic para editar cant. física",
+                                  "Click to edit physical qty"
+                                )}
+                              >
+                                {formatQty(item.physicalQty)}
+                              </button>
+                            )}
+                          </td>
+                          <td className="border border-slate-300 px-2 text-right tabular-nums text-slate-700">
+                            {pallets > 0 ? formatQty(pallets) : ""}
+                          </td>
+                          <td className="border border-slate-300 px-1 print:hidden">
+                            <div className="flex items-center justify-center gap-0.5">
                               <button
                                 type="button"
                                 disabled={pending || item.isObsolete}
                                 onClick={() => openMove(item, "in")}
-                                className="inline-flex min-h-8 items-center justify-center gap-1 rounded-lg bg-sky-600 px-2 text-[11px] font-bold text-white hover:bg-sky-700 disabled:opacity-40"
-                                title="Entrada"
+                                className="rounded px-1.5 py-1 text-[10px] font-bold text-sky-800 hover:bg-sky-100 disabled:opacity-40"
+                                title={t("Entrada", "In")}
                               >
-                                <ArrowDownToLine className="h-3 w-3" />
-                                {t("Entrada", "In")}
+                                <ArrowDownToLine className="h-3.5 w-3.5" />
                               </button>
                               <button
                                 type="button"
                                 disabled={pending || item.isObsolete}
                                 onClick={() => openMove(item, "out")}
-                                className="inline-flex min-h-8 items-center justify-center gap-1 rounded-lg bg-rose-600 px-2 text-[11px] font-bold text-white hover:bg-rose-700 disabled:opacity-40"
+                                className="rounded px-1.5 py-1 text-[10px] font-bold text-rose-800 hover:bg-rose-100 disabled:opacity-40"
                                 title={t("Salida", "Out")}
                               >
-                                <ArrowUpFromLine className="h-3 w-3" />
-                                {t("Salida", "Out")}
+                                <ArrowUpFromLine className="h-3.5 w-3.5" />
                               </button>
-                            </div>
-                            <button
-                              type="button"
-                              disabled={pending}
-                              onClick={() => openMove(item, "count")}
-                              className="inline-flex min-h-8 w-full items-center justify-center rounded-lg border border-emerald-300 bg-emerald-50 px-2 text-[11px] font-bold text-emerald-900 hover:bg-emerald-100 disabled:opacity-40"
-                            >
-                              {t("Conteo físico", "Physical count")}
-                            </button>
-                            <div className="grid grid-cols-2 gap-1">
+                              <button
+                                type="button"
+                                disabled={pending}
+                                onClick={() => openMove(item, "count")}
+                                className="rounded px-1.5 py-1 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100 disabled:opacity-40"
+                                title={t("Conteo", "Count")}
+                              >
+                                Σ
+                              </button>
                               <button
                                 type="button"
                                 disabled={pending}
                                 onClick={() => toggleObsolete(item)}
-                                className="inline-flex min-h-8 items-center justify-center rounded-lg border border-slate-200 px-2 text-[11px] font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                                className="rounded px-1.5 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                                title={
+                                  item.isObsolete
+                                    ? t("Reactivar", "Restore")
+                                    : t("Obsoleto", "Obsolete")
+                                }
                               >
-                                {item.isObsolete
-                                  ? t("Reactivar", "Restore")
-                                  : t("Obsoleto", "Obsolete")}
+                                Ø
                               </button>
                               {canDelete ? (
                                 <button
                                   type="button"
                                   disabled={pending}
                                   onClick={() => removeItem(item)}
-                                  className="inline-flex min-h-8 items-center justify-center rounded-lg border border-red-200 px-2 text-[11px] font-bold text-red-700 hover:bg-red-50 disabled:opacity-40"
+                                  className="rounded px-1.5 py-1 text-[10px] font-bold text-red-700 hover:bg-red-50 disabled:opacity-40"
+                                  title={t("Borrar", "Delete")}
                                 >
-                                  {t("Borrar", "Delete")}
+                                  ×
                                 </button>
-                              ) : (
-                                <span />
-                              )}
+                              ) : null}
                             </div>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        ))
-      )}
+                          </td>
+                        </tr>
+                      );
+                    });
+                    return [sectionRow, ...dataRows];
+                  });
+                })()
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="border-t border-slate-400 bg-[#f3f3f3] px-3 py-1.5 text-[10px] text-slate-600 print:hidden">
+          {t(
+            "Celda amarilla = Cant física (editable). Verde = encabezados. Azul = sección.",
+            "Yellow cell = Physical qty (editable). Green = headers. Blue = section."
+          )}
+        </div>
+      </div>
 
       {move ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center print:hidden">
