@@ -1,11 +1,10 @@
-import React from "react";
+import React, { Suspense } from "react";
 import nextDynamic from "next/dynamic";
 import { getProducts } from "@/actions/products";
 import { HeroBanner } from "@/components/home/HeroBanner";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-export const fetchCache = "force-no-store";
+/** ISR: catalog refreshes about once a minute; hero streams immediately. */
+export const revalidate = 60;
 
 /** Below-the-fold / heavy interactive sections — code-split off the LCP path. */
 const ClientLogosBanner = nextDynamic(
@@ -91,9 +90,12 @@ const InquiryForm = nextDynamic(
   }
 );
 
-export default async function HomePage() {
+async function FeaturedProductsBlock() {
   const products = await getProducts();
+  return <FeaturedProductSection products={products} />;
+}
 
+export default function HomePage() {
   return (
     <div className="space-y-0">
       {/* 1. Hero Section — kept static for LCP discovery */}
@@ -106,7 +108,11 @@ export default async function HomePage() {
       <CategoryShowcase />
 
       {/* 4. Filterable Featured Product Catalog Grid */}
-      <FeaturedProductSection products={products} />
+      <Suspense
+        fallback={<div className="min-h-[420px] bg-white py-12" aria-hidden />}
+      >
+        <FeaturedProductsBlock />
+      </Suspense>
 
       {/* 5. Nationwide USA Coverage Map */}
       <USACoverageSection />

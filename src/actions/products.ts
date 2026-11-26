@@ -1,6 +1,11 @@
 "use server";
 
-import { revalidatePath, unstable_noStore as noStore } from "next/cache";
+import {
+  revalidatePath,
+  revalidateTag,
+  unstable_cache,
+  unstable_noStore as noStore,
+} from "next/cache";
 import { createServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import {
   createServiceRoleClient,
@@ -75,6 +80,8 @@ async function getProductWriteClient() {
 }
 
 function revalidateProductPaths(slug?: string) {
+  revalidateTag("products-catalog");
+  revalidateTag("usa-warehouse-stock");
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/admin/products");
@@ -850,6 +857,86 @@ async function attachCatalogRelations(supabase: CatalogClient, products: any[]) 
   }
 }
 
+type UsaStockTuple = [string, { stockBoxes: number; reorderPoint: number }];
+
+/** Cookie-free catalog fetch so results are safe for unstable_cache. */
+async function fetchStorefrontCatalogUncached(): Promise<ProductWithVariants[]> {
+  if (!isSupabaseConfigured) return [];
+  try {
+    const supabase = isServiceRoleConfigured()
+      ? createServiceRoleClient()
+      : await createServerClient();
+
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("getProducts query error:", error);
+      return [];
+    }
+    if (!data?.length) return [];
+
+    const rows = await attachCatalogRelations(supabase, data);
+    const formatted = rows.flatMap((row) => {
+      try {
+        return [formatProduct(row)];
+      } catch (formatError) {
+        console.error("formatProduct failed:", row?.slug || row?.id, formatError);
+        return [];
+      }
+    });
+
+    return sortProductsByDimensions(
+      excludeFiftyGaugeFromStorefront(
+        ensureGenesisMachineProducts(
+          formatted.filter((p) => p.isActive !== false)
+        )
+      )
+    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("fetchStorefrontCatalogUncached:", message);
+    return [];
+  }
+}
+
+const getCachedStorefrontCatalog = unstable_cache(
+  async () => fetchStorefrontCatalogUncached(),
+  ["storefront-catalog-v2"],
+  { revalidate: 60, tags: ["products-catalog"] }
+);
+
+const getCachedUsaStockEntries = unstable_cache(
+  async (): Promise<UsaStockTuple[]> => {
+    const map = await getUsaWarehouseStockMap();
+    return Array.from(map.entries());
+  },
+  ["usa-warehouse-stock-v1"],
+  { revalidate: 30, tags: ["usa-warehouse-stock"] }
+);
+
+function matchesCategoryFilter(p: ProductWithVariants, filter: string) {
+  if (!filter || filter === "all") return true;
+  if (
+    filter === "genesis-standard" ||
+    filter === "genesis-high-performance" ||
+    filter === "machine-high-yield-film" ||
+    filter === "b0000000-0000-0000-0000-000000000003"
+  ) {
+    return (
+      p.categorySlug === "genesis-standard" ||
+      p.categorySlug === "genesis-high-performance" ||
+      p.categoryId === "b0000000-0000-0000-0000-000000000003" ||
+      p.categoryId === "genesis-high-performance" ||
+      p.application === "machine" ||
+      String(p.slug || "").startsWith("stretch-film-20")
+    );
+  }
+  return p.categorySlug === filter || p.categoryId === filter;
+}
+
 /**
  * Fetch all products joined with categories and product_variants across all categories
  * Supports optional applicationFilter and categoryFilter
@@ -858,74 +945,14 @@ export async function getProducts(
   applicationFilter?: "all" | "hand" | "machine",
   categoryFilter?: string
 ): Promise<ProductWithVariants[]> {
-  noStore();
-  const supabase = await createServerClient();
-
-  const matchesCategory = (p: ProductWithVariants, filter: string) => {
-    if (!filter || filter === "all") return true;
-    if (
-      filter === "genesis-standard" ||
-      filter === "genesis-high-performance" ||
-      filter === "machine-high-yield-film" ||
-      filter === "b0000000-0000-0000-0000-000000000003"
-    ) {
-      return (
-        p.categorySlug === "genesis-standard" ||
-        p.categorySlug === "genesis-high-performance" ||
-        p.categoryId === "b0000000-0000-0000-0000-000000000003" ||
-        p.categoryId === "genesis-high-performance" ||
-        p.application === "machine" ||
-        String(p.slug || "").startsWith("stretch-film-20")
-      );
-    }
-    return p.categorySlug === filter || p.categoryId === filter;
-  };
-
-  const finalizeCatalog = async (items: ProductWithVariants[]) => {
-    let next = ensureGenesisMachineProducts(
-      items.filter((p) => p.isActive !== false)
-    );
-    if (applicationFilter && applicationFilter !== "all") {
-      next = next.filter((p) => p.application === applicationFilter);
-    }
-    if (categoryFilter && categoryFilter !== "all") {
-      next = next.filter((p) => matchesCategory(p, categoryFilter));
-    }
-    next = sortProductsByDimensions(excludeFiftyGaugeFromStorefront(next));
-    return attachUsaWarehouseAvailability(next);
-  };
-
-  try {
-    if (isSupabaseConfigured) {
-      try {
-        const { data, error } = await supabase
-          .from("products")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        if (error) {
-          console.error("getProducts query error:", error);
-        } else if (data) {
-          const rows = await attachCatalogRelations(supabase, data);
-          const formatted = rows.flatMap((row) => {
-            try {
-              return [formatProduct(row)];
-            } catch (formatError) {
-              console.error("formatProduct failed:", row?.slug || row?.id, formatError);
-              return [];
-            }
-          });
-          return finalizeCatalog(formatted);
-        }
-      } catch (sbErr: any) {
-        console.error("Supabase getProducts query exception:", sbErr?.message || sbErr);
-      }
-    }
-  } catch (error: any) {
-    console.error("getProducts encountered error:", error?.message || error);
+  let next = await getCachedStorefrontCatalog();
+  if (applicationFilter && applicationFilter !== "all") {
+    next = next.filter((p) => p.application === applicationFilter);
   }
-
-  return finalizeCatalog([]);
+  if (categoryFilter && categoryFilter !== "all") {
+    next = next.filter((p) => matchesCategoryFilter(p, categoryFilter));
+  }
+  return attachUsaWarehouseAvailability(next);
 }
 
 async function attachUsaWarehouseAvailability(
@@ -933,7 +960,8 @@ async function attachUsaWarehouseAvailability(
 ): Promise<ProductWithVariants[]> {
   if (items.length === 0) return items;
   try {
-    const stockMap = await getUsaWarehouseStockMap();
+    const entries = await getCachedUsaStockEntries();
+    const stockMap = new Map(entries);
     if (stockMap.size === 0) {
       return items.map((product) => {
         const status = usStockAvailability({
@@ -980,46 +1008,57 @@ async function attachUsaWarehouseAvailability(
  * Fetch a single product by slug joined with its parent category and product_variants
  */
 export async function getProductBySlug(slug: string): Promise<ProductWithVariants | null> {
-  noStore();
   const normalizedSlug = String(slug || "").toLowerCase();
   if (normalizedSlug.includes("50-ga") || normalizedSlug.includes("-50ga")) {
     return null;
   }
 
   try {
-    const supabase = await createServerClient();
-
-    if (isSupabaseConfigured) {
-      try {
-        const { data, error } = await supabase
-          .from("products")
-          .select("*")
-          .eq("slug", slug)
-          .maybeSingle();
-
-        if (error) {
-          console.error("getProductBySlug query error:", error);
-        } else if (data) {
-          const [row] = await attachCatalogRelations(supabase, [data]);
-          const product = formatProduct(row);
-          if (product.isActive === false) return null;
-          if (isFiftyGaugeStorefrontProduct(product)) return null;
-          // Storefront Automatic catalog is exactly the 4 master specs (20/40 roll pallets).
-          if (detectMachineFilm(product) && !isOfficialMachineFilmProduct(product)) {
-            return null;
-          }
-          const [enriched] = await attachUsaWarehouseAvailability([product]);
-          return enriched || product;
-        }
-      } catch (sbErr: any) {
-        console.error("Supabase getProductBySlug exception:", sbErr?.message || sbErr);
+    const catalog = await getCachedStorefrontCatalog();
+    const fromCache = catalog.find(
+      (p) => String(p.slug || "").toLowerCase() === normalizedSlug
+    );
+    if (fromCache) {
+      if (detectMachineFilm(fromCache) && !isOfficialMachineFilmProduct(fromCache)) {
+        return null;
       }
+      const [enriched] = await attachUsaWarehouseAvailability([fromCache]);
+      return enriched || fromCache;
     }
-  } catch (error: any) {
-    console.error("getProductBySlug encountered error:", error?.message || error);
-  }
 
-  return null;
+    // Rare miss (new slug before cache refresh): one direct lookup, not cached.
+    noStore();
+    if (!isSupabaseConfigured) return null;
+    const supabase = isServiceRoleConfigured()
+      ? createServiceRoleClient()
+      : await createServerClient();
+
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("slug", slug)
+      .maybeSingle();
+
+    if (error) {
+      console.error("getProductBySlug query error:", error);
+      return null;
+    }
+    if (!data) return null;
+
+    const [row] = await attachCatalogRelations(supabase, [data]);
+    const product = formatProduct(row);
+    if (product.isActive === false) return null;
+    if (isFiftyGaugeStorefrontProduct(product)) return null;
+    if (detectMachineFilm(product) && !isOfficialMachineFilmProduct(product)) {
+      return null;
+    }
+    const [enriched] = await attachUsaWarehouseAvailability([product]);
+    return enriched || product;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("getProductBySlug encountered error:", message);
+    return null;
+  }
 }
 
 /**

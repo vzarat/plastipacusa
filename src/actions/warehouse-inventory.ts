@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { getCurrentUser } from "@/actions/auth";
 import { lineStockUnits } from "@/lib/pallet-stock";
 import { MANUAL_FILM_MASTER } from "@/lib/manual-film-master";
@@ -43,9 +43,12 @@ async function db() {
 }
 
 function revalidateInventory() {
+  revalidateTag("usa-warehouse-stock");
+  revalidateTag("products-catalog");
   revalidatePath("/admin/inventory/usa");
   revalidatePath("/admin");
   revalidatePath("/");
+  revalidatePath("/products", "layout");
 }
 
 export async function getWarehouseByCode(

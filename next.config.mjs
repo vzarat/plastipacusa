@@ -36,6 +36,28 @@ const nextConfig = {
       { source: "/catalog/:path*", destination: "/products/:path*" },
     ];
   },
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=0, must-revalidate",
+          },
+        ],
+      },
+      {
+        source: "/manifest.json",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
+    ];
+  },
   // Stabilize production minify when large client chunks (e.g. three.js / Beams)
   // cause Terser worker early-exit under PWA + parallel minify.
   webpack: (config, { dev }) => {

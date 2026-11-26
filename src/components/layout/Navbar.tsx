@@ -51,7 +51,7 @@ export function Navbar() {
     return () => {
       isActive = false;
     };
-  }, [pathname]);
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);

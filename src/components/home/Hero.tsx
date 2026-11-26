@@ -164,8 +164,8 @@ function MobileVideoSlide({
         src={SLIDE_MOBILE_VIDEO}
         muted
         playsInline
-        autoPlay
-        preload="auto"
+        autoPlay={active}
+        preload={active ? "auto" : "none"}
         aria-label="Plastipac USA stretch film — mobile featured video"
       />
     </div>
@@ -173,14 +173,14 @@ function MobileVideoSlide({
 }
 
 /** Mobile second slide: Instagram story + Shop Now. */
-function MobileStorySlide() {
+function MobileStorySlide({ priority = false }: { priority?: boolean }) {
   return (
     <div className="absolute inset-0 md:hidden">
       <Image
         src={SLIDE_MOBILE_STORY}
         alt="We are the manufacturers. We manufacture high-quality stretch film designed to meet your packaging needs."
         fill
-        priority
+        priority={priority}
         sizes="100vw"
         className="object-contain object-center"
       />
@@ -215,8 +215,8 @@ function DesktopVideoSlide({
         src={SLIDE_BACKGROUND_VIDEO}
         muted
         playsInline
-        autoPlay
-        preload="auto"
+        autoPlay={active}
+        preload={active ? "auto" : "none"}
         aria-label="Plastipac USA stretch film — featured packaging video"
       />
     </div>
@@ -306,7 +306,8 @@ function QualitySlide() {
 export function Hero() {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(false);
+  /** null until matchMedia runs — avoids loading the wrong hero video. */
+  const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
   const [slideCount, setSlideCount] = useState(MOBILE_SLIDE_COUNT);
   /** Bumps each time we return to the video slide so playback remounts cleanly. */
   const [videoPlayCycle, setVideoPlayCycle] = useState(0);
@@ -343,8 +344,9 @@ export function Hero() {
     return () => media.removeEventListener("change", apply);
   }, []);
 
-  // Prefetch the active hero video for faster start.
+  // Prefetch only the viewport-correct hero video.
   useEffect(() => {
+    if (isDesktop === null) return;
     const href = isDesktop ? SLIDE_BACKGROUND_VIDEO : SLIDE_MOBILE_VIDEO;
     const link = document.createElement("link");
     link.rel = "preload";
@@ -360,11 +362,11 @@ export function Hero() {
   // Auto-advance: on video slide (mobile or desktop), wait for `ended`.
   // Other slides use the timer. When the carousel returns to slide 0, video plays again.
   useEffect(() => {
-    if (paused || slideCount <= 1) return;
+    if (isDesktop === null || paused || slideCount <= 1) return;
     if (index === 0) return;
     const timer = window.setInterval(goNext, AUTO_MS);
     return () => window.clearInterval(timer);
-  }, [paused, slideCount, index, goNext]);
+  }, [paused, slideCount, index, goNext, isDesktop]);
 
   function onTouchStart(event: ReactTouchEvent) {
     touchStartX.current = event.changedTouches[0]?.clientX ?? null;
@@ -405,16 +407,20 @@ export function Hero() {
           aria-hidden={index !== 0}
           inert={index !== 0}
         >
-          <MobileVideoSlide
-            active={index === 0 && !isDesktop}
-            onEnded={goNext}
-            playCycle={videoPlayCycle}
-          />
-          <DesktopVideoSlide
-            active={index === 0 && isDesktop}
-            onEnded={goNext}
-            playCycle={videoPlayCycle}
-          />
+          {isDesktop === false ? (
+            <MobileVideoSlide
+              active={index === 0}
+              onEnded={goNext}
+              playCycle={videoPlayCycle}
+            />
+          ) : null}
+          {isDesktop === true ? (
+            <DesktopVideoSlide
+              active={index === 0}
+              onEnded={goNext}
+              playCycle={videoPlayCycle}
+            />
+          ) : null}
         </div>
         <div
           className={`absolute inset-0 transition-opacity duration-300 ${
@@ -423,8 +429,10 @@ export function Hero() {
           aria-hidden={index !== 1}
           inert={index !== 1}
         >
-          <MobileStorySlide />
-          <FeaturedImageSlide />
+          {isDesktop === false ? (
+            <MobileStorySlide priority={index === 1} />
+          ) : null}
+          {isDesktop === true ? <FeaturedImageSlide /> : null}
         </div>
         <div
           className={`absolute inset-0 transition-opacity duration-300 ${

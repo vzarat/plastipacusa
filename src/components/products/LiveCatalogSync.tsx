@@ -4,11 +4,14 @@ import { useEffect } from "react";
 import { getProducts } from "@/actions/products";
 import { useCartStore } from "@/lib/store/useCartStore";
 
-/** Refreshes cart line prices from Supabase once per page load. */
+/** Refreshes cart line prices from catalog only when the cart has items. */
 export function LiveCatalogSync() {
+  const itemCount = useCartStore((state) => state.items.length);
   const applyCatalogPrices = useCartStore((state) => state.applyCatalogPrices);
 
   useEffect(() => {
+    if (itemCount === 0) return;
+
     let cancelled = false;
     getProducts("all")
       .then((products) => {
@@ -18,7 +21,7 @@ export function LiveCatalogSync() {
     return () => {
       cancelled = true;
     };
-  }, [applyCatalogPrices]);
+  }, [applyCatalogPrices, itemCount]);
 
   return null;
 }

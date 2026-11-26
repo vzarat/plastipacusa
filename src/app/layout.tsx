@@ -56,8 +56,12 @@ const teko = localFont({
   fallback: ["Arial Narrow", "Impact", "sans-serif"],
 });
 
-const CartDrawer = dynamic(() => import("@/components/layout/CartDrawer"));
-const AssistAI = dynamic(() => import("@/components/AssistAI"));
+const CartDrawer = dynamic(() => import("@/components/layout/CartDrawer"), {
+  ssr: false,
+});
+const AssistAI = dynamic(() => import("@/components/AssistAI"), {
+  ssr: false,
+});
 
 const APP_ICON = `${SUPABASE_ORIGIN}/storage/v1/object/public/Products/ICON_APP.png`;
 const FAVICON = `${SUPABASE_ORIGIN}/storage/v1/object/public/Products/FAVICON.png`;
