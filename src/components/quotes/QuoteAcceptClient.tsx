@@ -110,9 +110,31 @@ export function QuoteAcceptClient({ quote }: { quote: SalesQuoteRecord }) {
               <p className="text-slate-700">
                 Terms: {quote.paymentTerms === "net_30" ? "Net 30" : "Prepayment"}
               </p>
-              <p className="text-slate-700">
-                Shipping &amp; tax: calculated at checkout
-              </p>
+              {quote.freightSummary?.mode === "customer_arranged" ? (
+                <div className="mt-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-slate-800">
+                  <p className="text-xs font-bold uppercase tracking-wider text-sky-800">
+                    Customer-arranged freight
+                  </p>
+                  <p className="text-sm mt-1">
+                    Suggested Warp LTL:{" "}
+                    <span className="font-bold">
+                      {money(Number(quote.freightSummary.suggestedAmount || 0))}
+                    </span>
+                  </p>
+                  {quote.freightSummary.suggestedLabel ? (
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      {quote.freightSummary.suggestedLabel}
+                    </p>
+                  ) : null}
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Plastipac does not book or bill this freight — estimate only.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-slate-700">
+                  Shipping &amp; tax: calculated at checkout
+                </p>
+              )}
             </div>
           </div>
 
@@ -146,8 +168,9 @@ export function QuoteAcceptClient({ quote }: { quote: SalesQuoteRecord }) {
               <span>{money(quoteMerchandiseTotal(quote))}</span>
             </div>
             <p className="text-[11px] text-slate-500 pt-2">
-              Sales tax and shipping are calculated at checkout. Freight is quoted through
-              multiple carriers on our site.
+              {quote.freightSummary?.mode === "customer_arranged"
+                ? "Quote total is merchandise only. Freight is customer-arranged; Warp rate above is a suggestion."
+                : "Sales tax and shipping are calculated at checkout. Freight is quoted through multiple carriers on our site."}
             </p>
           </div>
 

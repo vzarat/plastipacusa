@@ -136,8 +136,28 @@ export function AdminQuoteDetailView({
             value={money(quoteMerchandiseTotal(current))}
             strong
           />
+          {current.freightSummary?.mode === "customer_arranged" ? (
+            <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[12px] text-sky-950 space-y-1">
+              <p className="font-bold uppercase tracking-wider text-[10px] text-sky-800">
+                Customer-arranged freight
+              </p>
+              <p>
+                Suggested Warp:{" "}
+                <span className="font-bold">
+                  {money(Number(current.freightSummary.suggestedAmount || 0))}
+                </span>
+              </p>
+              {current.freightSummary.suggestedLabel ? (
+                <p className="text-sky-900/80">{current.freightSummary.suggestedLabel}</p>
+              ) : null}
+            </div>
+          ) : current.shippingAmount > 0 ? (
+            <Row label="Freight on file" value={money(current.shippingAmount)} />
+          ) : null}
           <p className="text-[11px] text-slate-500 pt-1">
-            PDF shows merchandise only. Tax and shipping are calculated at checkout.
+            {current.freightSummary?.mode === "customer_arranged"
+              ? "PDF shows merchandise + Warp freight suggestion (not billed by Plastipac)."
+              : "PDF shows merchandise only. Tax and shipping are calculated at checkout."}
           </p>
           <div className="pt-3 border-t border-slate-100 space-y-1 text-[12px] text-slate-600">
             <p>Terms: {current.paymentTerms === "net_30" ? "Net 30" : "Prepayment"}</p>

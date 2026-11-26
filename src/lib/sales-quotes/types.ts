@@ -36,12 +36,25 @@ export interface SalesQuoteLine extends SalesQuoteLineInput {
   lineTotal: number;
 }
 
+export type SalesQuoteFreightMode =
+  | "free_local"
+  | "warp_ltl"
+  | "manual"
+  | "customer_arranged"
+  | "none";
+
+/** Who books the truck for this quote sheet. */
+export type SalesQuoteFreightArrangement = "plastipac" | "customer";
+
 export interface SalesQuoteFreightSummary {
-  mode: "free_local" | "warp_ltl" | "manual" | "none";
+  mode: SalesQuoteFreightMode;
   label: string;
   carrierName?: string | null;
   transitDays?: number | null;
   quoteId?: string | null;
+  /** Warp (or manual) market rate shown when customer arranges freight. */
+  suggestedAmount?: number | null;
+  suggestedLabel?: string | null;
   pieces?: Array<{
     packaging: string;
     quantity: number;
@@ -104,5 +117,10 @@ export interface SalesQuoteDraftInput {
   /** When set, skip Warp and use this shipping amount (admin override). */
   shippingAmountOverride?: number | null;
   shippingMethodOverride?: string | null;
+  /**
+   * plastipac = we book freight (default).
+   * customer = freight not by us; quote still shows a Warp-suggested LTL rate.
+   */
+  freightArrangement?: SalesQuoteFreightArrangement;
   taxExempt?: boolean;
 }

@@ -48,6 +48,41 @@ function acceptUrlForToken(token: string): string {
   return `${getAppBaseUrl()}/quotes/accept/${token}`;
 }
 
+function asCustomerArrangedSuggestion(input: {
+  suggestedAmount: number;
+  suggestedLabel: string;
+  shippingQuoteId: string | null;
+  weightLbs: number;
+  carrierName?: string | null;
+  transitDays?: number | null;
+  pieces?: SalesQuoteFreightSummary["pieces"];
+}): {
+  shippingAmount: number;
+  shippingMethod: string;
+  shippingQuoteId: string | null;
+  weightLbs: number;
+  freightSummary: SalesQuoteFreightSummary;
+} {
+  const label = `Customer-arranged freight (suggested: ${input.suggestedLabel})`;
+  return {
+    // Not billed by Plastipac — merchandise total only.
+    shippingAmount: 0,
+    shippingMethod: label,
+    shippingQuoteId: input.shippingQuoteId,
+    weightLbs: input.weightLbs,
+    freightSummary: {
+      mode: "customer_arranged",
+      label,
+      carrierName: input.carrierName || null,
+      transitDays: input.transitDays ?? null,
+      quoteId: input.shippingQuoteId,
+      suggestedAmount: Math.max(0, Number(input.suggestedAmount) || 0),
+      suggestedLabel: input.suggestedLabel,
+      pieces: input.pieces,
+    },
+  };
+}
+
 async function resolveFreightForDraft(input: {
   items: ReturnType<typeof priceSalesQuoteLines>;
   shippingZip: string;
@@ -55,6 +90,7 @@ async function resolveFreightForDraft(input: {
   shippingState?: string;
   shippingAmountOverride?: number | null;
   shippingMethodOverride?: string | null;
+  freightArrangement?: "plastipac" | "customer" | null;
 }): Promise<{
   shippingAmount: number;
   shippingMethod: string;
@@ -62,7 +98,10 @@ async function resolveFreightForDraft(input: {
   weightLbs: number;
   freightSummary: SalesQuoteFreightSummary;
 }> {
+  const customerArranged = input.freightArrangement === "customer";
+
   if (
+    !customerArranged &&
     input.shippingAmountOverride != null &&
     Number.isFinite(Number(input.shippingAmountOverride))
   ) {
@@ -114,27 +153,56 @@ async function resolveFreightForDraft(input: {
     dimensionLabel: piece.dimensionLabel,
   }));
 
-  const eligibility = evalShippingEligibility(zip, city, state, boxes, rolls);
-  if (eligibility.freeDeliveryEligible) {
-    const localOption =
-      eligibility.options.find((option) => option.id === "houston-friday") ||
-      eligibility.options.find((option) => option.id === "rgv-express") ||
-      eligibility.options[0];
-    return {
-      shippingAmount: 0,
-      shippingMethod: localOption?.label || FREE_LOCAL_DELIVERY_LABEL,
-      shippingQuoteId: localOption?.id || "rgv-local",
+  // Free local only when Plastipac arranges delivery.
+  if (!customerArranged) {
+    const eligibility = evalShippingEligibility(zip, city, state, boxes, rolls);
+    if (eligibility.freeDeliveryEligible) {
+      const localOption =
+        eligibility.options.find((option) => option.id === "houston-friday") ||
+        eligibility.options.find((option) => option.id === "rgv-express") ||
+        eligibility.options[0];
+      return {
+        shippingAmount: 0,
+        shippingMethod: localOption?.label || FREE_LOCAL_DELIVERY_LABEL,
+        shippingQuoteId: localOption?.id || "rgv-local",
+        weightLbs,
+        freightSummary: {
+          mode: "free_local",
+          label: localOption?.label || FREE_LOCAL_DELIVERY_LABEL,
+          quoteId: localOption?.id || null,
+          pieces: summaryPieces,
+        },
+      };
+    }
+  }
+
+  if (
+    customerArranged &&
+    input.shippingAmountOverride != null &&
+    Number.isFinite(Number(input.shippingAmountOverride))
+  ) {
+    const amount = Math.max(0, Number(input.shippingAmountOverride));
+    const suggestedLabel =
+      input.shippingMethodOverride || `Manual LTL suggestion · $${amount.toFixed(2)}`;
+    return asCustomerArrangedSuggestion({
+      suggestedAmount: amount,
+      suggestedLabel,
+      shippingQuoteId: null,
       weightLbs,
-      freightSummary: {
-        mode: "free_local",
-        label: localOption?.label || FREE_LOCAL_DELIVERY_LABEL,
-        quoteId: localOption?.id || null,
-        pieces: summaryPieces,
-      },
-    };
+      pieces: summaryPieces,
+    });
   }
 
   if (!zip || weightLbs <= 0 || freightPieces.length === 0) {
+    if (customerArranged) {
+      return asCustomerArrangedSuggestion({
+        suggestedAmount: 0,
+        suggestedLabel: "Warp LTL TBD — add ZIP / package weights",
+        shippingQuoteId: null,
+        weightLbs,
+        pieces: summaryPieces,
+      });
+    }
     return {
       shippingAmount: 0,
       shippingMethod: "Freight TBD — add ZIP / package weights",
@@ -160,6 +228,15 @@ async function resolveFreightForDraft(input: {
     });
     const cheapest = [...(market.options || [])].sort((a, b) => a.price - b.price)[0];
     if (!cheapest) {
+      if (customerArranged) {
+        return asCustomerArrangedSuggestion({
+          suggestedAmount: 0,
+          suggestedLabel: "No LTL carriers returned from Warp",
+          shippingQuoteId: null,
+          weightLbs,
+          pieces: summaryPieces,
+        });
+      }
       return {
         shippingAmount: 0,
         shippingMethod: "No LTL carriers returned",
@@ -172,14 +249,28 @@ async function resolveFreightForDraft(input: {
         },
       };
     }
+
+    const warpLabel = `${cheapest.carrierName} · ${cheapest.serviceLevel}`;
+    if (customerArranged) {
+      return asCustomerArrangedSuggestion({
+        suggestedAmount: cheapest.price,
+        suggestedLabel: `${warpLabel} · $${cheapest.price.toFixed(2)}`,
+        shippingQuoteId: cheapest.quoteId,
+        weightLbs,
+        carrierName: cheapest.carrierName,
+        transitDays: cheapest.transitDays,
+        pieces: summaryPieces,
+      });
+    }
+
     return {
       shippingAmount: cheapest.price,
-      shippingMethod: `${cheapest.carrierName} · ${cheapest.serviceLevel}`,
+      shippingMethod: warpLabel,
       shippingQuoteId: cheapest.quoteId,
       weightLbs,
       freightSummary: {
         mode: "warp_ltl",
-        label: `${cheapest.carrierName} · ${cheapest.serviceLevel}`,
+        label: warpLabel,
         carrierName: cheapest.carrierName,
         transitDays: cheapest.transitDays,
         quoteId: cheapest.quoteId,
@@ -191,6 +282,15 @@ async function resolveFreightForDraft(input: {
       "[sales-quotes] warp freight failed",
       error instanceof Error ? error.message : error
     );
+    if (customerArranged) {
+      return asCustomerArrangedSuggestion({
+        suggestedAmount: 0,
+        suggestedLabel: "Warp freight quote unavailable",
+        shippingQuoteId: null,
+        weightLbs,
+        pieces: summaryPieces,
+      });
+    }
     return {
       shippingAmount: 0,
       shippingMethod: "Freight quote unavailable",
@@ -298,6 +398,7 @@ export async function previewSalesQuoteFreight(
       shippingState: input.shippingState,
       shippingAmountOverride: input.shippingAmountOverride,
       shippingMethodOverride: input.shippingMethodOverride,
+      freightArrangement: input.freightArrangement,
     });
     const totals = salesQuoteTotals({
       lines,
@@ -360,6 +461,7 @@ export async function createSalesQuote(
       shippingState: input.shippingState,
       shippingAmountOverride: input.shippingAmountOverride,
       shippingMethodOverride: input.shippingMethodOverride,
+      freightArrangement: input.freightArrangement,
     });
     const totals = salesQuoteTotals({
       lines,

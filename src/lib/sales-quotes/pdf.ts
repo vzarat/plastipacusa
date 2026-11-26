@@ -294,8 +294,12 @@ export async function buildSalesQuotePdfBuffer(input: {
     leftY -= 12;
   }
 
+  const customerArranged =
+    quote.freightSummary?.mode === "customer_arranged";
   const scopeLines = wrapText(
-    "Merchandise only — shipping and sales tax are calculated at checkout.",
+    customerArranged
+      ? "Merchandise pricing on this quote. Customer arranges freight — see Warp LTL suggestion below."
+      : "Merchandise only — shipping and sales tax are calculated at checkout.",
     font,
     8,
     colWidth
@@ -448,9 +452,52 @@ export async function buildSalesQuotePdfBuffer(input: {
   );
 
   y -= boxH + 16;
+
+  if (customerArranged) {
+    ensureSpace(78);
+    const suggested = Number(quote.freightSummary?.suggestedAmount || 0);
+    const suggestedLabel =
+      quote.freightSummary?.suggestedLabel ||
+      quote.freightSummary?.label ||
+      "Warp LTL market rate";
+    const suggestLines = wrapText(
+      suggested > 0
+        ? `Suggested LTL (Warp): ${money(suggested)} · ${suggestedLabel}. Freight is not arranged or billed by Plastipac USA — customer books the carrier. Rate is an estimate and may change.`
+        : `Customer arranges freight. ${suggestedLabel}. Plastipac USA does not book or bill this shipment.`,
+      font,
+      7.5,
+      CONTENT_WIDTH - 20
+    );
+    const suggestH = 22 + suggestLines.length * 10;
+    page.drawRectangle({
+      x: MARGIN,
+      y: y - suggestH,
+      width: CONTENT_WIDTH,
+      height: suggestH,
+      color: COLOR.noticeBg,
+      borderColor: COLOR.line,
+      borderWidth: 1,
+    });
+    drawText(
+      page,
+      "Customer-arranged freight (Warp suggestion)",
+      MARGIN + 10,
+      y - 12,
+      bold,
+      8,
+      COLOR.brand
+    );
+    suggestLines.forEach((line, i) => {
+      drawText(page, line, MARGIN + 10, y - 24 - i * 10, font, 7.5, COLOR.muted);
+    });
+    y -= suggestH + 12;
+  }
+
   ensureSpace(70);
   const noticeLines = wrapText(
-    "Product pricing only. Sales tax and shipping are calculated at checkout. Freight is quoted through multiple carriers on our site, so rates depend on destination and the service you select.",
+    customerArranged
+      ? "Product pricing only on this sheet. Sales tax is calculated at checkout when applicable. Freight above is a Warp market suggestion for customer-arranged shipping."
+      : "Product pricing only. Sales tax and shipping are calculated at checkout. Freight is quoted through multiple carriers on our site, so rates depend on destination and the service you select.",
     font,
     7.5,
     CONTENT_WIDTH - 20
@@ -465,7 +512,15 @@ export async function buildSalesQuotePdfBuffer(input: {
     borderColor: COLOR.line,
     borderWidth: 1,
   });
-  drawText(page, "Shipping & tax", MARGIN + 10, y - 12, bold, 8, COLOR.brand);
+  drawText(
+    page,
+    customerArranged ? "Shipping note" : "Shipping & tax",
+    MARGIN + 10,
+    y - 12,
+    bold,
+    8,
+    COLOR.brand
+  );
   noticeLines.forEach((line, i) => {
     drawText(page, line, MARGIN + 10, y - 24 - i * 10, font, 7.5, COLOR.muted);
   });

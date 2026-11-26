@@ -13,7 +13,12 @@ import {
   buildQuoteCatalogOptions,
   toSalesQuoteLineInput,
 } from "@/lib/sales-quotes/catalog-options";
-import type { SalesQuoteLineInput, SalesQuotePaymentTerms } from "@/lib/sales-quotes/types";
+import type {
+  SalesQuoteFreightArrangement,
+  SalesQuoteFreightSummary,
+  SalesQuoteLineInput,
+  SalesQuotePaymentTerms,
+} from "@/lib/sales-quotes/types";
 import { priceSalesQuoteLines, salesQuoteTotals } from "@/lib/sales-quotes/totals";
 
 function defaultValidUntil(): string {
@@ -91,6 +96,8 @@ export function AdminQuoteForm({
   const [notes, setNotes] = useState("");
   const [discountPercent, setDiscountPercent] = useState(0);
   const [shippingOverride, setShippingOverride] = useState<string>("");
+  const [freightArrangement, setFreightArrangement] =
+    useState<SalesQuoteFreightArrangement>("plastipac");
   const [taxExempt, setTaxExempt] = useState(false);
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [selectedProductId, setSelectedProductId] = useState(catalog[0]?.id || "");
@@ -102,6 +109,7 @@ export function AdminQuoteForm({
     shippingMethod: string;
     weightLbs: number;
     palletCount: number;
+    freightSummary?: SalesQuoteFreightSummary | null;
   } | null>(null);
 
   const clearFieldError = (key: FieldKey) => {
@@ -150,12 +158,20 @@ export function AdminQuoteForm({
     null;
 
   const liveLines = priceSalesQuoteLines(lines);
+  const billedFreight =
+    freightArrangement === "customer"
+      ? 0
+      : freightPreview?.shippingAmount ?? (Number(shippingOverride) || 0);
   const liveTotals = salesQuoteTotals({
     lines: liveLines,
     discountPercent,
-    shipping: freightPreview?.shippingAmount ?? (Number(shippingOverride) || 0),
+    shipping: billedFreight,
     taxExempt,
   });
+  const suggestedFreight =
+    freightPreview?.freightSummary?.mode === "customer_arranged"
+      ? Number(freightPreview.freightSummary.suggestedAmount || 0)
+      : null;
 
   const onSelectCustomer = (id: string) => {
     setCustomerUserId(id);
@@ -209,6 +225,7 @@ export function AdminQuoteForm({
         items: lines,
         discountPercent,
         shippingAmountOverride: shippingOverride === "" ? null : Number(shippingOverride),
+        freightArrangement,
         taxExempt,
       });
       if (!result.success || !result.totals) {
@@ -220,8 +237,13 @@ export function AdminQuoteForm({
         shippingMethod: result.shippingMethod || "Freight",
         weightLbs: result.weightLbs || 0,
         palletCount: result.palletCount || result.totals.palletCount,
+        freightSummary: result.freightSummary || null,
       });
-      toast.success("Freight preview updated.");
+      toast.success(
+        freightArrangement === "customer"
+          ? "Suggested Warp LTL updated (not billed by Plastipac)."
+          : "Freight preview updated."
+      );
     });
   };
 
@@ -252,6 +274,7 @@ export function AdminQuoteForm({
         shippingAmountOverride: shippingOverride === "" ? null : Number(shippingOverride),
         shippingMethodOverride:
           shippingOverride === "" ? null : "Manual freight override",
+        freightArrangement,
         taxExempt,
       });
       if (!result.success || !result.quote) {
@@ -615,7 +638,8 @@ export function AdminQuoteForm({
               Freight & totals
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Leave freight override blank to use Free Local (3+ pallets Houston/RGV) or Warp LTL.
+              Choose who books the truck. Customer-arranged still pulls a Warp LTL
+              suggestion on this same quote sheet (not billed by Plastipac).
             </p>
           </div>
           <button
@@ -629,9 +653,56 @@ export function AdminQuoteForm({
           </button>
         </div>
 
+        <fieldset className="space-y-2">
+          <legend className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            Freight arrangement
+          </legend>
+          <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-3 text-sm cursor-pointer">
+            <input
+              type="radio"
+              name="freightArrangement"
+              className="mt-1"
+              checked={freightArrangement === "plastipac"}
+              onChange={() => {
+                setFreightArrangement("plastipac");
+                setFreightPreview(null);
+              }}
+            />
+            <span>
+              <span className="font-bold text-slate-900">Plastipac arranges freight</span>
+              <span className="block text-xs text-slate-500 mt-0.5">
+                Free Local (when eligible) or Warp LTL included in quote / checkout path.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50/70 px-3 py-3 text-sm cursor-pointer">
+            <input
+              type="radio"
+              name="freightArrangement"
+              className="mt-1"
+              checked={freightArrangement === "customer"}
+              onChange={() => {
+                setFreightArrangement("customer");
+                setFreightPreview(null);
+              }}
+            />
+            <span>
+              <span className="font-bold text-slate-900">
+                Customer arranges freight (suggested Warp rate)
+              </span>
+              <span className="block text-xs text-slate-500 mt-0.5">
+                Freight is not billed by us. Same PDF shows a Warp LTL market suggestion
+                for the customer.
+              </span>
+            </span>
+          </label>
+        </fieldset>
+
         <label className="block text-sm max-w-xs">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            Freight override (USD)
+            {freightArrangement === "customer"
+              ? "Suggested freight override (USD)"
+              : "Freight override (USD)"}
           </span>
           <input
             type="number"
@@ -642,7 +713,7 @@ export function AdminQuoteForm({
               setShippingOverride(event.target.value);
               setFreightPreview(null);
             }}
-            placeholder="Auto"
+            placeholder={freightArrangement === "customer" ? "Warp auto" : "Auto"}
             className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
           />
         </label>
@@ -652,6 +723,20 @@ export function AdminQuoteForm({
             <p>
               <span className="font-semibold">Method:</span> {freightPreview.shippingMethod}
             </p>
+            {freightPreview.freightSummary?.mode === "customer_arranged" ? (
+              <p>
+                <span className="font-semibold">Suggested Warp LTL:</span>{" "}
+                {money(Number(freightPreview.freightSummary.suggestedAmount || 0))}
+                {freightPreview.freightSummary.suggestedLabel
+                  ? ` · ${freightPreview.freightSummary.suggestedLabel}`
+                  : ""}
+              </p>
+            ) : (
+              <p>
+                <span className="font-semibold">Freight on quote:</span>{" "}
+                {money(freightPreview.shippingAmount)}
+              </p>
+            )}
             <p>
               <span className="font-semibold">Pallets:</span>{" "}
               {freightPreview.palletCount.toFixed(2)} ·{" "}
@@ -664,11 +749,25 @@ export function AdminQuoteForm({
         <div className="ml-auto max-w-sm space-y-1 text-sm">
           <Row label="Subtotal" value={money(liveTotals.subtotal)} />
           <Row label="Discount" value={`-${money(liveTotals.discount)}`} />
-          <Row label="Freight" value={money(liveTotals.shipping)} />
+          <Row
+            label={
+              freightArrangement === "customer" ? "Freight (not by Plastipac)" : "Freight"
+            }
+            value={
+              freightArrangement === "customer"
+                ? suggestedFreight != null
+                  ? `Suggested ${money(suggestedFreight)}`
+                  : "Preview Warp"
+                : money(liveTotals.shipping)
+            }
+          />
           <Row label="Est. tax" value={money(liveTotals.tax)} />
           <Row label="Total" value={money(liveTotals.total)} strong />
           <p className="text-[11px] text-slate-500 pt-1">
             Est. pallets: {liveTotals.palletCount.toFixed(2)}
+            {freightArrangement === "customer"
+              ? " · Quote total is merchandise only"
+              : ""}
           </p>
         </div>
       </section>
