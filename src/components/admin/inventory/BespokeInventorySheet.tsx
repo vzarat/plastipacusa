@@ -8,21 +8,17 @@ import {
   ArrowUpFromLine,
   ClipboardList,
   Download,
-  FileSpreadsheet,
   Plus,
   Printer,
   Search,
-  Upload,
   X,
 } from "lucide-react";
 import {
   adjustBespokeInventoryMovement,
   deleteBespokeInventoryItem,
-  importBespokeInventoryFromRows,
   setBespokeItemObsolete,
   updateBespokeInventoryCount,
   upsertBespokeInventoryItem,
-  type BespokeImportBatch,
 } from "@/actions/bespoke-inventory";
 import {
   BESPOKE_CATEGORIES,
@@ -37,10 +33,6 @@ import {
   type BespokeInventoryItem,
   type BespokeUom,
 } from "@/lib/bespoke-inventory";
-import {
-  buildBespokeImportTemplateCsv,
-  parseBespokeInventoryWorkbook,
-} from "@/lib/bespoke-excel-import";
 import { useWarehouseLang } from "@/components/admin/inventory/WarehouseLangContext";
 
 type MoveMode = "in" | "out" | "count";
@@ -106,25 +98,26 @@ type ColKey =
 
 const DEFAULT_COL_WIDTHS: Record<ColKey, number> = {
   num: 40,
-  item: 200,
-  client: 120,
-  part: 100,
-  uom: 64,
-  perPallet: 88,
-  minInv: 72,
-  physical: 96,
-  pallets: 72,
-  move: 168,
+  item: 220,
+  client: 130,
+  part: 110,
+  uom: 70,
+  perPallet: 90,
+  minInv: 80,
+  physical: 100,
+  pallets: 80,
+  move: 176,
 };
+
+const ACTION_BTN =
+  "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-[11px] font-bold disabled:opacity-40";
 
 export function BespokeInventorySheet({
   items,
-  importBatches = [],
   canManageMaster,
   canDelete = false,
 }: {
   items: BespokeInventoryItem[];
-  importBatches?: BespokeImportBatch[];
   canManageMaster: boolean;
   canDelete?: boolean;
 }) {
@@ -135,17 +128,6 @@ export function BespokeInventorySheet({
   const [showObsolete, setShowObsolete] = useState(false);
   const [move, setMove] = useState<MoveState | null>(null);
   const [addOpen, setAddOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
-  const [importDate, setImportDate] = useState(todayLocal());
-  const [importFileName, setImportFileName] = useState("");
-  const [importPreviewCount, setImportPreviewCount] = useState(0);
-  const [importDetectedColumns, setImportDetectedColumns] = useState<string[]>(
-    []
-  );
-  const [importSheetName, setImportSheetName] = useState("");
-  const [pendingRows, setPendingRows] = useState<
-    ReturnType<typeof parseBespokeInventoryWorkbook>["rows"] | null
-  >(null);
   const [newItem, setNewItem] = useState<NewItemState>(EMPTY_NEW);
   const [showStats, setShowStats] = useState(false);
   const [editingQtyId, setEditingQtyId] = useState<string | null>(null);
@@ -287,86 +269,6 @@ export function BespokeInventorySheet({
     toast.success("CSV listo");
   }
 
-  function downloadTemplate() {
-    const csv = buildBespokeImportTemplateCsv();
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "plantilla-inventario-bespoke-usa.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  async function onPickImportFile(file: File | null) {
-    if (!file) return;
-    const lower = file.name.toLowerCase();
-    if (!/\.(xlsx|xls|csv|txt)$/.test(lower)) {
-      toast.error(t("Sube un Excel (.xlsx) o CSV", "Upload Excel (.xlsx) or CSV"));
-      return;
-    }
-    try {
-      const buffer = await file.arrayBuffer();
-      const parsed = parseBespokeInventoryWorkbook(buffer, file.name);
-      setImportDetectedColumns(parsed.detectedColumns || []);
-      setImportSheetName(parsed.sheetName || "");
-      if (parsed.errors.length && !parsed.rows.length) {
-        toast.error(parsed.errors[0]);
-        setPendingRows(null);
-        setImportPreviewCount(0);
-        setImportFileName("");
-        return;
-      }
-      if (parsed.errors.length) {
-        toast.message(parsed.errors[0]);
-      }
-      setPendingRows(parsed.rows);
-      setImportPreviewCount(parsed.rows.length);
-      setImportFileName(file.name);
-      const clientsFound = new Set(
-        parsed.rows.map((r) => r.clientName.trim()).filter(Boolean)
-      ).size;
-      toast.success(
-        t(
-          `${parsed.rows.length} renglones · ${clientsFound} clientes`,
-          `${parsed.rows.length} rows · ${clientsFound} clients`
-        )
-      );
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : t("No se pudo leer el archivo", "Could not read file");
-      toast.error(message);
-    }
-  }
-
-  function confirmImport() {
-    if (!pendingRows?.length) {
-      toast.error("Primero elige un archivo Excel/CSV");
-      return;
-    }
-    startTransition(async () => {
-      const res = await importBespokeInventoryFromRows({
-        rows: pendingRows,
-        countedDate: importDate || todayLocal(),
-        fileName: importFileName || "import.xlsx",
-      });
-      if (!res.ok) {
-        toast.error(res.error || "No se pudo importar");
-        return;
-      }
-      toast.success(
-        `Guardado por fecha ${importDate}: +${res.created || 0} nuevos, ${res.updated || 0} actualizados`
-      );
-      setImportOpen(false);
-      setPendingRows(null);
-      setImportPreviewCount(0);
-      setImportFileName("");
-      router.refresh();
-    });
-  }
-
   function submitMove() {
     if (!move) return;
     const qty = Number(move.quantity);
@@ -495,121 +397,73 @@ export function BespokeInventorySheet({
       : null;
 
   return (
-    <div className="space-y-5 print:space-y-3">
-      <div className="flex flex-col gap-3 border-b border-slate-300 pb-4 sm:flex-row sm:items-end sm:justify-between print:border-black">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
-            {t("Almacén USA", "USA Warehouse")}
-          </p>
-          <h2 className="mt-1 flex items-center gap-2 text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
-            <ClipboardList className="h-6 w-6 text-emerald-700 print:hidden" />
-            {t(
-              "LISTA DE ARTICULOS INVENTARIO BESPOKE",
-              "BESPOKE INVENTORY ITEM LIST"
-            )}
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            {t(
-              "El inventario se actualiza aquí: producto nuevo, entradas, salidas y conteos. El Excel solo sirve para una carga inicial.",
-              "Update inventory here: new items, receipts, shipments, and counts. Excel is only for an initial load."
-            )}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
-          {canManageMaster ? (
-            <button
-              type="button"
-              onClick={() => setAddOpen(true)}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-700"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              {t("Agregar artículo", "Add item")}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={exportCsv}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
-          >
-            <Download className="h-3.5 w-3.5" />
-            {t("Exportar CSV", "Export CSV")}
-          </button>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
-          >
-            <Printer className="h-3.5 w-3.5" />
-            {t("Imprimir", "Print")}
-          </button>
-          {canManageMaster ? (
-            <button
-              type="button"
-              onClick={() => setImportOpen(true)}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
-              title={t(
-                "Opcional: carga inicial o respaldo",
-                "Optional: initial load or backup"
+    <div className="space-y-4 print:space-y-3">
+      <div className="flex flex-col gap-3 border-b border-slate-300 pb-4 print:border-black">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+              {t("Almacén USA", "USA Warehouse")}
+            </p>
+            <h2 className="mt-1 flex items-center gap-2 text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
+              <ClipboardList className="h-6 w-6 shrink-0 text-emerald-700 print:hidden" />
+              <span>
+                {t(
+                  "LISTA DE ARTICULOS INVENTARIO BESPOKE",
+                  "BESPOKE INVENTORY ITEM LIST"
+                )}
+              </span>
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm text-slate-600">
+              {t(
+                "Actualiza el inventario aquí: Agregar artículo, Entrada, Salida o Conteo.",
+                "Update inventory here: Add item, In, Out, or Count."
               )}
+            </p>
+          </div>
+          <div className="print:hidden flex flex-wrap items-center gap-2 lg:justify-end">
+            {canManageMaster ? (
+              <button
+                type="button"
+                onClick={() => setAddOpen(true)}
+                className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 text-xs font-bold text-white hover:bg-emerald-700"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                {t("Agregar artículo", "Add item")}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={exportCsv}
+              className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
             >
-              <Upload className="h-3.5 w-3.5" />
-              {t("Carga Excel (opcional)", "Excel load (optional)")}
+              <Download className="h-3.5 w-3.5" />
+              {t("Exportar CSV", "Export CSV")}
             </button>
-          ) : null}
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              {t("Imprimir", "Print")}
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div className="print:hidden rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-3 sm:px-4">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-900">
-          {t("Flujo del almacén", "Warehouse flow")}
-        </p>
-        <ol className="mt-2 grid gap-2 text-xs text-emerald-950 sm:grid-cols-2 lg:grid-cols-4">
-          <li className="rounded-lg bg-white/80 px-3 py-2 border border-emerald-100">
-            <span className="font-black text-emerald-700">1.</span>{" "}
-            {t(
-              "Llega un producto nuevo → Agregar artículo (+ cant. si ya está en piso).",
-              "New product arrives → Add item (+ qty if already on floor)."
-            )}
-          </li>
-          <li className="rounded-lg bg-white/80 px-3 py-2 border border-emerald-100">
-            <span className="font-black text-emerald-700">2.</span>{" "}
-            {t(
-              "Entra más de lo mismo → Entrada en esa fila.",
-              "More of the same arrives → Receipt on that row."
-            )}
-          </li>
-          <li className="rounded-lg bg-white/80 px-3 py-2 border border-emerald-100">
-            <span className="font-black text-emerald-700">3.</span>{" "}
-            {t(
-              "Sale mercancía → Salida en esa fila.",
-              "Goods leave → Shipment on that row."
-            )}
-          </li>
-          <li className="rounded-lg bg-white/80 px-3 py-2 border border-emerald-100">
-            <span className="font-black text-emerald-700">4.</span>{" "}
-            {t(
-              "Conteo físico → Conteo o editar Cant. física.",
-              "Physical count → Count or edit Physical qty."
-            )}
-          </li>
-        </ol>
-      </div>
-
-      <div className="print:hidden flex flex-col gap-2 lg:flex-row lg:items-center">
-        <label className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t(
-              "Buscar artículo, cliente o parte…",
-              "Search item, client, or part #"
-            )}
-            className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-          />
-        </label>
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+        <div className="print:hidden flex flex-col gap-2 sm:flex-row sm:items-center">
+          <label className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t(
+                "Buscar artículo, cliente o parte…",
+                "Search item, client, or part #"
+              )}
+              className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            />
+          </label>
+          <label className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700">
             <input
               type="checkbox"
               checked={showObsolete}
@@ -620,7 +474,7 @@ export function BespokeInventorySheet({
           <button
             type="button"
             onClick={() => setShowStats((v) => !v)}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+            className="inline-flex h-10 shrink-0 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50"
           >
             {showStats
               ? t("Ocultar resumen", "Hide summary")
@@ -678,22 +532,10 @@ export function BespokeInventorySheet({
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-slate-300 bg-white shadow-sm print:rounded-none print:border-black print:shadow-none">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-300 bg-slate-50 px-3 py-2.5 print:bg-white">
-          <p className="text-sm font-bold text-slate-800">
-            {t("Lista de inventario", "Inventory list")}
-          </p>
-          <p className="hidden text-[11px] text-slate-500 sm:block print:hidden">
-            {t(
-              "Desplaza horizontal si hace falta · arrastra columnas o la barra inferior para ajustar vista",
-              "Scroll sideways if needed · drag columns or the bottom bar to resize view"
-            )}
-          </p>
-        </div>
-
+      <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm print:rounded-none print:border-black print:shadow-none">
         <div className="overflow-auto" style={{ height: tableHeight }}>
           <table
-            className="w-full min-w-[920px] border-collapse text-[12px]"
+            className="w-full min-w-[960px] border-collapse text-[12px]"
             style={{ tableLayout: "fixed" }}
           >
             <thead className="sticky top-0 z-10">
@@ -753,30 +595,20 @@ export function BespokeInventorySheet({
                     </p>
                     <p className="mx-auto mt-1 max-w-lg text-xs text-slate-600">
                       {t(
-                        "Empieza con Agregar artículo. El Excel es opcional solo para una carga inicial.",
-                        "Start with Add item. Excel is optional only for an initial load."
+                        "Usa Agregar artículo para cargar productos nuevos.",
+                        "Use Add item to load new products."
                       )}
                     </p>
                     <div className="mt-4 flex flex-wrap justify-center gap-2">
                       {canManageMaster ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => setAddOpen(true)}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                            {t("Agregar artículo", "Add item")}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setImportOpen(true)}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700"
-                          >
-                            <Upload className="h-3.5 w-3.5" />
-                            {t("Carga Excel (opcional)", "Excel load (optional)")}
-                          </button>
-                        </>
+                        <button
+                          type="button"
+                          onClick={() => setAddOpen(true)}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          {t("Agregar artículo", "Add item")}
+                        </button>
                       ) : null}
                     </div>
                   </td>
@@ -938,16 +770,21 @@ export function BespokeInventorySheet({
                             {pallets > 0 ? formatQty(pallets) : "—"}
                           </td>
                           <td
-                            className={`border border-slate-300 px-1 py-1 print:hidden ${cellBg}`}
+                            className={`border border-slate-300 px-1.5 py-1.5 print:hidden ${cellBg}`}
                             style={{ width: colWidths.move }}
                           >
-                            <div className="flex flex-nowrap items-center justify-center gap-0.5">
+                            <div
+                              className={`mx-auto flex items-center justify-center gap-1 ${
+                                canDelete ? "w-[168px]" : "w-[136px]"
+                              }`}
+                            >
                               <button
                                 type="button"
                                 disabled={pending || item.isObsolete}
                                 onClick={() => openMove(item, "in")}
-                                className="inline-flex items-center gap-0.5 rounded-md bg-sky-50 px-1.5 py-1 text-[10px] font-bold text-sky-800 hover:bg-sky-100 disabled:opacity-40"
+                                className={`${ACTION_BTN} border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100`}
                                 title={t("Entrada", "In")}
+                                aria-label={t("Entrada", "In")}
                               >
                                 <ArrowDownToLine className="h-3.5 w-3.5" />
                               </button>
@@ -955,8 +792,9 @@ export function BespokeInventorySheet({
                                 type="button"
                                 disabled={pending || item.isObsolete}
                                 onClick={() => openMove(item, "out")}
-                                className="inline-flex items-center gap-0.5 rounded-md bg-rose-50 px-1.5 py-1 text-[10px] font-bold text-rose-800 hover:bg-rose-100 disabled:opacity-40"
+                                className={`${ACTION_BTN} border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100`}
                                 title={t("Salida", "Out")}
+                                aria-label={t("Salida", "Out")}
                               >
                                 <ArrowUpFromLine className="h-3.5 w-3.5" />
                               </button>
@@ -964,8 +802,9 @@ export function BespokeInventorySheet({
                                 type="button"
                                 disabled={pending}
                                 onClick={() => openMove(item, "count")}
-                                className="inline-flex items-center gap-0.5 rounded-md bg-emerald-50 px-1.5 py-1 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100 disabled:opacity-40"
+                                className={`${ACTION_BTN} border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100`}
                                 title={t("Conteo", "Count")}
+                                aria-label={t("Conteo", "Count")}
                               >
                                 Σ
                               </button>
@@ -973,8 +812,13 @@ export function BespokeInventorySheet({
                                 type="button"
                                 disabled={pending}
                                 onClick={() => toggleObsolete(item)}
-                                className="rounded-md px-1.5 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                                className={`${ACTION_BTN} border-slate-200 bg-white text-slate-600 hover:bg-slate-100`}
                                 title={
+                                  item.isObsolete
+                                    ? t("Reactivar", "Restore")
+                                    : t("Obsoleto", "Obsolete")
+                                }
+                                aria-label={
                                   item.isObsolete
                                     ? t("Reactivar", "Restore")
                                     : t("Obsoleto", "Obsolete")
@@ -987,8 +831,9 @@ export function BespokeInventorySheet({
                                   type="button"
                                   disabled={pending}
                                   onClick={() => removeItem(item)}
-                                  className="rounded-md px-1.5 py-1 text-[10px] font-bold text-red-700 hover:bg-red-50 disabled:opacity-40"
+                                  className={`${ACTION_BTN} border-red-200 bg-red-50 text-red-700 hover:bg-red-100`}
                                   title={t("Borrar", "Delete")}
+                                  aria-label={t("Borrar", "Delete")}
                                 >
                                   ×
                                 </button>
@@ -1018,50 +863,6 @@ export function BespokeInventorySheet({
           <span className="h-1 w-10 rounded-full bg-slate-300" />
         </div>
       </div>
-
-      {importBatches.length > 0 ? (
-        <details className="print:hidden rounded-xl border border-slate-200 bg-slate-50">
-          <summary className="cursor-pointer list-none px-3 py-2.5 text-xs font-bold text-slate-600 flex items-center gap-2">
-            <FileSpreadsheet className="h-3.5 w-3.5 text-slate-500" />
-            {t(
-              `Historial de cargas Excel (${importBatches.length})`,
-              `Excel load history (${importBatches.length})`
-            )}
-          </summary>
-          <div className="overflow-x-auto border-t border-slate-200 bg-white">
-            <table className="min-w-full border-collapse text-xs">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="border border-slate-200 px-3 py-1.5 text-left font-bold">
-                    {t("Fecha", "Date")}
-                  </th>
-                  <th className="border border-slate-200 px-3 py-1.5 text-left font-bold">
-                    {t("Archivo", "File")}
-                  </th>
-                  <th className="border border-slate-200 px-3 py-1.5 text-right font-bold">
-                    {t("Filas", "Rows")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {importBatches.slice(0, 12).map((batch) => (
-                  <tr key={batch.id}>
-                    <td className="border border-slate-200 px-3 py-1.5 tabular-nums">
-                      {batch.countedDate}
-                    </td>
-                    <td className="border border-slate-200 px-3 py-1.5">
-                      {batch.fileName}
-                    </td>
-                    <td className="border border-slate-200 px-3 py-1.5 text-right tabular-nums">
-                      {batch.rowCount}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </details>
-      ) : null}
 
       {move ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center print:hidden">
@@ -1342,169 +1143,6 @@ export function BespokeInventorySheet({
         </div>
       ) : null}
 
-      {importOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center print:hidden">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-              <div>
-                <h4 className="font-bold text-slate-900">
-                  Carga Excel / CSV (opcional)
-                </h4>
-                <p className="text-xs text-slate-500">
-                  Solo para carga inicial o respaldo. El día a día se actualiza
-                  con Agregar / Entrada / Salida / Conteo.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setImportOpen(false)}
-                className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
-                aria-label="Cerrar"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="space-y-3 px-4 py-4">
-              <label className="block text-xs font-bold text-slate-600">
-                Fecha de este conteo
-                <input
-                  type="date"
-                  value={importDate}
-                  onChange={(e) => setImportDate(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                />
-              </label>
-              <label className="block text-xs font-bold text-slate-600">
-                Archivo (.xlsx, .xls o .csv)
-                <input
-                  type="file"
-                  accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
-                  onChange={(e) =>
-                    void onPickImportFile(e.target.files?.[0] || null)
-                  }
-                  className="mt-1 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-sky-50 file:px-3 file:py-2 file:text-xs file:font-bold file:text-sky-900"
-                />
-              </label>
-              {importFileName ? (
-                <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                  <p>
-                    <strong>{importFileName}</strong>
-                    {importSheetName ? ` · ${importSheetName}` : ""} ·{" "}
-                    {importPreviewCount}{" "}
-                    {t("renglones", "rows")}
-                  </p>
-                  {importDetectedColumns.length > 0 ? (
-                    <p className="text-[11px] leading-relaxed text-slate-600">
-                      {t("Columnas leídas", "Columns read")}:{" "}
-                      {importDetectedColumns.join(" · ")}
-                    </p>
-                  ) : null}
-                  {pendingRows && pendingRows.length > 0 ? (
-                    <div className="overflow-x-auto rounded border border-slate-200 bg-white">
-                      <table className="min-w-full text-[11px]">
-                        <thead className="bg-slate-100">
-                          <tr>
-                            <th className="px-2 py-1 text-left">
-                              {t("Artículo", "Item")}
-                            </th>
-                            <th className="px-2 py-1 text-left">
-                              {t("Cliente", "Client")}
-                            </th>
-                            <th className="px-2 py-1 text-left">
-                              {t("Parte", "Part")}
-                            </th>
-                            <th className="px-2 py-1 text-right">
-                              {t("Cant física", "Qty")}
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {pendingRows.slice(0, 6).map((row, idx) => (
-                            <tr
-                              key={`${row.itemName}-${idx}`}
-                              className="border-t border-slate-100"
-                            >
-                              <td className="px-2 py-1 font-semibold">
-                                {row.itemName}
-                              </td>
-                              <td
-                                className={`px-2 py-1 ${
-                                  row.clientName
-                                    ? "text-emerald-800 font-semibold"
-                                    : "text-rose-600"
-                                }`}
-                              >
-                                {row.clientName ||
-                                  t("(vacío)", "(empty)")}
-                              </td>
-                              <td className="px-2 py-1">
-                                {row.clientPartNumber || "—"}
-                              </td>
-                              <td className="px-2 py-1 text-right tabular-nums">
-                                {row.physicalQty}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : null}
-                </div>
-              ) : (
-                <p className="text-xs text-slate-500">
-                  {t(
-                    "Columnas esperadas en este orden: Artículo, Cliente, No. parte, Unidad, Cant x tarima, Inv mín, Cant física.",
-                    "Expected columns in this order: Item, Client, Part #, UOM, Qty per pallet, Min inv, Physical qty."
-                  )}
-                </p>
-              )}
-              <button
-                type="button"
-                onClick={downloadTemplate}
-                className="text-xs font-bold text-sky-700 hover:underline"
-              >
-                Descargar plantilla CSV
-              </button>
-              {importBatches.length > 0 ? (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                    {t("Historial de cargas", "Load history")}
-                  </p>
-                  <ul className="mt-1 max-h-28 space-y-1 overflow-y-auto text-xs text-slate-700">
-                    {importBatches.slice(0, 8).map((batch) => (
-                      <li key={batch.id} className="flex justify-between gap-2">
-                        <span className="truncate">
-                          {batch.countedDate} · {batch.fileName}
-                        </span>
-                        <span className="shrink-0 tabular-nums text-slate-500">
-                          {batch.rowCount}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </div>
-            <div className="flex justify-end gap-2 border-t border-slate-100 px-4 py-3">
-              <button
-                type="button"
-                onClick={() => setImportOpen(false)}
-                className="rounded-xl px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={pending || !pendingRows?.length}
-                onClick={confirmImport}
-                className="rounded-xl bg-sky-600 px-4 py-2 text-xs font-bold text-white hover:bg-sky-700 disabled:opacity-50"
-              >
-                {pending ? "Importando…" : "Guardar por fecha"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

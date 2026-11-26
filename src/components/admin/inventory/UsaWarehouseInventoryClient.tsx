@@ -24,7 +24,6 @@ import {
   WarehouseLangProvider,
   useWarehouseLang,
 } from "@/components/admin/inventory/WarehouseLangContext";
-import type { BespokeImportBatch } from "@/actions/bespoke-inventory";
 import type { BespokeInventoryItem } from "@/lib/bespoke-inventory";
 import {
   assignStretchSkuForReceive,
@@ -76,7 +75,6 @@ export function UsaWarehouseInventoryClient(
     dispatchQueue: WarehouseDispatchOrder[];
     stretchCatalog: StretchCatalogItem[];
     bespokeItems?: BespokeInventoryItem[];
-    importBatches?: BespokeImportBatch[];
     warehouseReady?: boolean;
   }
 ) {
@@ -93,7 +91,6 @@ function UsaWarehouseInventoryClientInner({
   dispatchQueue,
   stretchCatalog,
   bespokeItems = [],
-  importBatches = [],
   warehouseReady = true,
 }: {
   profile: UserProfile;
@@ -101,7 +98,6 @@ function UsaWarehouseInventoryClientInner({
   dispatchQueue: WarehouseDispatchOrder[];
   stretchCatalog: StretchCatalogItem[];
   bespokeItems?: BespokeInventoryItem[];
-  importBatches?: BespokeImportBatch[];
   warehouseReady?: boolean;
 }) {
   const { t } = useWarehouseLang();
@@ -427,7 +423,6 @@ function UsaWarehouseInventoryClientInner({
         {tab === "bespoke" ? (
           <BespokeInventorySheet
             items={bespokeItems}
-            importBatches={importBatches}
             canManageMaster
             canDelete={profile.role === "admin"}
           />
