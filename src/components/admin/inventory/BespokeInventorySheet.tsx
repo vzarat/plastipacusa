@@ -23,10 +23,12 @@ import {
 import {
   BESPOKE_CATEGORIES,
   BESPOKE_CATEGORY_LABELS,
-  BESPOKE_UOMS,
   buildBespokeInventoryCsv,
+  computeBespokeWarehouseStats,
+  defaultUomForCategory,
   derivePalletCount,
   isBelowMinInventory,
+  uomsForCategory,
   type BespokeCategory,
   type BespokeInventoryItem,
   type BespokeUom,
@@ -95,6 +97,8 @@ export function BespokeInventorySheet({
   const [move, setMove] = useState<MoveState | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [newItem, setNewItem] = useState<NewItemState>(EMPTY_NEW);
+
+  const stats = useMemo(() => computeBespokeWarehouseStats(items), [items]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -300,6 +304,153 @@ export function BespokeInventorySheet({
           ) : null}
         </div>
       </div>
+
+      {items.length > 0 ? (
+        <section className="print:hidden space-y-3">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            Stats del almacén USA · datos reales
+          </h3>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            {[
+              { label: "Artículos activos", value: formatQty(stats.activeSkus) },
+              { label: "Clientes", value: formatQty(stats.clients) },
+              {
+                label: "Cant. física total",
+                value: formatQty(stats.totalPhysicalQty),
+              },
+              {
+                label: "Tarimas estimadas",
+                value: formatQty(stats.totalPallets),
+              },
+              {
+                label: "Bajo mínimo",
+                value: formatQty(stats.lowStockSkus),
+                warn: stats.lowStockSkus > 0,
+              },
+              {
+                label: "Sin existencia",
+                value: formatQty(stats.zeroStockSkus),
+                warn: stats.zeroStockSkus > 0,
+              },
+            ].map((card) => (
+              <div
+                key={card.label}
+                className={`rounded-2xl border px-3 py-3 ${
+                  card.warn
+                    ? "border-amber-300 bg-amber-50"
+                    : "border-slate-200 bg-white"
+                }`}
+              >
+                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                  {card.label}
+                </p>
+                <p className="mt-1 text-xl font-black tabular-nums text-slate-900">
+                  {card.value}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+              <div className="border-b border-slate-100 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                Por sección
+              </div>
+              {stats.byCategory.length === 0 ? (
+                <p className="px-3 py-4 text-sm text-slate-500">Sin datos aún</p>
+              ) : (
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-[10px] uppercase text-slate-500">
+                      <th className="px-3 py-2 text-left font-bold">Sección</th>
+                      <th className="px-3 py-2 text-right font-bold">Arts</th>
+                      <th className="px-3 py-2 text-right font-bold">Cant física</th>
+                      <th className="px-3 py-2 text-right font-bold">Tarimas</th>
+                      <th className="px-3 py-2 text-right font-bold">Bajo mín</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.byCategory.map((row) => (
+                      <tr key={row.category} className="border-t border-slate-100">
+                        <td className="px-3 py-2 font-semibold text-slate-800">
+                          {row.label}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {formatQty(row.skus)}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums font-semibold">
+                          {formatQty(row.physicalQty)}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {formatQty(row.pallets)}
+                        </td>
+                        <td
+                          className={`px-3 py-2 text-right tabular-nums ${
+                            row.lowStock > 0 ? "font-bold text-amber-700" : ""
+                          }`}
+                        >
+                          {formatQty(row.lowStock)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+              <div className="border-b border-slate-100 px-3 py-2 flex items-center justify-between gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                  Por cliente
+                </span>
+                {stats.lastCountedDate ? (
+                  <span className="text-[10px] font-semibold text-slate-400">
+                    Último conteo: {stats.lastCountedDate}
+                  </span>
+                ) : null}
+              </div>
+              {stats.byClient.length === 0 ? (
+                <p className="px-3 py-4 text-sm text-slate-500">Sin datos aún</p>
+              ) : (
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-[10px] uppercase text-slate-500">
+                      <th className="px-3 py-2 text-left font-bold">Cliente</th>
+                      <th className="px-3 py-2 text-right font-bold">Arts</th>
+                      <th className="px-3 py-2 text-right font-bold">Cant física</th>
+                      <th className="px-3 py-2 text-right font-bold">Tarimas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.byClient.map((row) => (
+                      <tr key={row.clientName} className="border-t border-slate-100">
+                        <td className="px-3 py-2 font-semibold text-slate-800">
+                          {row.clientName}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {formatQty(row.skus)}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums font-semibold">
+                          {formatQty(row.physicalQty)}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {formatQty(row.pallets)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              {stats.obsoleteSkus > 0 ? (
+                <p className="border-t border-slate-100 px-3 py-2 text-xs text-slate-500">
+                  {formatQty(stats.obsoleteSkus)} artículo(s) OBSOLETO fuera de
+                  estos totales activos
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <div className="print:hidden flex flex-col gap-2 sm:flex-row sm:items-center">
         <label className="relative flex-1">
@@ -650,15 +801,13 @@ export function BespokeInventorySheet({
                   value={newItem.category}
                   onChange={(e) => {
                     const category = e.target.value as BespokeCategory;
+                    const allowed = uomsForCategory(category);
                     setNewItem({
                       ...newItem,
                       category,
-                      unitOfMeasure:
-                        category === "stretch_film"
-                          ? "RLL"
-                          : category === "other"
-                            ? "PAQ"
-                            : "PZA",
+                      unitOfMeasure: allowed.includes(newItem.unitOfMeasure)
+                        ? newItem.unitOfMeasure
+                        : defaultUomForCategory(category),
                     });
                   }}
                   className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
@@ -682,7 +831,7 @@ export function BespokeInventorySheet({
                   }
                   className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                 >
-                  {BESPOKE_UOMS.map((u) => (
+                  {uomsForCategory(newItem.category).map((u) => (
                     <option key={u} value={u}>
                       {u}
                     </option>

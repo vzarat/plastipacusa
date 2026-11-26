@@ -4,13 +4,12 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/actions/auth";
 import {
   BESPOKE_CATEGORIES,
-  BESPOKE_UOMS,
   BESPOKE_WAREHOUSE_CODE,
   derivePalletCount,
   mapBespokeInventoryItem,
+  normalizeUomForCategory,
   type BespokeCategory,
   type BespokeInventoryItem,
-  type BespokeUom,
 } from "@/lib/bespoke-inventory";
 import { createServiceRoleClient, isServiceRoleConfigured } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
@@ -43,13 +42,6 @@ function asCategory(value: unknown): BespokeCategory {
   return (BESPOKE_CATEGORIES as readonly string[]).includes(raw)
     ? (raw as BespokeCategory)
     : "other";
-}
-
-function asUom(value: unknown): BespokeUom {
-  const raw = String(value || "").toUpperCase();
-  return (BESPOKE_UOMS as readonly string[]).includes(raw)
-    ? (raw as BespokeUom)
-    : "PZA";
 }
 
 function todayIsoDate(): string {
@@ -107,13 +99,14 @@ export async function upsertBespokeInventoryItem(
     input.warehouseCode || BESPOKE_WAREHOUSE_CODE
   ).trim() || BESPOKE_WAREHOUSE_CODE;
 
+  const category = asCategory(input.category);
   const payload = {
     warehouse_code: warehouseCode,
     item_name: itemName,
-    category: asCategory(input.category),
+    category,
     client_name: String(input.clientName || "").trim(),
     client_part_number: String(input.clientPartNumber || "").trim(),
-    unit_of_measure: asUom(input.unitOfMeasure),
+    unit_of_measure: normalizeUomForCategory(category, input.unitOfMeasure),
     units_per_pallet_or_pack: num(input.unitsPerPalletOrPack),
     min_inventory: num(input.minInventory),
     is_obsolete: Boolean(input.isObsolete),
