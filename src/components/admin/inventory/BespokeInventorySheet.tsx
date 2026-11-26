@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -90,6 +90,31 @@ function formatQty(n: number): string {
     : n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
+type ColKey =
+  | "num"
+  | "item"
+  | "client"
+  | "part"
+  | "uom"
+  | "perPallet"
+  | "minInv"
+  | "physical"
+  | "pallets"
+  | "move";
+
+const DEFAULT_COL_WIDTHS: Record<ColKey, number> = {
+  num: 44,
+  item: 240,
+  client: 150,
+  part: 120,
+  uom: 72,
+  perPallet: 100,
+  minInv: 88,
+  physical: 110,
+  pallets: 88,
+  move: 140,
+};
+
 export function BespokeInventorySheet({
   items,
   importBatches = [],
@@ -112,6 +137,10 @@ export function BespokeInventorySheet({
   const [importDate, setImportDate] = useState(todayLocal());
   const [importFileName, setImportFileName] = useState("");
   const [importPreviewCount, setImportPreviewCount] = useState(0);
+  const [importDetectedColumns, setImportDetectedColumns] = useState<string[]>(
+    []
+  );
+  const [importSheetName, setImportSheetName] = useState("");
   const [pendingRows, setPendingRows] = useState<
     ReturnType<typeof parseBespokeInventoryWorkbook>["rows"] | null
   >(null);
@@ -119,6 +148,61 @@ export function BespokeInventorySheet({
   const [showStats, setShowStats] = useState(false);
   const [editingQtyId, setEditingQtyId] = useState<string | null>(null);
   const [editingQtyValue, setEditingQtyValue] = useState("");
+  const [colWidths, setColWidths] = useState(DEFAULT_COL_WIDTHS);
+  const [tableHeight, setTableHeight] = useState(520);
+  const resizeRef = useRef<{
+    key: ColKey;
+    startX: number;
+    startW: number;
+  } | null>(null);
+  const heightDragRef = useRef<{ startY: number; startH: number } | null>(
+    null
+  );
+
+  const onColResizeStart = useCallback(
+    (key: ColKey, clientX: number) => {
+      resizeRef.current = {
+        key,
+        startX: clientX,
+        startW: colWidths[key],
+      };
+      const onMove = (e: MouseEvent) => {
+        const drag = resizeRef.current;
+        if (!drag) return;
+        const next = Math.max(56, drag.startW + (e.clientX - drag.startX));
+        setColWidths((prev) => ({ ...prev, [drag.key]: next }));
+      };
+      const onUp = () => {
+        resizeRef.current = null;
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+      };
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+    },
+    [colWidths]
+  );
+
+  const onHeightResizeStart = useCallback(
+    (clientY: number) => {
+      heightDragRef.current = { startY: clientY, startH: tableHeight };
+      const onMove = (e: MouseEvent) => {
+        const drag = heightDragRef.current;
+        if (!drag) return;
+        setTableHeight(
+          Math.max(280, Math.min(900, drag.startH + (e.clientY - drag.startY)))
+        );
+      };
+      const onUp = () => {
+        heightDragRef.current = null;
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+      };
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+    },
+    [tableHeight]
+  );
 
   const stats = useMemo(() => computeBespokeWarehouseStats(items), [items]);
 
@@ -215,13 +299,15 @@ export function BespokeInventorySheet({
   async function onPickImportFile(file: File | null) {
     if (!file) return;
     const lower = file.name.toLowerCase();
-    if (!/\.(xlsx|xls|csv)$/.test(lower)) {
-      toast.error("Sube un Excel (.xlsx) o CSV");
+    if (!/\.(xlsx|xls|csv|txt)$/.test(lower)) {
+      toast.error(t("Sube un Excel (.xlsx) o CSV", "Upload Excel (.xlsx) or CSV"));
       return;
     }
     try {
       const buffer = await file.arrayBuffer();
       const parsed = parseBespokeInventoryWorkbook(buffer, file.name);
+      setImportDetectedColumns(parsed.detectedColumns || []);
+      setImportSheetName(parsed.sheetName || "");
       if (parsed.errors.length && !parsed.rows.length) {
         toast.error(parsed.errors[0]);
         setPendingRows(null);
@@ -235,11 +321,20 @@ export function BespokeInventorySheet({
       setPendingRows(parsed.rows);
       setImportPreviewCount(parsed.rows.length);
       setImportFileName(file.name);
+      const clientsFound = new Set(
+        parsed.rows.map((r) => r.clientName.trim()).filter(Boolean)
+      ).size;
       toast.success(
-        `${parsed.rows.length} renglón(es) listos · omitidos: ${parsed.skipped}`
+        t(
+          `${parsed.rows.length} renglones · ${clientsFound} clientes`,
+          `${parsed.rows.length} rows · ${clientsFound} clients`
+        )
       );
     } catch (err) {
-      const message = err instanceof Error ? err.message : "No se pudo leer el archivo";
+      const message =
+        err instanceof Error
+          ? err.message
+          : t("No se pudo leer el archivo", "Could not read file");
       toast.error(message);
     }
   }
@@ -388,15 +483,12 @@ export function BespokeInventorySheet({
           </h2>
           <p className="mt-1 text-sm text-slate-600">
             {t(
-              "Misma hoja del almacén: artículo, cliente, parte, unidad, cant. x tarima, inv. mín. y cant. física. Registra entradas, salidas o conteo.",
-              "Same warehouse sheet: item, client, part #, UOM, qty per pallet, min inv, and physical qty. Log receipts, shipments, or counts."
+              "Inventario Bespoke: artículo, cliente, parte, unidad, cant. x tarima, inv. mín. y cant. física. Registra entradas, salidas o conteo.",
+              "Bespoke inventory: item, client, part #, UOM, qty per pallet, min inv, and physical qty. Log receipts, shipments, or counts."
             )}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 print:hidden">
-          <span className="inline-flex min-h-10 items-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600">
-            {t("Fecha", "Date")}: {todayLocal()}
-          </span>
           <button
             type="button"
             onClick={exportCsv}
@@ -443,8 +535,8 @@ export function BespokeInventorySheet({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t(
-              "Buscar en la hoja… artículo, cliente o parte",
-              "Search sheet… item, client, or part #"
+              "Buscar artículo, cliente o parte…",
+              "Search item, client, or part #"
             )}
             className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
           />
@@ -559,125 +651,117 @@ export function BespokeInventorySheet({
         </details>
       ) : null}
 
-      {/* Excel-like sheet */}
-      <div className="overflow-hidden border border-slate-400 bg-white shadow-sm print:border-black print:shadow-none">
-        <div className="flex items-center justify-between gap-2 border-b border-slate-400 bg-[#217346] px-3 py-2 text-white print:bg-white print:text-black">
-          <div className="flex items-center gap-2 text-sm font-bold">
-            <FileSpreadsheet className="h-4 w-4 print:hidden" />
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm print:rounded-none print:border-black print:shadow-none">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2.5 print:bg-white">
+          <p className="text-sm font-bold text-slate-800">
+            {t("Lista de inventario", "Inventory list")}
+          </p>
+          <p className="hidden text-[11px] text-slate-500 sm:block print:hidden">
             {t(
-              "Hoja de inventario · estilo Excel",
-              "Inventory sheet · Excel style"
-            )}
-          </div>
-          <p className="hidden text-[11px] text-emerald-50 sm:block print:hidden">
-            {t(
-              "Doble clic en Cant física para editar · Enter guarda",
-              "Double-click Physical qty to edit · Enter saves"
+              "Arrastra el borde de las columnas o la barra inferior para ajustar el tamaño de vista",
+              "Drag column edges or the bottom bar to resize the view"
             )}
           </p>
         </div>
 
-        <div className="overflow-auto max-h-[70vh]">
-          <table className="min-w-[980px] w-full border-collapse text-[12px]">
+        <div className="overflow-auto" style={{ height: tableHeight }}>
+          <table
+            className="w-full border-collapse text-[12px]"
+            style={{
+              tableLayout: "fixed",
+              width: Object.values(colWidths).reduce((a, b) => a + b, 0),
+            }}
+          >
             <thead className="sticky top-0 z-10">
-              <tr className="bg-[#e2efda] text-[10px] font-bold uppercase tracking-wide text-slate-800">
-                <th className="sticky left-0 z-20 w-10 border border-slate-400 bg-[#c6e0b4] px-1 py-2 text-center">
-                  #
-                </th>
-                <th className="min-w-[220px] border border-slate-400 px-2 py-2 text-left">
-                  {t("Artículo", "Item")}
-                </th>
-                <th className="min-w-[140px] border border-slate-400 px-2 py-2 text-left">
-                  {t("Cliente", "Client")}
-                </th>
-                <th className="min-w-[110px] border border-slate-400 px-2 py-2 text-left">
-                  {t("No. parte cliente", "Client part #")}
-                </th>
-                <th className="w-16 border border-slate-400 px-2 py-2 text-center">
-                  {t("U. medida", "UOM")}
-                </th>
-                <th className="w-24 border border-slate-400 px-2 py-2 text-right">
-                  {t("Cant x tarima", "Qty / pallet")}
-                </th>
-                <th className="w-20 border border-slate-400 px-2 py-2 text-right">
-                  {t("Inv mín", "Min inv")}
-                </th>
-                <th className="w-28 border border-slate-400 bg-[#fff2cc] px-2 py-2 text-right">
-                  {t("Cant física", "Physical qty")}
-                </th>
-                <th className="w-20 border border-slate-400 px-2 py-2 text-right">
-                  {t("Tarimas", "Pallets")}
-                </th>
-                <th className="w-[132px] border border-slate-400 px-2 py-2 text-center print:hidden">
-                  {t("Movimiento", "Move")}
-                </th>
+              <tr className="bg-slate-100 text-[10px] font-bold uppercase tracking-wide text-slate-700">
+                {(
+                  [
+                    ["num", "#", "center"],
+                    ["item", t("Artículo", "Item"), "left"],
+                    ["client", t("Cliente", "Client"), "left"],
+                    ["part", t("No. parte cliente", "Client part #"), "left"],
+                    ["uom", t("U. medida", "UOM"), "center"],
+                    ["perPallet", t("Cant x tarima", "Qty / pallet"), "right"],
+                    ["minInv", t("Inv mín", "Min inv"), "right"],
+                    ["physical", t("Cant física", "Physical qty"), "right"],
+                    ["pallets", t("Tarimas", "Pallets"), "right"],
+                    ["move", t("Movimiento", "Move"), "center"],
+                  ] as const
+                ).map(([key, label, align]) => (
+                  <th
+                    key={key}
+                    className={`relative border-b border-slate-200 px-2 py-2.5 font-bold ${
+                      align === "center"
+                        ? "text-center"
+                        : align === "right"
+                          ? "text-right"
+                          : "text-left"
+                    } ${key === "move" ? "print:hidden" : ""}`}
+                    style={{ width: colWidths[key] }}
+                  >
+                    {label}
+                    <span
+                      role="separator"
+                      aria-orientation="vertical"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        onColResizeStart(key, e.clientX);
+                      }}
+                      className="absolute right-0 top-0 z-10 h-full w-1.5 cursor-col-resize touch-none bg-transparent hover:bg-emerald-400/50 print:hidden"
+                      title={t("Ajustar ancho", "Resize width")}
+                    />
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {items.length === 0 ? (
-                <>
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <tr key={`empty-${i}`} className="h-9">
-                      <td className="border border-slate-300 bg-[#f3f3f3] text-center text-slate-400">
-                        {i + 1}
-                      </td>
-                      {Array.from({ length: 9 }).map((__, j) => (
-                        <td
-                          key={`e-${i}-${j}`}
-                          className={`border border-slate-300 ${
-                            j === 6 ? "bg-[#fffef5]" : "bg-white"
-                          }`}
-                        />
-                      ))}
-                    </tr>
-                  ))}
-                  <tr>
-                    <td
-                      colSpan={10}
-                      className="border border-slate-300 bg-slate-50 px-4 py-6 text-center"
-                    >
-                      <p className="text-sm font-bold text-slate-800">
-                        {t(
-                          "Hoja lista (vacía) — cárgala como Excel",
-                          "Blank sheet ready — load it like Excel"
-                        )}
-                      </p>
-                      <p className="mx-auto mt-1 max-w-lg text-xs text-slate-600">
-                        {t(
-                          "Sube tu archivo Excel/CSV de la lista Bespoke o agrega renglones. La cant. física se edita directo en la celda amarilla.",
-                          "Upload your Bespoke Excel/CSV or add rows. Edit physical qty right in the yellow cell."
-                        )}
-                      </p>
-                      <div className="mt-4 flex flex-wrap justify-center gap-2">
-                        {canManageMaster ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => setImportOpen(true)}
-                              className="inline-flex items-center gap-1.5 rounded-lg bg-[#217346] px-3 py-2 text-xs font-bold text-white"
-                            >
-                              <Upload className="h-3.5 w-3.5" />
-                              {t("Subir Excel", "Upload Excel")}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setAddOpen(true)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700"
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                              {t("Agregar renglón", "Add row")}
-                            </button>
-                          </>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                </>
+                <tr>
+                  <td
+                    colSpan={10}
+                    className="border-b border-slate-100 px-4 py-10 text-center"
+                  >
+                    <p className="text-sm font-bold text-slate-800">
+                      {t(
+                        "Aún no hay artículos en inventario",
+                        "No inventory items yet"
+                      )}
+                    </p>
+                    <p className="mx-auto mt-1 max-w-lg text-xs text-slate-600">
+                      {t(
+                        "Sube un archivo Excel/CSV o agrega artículos manualmente.",
+                        "Upload an Excel/CSV file or add items manually."
+                      )}
+                    </p>
+                    <div className="mt-4 flex flex-wrap justify-center gap-2">
+                      {canManageMaster ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setImportOpen(true)}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"
+                          >
+                            <Upload className="h-3.5 w-3.5" />
+                            {t("Subir Excel", "Upload Excel")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAddOpen(true)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            {t("Agregar artículo", "Add item")}
+                          </button>
+                        </>
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
               ) : grouped.length === 0 ? (
                 <tr>
                   <td
                     colSpan={10}
-                    className="border border-slate-300 px-4 py-8 text-center text-sm text-slate-600"
+                    className="px-4 py-8 text-center text-sm text-slate-600"
                   >
                     {t(
                       "Ningún renglón con ese filtro.",
@@ -690,10 +774,13 @@ export function BespokeInventorySheet({
                   let rowNum = 0;
                   return grouped.flatMap((group) => {
                     const sectionRow = (
-                      <tr key={`sec-${group.category}`} className="break-inside-avoid">
+                      <tr
+                        key={`sec-${group.category}`}
+                        className="break-inside-avoid"
+                      >
                         <td
                           colSpan={10}
-                          className="border border-slate-400 bg-[#d9e2f3] px-2 py-1.5 text-[11px] font-black uppercase tracking-wide text-slate-800"
+                          className="border-y border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-slate-700"
                         >
                           {group.label}
                         </td>
@@ -714,18 +801,24 @@ export function BespokeInventorySheet({
                         <tr
                           key={item.id}
                           className={[
-                            "h-9",
-                            item.isObsolete ? "bg-slate-100 text-slate-400" : "",
-                            low && !item.isObsolete ? "bg-amber-50" : "",
+                            "border-b border-slate-100",
+                            item.isObsolete ? "bg-slate-50 text-slate-400" : "",
+                            low && !item.isObsolete ? "bg-amber-50/70" : "",
                           ]
                             .filter(Boolean)
                             .join(" ")}
                         >
-                          <td className="sticky left-0 border border-slate-300 bg-[#f3f3f3] text-center tabular-nums text-slate-500">
+                          <td
+                            className="px-2 py-2 text-center tabular-nums text-slate-400"
+                            style={{ width: colWidths.num }}
+                          >
                             {rowNum}
                           </td>
-                          <td className="border border-slate-300 px-2 font-semibold text-slate-900">
-                            {item.itemName}
+                          <td
+                            className="px-2 py-2 font-semibold text-slate-900"
+                            style={{ width: colWidths.item }}
+                          >
+                            <span className="line-clamp-2">{item.itemName}</span>
                             {item.isObsolete ? (
                               <span className="ml-1 text-[9px] font-bold uppercase text-slate-500">
                                 OBSOLETO
@@ -737,29 +830,47 @@ export function BespokeInventorySheet({
                               </span>
                             ) : null}
                           </td>
-                          <td className="border border-slate-300 px-2 text-slate-800">
-                            {item.clientName || ""}
-                          </td>
-                          <td className="border border-slate-300 px-2 font-mono text-[11px]">
-                            {item.isObsolete
-                              ? "OBSOLETO"
-                              : item.clientPartNumber || ""}
-                          </td>
-                          <td className="border border-slate-300 px-2 text-center font-mono text-[11px] font-bold">
-                            {item.unitOfMeasure}
-                          </td>
-                          <td className="border border-slate-300 px-2 text-right tabular-nums">
-                            {item.unitsPerPalletOrPack > 0
-                              ? formatQty(item.unitsPerPalletOrPack)
-                              : ""}
-                          </td>
-                          <td className="border border-slate-300 px-2 text-right tabular-nums">
-                            {item.minInventory > 0
-                              ? formatQty(item.minInventory)
-                              : ""}
+                          <td
+                            className="px-2 py-2 text-slate-800"
+                            style={{ width: colWidths.client }}
+                          >
+                            <span className="line-clamp-2">
+                              {item.clientName || "—"}
+                            </span>
                           </td>
                           <td
-                            className="border border-slate-300 bg-[#fff2cc] px-1 text-right"
+                            className="px-2 py-2 font-mono text-[11px]"
+                            style={{ width: colWidths.part }}
+                          >
+                            {item.isObsolete
+                              ? "OBSOLETO"
+                              : item.clientPartNumber || "—"}
+                          </td>
+                          <td
+                            className="px-2 py-2 text-center font-mono text-[11px] font-bold"
+                            style={{ width: colWidths.uom }}
+                          >
+                            {item.unitOfMeasure}
+                          </td>
+                          <td
+                            className="px-2 py-2 text-right tabular-nums"
+                            style={{ width: colWidths.perPallet }}
+                          >
+                            {item.unitsPerPalletOrPack > 0
+                              ? formatQty(item.unitsPerPalletOrPack)
+                              : "—"}
+                          </td>
+                          <td
+                            className="px-2 py-2 text-right tabular-nums"
+                            style={{ width: colWidths.minInv }}
+                          >
+                            {item.minInventory > 0
+                              ? formatQty(item.minInventory)
+                              : "—"}
+                          </td>
+                          <td
+                            className="px-1 py-1.5 text-right"
+                            style={{ width: colWidths.physical }}
                             onDoubleClick={() => {
                               if (!item.isObsolete) startEditQty(item);
                             }}
@@ -783,14 +894,14 @@ export function BespokeInventorySheet({
                                     setEditingQtyId(null);
                                   }
                                 }}
-                                className="w-full bg-white px-1 py-0.5 text-right text-sm font-black outline-none ring-2 ring-emerald-500"
+                                className="w-full rounded-md border border-emerald-400 bg-white px-1.5 py-1 text-right text-sm font-bold outline-none ring-2 ring-emerald-500/30"
                               />
                             ) : (
                               <button
                                 type="button"
                                 disabled={pending || item.isObsolete}
                                 onClick={() => startEditQty(item)}
-                                className="w-full px-1 py-0.5 text-right font-black tabular-nums text-slate-900 hover:bg-amber-100 disabled:opacity-50"
+                                className="w-full rounded-md px-1.5 py-1 text-right font-bold tabular-nums text-slate-900 hover:bg-emerald-50 disabled:opacity-50"
                                 title={t(
                                   "Clic para editar cant. física",
                                   "Click to edit physical qty"
@@ -800,16 +911,22 @@ export function BespokeInventorySheet({
                               </button>
                             )}
                           </td>
-                          <td className="border border-slate-300 px-2 text-right tabular-nums text-slate-700">
-                            {pallets > 0 ? formatQty(pallets) : ""}
+                          <td
+                            className="px-2 py-2 text-right tabular-nums text-slate-700"
+                            style={{ width: colWidths.pallets }}
+                          >
+                            {pallets > 0 ? formatQty(pallets) : "—"}
                           </td>
-                          <td className="border border-slate-300 px-1 print:hidden">
+                          <td
+                            className="px-1 py-1 print:hidden"
+                            style={{ width: colWidths.move }}
+                          >
                             <div className="flex items-center justify-center gap-0.5">
                               <button
                                 type="button"
                                 disabled={pending || item.isObsolete}
                                 onClick={() => openMove(item, "in")}
-                                className="rounded px-1.5 py-1 text-[10px] font-bold text-sky-800 hover:bg-sky-100 disabled:opacity-40"
+                                className="rounded-md px-1.5 py-1 text-[10px] font-bold text-sky-800 hover:bg-sky-100 disabled:opacity-40"
                                 title={t("Entrada", "In")}
                               >
                                 <ArrowDownToLine className="h-3.5 w-3.5" />
@@ -818,7 +935,7 @@ export function BespokeInventorySheet({
                                 type="button"
                                 disabled={pending || item.isObsolete}
                                 onClick={() => openMove(item, "out")}
-                                className="rounded px-1.5 py-1 text-[10px] font-bold text-rose-800 hover:bg-rose-100 disabled:opacity-40"
+                                className="rounded-md px-1.5 py-1 text-[10px] font-bold text-rose-800 hover:bg-rose-100 disabled:opacity-40"
                                 title={t("Salida", "Out")}
                               >
                                 <ArrowUpFromLine className="h-3.5 w-3.5" />
@@ -827,7 +944,7 @@ export function BespokeInventorySheet({
                                 type="button"
                                 disabled={pending}
                                 onClick={() => openMove(item, "count")}
-                                className="rounded px-1.5 py-1 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100 disabled:opacity-40"
+                                className="rounded-md px-1.5 py-1 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100 disabled:opacity-40"
                                 title={t("Conteo", "Count")}
                               >
                                 Σ
@@ -836,7 +953,7 @@ export function BespokeInventorySheet({
                                 type="button"
                                 disabled={pending}
                                 onClick={() => toggleObsolete(item)}
-                                className="rounded px-1.5 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                                className="rounded-md px-1.5 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-40"
                                 title={
                                   item.isObsolete
                                     ? t("Reactivar", "Restore")
@@ -850,7 +967,7 @@ export function BespokeInventorySheet({
                                   type="button"
                                   disabled={pending}
                                   onClick={() => removeItem(item)}
-                                  className="rounded px-1.5 py-1 text-[10px] font-bold text-red-700 hover:bg-red-50 disabled:opacity-40"
+                                  className="rounded-md px-1.5 py-1 text-[10px] font-bold text-red-700 hover:bg-red-50 disabled:opacity-40"
                                   title={t("Borrar", "Delete")}
                                 >
                                   ×
@@ -868,11 +985,17 @@ export function BespokeInventorySheet({
             </tbody>
           </table>
         </div>
-        <div className="border-t border-slate-400 bg-[#f3f3f3] px-3 py-1.5 text-[10px] text-slate-600 print:hidden">
-          {t(
-            "Celda amarilla = Cant física (editable). Verde = encabezados. Azul = sección.",
-            "Yellow cell = Physical qty (editable). Green = headers. Blue = section."
-          )}
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            onHeightResizeStart(e.clientY);
+          }}
+          className="flex h-3 cursor-row-resize items-center justify-center border-t border-slate-200 bg-slate-50 print:hidden"
+          title={t("Arrastra para ajustar alto", "Drag to resize height")}
+        >
+          <span className="h-1 w-10 rounded-full bg-slate-300" />
         </div>
       </div>
 
@@ -1139,7 +1262,7 @@ export function BespokeInventorySheet({
                   Subir Excel / CSV de inventario
                 </h4>
                 <p className="text-xs text-slate-500">
-                  Se guarda como conteo por fecha. Actualiza la hoja y deja
+                  Se guarda como conteo por fecha y actualiza el inventario con
                   historial organizado.
                 </p>
               </div>
@@ -1174,31 +1297,75 @@ export function BespokeInventorySheet({
                 />
               </label>
               {importFileName ? (
-                <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 space-y-1">
+                <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
                   <p>
-                    <strong>{importFileName}</strong> · {importPreviewCount}{" "}
-                    {t("artículo(s) detectados", "item(s) detected")}
+                    <strong>{importFileName}</strong>
+                    {importSheetName ? ` · ${importSheetName}` : ""} ·{" "}
+                    {importPreviewCount}{" "}
+                    {t("renglones", "rows")}
                   </p>
-                  {pendingRows && pendingRows.length > 0 ? (
-                    <p>
-                      {t("Clientes en archivo", "Clients in file")}:{" "}
-                      <strong>
-                        {Array.from(
-                          new Set(
-                            pendingRows
-                              .map((r) => r.clientName.trim())
-                              .filter(Boolean)
-                          )
-                        ).slice(0, 8).join(", ") || t("(ninguno)", "(none)")}
-                      </strong>
+                  {importDetectedColumns.length > 0 ? (
+                    <p className="text-[11px] leading-relaxed text-slate-600">
+                      {t("Columnas leídas", "Columns read")}:{" "}
+                      {importDetectedColumns.join(" · ")}
                     </p>
+                  ) : null}
+                  {pendingRows && pendingRows.length > 0 ? (
+                    <div className="overflow-x-auto rounded border border-slate-200 bg-white">
+                      <table className="min-w-full text-[11px]">
+                        <thead className="bg-slate-100">
+                          <tr>
+                            <th className="px-2 py-1 text-left">
+                              {t("Artículo", "Item")}
+                            </th>
+                            <th className="px-2 py-1 text-left">
+                              {t("Cliente", "Client")}
+                            </th>
+                            <th className="px-2 py-1 text-left">
+                              {t("Parte", "Part")}
+                            </th>
+                            <th className="px-2 py-1 text-right">
+                              {t("Cant física", "Qty")}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pendingRows.slice(0, 6).map((row, idx) => (
+                            <tr
+                              key={`${row.itemName}-${idx}`}
+                              className="border-t border-slate-100"
+                            >
+                              <td className="px-2 py-1 font-semibold">
+                                {row.itemName}
+                              </td>
+                              <td
+                                className={`px-2 py-1 ${
+                                  row.clientName
+                                    ? "text-emerald-800 font-semibold"
+                                    : "text-rose-600"
+                                }`}
+                              >
+                                {row.clientName ||
+                                  t("(vacío)", "(empty)")}
+                              </td>
+                              <td className="px-2 py-1">
+                                {row.clientPartNumber || "—"}
+                              </td>
+                              <td className="px-2 py-1 text-right tabular-nums">
+                                {row.physicalQty}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   ) : null}
                 </div>
               ) : (
                 <p className="text-xs text-slate-500">
                   {t(
-                    "Columnas esperadas: Artículo, Cliente, No. parte, Unidad, Cant x tarima, Inv mín, Cant física (como la hoja del almacén).",
-                    "Expected columns: Item, Client, Part #, UOM, Qty per pallet, Min inv, Physical qty (same as warehouse sheet)."
+                    "Columnas esperadas en este orden: Artículo, Cliente, No. parte, Unidad, Cant x tarima, Inv mín, Cant física.",
+                    "Expected columns in this order: Item, Client, Part #, UOM, Qty per pallet, Min inv, Physical qty."
                   )}
                 </p>
               )}

@@ -523,16 +523,43 @@ export async function importBespokeInventoryFromRows(
   }
 
   const byKey = new Map<string, Record<string, unknown>>();
+  const byItemPart = new Map<string, Record<string, unknown>>();
   for (const row of existingRows || []) {
     const mapped = mapBespokeInventoryItem(row as Record<string, unknown>);
-    byKey.set(
-      matchKeyForImportRow({
-        itemName: mapped.itemName,
-        clientName: mapped.clientName,
-        clientPartNumber: mapped.clientPartNumber,
-      }),
-      row as Record<string, unknown>
-    );
+    const fullKey = matchKeyForImportRow({
+      itemName: mapped.itemName,
+      clientName: mapped.clientName,
+      clientPartNumber: mapped.clientPartNumber,
+    });
+    byKey.set(fullKey, row as Record<string, unknown>);
+    const itemPartKey = [
+      mapped.itemName.trim().toUpperCase(),
+      mapped.clientPartNumber.trim().toUpperCase(),
+    ].join("||");
+    // Prefer keeping a row that already has a client name when colliding.
+    const prev = byItemPart.get(itemPartKey);
+    if (!prev || !String(prev.client_name || "").trim()) {
+      byItemPart.set(itemPartKey, row as Record<string, unknown>);
+    }
+  }
+
+  function findExistingRow(row: BespokeImportRow): Record<string, unknown> | undefined {
+    const fullKey = matchKeyForImportRow(row);
+    const direct = byKey.get(fullKey);
+    if (direct) return direct;
+    const itemPartKey = [
+      String(row.itemName || "").trim().toUpperCase(),
+      String(row.clientPartNumber || "").trim().toUpperCase(),
+    ].join("||");
+    const byPart = byItemPart.get(itemPartKey);
+    if (byPart) return byPart;
+    // Last resort: same article name with empty client in DB.
+    const emptyClientKey = matchKeyForImportRow({
+      itemName: row.itemName,
+      clientName: "",
+      clientPartNumber: row.clientPartNumber,
+    });
+    return byKey.get(emptyClientKey);
   }
 
   const { data: batch, error: batchError } = await client
@@ -570,7 +597,7 @@ export async function importBespokeInventoryFromRows(
 
     const category = asCategory(row.category);
     const key = matchKeyForImportRow(row);
-    const existing = byKey.get(key);
+    const existing = findExistingRow(row);
     const physicalQty = num(row.physicalQty);
     const unitsPerPalletOrPack = num(row.unitsPerPalletOrPack);
     const palletCount =

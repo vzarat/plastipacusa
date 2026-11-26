@@ -25,6 +25,9 @@ export type BespokeParseResult = {
   rows: BespokeImportRow[];
   skipped: number;
   errors: string[];
+  /** Human-readable column mapping for debugging in the UI. */
+  detectedColumns: string[];
+  sheetName: string;
 };
 
 const SECTION_HEADERS: Record<string, BespokeCategory> = {
@@ -50,19 +53,28 @@ type ColMap = {
   notes: number;
 };
 
+function emptyResult(
+  partial: Partial<BespokeParseResult> & { errors: string[] }
+): BespokeParseResult {
+  return {
+    rows: [],
+    skipped: 0,
+    detectedColumns: [],
+    sheetName: "",
+    ...partial,
+  };
+}
+
 function normHeader(value: unknown): string {
-  return String(value || "")
+  return String(value ?? "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\u00a0/g, " ")
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, " ")
     .trim();
 }
 
-/**
- * Prefer exact header match, then shortest includes-match.
- * Optional exclude avoids "CLIENTE" matching "NO PARTE CLIENTE".
- */
 function pickCol(
   headers: string[],
   aliases: string[],
@@ -81,10 +93,16 @@ function pickCol(
   for (const alias of aliases) {
     for (let i = 0; i < headers.length; i += 1) {
       const h = headers[i];
-      if (!h || !usable(h) || !h.includes(alias)) continue;
-      if (h.length < bestLen) {
+      if (!h || !usable(h)) continue;
+      // Prefer whole-token match over loose includes when possible.
+      const tokens = h.split(" ").filter(Boolean);
+      const tokenHit = tokens.includes(alias);
+      const includesHit = h.includes(alias);
+      if (!tokenHit && !includesHit) continue;
+      const score = tokenHit ? h.length : h.length + 100;
+      if (score < bestLen) {
         best = i;
-        bestLen = h.length;
+        bestLen = score;
       }
     }
   }
@@ -93,16 +111,15 @@ function pickCol(
 
 function resolveColumns(headers: string[]): ColMap {
   return {
-    articulo: pickCol(headers, ["ARTICULO", "ITEM", "PRODUCTO"]),
-    // Never confuse with "NO PARTE CLIENTE"
-    cliente: pickCol(
-      headers,
-      ["CLIENTE", "CUSTOMER", "CLIENT", "COMPANY"],
-      { exclude: ["PARTE", "PART", "NO "] }
-    ),
+    articulo: pickCol(headers, ["ARTICULO", "ARTICLE", "ITEM", "PRODUCTO"]),
+    // Exact/token "CLIENTE" only — never "NO PARTE CLIENTE"
+    cliente: pickCol(headers, ["CLIENTE", "CUSTOMER", "CLIENT"], {
+      exclude: ["PARTE", "PART"],
+    }),
     parte: pickCol(headers, [
       "NO PARTE CLIENTE",
       "NUMERO PARTE CLIENTE",
+      "N PARTE CLIENTE",
       "NO DE PARTE",
       "PARTE CLIENTE",
       "NO PARTE",
@@ -118,33 +135,85 @@ function resolveColumns(headers: string[]): ColMap {
     perPack: pickCol(headers, [
       "CANT X TARIMA PAQ",
       "CANT X TARIMA",
+      "CANTIDAD X TARIMA",
       "CANT POR TARIMA",
       "TARIMA PAQ",
       "X TARIMA",
     ]),
-    min: pickCol(headers, ["INV MIN", "INVENTARIO MIN", "MIN"]),
+    min: pickCol(headers, ["INV MIN", "INVENTARIO MINIMO", "INVENTARIO MIN"]),
     qty: pickCol(headers, [
       "CANT FISICA",
       "CANTIDAD FISICA",
+      "CANT FISICO",
       "FISICA",
-      "QTY",
     ]),
-    pallets: pickCol(headers, ["TARIMAS", "PALLETS", "PALLET"]),
+    pallets: pickCol(headers, ["TARIMAS", "PALLETS", "PALLET", "PALET"]),
     category: pickCol(headers, ["SECCION", "CATEGORIA", "CATEGORY"]),
     notes: pickCol(headers, ["NOTAS", "NOTES", "OBSERVACIONES"]),
   };
 }
 
+/**
+ * Paper sheet column order relative to ARTICULO:
+ * Articulo | Cliente | No. parte | UOM | Cant x tarima | Inv min | Cant fisica
+ */
+function applyPaperLayoutFallback(cols: ColMap): ColMap {
+  if (cols.articulo < 0) return cols;
+  const a = cols.articulo;
+  // Cliente must never point at the Artículo column (old absolute fallback bug).
+  const cliente =
+    cols.cliente >= 0 && cols.cliente !== a ? cols.cliente : a + 1;
+  const parte =
+    cols.parte >= 0 && cols.parte !== a && cols.parte !== cliente
+      ? cols.parte
+      : a + 2;
+  const uom =
+    cols.uom >= 0 && cols.uom !== a ? cols.uom : a + 3;
+  const perPack =
+    cols.perPack >= 0 && cols.perPack !== a ? cols.perPack : a + 4;
+  const min = cols.min >= 0 && cols.min !== a ? cols.min : a + 5;
+  const qty = cols.qty >= 0 && cols.qty !== a ? cols.qty : a + 6;
+  return {
+    articulo: a,
+    cliente,
+    parte,
+    uom,
+    perPack,
+    min,
+    qty,
+    pallets: cols.pallets,
+    category: cols.category,
+    notes: cols.notes,
+  };
+}
+
+function describeColumns(cols: ColMap, headers: string[]): string[] {
+  const label = (idx: number, name: string) => {
+    if (idx < 0) return `${name}: (no detectada)`;
+    const h = headers[idx] || `col ${idx + 1}`;
+    return `${name}: col ${idx + 1} “${h}”`;
+  };
+  return [
+    label(cols.articulo, "Artículo"),
+    label(cols.cliente, "Cliente"),
+    label(cols.parte, "No. parte"),
+    label(cols.uom, "Unidad"),
+    label(cols.perPack, "Cant x tarima"),
+    label(cols.min, "Inv mín"),
+    label(cols.qty, "Cant física"),
+  ];
+}
+
 function cellStr(row: unknown[], idx: number): string {
-  if (idx < 0 || idx >= row.length) return "";
+  if (idx < 0) return "";
   const v = row[idx];
-  if (v == null) return "";
-  return String(v).trim();
+  if (v == null || v === "") return "";
+  return String(v).replace(/\u00a0/g, " ").trim();
 }
 
 function cellNum(row: unknown[], idx: number): number {
-  const raw = cellStr(row, idx).replace(/,/g, "");
-  if (!raw) return 0;
+  const raw = cellStr(row, idx).replace(/,/g, "").replace(/\s/g, "");
+  if (!raw || raw === "—" || raw === "-" || raw === "Ø" || raw === "ø") return 0;
   const n = Number(raw);
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
@@ -174,38 +243,76 @@ function isObsoletePart(part: string, itemName: string): boolean {
 
 function looksLikeHeaderRow(row: unknown[]): boolean {
   const headers = row.map(normHeader);
-  return headers.some((h) => h === "ARTICULO" || h.includes("ARTICULO"));
+  return headers.some((h) => h === "ARTICULO" || h.startsWith("ARTICULO"));
 }
 
-/**
- * Parse .xlsx / .xls / .csv ArrayBuffer into bespoke inventory rows.
- * Accepts Spanish headers from LISTA DE ARTICULOS INVENTARIO BESPOKE.
- */
-export function parseBespokeInventoryWorkbook(
-  data: ArrayBuffer,
-  fileName = ""
-): BespokeParseResult {
-  const workbook = XLSX.read(data, { type: "array", raw: false });
-  const sheetName = workbook.SheetNames[0];
-  if (!sheetName) {
-    return { rows: [], skipped: 0, errors: ["El archivo no tiene hojas."] };
-  }
-
-  const sheet = workbook.Sheets[sheetName];
-  const matrix = XLSX.utils.sheet_to_json<(string | number | null)[]>(sheet, {
+function matrixFromCsv(buffer: ArrayBuffer): unknown[][] {
+  const text = new TextDecoder("utf-8").decode(buffer);
+  const firstLine = text.split(/\r?\n/).find((l) => l.trim()) || "";
+  const semi = (firstLine.match(/;/g) || []).length;
+  const comma = (firstLine.match(/,/g) || []).length;
+  const FS = semi > comma ? ";" : ",";
+  const workbook = XLSX.read(text, { type: "string", FS, raw: false });
+  const name = workbook.SheetNames[0];
+  if (!name) return [];
+  return XLSX.utils.sheet_to_json(workbook.Sheets[name], {
     header: 1,
     defval: "",
     blankrows: false,
     raw: false,
   }) as unknown[][];
+}
 
-  if (!matrix.length) {
-    return { rows: [], skipped: 0, errors: ["Hoja vacía."] };
+function pickBestSheet(workbook: XLSX.WorkBook): {
+  name: string;
+  matrix: unknown[][];
+} {
+  let bestName = workbook.SheetNames[0] || "";
+  let bestMatrix: unknown[][] = [];
+  let bestScore = -1;
+
+  for (const name of workbook.SheetNames) {
+    const sheet = workbook.Sheets[name];
+    const matrix = XLSX.utils.sheet_to_json(sheet, {
+      header: 1,
+      defval: "",
+      blankrows: false,
+      raw: false,
+    }) as unknown[][];
+    let score = 0;
+    for (const row of matrix.slice(0, 50)) {
+      const headers = (row || []).map(normHeader);
+      if (headers.some((h) => h.includes("ARTICULO"))) score += 10;
+      if (headers.some((h) => h === "CLIENTE")) score += 8;
+      if (headers.some((h) => h.includes("FISICA"))) score += 5;
+      if (headers.some((h) => h.includes("TARIMA"))) score += 3;
+    }
+    // Prefer sheets with more non-empty data rows.
+    score += Math.min(matrix.length, 80);
+    if (score > bestScore) {
+      bestScore = score;
+      bestName = name;
+      bestMatrix = matrix;
+    }
   }
 
-  // Find first header row (contains ARTICULO).
+  return { name: bestName, matrix: bestMatrix };
+}
+
+function parseMatrix(
+  matrix: unknown[][],
+  sheetName: string,
+  fileName: string
+): BespokeParseResult {
+  if (!matrix.length) {
+    return emptyResult({
+      errors: ["Hoja vacía."],
+      sheetName,
+    });
+  }
+
   let headerIdx = -1;
-  for (let i = 0; i < Math.min(matrix.length, 40); i += 1) {
+  for (let i = 0; i < Math.min(matrix.length, 60); i += 1) {
     if (looksLikeHeaderRow(matrix[i] || [])) {
       headerIdx = i;
       break;
@@ -213,54 +320,40 @@ export function parseBespokeInventoryWorkbook(
   }
 
   if (headerIdx < 0) {
-    return {
-      rows: [],
-      skipped: 0,
+    return emptyResult({
+      sheetName,
       errors: [
-        "No encontré la fila de encabezados (Artículo / Cliente / Cant física). Usa la plantilla o el formato de la hoja del almacén.",
+        "No encontré encabezados (Artículo / Cliente / Cant física). Usa la plantilla o exporta la hoja con esos nombres de columna.",
       ],
-    };
+    });
   }
 
-  let cols = resolveColumns((matrix[headerIdx] || []).map(normHeader));
+  let headerCells = (matrix[headerIdx] || []).map(normHeader);
+  let cols = applyPaperLayoutFallback(resolveColumns(headerCells));
+
   if (cols.articulo < 0) {
-    return {
-      rows: [],
-      skipped: 0,
+    return emptyResult({
+      sheetName,
       errors: ["Falta la columna Artículo."],
-    };
-  }
-
-  // Fallback positional map if Cliente header was missed but sheet matches paper layout:
-  // 0 Articulo | 1 Cliente | 2 No. parte | 3 UOM | 4 Cant x tarima | 5 Inv min | 6 Cant fisica
-  if (cols.cliente < 0) {
-    cols = {
-      ...cols,
-      cliente: 1,
-      parte: cols.parte < 0 ? 2 : cols.parte,
-      uom: cols.uom < 0 ? 3 : cols.uom,
-      perPack: cols.perPack < 0 ? 4 : cols.perPack,
-      min: cols.min < 0 ? 5 : cols.min,
-      qty: cols.qty < 0 ? 6 : cols.qty,
-    };
+      detectedColumns: describeColumns(cols, headerCells),
+    });
   }
 
   const rows: BespokeImportRow[] = [];
   const errors: string[] = [];
   let skipped = 0;
   let currentCategory: BespokeCategory = "stretch_film";
-  let missingClientSamples = 0;
+  let withClient = 0;
 
   for (let r = headerIdx + 1; r < matrix.length; r += 1) {
-    const row = (matrix[r] || []) as unknown[];
+    const row = [...((matrix[r] || []) as unknown[])];
+    // Ensure row is long enough for relative columns.
+    while (row.length <= cols.articulo + 6) row.push("");
 
-    // Re-bind columns when the sheet repeats headers (FOAM / ESQUINEROS blocks).
     if (looksLikeHeaderRow(row)) {
-      const next = resolveColumns(row.map(normHeader));
-      if (next.articulo >= 0) {
-        cols = next;
-        if (cols.cliente < 0) cols = { ...cols, cliente: 1 };
-      }
+      headerCells = row.map(normHeader);
+      const next = applyPaperLayoutFallback(resolveColumns(headerCells));
+      if (next.articulo >= 0) cols = next;
       skipped += 1;
       continue;
     }
@@ -289,7 +382,7 @@ export function parseBespokeInventoryWorkbook(
 
     const clientName = cellStr(row, cols.cliente);
     const clientPartNumber = cellStr(row, cols.parte);
-    if (!clientName) missingClientSamples += 1;
+    if (clientName) withClient += 1;
 
     const isObsolete = isObsoletePart(clientPartNumber, itemName);
     const unitRaw = cellStr(row, cols.uom);
@@ -322,17 +415,25 @@ export function parseBespokeInventoryWorkbook(
     });
   }
 
+  const detectedColumns = describeColumns(cols, headerCells);
+
   if (!rows.length) {
     errors.push(
-      `No se extrajeron artículos de ${fileName || "el archivo"}. Revisa columnas y filas.`
+      `No se extrajeron artículos de ${fileName || "el archivo"} (hoja “${sheetName}”).`
     );
-  } else if (missingClientSamples === rows.length) {
+  } else if (withClient === 0) {
     errors.push(
-      "Se leyeron artículos pero ningún Cliente. Revisa que la columna se llame CLIENTE (no 'No. parte cliente')."
+      `Se leyeron ${rows.length} artículos pero 0 clientes. Columnas detectadas: ${detectedColumns.join(" · ")}`
     );
   }
 
-  return { rows, skipped, errors };
+  return {
+    rows,
+    skipped,
+    errors,
+    detectedColumns,
+    sheetName,
+  };
 }
 
 function inferCategoryLabel(raw: string): BespokeCategory | null {
@@ -345,6 +446,44 @@ function inferCategoryLabel(raw: string): BespokeCategory | null {
     }
   }
   return null;
+}
+
+/**
+ * Parse .xlsx / .xls / .csv into bespoke inventory rows.
+ * Uses paper-sheet column order as fallback so Cliente/Cant física still load
+ * even when headers are odd or split across rows.
+ */
+export function parseBespokeInventoryWorkbook(
+  data: ArrayBuffer,
+  fileName = ""
+): BespokeParseResult {
+  const lower = fileName.toLowerCase();
+
+  try {
+    if (lower.endsWith(".csv") || lower.endsWith(".txt")) {
+      const matrix = matrixFromCsv(data);
+      return parseMatrix(matrix, "CSV", fileName);
+    }
+
+    const workbook = XLSX.read(data, {
+      type: "array",
+      raw: false,
+      cellText: true,
+      cellDates: false,
+    });
+
+    if (!workbook.SheetNames.length) {
+      return emptyResult({ errors: ["El archivo no tiene hojas."] });
+    }
+
+    const { name, matrix } = pickBestSheet(workbook);
+    return parseMatrix(matrix, name, fileName);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return emptyResult({
+      errors: [`No se pudo leer el archivo: ${message}`],
+    });
+  }
 }
 
 /** Downloadable CSV template matching the warehouse sheet. */
