@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getCurrentUser } from "@/actions/auth";
+import { listBespokeInventoryItems } from "@/actions/bespoke-inventory";
 import {
   getWarehouseByCode,
   listStretchReceiveCatalog,
@@ -11,7 +12,8 @@ import { UsaWarehouseInventoryClient } from "@/components/admin/inventory/UsaWar
 
 export const metadata: Metadata = {
   title: "USA Warehouse Inventory | Plastipac USA",
-  description: "US warehouse supervisor floor inventory and dispatch.",
+  description:
+    "US warehouse bespoke inventory sheet, stretch pallets, and dispatch.",
 };
 
 export default async function UsaWarehouseInventoryPage() {
@@ -25,10 +27,11 @@ export default async function UsaWarehouseInventoryPage() {
 
   // Catalog first so inventory seeding can attach USA rows for every stretch SKU.
   const stretchCatalog = await listStretchReceiveCatalog();
-  const [warehouse, inventory, dispatchQueue] = await Promise.all([
+  const [warehouse, inventory, dispatchQueue, bespokeItems] = await Promise.all([
     getWarehouseByCode("usa"),
     listWarehouseInventory("usa"),
     listUsaDispatchQueue(),
+    listBespokeInventoryItems("USA"),
   ]);
 
   return (
@@ -37,6 +40,7 @@ export default async function UsaWarehouseInventoryPage() {
       inventory={inventory}
       dispatchQueue={dispatchQueue}
       stretchCatalog={stretchCatalog}
+      bespokeItems={bespokeItems}
       warehouseReady={Boolean(warehouse)}
     />
   );

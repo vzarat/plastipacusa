@@ -10,16 +10,18 @@ import { useAdminNav } from "@/components/admin/AdminNavContext";
 export function AdminInventoryShell({
   profile,
   children,
+  badgeLabel = "USA · Stretch pallets",
 }: {
   profile: UserProfile;
   children: React.ReactNode;
+  badgeLabel?: string;
 }) {
   const isSupervisor = profile.role === "warehouse_supervisor";
   const { setMobileSidebarOpen } = useAdminNav();
 
   return (
     <div className="flex flex-col flex-1 min-w-0">
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-3 print:hidden">
         <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
@@ -32,7 +34,7 @@ export function AdminInventoryShell({
           <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-emerald-900 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200/80">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
             <Warehouse className="w-3.5 h-3.5 text-emerald-600" />
-            USA · Stretch pallets
+            {badgeLabel}
           </div>
         </div>
         {!isSupervisor ? (

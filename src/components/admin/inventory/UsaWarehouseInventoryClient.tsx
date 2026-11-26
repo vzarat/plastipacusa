@@ -19,6 +19,8 @@ import {
 } from "@/actions/warehouse-inventory";
 import type { UserProfile } from "@/actions/auth";
 import { AdminInventoryShell } from "@/components/admin/inventory/AdminInventoryShell";
+import { BespokeInventorySheet } from "@/components/admin/inventory/BespokeInventorySheet";
+import type { BespokeInventoryItem } from "@/lib/bespoke-inventory";
 import {
   assignStretchSkuForReceive,
   formatStretchSpec,
@@ -67,16 +69,19 @@ export function UsaWarehouseInventoryClient({
   inventory,
   dispatchQueue,
   stretchCatalog,
+  bespokeItems = [],
   warehouseReady = true,
 }: {
   profile: UserProfile;
   inventory: WarehouseInventoryRow[];
   dispatchQueue: WarehouseDispatchOrder[];
   stretchCatalog: StretchCatalogItem[];
+  bespokeItems?: BespokeInventoryItem[];
   warehouseReady?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [tab, setTab] = useState<"stretch" | "bespoke">("bespoke");
   const [query, setQuery] = useState("");
   const [bulkOpen, setBulkOpen] = useState(true);
   const [bulkNotes, setBulkNotes] = useState("");
@@ -359,8 +364,46 @@ export function UsaWarehouseInventoryClient({
   }
 
   return (
-    <AdminInventoryShell profile={profile}>
+    <AdminInventoryShell
+      profile={profile}
+      badgeLabel={tab === "bespoke" ? "USA · Bespoke sheet" : "USA · Stretch pallets"}
+    >
       <div className="space-y-6 pb-16">
+        <div className="print:hidden flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-1.5 w-fit">
+          <button
+            type="button"
+            onClick={() => setTab("bespoke")}
+            className={`rounded-xl px-4 py-2 text-xs font-bold transition ${
+              tab === "bespoke"
+                ? "bg-emerald-600 text-white"
+                : "text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            Bespoke sheet
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("stretch")}
+            className={`rounded-xl px-4 py-2 text-xs font-bold transition ${
+              tab === "stretch"
+                ? "bg-emerald-600 text-white"
+                : "text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            Stretch pallets
+          </button>
+        </div>
+
+        {tab === "bespoke" ? (
+          <BespokeInventorySheet
+            items={bespokeItems}
+            canManageMaster
+            canDelete={profile.role === "admin"}
+          />
+        ) : null}
+
+        {tab === "stretch" ? (
+        <>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="flex items-center gap-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
@@ -810,6 +853,8 @@ export function UsaWarehouseInventoryClient({
             </div>
           ) : null}
         </div>
+        </>
+        ) : null}
       </div>
     </AdminInventoryShell>
   );
