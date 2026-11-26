@@ -243,7 +243,7 @@ export function AdminSidebar({
             }`}>
               <ShieldCheck className={`w-4 h-4 flex-shrink-0 ${warehouseOnly ? "text-emerald-600" : "text-blue-600"}`} />
               <span className="truncate">
-                {warehouseOnly ? "USA Warehouse" : "Admin Portal"}
+                {warehouseOnly ? "Almacén USA" : "Admin Portal"}
               </span>
             </div>
           ) : (
@@ -340,7 +340,7 @@ export function AdminSidebar({
                     : "border-emerald-600 bg-emerald-50/70 font-bold text-emerald-950 shadow-xs"
                   : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-medium"
               }`}
-              aria-label="USA Warehouse"
+              aria-label="Almacén USA"
             >
               <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
                 <Warehouse
@@ -350,11 +350,11 @@ export function AdminSidebar({
                       : "text-slate-400 group-hover:text-slate-700"
                   }`}
                 />
-                {!isCollapsed && <span>USA Warehouse</span>}
+                {!isCollapsed && <span>Almacén USA</span>}
               </div>
               {isCollapsed && (
                 <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap hidden md:flex items-center gap-2">
-                  USA Warehouse
+                  Almacén USA
                 </div>
               )}
             </Link>

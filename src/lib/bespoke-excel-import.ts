@@ -37,6 +37,19 @@ const SECTION_HEADERS: Record<string, BespokeCategory> = {
   OTHER: "other",
 };
 
+type ColMap = {
+  articulo: number;
+  cliente: number;
+  parte: number;
+  uom: number;
+  perPack: number;
+  min: number;
+  qty: number;
+  pallets: number;
+  category: number;
+  notes: number;
+};
+
 function normHeader(value: unknown): string {
   return String(value || "")
     .normalize("NFD")
@@ -46,15 +59,80 @@ function normHeader(value: unknown): string {
     .trim();
 }
 
+/**
+ * Prefer exact header match, then shortest includes-match.
+ * Optional exclude avoids "CLIENTE" matching "NO PARTE CLIENTE".
+ */
 function pickCol(
   headers: string[],
-  aliases: string[]
+  aliases: string[],
+  opts?: { exclude?: string[] }
 ): number {
+  const exclude = opts?.exclude || [];
+  const usable = (h: string) => !exclude.some((ex) => h.includes(ex));
+
   for (const alias of aliases) {
-    const idx = headers.findIndex((h) => h === alias || h.includes(alias));
-    if (idx >= 0) return idx;
+    const exact = headers.findIndex((h) => h === alias && usable(h));
+    if (exact >= 0) return exact;
   }
-  return -1;
+
+  let best = -1;
+  let bestLen = Number.POSITIVE_INFINITY;
+  for (const alias of aliases) {
+    for (let i = 0; i < headers.length; i += 1) {
+      const h = headers[i];
+      if (!h || !usable(h) || !h.includes(alias)) continue;
+      if (h.length < bestLen) {
+        best = i;
+        bestLen = h.length;
+      }
+    }
+  }
+  return best;
+}
+
+function resolveColumns(headers: string[]): ColMap {
+  return {
+    articulo: pickCol(headers, ["ARTICULO", "ITEM", "PRODUCTO"]),
+    // Never confuse with "NO PARTE CLIENTE"
+    cliente: pickCol(
+      headers,
+      ["CLIENTE", "CUSTOMER", "CLIENT", "COMPANY"],
+      { exclude: ["PARTE", "PART", "NO "] }
+    ),
+    parte: pickCol(headers, [
+      "NO PARTE CLIENTE",
+      "NUMERO PARTE CLIENTE",
+      "NO DE PARTE",
+      "PARTE CLIENTE",
+      "NO PARTE",
+      "PART NUMBER",
+      "PARTE",
+    ]),
+    uom: pickCol(headers, [
+      "UNIDAD DE MEDIDA",
+      "UNIDAD MEDIDA",
+      "UNIDAD",
+      "UOM",
+    ]),
+    perPack: pickCol(headers, [
+      "CANT X TARIMA PAQ",
+      "CANT X TARIMA",
+      "CANT POR TARIMA",
+      "TARIMA PAQ",
+      "X TARIMA",
+    ]),
+    min: pickCol(headers, ["INV MIN", "INVENTARIO MIN", "MIN"]),
+    qty: pickCol(headers, [
+      "CANT FISICA",
+      "CANTIDAD FISICA",
+      "FISICA",
+      "QTY",
+    ]),
+    pallets: pickCol(headers, ["TARIMAS", "PALLETS", "PALLET"]),
+    category: pickCol(headers, ["SECCION", "CATEGORIA", "CATEGORY"]),
+    notes: pickCol(headers, ["NOTAS", "NOTES", "OBSERVACIONES"]),
+  };
 }
 
 function cellStr(row: unknown[], idx: number): string {
@@ -94,6 +172,11 @@ function isObsoletePart(part: string, itemName: string): boolean {
   return blob.includes("OBSOLETO");
 }
 
+function looksLikeHeaderRow(row: unknown[]): boolean {
+  const headers = row.map(normHeader);
+  return headers.some((h) => h === "ARTICULO" || h.includes("ARTICULO"));
+}
+
 /**
  * Parse .xlsx / .xls / .csv ArrayBuffer into bespoke inventory rows.
  * Accepts Spanish headers from LISTA DE ARTICULOS INVENTARIO BESPOKE.
@@ -113,17 +196,17 @@ export function parseBespokeInventoryWorkbook(
     header: 1,
     defval: "",
     blankrows: false,
+    raw: false,
   }) as unknown[][];
 
   if (!matrix.length) {
     return { rows: [], skipped: 0, errors: ["Hoja vacía."] };
   }
 
-  // Find header row (contains ARTICULO).
+  // Find first header row (contains ARTICULO).
   let headerIdx = -1;
-  for (let i = 0; i < Math.min(matrix.length, 30); i += 1) {
-    const headers = (matrix[i] || []).map(normHeader);
-    if (headers.some((h) => h.includes("ARTICULO"))) {
+  for (let i = 0; i < Math.min(matrix.length, 40); i += 1) {
+    if (looksLikeHeaderRow(matrix[i] || [])) {
       headerIdx = i;
       break;
     }
@@ -139,41 +222,8 @@ export function parseBespokeInventoryWorkbook(
     };
   }
 
-  const headers = (matrix[headerIdx] || []).map(normHeader);
-  const colArticulo = pickCol(headers, ["ARTICULO"]);
-  const colCliente = pickCol(headers, ["CLIENTE"]);
-  const colParte = pickCol(headers, [
-    "NO PARTE CLIENTE",
-    "NO DE PARTE",
-    "PARTE CLIENTE",
-    "NO PARTE",
-    "PARTE",
-  ]);
-  const colUom = pickCol(headers, [
-    "UNIDAD DE MEDIDA",
-    "UNIDAD MEDIDA",
-    "UNIDAD",
-    "UOM",
-  ]);
-  const colPerPack = pickCol(headers, [
-    "CANT X TARIMA PAQ",
-    "CANT X TARIMA",
-    "CANT POR TARIMA",
-    "TARIMA PAQ",
-    "X TARIMA",
-  ]);
-  const colMin = pickCol(headers, ["INV MIN", "INVENTARIO MIN", "MIN"]);
-  const colQty = pickCol(headers, [
-    "CANT FISICA",
-    "CANTIDAD FISICA",
-    "FISICA",
-    "QTY",
-  ]);
-  const colPallets = pickCol(headers, ["TARIMAS", "PALLETS", "PALLET"]);
-  const colCategory = pickCol(headers, ["SECCION", "CATEGORIA", "CATEGORY"]);
-  const colNotes = pickCol(headers, ["NOTAS", "NOTES", "OBSERVACIONES"]);
-
-  if (colArticulo < 0) {
+  let cols = resolveColumns((matrix[headerIdx] || []).map(normHeader));
+  if (cols.articulo < 0) {
     return {
       rows: [],
       skipped: 0,
@@ -181,14 +231,41 @@ export function parseBespokeInventoryWorkbook(
     };
   }
 
+  // Fallback positional map if Cliente header was missed but sheet matches paper layout:
+  // 0 Articulo | 1 Cliente | 2 No. parte | 3 UOM | 4 Cant x tarima | 5 Inv min | 6 Cant fisica
+  if (cols.cliente < 0) {
+    cols = {
+      ...cols,
+      cliente: 1,
+      parte: cols.parte < 0 ? 2 : cols.parte,
+      uom: cols.uom < 0 ? 3 : cols.uom,
+      perPack: cols.perPack < 0 ? 4 : cols.perPack,
+      min: cols.min < 0 ? 5 : cols.min,
+      qty: cols.qty < 0 ? 6 : cols.qty,
+    };
+  }
+
   const rows: BespokeImportRow[] = [];
   const errors: string[] = [];
   let skipped = 0;
   let currentCategory: BespokeCategory = "stretch_film";
+  let missingClientSamples = 0;
 
   for (let r = headerIdx + 1; r < matrix.length; r += 1) {
     const row = (matrix[r] || []) as unknown[];
-    const itemName = cellStr(row, colArticulo);
+
+    // Re-bind columns when the sheet repeats headers (FOAM / ESQUINEROS blocks).
+    if (looksLikeHeaderRow(row)) {
+      const next = resolveColumns(row.map(normHeader));
+      if (next.articulo >= 0) {
+        cols = next;
+        if (cols.cliente < 0) cols = { ...cols, cliente: 1 };
+      }
+      skipped += 1;
+      continue;
+    }
+
+    const itemName = cellStr(row, cols.articulo);
     if (!itemName) {
       skipped += 1;
       continue;
@@ -201,33 +278,30 @@ export function parseBespokeInventoryWorkbook(
       continue;
     }
 
-    // Skip repeated header rows mid-sheet.
-    if (normHeader(itemName) === "ARTICULO") {
-      skipped += 1;
-      continue;
-    }
-
     const categoryFromCol =
-      colCategory >= 0
-        ? inferCategoryLabel(cellStr(row, colCategory))
+      cols.category >= 0
+        ? inferCategoryLabel(cellStr(row, cols.category))
         : null;
     const category = detectCategoryFromName(
       itemName,
       categoryFromCol || currentCategory
     );
 
-    const clientPartNumber = cellStr(row, colParte);
+    const clientName = cellStr(row, cols.cliente);
+    const clientPartNumber = cellStr(row, cols.parte);
+    if (!clientName) missingClientSamples += 1;
+
     const isObsolete = isObsoletePart(clientPartNumber, itemName);
-    const unitRaw = cellStr(row, colUom);
+    const unitRaw = cellStr(row, cols.uom);
     const unitOfMeasure = normalizeUomForCategory(
       category,
       unitRaw || defaultUomForCategory(category)
     );
 
-    const physicalQty = cellNum(row, colQty);
-    const unitsPerPalletOrPack = cellNum(row, colPerPack);
-    const minInventory = cellNum(row, colMin);
-    let palletCount = cellNum(row, colPallets);
+    const physicalQty = cellNum(row, cols.qty);
+    const unitsPerPalletOrPack = cellNum(row, cols.perPack);
+    const minInventory = cellNum(row, cols.min);
+    let palletCount = cellNum(row, cols.pallets);
     if (palletCount <= 0 && unitsPerPalletOrPack > 0 && physicalQty > 0) {
       palletCount =
         Math.round((physicalQty / unitsPerPalletOrPack) * 10000) / 10000;
@@ -236,7 +310,7 @@ export function parseBespokeInventoryWorkbook(
     rows.push({
       itemName,
       category,
-      clientName: cellStr(row, colCliente),
+      clientName,
       clientPartNumber: isObsolete ? "OBSOLETO" : clientPartNumber,
       unitOfMeasure,
       unitsPerPalletOrPack,
@@ -244,13 +318,17 @@ export function parseBespokeInventoryWorkbook(
       physicalQty,
       palletCount,
       isObsolete,
-      countNotes: cellStr(row, colNotes),
+      countNotes: cellStr(row, cols.notes),
     });
   }
 
   if (!rows.length) {
     errors.push(
       `No se extrajeron artículos de ${fileName || "el archivo"}. Revisa columnas y filas.`
+    );
+  } else if (missingClientSamples === rows.length) {
+    errors.push(
+      "Se leyeron artículos pero ningún Cliente. Revisa que la columna se llame CLIENTE (no 'No. parte cliente')."
     );
   }
 

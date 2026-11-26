@@ -20,6 +20,10 @@ import {
 import type { UserProfile } from "@/actions/auth";
 import { AdminInventoryShell } from "@/components/admin/inventory/AdminInventoryShell";
 import { BespokeInventorySheet } from "@/components/admin/inventory/BespokeInventorySheet";
+import {
+  WarehouseLangProvider,
+  useWarehouseLang,
+} from "@/components/admin/inventory/WarehouseLangContext";
 import type { BespokeImportBatch } from "@/actions/bespoke-inventory";
 import type { BespokeInventoryItem } from "@/lib/bespoke-inventory";
 import {
@@ -65,7 +69,25 @@ type StagedReceive = {
   productName: string;
 };
 
-export function UsaWarehouseInventoryClient({
+export function UsaWarehouseInventoryClient(
+  props: {
+    profile: UserProfile;
+    inventory: WarehouseInventoryRow[];
+    dispatchQueue: WarehouseDispatchOrder[];
+    stretchCatalog: StretchCatalogItem[];
+    bespokeItems?: BespokeInventoryItem[];
+    importBatches?: BespokeImportBatch[];
+    warehouseReady?: boolean;
+  }
+) {
+  return (
+    <WarehouseLangProvider>
+      <UsaWarehouseInventoryClientInner {...props} />
+    </WarehouseLangProvider>
+  );
+}
+
+function UsaWarehouseInventoryClientInner({
   profile,
   inventory,
   dispatchQueue,
@@ -82,6 +104,7 @@ export function UsaWarehouseInventoryClient({
   importBatches?: BespokeImportBatch[];
   warehouseReady?: boolean;
 }) {
+  const { t } = useWarehouseLang();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [tab, setTab] = useState<"stretch" | "bespoke">("bespoke");
@@ -369,31 +392,35 @@ export function UsaWarehouseInventoryClient({
   return (
     <AdminInventoryShell
       profile={profile}
-      badgeLabel={tab === "bespoke" ? "USA · Bespoke sheet" : "USA · Stretch pallets"}
+      badgeLabel={
+        tab === "bespoke"
+          ? t("USA · Hoja Bespoke", "USA · Bespoke sheet")
+          : t("USA · Tarimas stretch", "USA · Stretch pallets")
+      }
     >
       <div className="space-y-6 pb-16">
-        <div className="print:hidden flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-1.5 w-fit">
+        <div className="print:hidden flex w-full max-w-xl flex-wrap gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1 sm:w-fit">
           <button
             type="button"
             onClick={() => setTab("bespoke")}
-            className={`rounded-xl px-4 py-2 text-xs font-bold transition ${
+            className={`min-h-10 flex-1 rounded-xl px-4 py-2.5 text-sm font-bold transition sm:flex-none ${
               tab === "bespoke"
-                ? "bg-emerald-600 text-white"
-                : "text-slate-600 hover:bg-slate-50"
+                ? "bg-emerald-600 text-white shadow-sm"
+                : "text-slate-600 hover:bg-white"
             }`}
           >
-            Bespoke sheet
+            {t("Hoja Bespoke", "Bespoke sheet")}
           </button>
           <button
             type="button"
             onClick={() => setTab("stretch")}
-            className={`rounded-xl px-4 py-2 text-xs font-bold transition ${
+            className={`min-h-10 flex-1 rounded-xl px-4 py-2.5 text-sm font-bold transition sm:flex-none ${
               tab === "stretch"
-                ? "bg-emerald-600 text-white"
-                : "text-slate-600 hover:bg-slate-50"
+                ? "bg-emerald-600 text-white shadow-sm"
+                : "text-slate-600 hover:bg-white"
             }`}
           >
-            Stretch pallets
+            {t("Tarimas stretch", "Stretch pallets")}
           </button>
         </div>
 
@@ -412,16 +439,16 @@ export function UsaWarehouseInventoryClient({
           <div>
             <h1 className="flex items-center gap-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
               <Warehouse className="h-7 w-7 text-emerald-700" />
-              USA Inventory · Pallets
+              Inventario USA · Tarimas
             </h1>
             <p className="mt-1 text-sm text-slate-600">
-              Enter film by measures + pallets. The system assigns the SKU.
+              Recibe film por medidas y tarimas. El sistema asigna el SKU.
             </p>
             <p className="mt-2 text-xs font-bold uppercase tracking-wide text-slate-500">
-              {totals.skus} SKUs · {totals.pallets.toLocaleString()} pallets on floor
+              {totals.skus} SKUs · {totals.pallets.toLocaleString()} tarimas en piso
               {stretchCatalog.length > 0
-                ? ` · ${stretchCatalog.length} catalog specs`
-                : " · catalog not linked yet"}
+                ? ` · ${stretchCatalog.length} medidas en catálogo`
+                : " · catálogo aún no vinculado"}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -429,18 +456,18 @@ export function UsaWarehouseInventoryClient({
               type="button"
               disabled={pending}
               onClick={refresh}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700"
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-bold text-slate-700"
             >
               <RefreshCw className={`h-4 w-4 ${pending ? "animate-spin" : ""}`} />
-              Refresh
+              Actualizar
             </button>
             <button
               type="button"
               onClick={() => setBulkOpen((open) => !open)}
-              className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-3 py-2 text-sm font-bold text-white"
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-sky-600 px-3.5 py-2 text-sm font-bold text-white"
             >
               <Truck className="h-4 w-4" />
-              {bulkOpen ? "Hide receive" : "Receive by measures"}
+              {bulkOpen ? "Ocultar recepción" : "Recibir por medidas"}
             </button>
           </div>
         </div>
@@ -448,10 +475,12 @@ export function UsaWarehouseInventoryClient({
         <section className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 shadow-sm">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-wide text-amber-950">
             <PackageCheck className="h-4 w-4" />
-            Pending dispatch ({dispatchQueue.length})
+            Despacho pendiente ({dispatchQueue.length})
           </h2>
           {dispatchQueue.length === 0 ? (
-            <p className="text-sm text-amber-900/80">No paid orders waiting to pick.</p>
+            <p className="text-sm text-amber-900/80">
+              No hay órdenes pagadas por surtir.
+            </p>
           ) : (
             <div className="space-y-3">
               {dispatchQueue.map((order) => (
@@ -481,7 +510,7 @@ export function UsaWarehouseInventoryClient({
                           return (
                             <li key={`${order.id}-${line.productId}-${line.sku}`}>
                               <span className="font-bold text-slate-800">
-                                {pallets} pallet{pallets === 1 ? "" : "s"}
+                                {pallets} tarima{pallets === 1 ? "" : "s"}
                               </span>
                               {" · "}
                               {spec}
@@ -497,9 +526,9 @@ export function UsaWarehouseInventoryClient({
                       type="button"
                       disabled={pending}
                       onClick={() => dispatchOrder(order.id)}
-                      className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-black text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+                      className="min-h-11 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-black text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
                     >
-                      Mark as Picked &amp; Dispatched
+                      Surtido y despachado
                     </button>
                   </div>
                 </div>
@@ -510,19 +539,19 @@ export function UsaWarehouseInventoryClient({
 
         {!warehouseReady ? (
           <div className="rounded-2xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-950">
-            USA warehouse tables are missing. Run{" "}
+            Faltan las tablas del almacén USA. Corre{" "}
             <code className="rounded bg-white px-1 text-xs">
               20261124160000_multi_warehouse_inventory.sql
             </code>{" "}
-            in Supabase, then refresh this page.
+            en Supabase y actualiza esta página.
           </div>
         ) : null}
 
         {warehouseReady && stretchCatalog.length === 0 ? (
           <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-            Stretch SKU catalog did not load measures from products. Dropdowns still
-            show official sizes; after you pick them, posting needs matching product
-            rows (width / gauge / length or slug like{" "}
+            El catálogo stretch no cargó medidas desde productos. Los menús
+            siguen mostrando tamaños oficiales; al publicar se necesita un
+            producto que coincida (ancho / gauge / largo o slug como{" "}
             <code className="text-xs">stretch-film-18-x-80-ga-x-1500ft</code>).
           </div>
         ) : null}
@@ -530,16 +559,16 @@ export function UsaWarehouseInventoryClient({
         {bulkOpen ? (
           <section className="rounded-2xl border border-sky-200 bg-sky-50 p-4 shadow-sm">
             <h2 className="text-sm font-black uppercase tracking-wide text-sky-950">
-              Receive by measures
+              Recibir por medidas
             </h2>
             <p className="mt-1 text-xs text-sky-900/80">
-              Open each dropdown (film type → width → gauge → length), enter pallets,
-              then add. The system assigns the SKU from your catalog.
+              Elige tipo → ancho → gauge → largo, indica tarimas y agrega. El
+              sistema asigna el SKU del catálogo.
             </p>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <label className="block text-xs font-bold uppercase tracking-wide text-slate-600">
-                Film type
+                Tipo de film
                 <select
                   value={draft.application}
                   onChange={(event) =>
@@ -549,19 +578,19 @@ export function UsaWarehouseInventoryClient({
                   }
                   className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900"
                 >
-                  <option value="hand">Hand stretch</option>
-                  <option value="machine">Machine stretch</option>
+                  <option value="hand">Manual (hand)</option>
+                  <option value="machine">Máquina (machine)</option>
                 </select>
               </label>
 
               <label className="block text-xs font-bold uppercase tracking-wide text-slate-600">
-                Width (in)
+                Ancho (in)
                 <select
                   value={draft.widthInches}
                   onChange={(event) => updateDraft({ widthInches: event.target.value })}
                   className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900"
                 >
-                  <option value="">Select width…</option>
+                  <option value="">Elige ancho…</option>
                   {widthOptions.map((value) => (
                     <option key={`w-${value}`} value={String(value)}>
                       {value}&quot;
@@ -577,7 +606,7 @@ export function UsaWarehouseInventoryClient({
                   onChange={(event) => updateDraft({ gauge: event.target.value })}
                   className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900"
                 >
-                  <option value="">Select gauge…</option>
+                  <option value="">Elige gauge…</option>
                   {gaugeOptions.map((value) => (
                     <option key={`g-${value}`} value={String(value)}>
                       {value} GA
@@ -587,13 +616,13 @@ export function UsaWarehouseInventoryClient({
               </label>
 
               <label className="block text-xs font-bold uppercase tracking-wide text-slate-600">
-                Length (ft)
+                Largo (ft)
                 <select
                   value={draft.lengthFeet}
                   onChange={(event) => updateDraft({ lengthFeet: event.target.value })}
                   className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900"
                 >
-                  <option value="">Select length…</option>
+                  <option value="">Elige largo…</option>
                   {lengthOptions.map((value) => (
                     <option key={`l-${value}`} value={String(value)}>
                       {value.toLocaleString()} ft
@@ -603,7 +632,7 @@ export function UsaWarehouseInventoryClient({
               </label>
 
               <label className="block text-xs font-bold uppercase tracking-wide text-slate-600">
-                Pallets received
+                Tarimas recibidas
                 <input
                   inputMode="numeric"
                   value={draft.pallets}
@@ -614,7 +643,7 @@ export function UsaWarehouseInventoryClient({
 
               {draftMatches.length > 1 ? (
                 <label className="block text-xs font-bold uppercase tracking-wide text-slate-600">
-                  Assigned SKU (pick if needed)
+                  SKU asignado (elige si hay varios)
                   <select
                     value={draft.productId || assignedPreview?.productId || ""}
                     onChange={(event) => updateDraft({ productId: event.target.value })}
@@ -635,10 +664,10 @@ export function UsaWarehouseInventoryClient({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <div className="text-[10px] font-bold uppercase tracking-wide text-sky-700">
-                      System assigns SKU
+                      SKU que asignará el sistema
                     </div>
                     <div className="text-base font-black text-slate-900">
-                      {assignedPreview.partNumber || "SKU pending"}
+                      {assignedPreview.partNumber || "SKU pendiente"}
                     </div>
                     <div className="text-xs text-slate-500">
                       {formatStretchSpec(assignedPreview)} · {assignedPreview.productName}
@@ -648,26 +677,26 @@ export function UsaWarehouseInventoryClient({
                     type="button"
                     disabled={pending}
                     onClick={addReceiveLine}
-                    className="rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                    className="min-h-10 rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
                   >
-                    Add to receive list
+                    Agregar a recepción
                   </button>
                 </div>
               ) : (
                 <p className="text-sm text-slate-600">
                   {stretchCatalog.length === 0
-                    ? "No stretch catalog loaded. Check products have width, gauge, and length."
-                    : "Select measures to see the SKU the system will assign."}
+                    ? "No cargó el catálogo stretch. Revisa que los productos tengan ancho, gauge y largo."
+                    : "Elige las medidas para ver el SKU que se asignará."}
                 </p>
               )}
             </div>
 
             <label className="mt-3 block text-xs font-semibold text-slate-600">
-              Notes
+              Notas
               <input
                 value={bulkNotes}
                 onChange={(event) => setBulkNotes(event.target.value)}
-                placeholder="Trailer / PO / carrier"
+                placeholder="Trailer / PO / transportista"
                 className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
               />
             </label>
@@ -675,7 +704,7 @@ export function UsaWarehouseInventoryClient({
             {staged.length > 0 ? (
               <div className="mt-3 space-y-2">
                 <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                  Ready to post ({staged.length})
+                  Listo para registrar ({staged.length})
                 </div>
                 {staged.map((line) => (
                   <div
@@ -684,7 +713,7 @@ export function UsaWarehouseInventoryClient({
                   >
                     <div className="min-w-0">
                       <div className="text-sm font-bold text-slate-900">
-                        {line.pallets} pallet{line.pallets === 1 ? "" : "s"} ·{" "}
+                        {line.pallets} tarima{line.pallets === 1 ? "" : "s"} ·{" "}
                         {line.widthInches}&quot; · {line.gauge} GA · {line.lengthFeet} ft
                       </div>
                       <div className="text-xs text-emerald-700">
@@ -698,7 +727,7 @@ export function UsaWarehouseInventoryClient({
                       }
                       className="text-xs font-bold uppercase text-rose-600"
                     >
-                      Remove
+                      Quitar
                     </button>
                   </div>
                 ))}
@@ -706,10 +735,11 @@ export function UsaWarehouseInventoryClient({
                   type="button"
                   disabled={pending}
                   onClick={submitStagedReceive}
-                  className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-black text-white disabled:opacity-50"
+                  className="min-h-11 w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-black text-white disabled:opacity-50"
                 >
-                  Post {staged.reduce((sum, line) => sum + line.pallets, 0)} pallet(s) to USA
-                  warehouse
+                  Registrar{" "}
+                  {staged.reduce((sum, line) => sum + line.pallets, 0)} tarima(s) en
+                  almacén USA
                 </button>
               </div>
             ) : null}
@@ -718,12 +748,12 @@ export function UsaWarehouseInventoryClient({
 
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-black uppercase tracking-wide text-slate-700">
-            Stretch film floor ({filtered.length})
+            Piso stretch film ({filtered.length})
           </h2>
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder='Search gauge, width… e.g. "80" or 18"'
+            placeholder='Buscar gauge, ancho… ej. "80" o 18"'
             className="w-full max-w-xs rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm sm:w-64"
           />
         </div>
@@ -765,7 +795,7 @@ export function UsaWarehouseInventoryClient({
                         </span>
                       ) : null}
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-600">
-                        {row.application === "machine" ? "Machine" : "Hand"}
+                        {row.application === "machine" ? "Máquina" : "Manual"}
                       </span>
                     </div>
                     <h3 className="text-lg font-black tracking-tight text-slate-900">
@@ -817,7 +847,7 @@ export function UsaWarehouseInventoryClient({
                     disabled={pending || meta.tarimas < 1}
                     onClick={() => nudgePallets(row, -1)}
                     className="inline-flex h-14 min-w-14 flex-1 items-center justify-center rounded-2xl bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-40 sm:flex-none"
-                    aria-label="Remove pallets"
+                    aria-label="Quitar tarimas"
                   >
                     <Minus className="h-7 w-7" strokeWidth={3} />
                   </button>
@@ -840,7 +870,7 @@ export function UsaWarehouseInventoryClient({
                     disabled={pending}
                     onClick={() => nudgePallets(row, 1)}
                     className="inline-flex h-14 min-w-14 flex-1 items-center justify-center rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 sm:flex-none"
-                    aria-label="Add pallets"
+                    aria-label="Agregar tarimas"
                   >
                     <Plus className="h-7 w-7" strokeWidth={3} />
                   </button>
@@ -852,8 +882,8 @@ export function UsaWarehouseInventoryClient({
           {filtered.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center text-sm text-slate-600">
               {inventory.length === 0
-                ? "No USA inventory rows yet. Apply the multi-warehouse migration in Supabase."
-                : "No film matches your search."}
+                ? "Aún no hay filas de inventario USA. Aplica la migración multi-warehouse en Supabase."
+                : "Ningún film coincide con tu búsqueda."}
             </div>
           ) : null}
         </div>
